@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linkage Lab 3D (v29)</title>
+    <style>
+        :root {
+            --bg: #15202b;
+            --panel: #192734;
+            --accent: #00d2d3;
+            --text: #ffffff;
+            --border: #38444d;
+            --input-bg: #22303c;
+            --wood: #e1b12c;
+        }
+
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Consolas', 'Monaco', monospace;
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+        }
+
+        /* SIDEBAR */
+        #sidebar {
+            width: 460px;
+            background-color: var(--panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.5);
+            z-index: 100;
+        }
+
+        #header {
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.2);
+            border-bottom: 2px solid var(--accent);
+        }
+        
+        h1 { margin: 0; font-size: 1.1rem; font-weight: 700; color: var(--accent); letter-spacing: 1px; }
+        .subtitle { font-size: 0.75rem; color: #8899a6; margin-top: 5px; }
+
+        #controls {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        /* GROUPS */
+        .group {
+            background: rgba(255,255,255,0.02);
+            padding: 12px;
+            border: 1px solid var(--border);
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+        .group-title {
+            font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--accent); margin-bottom: 10px; font-weight: bold;
+            border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 4px;
+        }
+
+        .ctrl-row { margin-bottom: 8px; display: flex; flex-direction: column; gap: 4px; }
+        .ctrl-head { display: flex; justify-content: space-between; font-size: 0.8rem; color: #8899a6; }
+        .input-wrap { display: flex; align-items: center; gap: 8px; }
+
+        input[type="range"] {
+            flex: 1; height: 4px; background: #38444d; border-radius: 2px;
+            -webkit-appearance: none; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 12px; height: 12px;
+            background: var(--accent); border-radius: 50%; cursor: pointer;
+            border: 2px solid #fff;
+        }
+
+        input[type="number"] {
+            width: 70px; background: var(--input-bg); border: 1px solid var(--border);
+            color: var(--accent); padding: 4px; font-family: inherit; font-size: 0.85rem;
+            text-align: right; border-radius: 3px;
+        }
+        input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+        .chk-row { display: flex; gap: 15px; margin-bottom: 15px; flex-wrap: wrap; }
+        .chk-label {
+            display: flex; align-items: center; gap: 8px; font-size: 0.8rem;
+            cursor: pointer; user-select: none;
+        }
+        input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--accent); }
+
+        /* HUD */
+        #hud-panel {
+            position: absolute; top: 20px; right: 20px; width: 280px;
+            background: rgba(21, 32, 43, 0.95);
+            border: 1px solid var(--border);
+            padding: 15px; pointer-events: none;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+        .hud-sec { margin-bottom: 15px; border-bottom: 1px dashed var(--border); padding-bottom: 10px; }
+        .hud-sec:last-child { border: none; margin: 0; padding: 0; }
+        .hud-title { font-size: 0.7rem; color: #8899a6; text-transform: uppercase; font-weight: bold; margin-bottom: 8px; }
+        .hud-row { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 4px; color: #fff; }
+        .hud-val { font-weight: bold; color: var(--accent); }
+        .hud-total { font-size: 1.1rem; color: #00b894; text-align: right; margin-top: 5px; font-weight: bold; }
+
+        button {
+            width: 100%; padding: 12px; background: var(--input-bg);
+            color: var(--accent); border: 1px solid var(--accent);
+            cursor: pointer; font-weight: bold; margin-top: 5px; font-size: 0.85rem;
+            text-transform: uppercase; transition: all 0.2s;
+        }
+        button:hover { background: var(--accent); color: var(--bg); }
+
+        #viewport { flex: 1; position: relative; background-color: var(--bg); overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+        
+        .view-label {
+            position: absolute; pointer-events: none;
+            font-size: 0.75rem; color: rgba(255,255,255,0.5);
+            text-transform: uppercase; padding: 4px 8px;
+            background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+        }
+    </style>
+</head>
+<body>
+
+<div id="sidebar">
+    <div id="header">
+        <h1>Linkage Lab v29</h1>
+        <div class="subtitle">Blueprint Edition</div>
+    </div>
+
+    <div id="controls">
+        
+        <div class="chk-row">
+            <label class="chk-label"><input type="checkbox" id="chk-snap"> Snap Ring</label>
+            <label class="chk-label"><input type="checkbox" id="chk-collide"> Physics Check</label>
+            <label class="chk-label"><input type="checkbox" id="chk-brack" checked> Brackets</label>
+            <label class="chk-label"><input type="checkbox" id="chk-bolts" checked> Bolts</label>
+        </div>
+
+        <div id="col-status" style="display:none; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; text-align:center; margin-bottom:10px;">
+            ⚠ COLLISION DETECTED
+        </div>
+
+        <div class="group">
+            <div class="group-title">Deploy State</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Fold Angle</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-fold" min="5" max="175" step="0.1">
+                    <input type="number" id="nb-fold" min="5" max="175" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Lumber Sizes (Fixed Length)</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Horiz Beam Length (ft)</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-len" min="2" max="24" step="0.1">
+                    <input type="number" id="nb-len" min="2" max="24" step="0.1">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Vert Beam Length (ft)</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-vlen" min="2" max="24" step="0.1">
+                    <input type="number" id="nb-vlen" min="2" max="24" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Pivot Offsets (Inches)</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Top Extension</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-off-top" min="0" max="48" step="0.1">
+                    <input type="number" id="nb-off-top" min="0" max="48" step="0.1">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Bottom Extension</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-off-bot" min="0" max="48" step="0.1">
+                    <input type="number" id="nb-off-bot" min="0" max="48" step="0.1">
+                </div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Module Config</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Horiz Stack Count</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-hstack" min="2" max="6" step="1" value="2">
+                    <input type="number" id="nb-hstack" min="2" max="6" value="2">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Vert Stack Count</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-vstack" min="2" max="6" step="1" value="3">
+                    <input type="number" id="nb-vstack" min="2" max="6" value="3">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Module Count</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-mod" min="3" max="40" step="1" value="8">
+                    <input type="number" id="nb-mod" min="3" max="40" value="8">
+                </div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Hardware (Inches)</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Bracket Vert Gap</span></div>
+                <div class="input-wrap">
+                    <input type="range" id="sl-brack" min="0" max="12" step="0.1">
+                    <input type="number" id="nb-brack" min="0" max="12" step="0.1">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Horiz Beam (W x T)</span></div>
+                <div class="input-wrap">
+                    <input type="number" id="nb-hbeam-w" value="3.5" title="Width">
+                    <span style="color:#666">x</span>
+                    <input type="number" id="nb-hbeam-t" value="1.5" title="Thick">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Vert Beam (W x T)</span></div>
+                <div class="input-wrap">
+                    <input type="number" id="nb-vbeam-w" value="1.5" title="Width">
+                    <span style="color:#666">x</span>
+                    <input type="number" id="nb-vbeam-t" value="3.5" title="Thick">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Stack Gap (Washer)</span></div>
+                <div class="input-wrap"><input type="number" id="nb-vgap" value="0.0" step="0.05"></div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Geometry</div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Pivot % / Angle</span></div>
+                <div class="input-wrap">
+                    <input type="number" id="nb-piv" title="Pivot %">
+                    <span style="color:#666">/</span>
+                    <input type="number" id="nb-ang" title="Pivot Offset">
+                </div>
+            </div>
+            <div class="ctrl-row">
+                <div class="ctrl-head"><span>Hoberman Bend</span></div>
+                <div class="input-wrap"><input type="number" id="nb-hob" title="Hoberman"></div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title">Unit Cost ($)</div>
+            <div class="input-wrap" style="justify-content: space-between;">
+                <label style="font-size:0.7rem">Beam/ft <input type="number" id="nb-cost-lum" value="1.50" style="width:50px"></label>
+                <label style="font-size:0.7rem">Bracket <input type="number" id="nb-cost-brack" value="5.00" style="width:50px"></label>
+                <label style="font-size:0.7rem">Bolt <input type="number" id="nb-cost-bolt" value="0.75" style="width:50px"></label>
+            </div>
+        </div>
+
+        <button id="btn-fit">Recenter View</button>
+        <button id="btn-reset" style="border-color:#ff6b6b; color:#ff6b6b;">Reset Defaults</button>
+    </div>
+</div>
+
+<div id="viewport">
+    <canvas id="canvas"></canvas>
+    <div id="hud-panel">
+        <div class="hud-sec">
+            <div class="hud-title">Structure Stats</div>
+            <div class="hud-row"><span>Height:</span> <span class="hud-val" id="stat-h"></span></div>
+            <div class="hud-row"><span>Diameter:</span> <span class="hud-val" id="stat-d"></span></div>
+        </div>
+        <div class="hud-sec">
+            <div class="hud-title">Bill of Materials</div>
+            <div class="hud-row"><span>H-Beams:</span> <span class="hud-val" id="bom-h">0</span></div>
+            <div class="hud-row"><span>V-Beams:</span> <span class="hud-val" id="bom-v">0</span></div>
+            <div class="hud-row"><span>Brackets:</span> <span class="hud-val" id="bom-u">0</span></div>
+            <div class="hud-row"><span>Bolts:</span> <span class="hud-val" id="bom-b">0</span></div>
+            <div class="hud-total">Est: $<span id="bom-total">0.00</span></div>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * LUMBER LINKAGE LAB V29
+ */
+
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+// --- STATE ---
+const state = {
+    modules: 8,
+    hLengthFt: 8.0, 
+    vLengthFt: 8.0, 
+    pivotPct: 41.5,
+    hobermanAng: 0.0,
+    pivotAng: 0.0,
+    
+    hStackCount: 2,
+    vStackCount: 3,
+    
+    offsetTopIn: 1.5,
+    offsetBotIn: 1.5,
+    vertEndOffset: 1.5, 
+    bracketOffset: 3.0, 
+    stackGap: 0.0,
+    
+    hBeamW: 3.5, 
+    hBeamT: 1.5,
+    vBeamW: 1.5,
+    vBeamT: 3.5,
+
+    costLumber: 1.50,
+    costBolt: 0.75,
+    costBracket: 5.00,
+
+    foldAngle: 135.4 * Math.PI / 180,
+    isRing: false,
+    snapEnabled: false,
+    enforceCollision: false,
+    hasCollision: false,
+    
+    showBrackets: true,
+    showBolts: true,
+    
+    light: {x: 0.4, y: -0.8, z: 0.5},
+    cam: { yaw: 0.5, pitch: 0.5, dist: 1200, panX: 0, panY: 0 },
+    view: { w: 0, h: 0, splitX: 0.7, orthoScale: 4.0 }
+};
+
+// Normalize Light
+const lLen = Math.sqrt(state.light.x**2 + state.light.y**2 + state.light.z**2);
+state.light.x /= lLen; state.light.y /= lLen; state.light.z /= lLen;
+
+// --- DOM ---
+const inputs = {};
+const idMap = {
+    'mod': 'modules', 'piv': 'pivotPct', 'hob': 'hobermanAng', 'ang': 'pivotAng', 
+    'fold': 'foldAngle', 'brack': 'bracketOffset', 'vgap': 'stackGap',
+    'hstack': 'hStackCount', 'vstack': 'vStackCount',
+    'hbeam-w': 'hBeamW', 'hbeam-t': 'hBeamT', 'vbeam-w': 'vBeamW', 'vbeam-t': 'vBeamT',
+    'len': 'hLengthFt', 'vlen': 'vLengthFt',
+    'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn',
+    'cost-lum': 'costLumber', 'cost-bolt': 'costBolt', 'cost-brack': 'costBracket'
+};
+
+Object.keys(idMap).forEach(k => {
+    inputs[k] = {
+        sl: document.getElementById('sl-'+k), 
+        nb: document.getElementById('nb-'+k)
+    };
+});
+
+const uiCol = document.getElementById('col-status');
+const uiStats = {
+    h: document.getElementById('stat-h'),
+    d: document.getElementById('stat-d'),
+    bh: document.getElementById('bom-h'), bv: document.getElementById('bom-v'),
+    bu: document.getElementById('bom-u'), bb: document.getElementById('bom-b'),
+    bt: document.getElementById('bom-total')
+};
+
+// --- MATH HELPER ---
+const v3 = (x,y,z) => ({x,y,z});
+const vAdd = (a,b) => ({x:a.x+b.x, y:a.y+b.y, z:a.z+b.z});
+const vSub = (a,b) => ({x:a.x-b.x, y:a.y-b.y, z:a.z-b.z});
+const vScale = (a,s) => ({x:a.x*s, y:a.y*s, z:a.z*s});
+const vMag = (a) => Math.sqrt(a.x*a.x + a.y*a.y + a.z*a.z);
+const vNorm = (a) => { const m=vMag(a); return m===0?{x:0,y:0,z:0}:vScale(a, 1/m); };
+const vCross = (a,b) => ({x:a.y*b.z - a.z*b.y, y:a.z*b.x - a.x*b.z, z:a.x*b.y - a.y*b.x});
+const vDot = (a,b) => a.x*b.x + a.y*b.y + a.z*b.z;
+
+// --- GEOMETRY CLASSES ---
+class Beam3D {
+    constructor(start, end, width, thick, colorBase) {
+        this.type = 'beam';
+        this.center = vScale(vAdd(start, end), 0.5);
+        this.colorBase = colorBase;
+        
+        this.axisZ = vNorm(vSub(end, start));
+        let up = {x:0,y:1,z:0};
+        if(Math.abs(this.axisZ.y) > 0.99) up = {x:1,y:0,z:0};
+        this.axisX = vNorm(vCross(this.axisZ, up));
+        this.axisY = vNorm(vCross(this.axisX, this.axisZ));
+        
+        const hw = width/2; const ht = thick/2;
+        this.corners = [];
+        const offsets = [{u:-hw,v:-ht},{u:hw,v:-ht},{u:hw,v:ht},{u:-hw,v:ht}];
+        
+        [start, end].forEach(c => {
+            offsets.forEach(o => {
+                let p = vAdd(c, vScale(this.axisX, o.u));
+                p = vAdd(p, vScale(this.axisY, o.v));
+                this.corners.push(p);
+            });
+        });
+
+        this.faces = [
+            { idx: [0,3,2,1], norm: vScale(this.axisZ, -1) }, { idx: [4,5,6,7], norm: this.axisZ },
+            { idx: [0,1,5,4], norm: vScale(this.axisY, -1) }, { idx: [3,7,6,2], norm: this.axisY },
+            { idx: [0,4,7,3], norm: vScale(this.axisX, -1) }, { idx: [1,2,6,5], norm: this.axisX }
+        ];
+        this.p1=start; this.p2=end; this.w=width; this.t=thick;
+    }
+}
+
+class Bracket3D {
+    constructor(pos, dirUp, dirFwd, width) {
+        this.type = 'bracket';
+        this.pos = pos;
+        this.w = width * 1.2; 
+        this.h = width * 1.2; 
+        this.d = 2.5; 
+    }
+}
+
+// --- SOLVER & GENERATOR ---
+
+function solveLinkage(foldAngle) {
+    const INCH = 12;
+    
+    // Geometry Calc
+    const hTotIn = state.hLengthFt * INCH;
+    const hActiveIn = hTotIn - state.offsetTopIn - state.offsetBotIn;
+    const safeH = Math.max(1, hActiveIn);
+    
+    const k = state.pivotPct / 100;
+    const a = safeH * k; const b = safeH * (1-k);
+    const half = foldAngle / 2;
+    const hoberman = state.hobermanAng * Math.PI / 180;
+    const pivOff = state.pivotAng * Math.PI / 180;
+    
+    const ang1_bot = Math.PI - half;
+    const ang1_top = -half + hoberman;
+    const ang2_bot = Math.PI + half + pivOff;
+    const ang2_top = half - hoberman + pivOff;
+
+    const loc = {
+        bl: {x: a*Math.cos(ang1_bot), y: a*Math.sin(ang1_bot)},
+        tr: {x: b*Math.cos(ang1_top), y: b*Math.sin(ang1_top)},
+        br: {x: a*Math.cos(ang2_bot), y: a*Math.sin(ang2_bot)},
+        tl: {x: b*Math.cos(ang2_top), y: b*Math.sin(ang2_top)},
+    };
+
+    // Vertical Height
+    const vTotIn = state.vLengthFt * INCH;
+    const vActiveIn = vTotIn - (state.vertEndOffset * 2);
+    const safeV = Math.max(1, vActiveIn);
+    
+    const dx = loc.tr.x - loc.br.x;
+    const dy = loc.tr.y - loc.br.y;
+    const radialSpan = Math.sqrt(dx*dx + dy*dy);
+    
+    let zHeight = 0;
+    if (safeV > radialSpan) zHeight = Math.sqrt(safeV*safeV - radialSpan*radialSpan);
+
+    const srcAng = Math.atan2(loc.tl.y - loc.bl.y, loc.tl.x - loc.bl.x);
+    const tgtAng = Math.atan2(loc.tr.y - loc.br.y, loc.tr.x - loc.br.x);
+    const relRot = tgtAng - srcAng;
+
+    let beams = [];
+    let brackets = [];
+    let bolts = [];
+    let curPos = {x:0, y:0};
+    let curRot = 0;
+
+    const getExt = (p, dist) => {
+        const l = Math.sqrt(p.x*p.x + p.y*p.y);
+        const s = 1 + (dist/l);
+        return {x: p.x*s, y: p.y*s};
+    };
+    
+    const visLoc = {
+        bl: getExt(loc.bl, state.offsetBotIn),
+        tr: getExt(loc.tr, state.offsetTopIn),
+        br: getExt(loc.br, state.offsetBotIn),
+        tl: getExt(loc.tl, state.offsetTopIn)
+    };
+
+    const cWood = {r:238, g:191, b:161}; 
+
+    // STACK GENERATOR
+    const createStack = (p1_A, p2_A, p1_B, p2_B, count, w, t, color, offsetDir) => {
+        const gap = state.stackGap;
+        const totalThick = count * t + (count - 1) * gap;
+        const startOffset = -totalThick / 2 + t / 2;
+        
+        for (let i=0; i<count; i++) {
+            const offVal = startOffset + i * (t + gap);
+            const vOff = vScale(offsetDir, offVal);
+            const isA = (i % 2 === 0);
+            const start = isA ? p1_A : p1_B;
+            const end = isA ? p2_A : p2_B;
+            beams.push(new Beam3D(vAdd(start, vOff), vAdd(end, vOff), w, t, color));
+        }
+        return totalThick;
+    };
+
+    let maxRad = 0;
+
+    for(let i=0; i<state.modules; i++) {
+        const map = (p, h) => {
+            const rx = p.x*Math.cos(curRot) - p.y*Math.sin(curRot);
+            const rz = p.x*Math.sin(curRot) + p.y*Math.cos(curRot);
+            return v3(curPos.x + rx, h, curPos.y + rz); 
+        };
+
+        const topH = zHeight + (state.bracketOffset * 2);
+
+        // --- HORIZONTAL RINGS ---
+        const hUp = {x:0,y:1,z:0};
+        const hW = state.hBeamW; const hT = state.hBeamT;
+        
+        // Bot Ring
+        const hThick = createStack(
+            map(visLoc.bl, 0), map(visLoc.tr, 0), // A
+            map(visLoc.br, 0), map(visLoc.tl, 0), // B
+            state.hStackCount, hW, hT, cWood, hUp
+        );
+        
+        // Top Ring
+        createStack(
+            map(visLoc.bl, topH), map(visLoc.tr, topH), 
+            map(visLoc.br, topH), map(visLoc.tl, topH),
+            state.hStackCount, hW, hT, cWood, hUp
+        );
+
+        // --- VERTICAL UPRIGHTS ---
+        if (zHeight > 1) {
+            const yMin = state.bracketOffset;
+            const yMax = topH - state.bracketOffset;
+            
+            const pBotInner = map(loc.br, yMin);
+            const pTopOuter = map(loc.tr, yMax);
+            const pBotOuter = map(loc.tr, yMin);
+            const pTopInner = map(loc.br, yMax);
+            
+            const vW = state.vBeamW; 
+            const vT = state.vBeamT;
+            
+            const vDir1 = vNorm(vSub(pTopOuter, pBotInner));
+            const vExt1 = vScale(vDir1, state.vertEndOffset);
+            const b1s = vSub(pBotInner, vExt1); const b1e = vAdd(pTopOuter, vExt1);
+            
+            const vDir2 = vNorm(vSub(pTopInner, pBotOuter));
+            const vExt2 = vScale(vDir2, state.vertEndOffset);
+            const b2s = vSub(pBotOuter, vExt2); const b2e = vAdd(pTopInner, vExt2);
+            
+            const center = v3(0,0,0);
+            const radVec = vNorm(vSub(pBotInner, center)); 
+            const up = {x:0,y:1,z:0};
+            const tanVec = vNorm(vCross(radVec, up)); // TANGENTIAL STACK
+            
+            createStack(b1s, b1e, b2s, b2e, state.vStackCount, vW, vT, cWood, tanVec);
+            
+            if(state.showBrackets) {
+                const bW = hThick;
+                brackets.push(new Bracket3D(pBotInner, {x:0,y:1,z:0}, radVec, bW));
+                brackets.push(new Bracket3D(pTopOuter, {x:0,y:-1,z:0}, radVec, bW));
+            }
+            
+            if(state.showBolts) {
+                bolts.push({pos: pBotInner, r:0.5});
+                bolts.push({pos: pTopOuter, r:0.5});
+                const mid = vScale(vAdd(pBotInner, pTopOuter), 0.5);
+                bolts.push({pos: mid, r:0.5});
+            }
+        }
+        
+        if (vMag(map(visLoc.tr,0)) > maxRad) maxRad = vMag(map(visLoc.tr,0));
+
+        const nextRot = curRot + relRot;
+        const wx_bl = loc.bl.x*Math.cos(nextRot) - loc.bl.y*Math.sin(nextRot);
+        const wy_bl = loc.bl.x*Math.sin(nextRot) + loc.bl.y*Math.cos(nextRot);
+        curPos.x = (curPos.x + (loc.br.x*Math.cos(curRot)-loc.br.y*Math.sin(curRot))) - wx_bl;
+        curPos.y = (curPos.y + (loc.br.x*Math.sin(curRot)+loc.br.y*Math.cos(curRot))) - wy_bl;
+        curRot = nextRot;
+    }
+    
+    const maxHeight = zHeight + (state.bracketOffset*2) + state.hBeamT + state.vertEndOffset;
+
+    return { beams, brackets, bolts, maxRad, maxHeight };
+}
+
+// --- RENDERER ---
+
+function render() {
+    const data = solveLinkage(state.foldAngle);
+    updateHUD(data);
+
+    const w = canvas.width = canvas.clientWidth;
+    const h = canvas.height = canvas.clientHeight;
+    ctx.fillStyle = '#15202b'; ctx.fillRect(0,0,w,h);
+
+    const splitX = w * 0.7; const splitY = h * 0.5;
+    state.view.splitX = splitX;
+
+    ctx.save(); ctx.beginPath(); ctx.rect(0,0,splitX,h); ctx.clip();
+    drawGrid3D(ctx, '3d', splitX/2, h/2, splitX);
+    drawScene(ctx, data, '3d', splitX/2, h/2, splitX, h);
+    ctx.restore();
+
+    ctx.save(); ctx.beginPath(); ctx.rect(splitX,0,w-splitX,splitY); ctx.clip();
+    ctx.fillStyle = '#192734'; ctx.fill();
+    drawScene(ctx, data, 'top', splitX + (w-splitX)/2, splitY/2, w-splitX, splitY);
+    ctx.strokeStyle='#38444d'; ctx.strokeRect(splitX,0,w-splitX,splitY);
+    ctx.restore();
+
+    ctx.save(); ctx.beginPath(); ctx.rect(splitX,splitY,w-splitX,h-splitY); ctx.clip();
+    ctx.fillStyle = '#192734'; ctx.fill();
+    drawScene(ctx, data, 'side', splitX + (w-splitX)/2, splitY + (h-splitY)/2, w-splitX, h-splitY);
+    ctx.restore();
+}
+
+function updateHUD(data) {
+    const N = state.modules;
+    const hBeams = N * 4 * state.hStackCount;
+    const vBeams = N * 2 * state.vStackCount;
+    const uBrackets = N * 4; 
+    const nBolts = N * (4 + 2); 
+
+    uiStats.bh.innerText = hBeams; uiStats.bv.innerText = vBeams;
+    uiStats.bu.innerText = uBrackets; uiStats.bb.innerText = nBolts;
+
+    const cost = (hBeams*state.hLengthFt + vBeams*state.vLengthFt)*state.costLumber 
+               + nBolts*state.costBolt + uBrackets*state.costBracket;
+    uiStats.bt.innerText = cost.toFixed(2);
+
+    const h_ft = data.maxHeight/12;
+    const d_ft = (data.maxRad*2)/12;
+    uiStats.h.innerText = h_ft.toFixed(2)+"'";
+    uiStats.d.innerText = d_ft.toFixed(2)+"'"; 
+}
+
+function drawScene(c, data, view, cx, cy, vw, vh) {
+    const cam = state.cam;
+    const yRad = cam.yaw, pRad = cam.pitch;
+
+    const project = (v) => {
+        let x = v.x, y = v.y, z = v.z;
+        let x1 = x*Math.cos(-yRad) - z*Math.sin(-yRad);
+        let z1 = x*Math.sin(-yRad) + z*Math.cos(-yRad);
+        if(view==='3d') x1 -= cam.panX;
+        let y2 = y*Math.cos(pRad) - z1*Math.sin(pRad);
+        let z2 = y*Math.sin(pRad) + z1*Math.cos(pRad);
+        if(view==='3d') y2 += cam.panY;
+
+        let scale = 1;
+        if(view === '3d') {
+            let depth = z2 + cam.dist;
+            if(depth < 5) depth = 5; 
+            scale = 1000 / depth;
+            return { x: cx + x1*scale, y: cy - y2*scale, z: z2, s: scale };
+        } else {
+            const s = state.view.orthoScale * (40/state.modules);
+            if(view==='top') return { x: cx + x*s, y: cy + z*s, z: 0, s: s };
+            return { x: cx + x*s, y: cy - y*s, z: 0, s: s };
+        }
+    };
+
+    let faces = [];
+
+    data.beams.forEach(beam => {
+        const pts = beam.corners.map(p => project(p));
+        if(pts.some(p => p.s <= 0)) return;
+        beam.faces.forEach(f => {
+            const p0=pts[f.idx[0]], p1=pts[f.idx[1]], p2=pts[f.idx[2]];
+            if((p1.x-p0.x)*(p2.y-p0.y) - (p1.y-p0.y)*(p2.x-p0.x) < 0) {
+                const zAvg = (pts[f.idx[0]].z + pts[f.idx[2]].z)/2;
+                let light = 1;
+                if(view==='3d') {
+                    const dot = vDot(f.norm, state.light);
+                    light = 0.5 + 0.5 * Math.max(0, dot);
+                }
+                faces.push({type:'beam', pts:[p0,p1,p2,pts[f.idx[3]]], z:zAvg, col:beam.colorBase, l:light});
+            }
+        });
+    });
+
+    if(state.showBrackets) {
+        data.brackets.forEach(b => {
+            const p = project(b.pos);
+            if(p.s>0) {
+                const sz = b.w * p.s; const ht = b.h * p.s;
+                faces.push({type:'bracket', x:p.x, y:p.y, w:sz, h:ht, z:p.z});
+            }
+        });
+    }
+
+    if(state.showBolts) {
+        data.bolts.forEach(b => {
+            const p = project(b.pos);
+            if(p.s>0) faces.push({type:'bolt', x:p.x, y:p.y, r:3*p.s, z:p.z});
+        });
+    }
+
+    faces.sort((a,b) => b.z - a.z);
+
+    faces.forEach(f => {
+        if(f.type === 'beam') {
+            const r = Math.floor(f.col.r * f.l);
+            const g = Math.floor(f.col.g * f.l);
+            const b = Math.floor(f.col.b * f.l);
+            c.fillStyle = `rgb(${r},${g},${b})`;
+            c.strokeStyle = `rgba(255,255,255,0.3)`; c.lineWidth = 0.5;
+            c.beginPath(); c.moveTo(f.pts[0].x, f.pts[0].y); 
+            for(let i=1; i<4; i++) c.lineTo(f.pts[i].x, f.pts[i].y);
+            c.closePath(); c.fill(); c.stroke();
+        } else if (f.type === 'bracket') {
+            c.fillStyle = '#111';
+            c.fillRect(f.x - f.w/2, f.y - f.h/2, f.w, f.h);
+            c.strokeStyle = '#555'; c.lineWidth=1;
+            c.strokeRect(f.x - f.w/2, f.y - f.h/2, f.w, f.h);
+        } else if (f.type === 'bolt') {
+            c.beginPath(); c.arc(f.x, f.y, f.r, 0, Math.PI*2);
+            c.fillStyle = '#bdc3c7'; c.fill(); c.strokeStyle='#000'; c.lineWidth=0.5; c.stroke();
+        }
+    });
+}
+
+function drawGrid3D(c, view, cx, cy, vw) {
+    const cam = state.cam;
+    const project = (x, z) => {
+        let x1 = x*Math.cos(-cam.yaw) - z*Math.sin(-cam.yaw) - cam.panX;
+        let z1 = x*Math.sin(-cam.yaw) + z*Math.cos(-cam.yaw);
+        let y2 = 0 - z1*Math.sin(cam.pitch) + cam.panY;
+        let z2 = 0 + z1*Math.cos(cam.pitch);
+        let d = z2 + cam.dist; if(d<5)d=5;
+        let s = 1000/d;
+        return { x: cx + x1*s, y: cy - y2*s };
+    };
+    c.strokeStyle = 'rgba(0, 242, 234, 0.15)'; c.lineWidth = 1; c.beginPath();
+    for(let i=-2000; i<=2000; i+=200) {
+        let p1=project(i,-2000), p2=project(i,2000); c.moveTo(p1.x,p1.y); c.lineTo(p2.x,p2.y);
+        p1=project(-2000,i); p2=project(2000,i); c.moveTo(p1.x,p1.y); c.lineTo(p2.x,p2.y);
+    }
+    c.stroke();
+}
+
+function updateState(key, val) {
+    if(key === 'foldAngle') state.foldAngle = parseFloat(val) * Math.PI / 180;
+    else state[key] = parseFloat(val);
+    syncUI(key);
+    render();
+}
+
+function syncUI(key) {
+    const k = Object.keys(idMap).find(k => idMap[k] === key);
+    if(k && inputs[k]) {
+        let v = state[key];
+        if(key==='foldAngle') v = v*180/Math.PI;
+        if(inputs[k].sl) inputs[k].sl.value = v;
+        if(inputs[k].nb) inputs[k].nb.value = (key.startsWith('cost')) ? v.toFixed(2) : v.toFixed(1);
+    }
+}
+
+Object.keys(idMap).forEach(k => {
+    const key = idMap[k];
+    if(inputs[k].sl) inputs[k].sl.addEventListener('input', e => updateState(key, e.target.value));
+    if(inputs[k].nb) inputs[k].nb.addEventListener('change', e => updateState(key, e.target.value));
+});
+
+document.getElementById('sidebar').addEventListener('mousedown', e => e.stopPropagation());
+document.getElementById('sidebar').addEventListener('wheel', e => e.stopPropagation());
+
+let drag = {active:false, x:0, y:0, mode:'orbit'};
+canvas.onmousedown = e => { 
+    if(e.clientX < state.view.splitX) { 
+        drag.active = true; drag.x = e.clientX; drag.y = e.clientY; 
+        drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit'; 
+    } else {
+        drag.active = true; drag.x = e.clientX; drag.y = e.clientY; drag.mode = 'fold';
+    }
+};
+window.onmouseup = () => drag.active = false;
+window.onmousemove = e => {
+    if(drag.active) {
+        const dx = e.clientX - drag.x; const dy = e.clientY - drag.y;
+        if (drag.mode === 'orbit') { state.cam.yaw -= dx * 0.01; state.cam.pitch += dy * 0.01; }
+        else if (drag.mode === 'pan') { state.cam.panX += dx; state.cam.panY += dy; }
+        else if (drag.mode === 'fold') {
+             state.foldAngle += dx * 0.005;
+             state.foldAngle = Math.max(0.1, Math.min(3.0, state.foldAngle));
+             syncUI('foldAngle');
+        }
+        drag.x = e.clientX; drag.y = e.clientY; render();
+    }
+};
+canvas.onwheel = e => {
+    e.preventDefault();
+    if(e.clientX < state.view.splitX) { 
+        state.cam.dist += e.deltaY * (state.cam.dist/1000); if(state.cam.dist < 5) state.cam.dist=5; 
+    } else state.view.orthoScale *= (e.deltaY > 0 ? 0.9 : 1.1);
+    render();
+};
+
+document.getElementById('chk-snap').onchange = e => { state.snapEnabled = e.target.checked; render(); };
+document.getElementById('chk-collide').onchange = e => { state.enforceCollision = e.target.checked; render(); };
+document.getElementById('chk-brack').onchange = e => { state.showBrackets = e.target.checked; render(); };
+document.getElementById('chk-bolts').onchange = e => { state.showBolts = e.target.checked; render(); };
+document.getElementById('btn-reset').onclick = () => location.reload();
+document.getElementById('btn-fit').onclick = () => { state.cam = { yaw:0.5, pitch:0.5, dist:1200, panX:0, panY:0 }; render(); };
+
+Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+render();
+
+const d = document.createElement('div');
+d.innerHTML = `<div class="view-label" style="top:20px; left:20px;">Perspective</div><div class="view-label" style="top:20px; right:20px;">Top</div><div class="view-label" style="bottom:20px; right:20px;">Side</div>`;
+document.getElementById('viewport').appendChild(d);
+
+</script>
+</body>
+</html>
