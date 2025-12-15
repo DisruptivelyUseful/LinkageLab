@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linkage Lab 3D (v29)</title>
+    <title>StarShade Linkage Lab</title>
     <style>
         /* ============================================
            LINKAGE LAB - ENHANCED STYLES
@@ -275,24 +275,24 @@
             color: var(--text-primary);
         }
 
-        /* HUD */
+        /* HUD - Combined Structure Stats + Bill of Materials */
         #hud-panel {
             position: absolute; 
             bottom: 20px; 
             right: 20px; 
-            width: 300px;
+            width: 220px;
             background: rgba(25, 39, 52, 0.95);
             backdrop-filter: blur(10px);
             border: 1px solid var(--border-light);
-            padding: 18px; 
+            padding: 12px 14px; 
             pointer-events: none;
             box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(var(--clr-primary-rgb), 0.1);
             border-radius: var(--radius-md);
         }
         .hud-sec { 
-            margin-bottom: 16px; 
+            margin-bottom: 8px; 
             border-bottom: 1px solid var(--border-light); 
-            padding-bottom: 12px; 
+            padding-bottom: 6px; 
         }
         .hud-sec:last-child { 
             border: none; 
@@ -300,21 +300,21 @@
             padding: 0; 
         }
         .hud-title { 
-            font-size: 0.75rem; 
+            font-size: 0.65rem; 
             color: var(--text-muted); 
             text-transform: uppercase; 
             font-weight: 700; 
             letter-spacing: 1px;
-            margin-bottom: 10px; 
+            margin-bottom: 4px; 
         }
         .hud-row { 
             display: flex; 
             justify-content: space-between; 
             align-items: center;
-            font-size: 0.9rem; 
-            margin-bottom: 6px; 
+            font-size: 0.8rem; 
+            margin-bottom: 1px; 
             color: var(--text-primary);
-            padding: 4px 0;
+            padding: 1px 0;
         }
         .hud-val { 
             font-weight: 700; 
@@ -322,49 +322,12 @@
             text-shadow: 0 0 4px rgba(var(--clr-primary-rgb), 0.5);
         }
         .hud-total { 
-            font-size: 1.3rem; 
+            font-size: 1.1rem; 
             color: var(--clr-success); 
             text-align: right; 
-            margin-top: 8px; 
+            margin-top: 4px; 
             font-weight: 700;
             text-shadow: 0 0 6px rgba(var(--clr-success-rgb), 0.5);
-        }
-        
-        /* Structure Stats - moved to top-left to not block side view */
-        #stats-panel {
-            position: absolute; 
-            top: 20px; 
-            left: 20px; 
-            width: 200px;
-            background: rgba(25, 39, 52, 0.95);
-            backdrop-filter: blur(10px);
-            border: 1px solid var(--border-light);
-            padding: 14px; 
-            pointer-events: none;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.6), 0 0 20px rgba(var(--clr-primary-rgb), 0.1);
-            border-radius: var(--radius-md);
-        }
-        .stats-title {
-            font-size: 0.75rem; 
-            color: var(--text-muted); 
-            text-transform: uppercase; 
-            font-weight: 700; 
-            letter-spacing: 1px;
-            margin-bottom: 10px; 
-        }
-        .stats-row {
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center;
-            font-size: 0.9rem; 
-            margin-bottom: 6px; 
-            color: var(--text-primary);
-            padding: 4px 0;
-        }
-        .stats-val {
-            font-weight: 700; 
-            color: var(--clr-primary);
-            text-shadow: 0 0 4px rgba(var(--clr-primary-rgb), 0.5);
         }
 
         button {
@@ -575,8 +538,8 @@
 
 <div id="sidebar">
     <div id="header">
-        <h1>Linkage Lab v29</h1>
-        <div class="subtitle">Blueprint Edition</div>
+        <h1>StarShade Linkage Lab</h1>
+        <div class="subtitle">Open-Source Deployable Structure Explorer</div>
     </div>
 
     <div id="controls">
@@ -585,6 +548,49 @@
             <label class="chk-label"><input type="checkbox" id="chk-collide"> Physics Check</label>
             <label class="chk-label"><input type="checkbox" id="chk-brack" checked> Brackets</label>
             <label class="chk-label"><input type="checkbox" id="chk-bolts" checked> Bolts</label>
+        </div>
+        
+        <div class="ctrl-row" style="padding: 6px 0;">
+            <div class="ctrl-head"><span>Orientation</span></div>
+            <div class="input-wrap">
+                <select id="sel-orientation" style="flex:1; padding:6px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                    <option value="horizontal">Horizontal (Cylinder)</option>
+                    <option value="vertical">Vertical (Arch/Bridge)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="cap-upright-row" class="ctrl-row" style="display:none; padding: 6px 0;">
+            <label class="chk-label"><input type="checkbox" id="chk-cap-uprights"> Cap Uprights (End Supports)</label>
+        </div>
+        
+        <div id="arch-orientation-group" class="group" style="display:none;">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Arch Orientation</div>
+            <div class="group-content">
+                <div class="ctrl-row" style="padding: 6px 0;">
+                    <label class="chk-label"><input type="checkbox" id="chk-arch-flip"> Flip Upside Down</label>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-arch-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-arch-rotation" min="-180" max="180" step="1" value="0">
+                    </div>
+                </div>
+                <div class="ctrl-row" style="padding: 6px 0;">
+                    <button id="btn-arch-reset" style="flex:1; padding:6px; font-size:0.8rem;">Reset Orientation</button>
+                </div>
+                <div class="ctrl-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div class="ctrl-head"><span>Array Count</span><span style="font-size:0.75rem; color:#8899a6;">modules</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-array-count" min="1" max="10" step="1" value="1">
+                        <input type="number" id="nb-array-count" min="1" max="10" step="1" value="1">
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
+                    Create multiple copies in a linear array (tunnel/tube mode)
+                </div>
+            </div>
         </div>
 
         <div id="col-status" style="display:none; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; margin-bottom:10px; border-radius:4px; background:rgba(255,107,107,0.1);">
@@ -666,6 +672,11 @@
                         <input type="range" id="sl-vstack" min="2" max="6" step="1" value="3">
                         <input type="number" id="nb-vstack" min="2" max="6" value="3">
                     </div>
+                </div>
+                <div class="ctrl-row" style="padding: 4px 0;">
+                    <label class="chk-label" style="margin-left: 5px;">
+                        <input type="checkbox" id="chk-vstack-reverse"> Reverse Vertical Stack Order
+                    </label>
                 </div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Module Count</span></div>
@@ -795,6 +806,16 @@
                         <input type="checkbox" id="chk-anim-pingpong"> Ping-Pong
                     </label>
                 </div>
+                <div class="ctrl-row" style="margin-top:8px;">
+                    <div class="ctrl-head"><span>Stop Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-anim-stop" min="5" max="175" step="0.1">
+                        <input type="number" id="nb-anim-stop" min="5" max="175" step="0.1">
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
+                    Animation stops at this angle (default: closed angle)
+                </div>
                 <div id="anim-progress" style="margin-top:8px; font-size:0.75rem; color:#8899a6;">
                     <span id="anim-status">Stopped</span> | 
                     <span id="anim-direction">→ Expanding</span>
@@ -806,9 +827,16 @@
             <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Measurements</div>
             <div class="group-content">
                 <label class="chk-label">
-                    <input type="checkbox" id="chk-measure"> Enable Measurement Mode
+                    <input type="checkbox" id="chk-measure"> Show Live Measurements
                 </label>
-                <div id="measure-display" style="margin-top:5px; font-size:0.8rem; color:#8899a6; display:none;"></div>
+                <div id="measure-display" style="margin-top:8px; font-size:0.85rem; color:#a8b9c9; display:none;">
+                    <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
+                        <span style="color:#8899a6;">Inner Ø:</span><span id="meas-inner-dia">--</span>
+                        <span style="color:#8899a6;">Outer Ø:</span><span id="meas-outer-dia">--</span>
+                        <span style="color:#8899a6;">Height:</span><span id="meas-height">--</span>
+                        <span style="color:#8899a6;">Span:</span><span id="meas-span">--</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -826,12 +854,13 @@
     <button id="sidebar-toggle">☰</button>
     <canvas id="canvas"></canvas>
     <div id="toast"></div>
-    <div id="stats-panel">
-        <div class="stats-title">Structure Stats</div>
-        <div class="stats-row"><span>Height:</span> <span class="stats-val" id="stat-h"></span></div>
-        <div class="stats-row"><span>Diameter:</span> <span class="stats-val" id="stat-d"></span></div>
-    </div>
     <div id="hud-panel">
+        <div class="hud-sec">
+            <div class="hud-title">Structure</div>
+            <div class="hud-row"><span>Height:</span> <span class="hud-val" id="stat-h"></span></div>
+            <div class="hud-row"><span>Diameter:</span> <span class="hud-val" id="stat-d"></span></div>
+            <div class="hud-row"><span>Actuator Stroke:</span> <span class="hud-val" id="stat-stroke"></span></div>
+        </div>
         <div class="hud-sec">
             <div class="hud-title">Bill of Materials</div>
             <div class="hud-row"><span>H-Beams:</span> <span class="hud-val" id="bom-h">0</span></div>
@@ -894,8 +923,8 @@ const BOLT_HEAD_HEIGHT = 0.15; // Bolt head thickness
 /** Minimum safe height/width to prevent division by zero */
 const MIN_SAFE_DIMENSION = 1;
 
-/** Debounce delay for slider inputs (ms) */
-const DEBOUNCE_DELAY = 100;
+/** Debounce delay for slider inputs (ms) - keep low for responsiveness */
+const DEBOUNCE_DELAY = 16; // ~60fps
 
 /** Maximum undo/redo history size */
 const MAX_HISTORY_SIZE = 50;
@@ -990,6 +1019,7 @@ const state = {
     
     hStackCount: 2,
     vStackCount: 3,
+    vStackReverse: false,
     
     offsetTopIn: 1.5,
     offsetBotIn: 1.5,
@@ -1014,6 +1044,19 @@ const state = {
     showBrackets: true,
     showBolts: true,
     
+    // Orientation: 'horizontal' (cylinder standing up) or 'vertical' (arch/bridge mode)
+    orientation: 'horizontal',
+    
+    // Cap uprights: add vertical uprights to open ends in arch mode for better ground tracking
+    archCapUprights: false,
+    
+    // Arch orientation controls
+    archFlipVertical: false,    // Flip the arch upside down
+    archRotation: 0,            // Rotation around vertical axis (degrees)
+    
+    // Array duplication for tunnel/tube mode
+    arrayCount: 1,              // Number of structure copies in array (1 = single structure)
+    
     light: {x: 0.4, y: -0.8, z: 0.5},
     cam: { yaw: 0.5, pitch: 0.5, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 },
     view: { w: 0, h: 0, splitX: 0.7, orthoScale: 4.0 },
@@ -1029,7 +1072,11 @@ const state = {
         pingPong: false,  // Alternate direction on each cycle
         direction: 1,     // 1 = expanding, -1 = collapsing
         frameId: null,
-        lastTime: 0       // For delta time calculation
+        lastTime: 0,      // For delta time calculation
+        stopAngle: null,  // Stop angle in degrees (null = use closed angle)
+        cachedClosedAngle: undefined,  // Cached closed angle calculation
+        cachedModules: null,
+        cachedPivotPct: null
     },
     history: [],
     historyIndex: -1
@@ -1139,6 +1186,7 @@ const uiCol = document.getElementById('col-status');
 const uiStats = {
     h: document.getElementById('stat-h'),
     d: document.getElementById('stat-d'),
+    stroke: document.getElementById('stat-stroke'),
     bh: document.getElementById('bom-h'), bv: document.getElementById('bom-v'),
     bu: document.getElementById('bom-u'), bb: document.getElementById('bom-b'),
     bt: document.getElementById('bom-total')
@@ -1493,6 +1541,60 @@ function calculateJointPositions(foldAngle, params) {
 }
 
 /**
+ * Calculates the distance between inner and outer horizontal pivots at a given fold angle
+ * This is the radial span - the distance a linear actuator between these pivots would need to travel
+ * @param {number} foldAngle - The fold angle in radians
+ * @returns {number} Distance in inches between inner (br) and outer (tr) pivots
+ */
+function calculatePivotSpan(foldAngle) {
+    const hTotIn = state.hLengthFt * INCHES_PER_FOOT;
+    const hActiveIn = hTotIn - state.offsetTopIn - state.offsetBotIn;
+    
+    const jointResult = calculateJointPositions(foldAngle, {
+        hActiveIn,
+        pivotPct: state.pivotPct,
+        hobermanAng: state.hobermanAng,
+        pivotAng: state.pivotAng
+    });
+    
+    const loc = jointResult.joints;
+    
+    // Calculate distance between inner pivot (br) and outer pivot (tr)
+    // These are the pivots where the vertical beams connect to the horizontal ring
+    const dx = loc.tr.x - loc.br.x;
+    const dy = loc.tr.y - loc.br.y;
+    const pivotSpan = Math.sqrt(dx * dx + dy * dy);
+    
+    return pivotSpan;
+}
+
+/**
+ * Calculates the linear actuator stroke length needed to fully fold/unfold the structure
+ * The stroke is the change in distance between inner and outer horizontal pivots
+ * from fully open (minimum fold angle) to fully closed (ring completes 360°)
+ * @returns {{open: number, closed: number, stroke: number}} Pivot spans at open/closed positions and stroke length
+ */
+function calculateActuatorStroke() {
+    // Pivot span at fully open (minimum fold angle) - pivots are closest together
+    const openSpan = calculatePivotSpan(MIN_FOLD_ANGLE);
+    
+    // Get the optimal closed angle for this configuration (where ring closes to 360°)
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    // Pivot span at fully closed - pivots are furthest apart
+    const closedSpan = calculatePivotSpan(closedAngle);
+    
+    // Stroke is the difference in pivot spans
+    const stroke = Math.abs(closedSpan - openSpan);
+    
+    return {
+        open: openSpan,
+        closed: closedSpan,
+        stroke: stroke,
+        closedAngle: closedAngle
+    };
+}
+
+/**
  * Extends a point outward by a given distance
  * @param {{x: number, y: number}} p - Point to extend
  * @param {number} dist - Distance to extend
@@ -1796,7 +1898,8 @@ function solveLinkage(foldAngle) {
             for (let i = 0; i < state.vStackCount; i++) {
                 const offsetValue = startOffset + i * (vW + gap);
                 const stackOffsetVec = vScale(stackDirNorm, offsetValue);
-                const isPatternA = (i % 2 === 0);
+                // Determine pattern: normally A, B, A, B... but reverse if vStackReverse is true
+                const isPatternA = state.vStackReverse ? (i % 2 !== 0) : (i % 2 === 0);
                 const patternMid = isPatternA ? patternA_mid : patternB_mid;
                 // Actual position = pattern midpoint + stack offset (centering offset will be added later)
                 const actualPos = vAdd(patternMid, stackOffsetVec);
@@ -1820,7 +1923,8 @@ function solveLinkage(foldAngle) {
                 const stackOffset = vScale(stackDirNorm, offsetValue);
                 
                 // Determine which pattern this beam uses (alternating: A, B, A, B, ...)
-                const isPatternA = (i % 2 === 0);
+                // When vStackReverse is true, the order is reversed (B, A, B, A, ...)
+                const isPatternA = state.vStackReverse ? (i % 2 !== 0) : (i % 2 === 0);
                 
                 // Get the pattern endpoints (actual pivot connection points)
                 let patternBot, patternTop, patternDir, centeringOffset;
@@ -1853,6 +1957,86 @@ function solveLinkage(foldAngle) {
                     stackType: 'vertical',
                     stackId: i  // Each module has one vertical stack
                 }));
+            }
+            
+            // --- CAP UPRIGHTS (for arch mode) ---
+            // Add vertical uprights on the open end of the first module
+            if (i === 0 && state.archCapUprights) {
+                // Cap uprights use the LEFT side pivot points (bl/tl) instead of right side (br/tr)
+                const capBotInner = map(loc.bl, yMin);
+                const capTopOuter = map(loc.tl, yMax);
+                const capBotOuter = map(loc.tl, yMin);
+                const capTopInner = map(loc.bl, yMax);
+                
+                // Calculate center pivot points for cap stack
+                const capPivotBotCenter = vScale(vAdd(capBotInner, capBotOuter), 0.5);
+                const capPivotTopCenter = vScale(vAdd(capTopOuter, capTopInner), 0.5);
+                
+                // Pattern vectors for cap uprights
+                const capPatternA_bot = capBotInner;
+                const capPatternA_top = capTopOuter;
+                const capPatternA_dir = vNorm(vSub(capPatternA_top, capPatternA_bot));
+                const capPatternA_mid = vScale(vAdd(capPatternA_bot, capPatternA_top), 0.5);
+                
+                const capPatternB_bot = capBotOuter;
+                const capPatternB_top = capTopInner;
+                const capPatternB_dir = vNorm(vSub(capPatternB_top, capPatternB_bot));
+                const capPatternB_mid = vScale(vAdd(capPatternB_bot, capPatternB_top), 0.5);
+                
+                // Calculate stack direction for cap uprights
+                let capStackDir = vNorm(vCross(capPatternA_dir, capPatternB_dir));
+                if (vMag(capStackDir) < 0.1) {
+                    const capAvgDir = vNorm(vScale(vAdd(capPatternA_dir, capPatternB_dir), 0.5));
+                    capStackDir = vNorm(vCross(capAvgDir, up));
+                }
+                if (vMag(capStackDir) < 0.1) {
+                    capStackDir = vNorm(vCross(capPatternA_dir, up));
+                }
+                
+                const capStackDirNorm = vNorm(capStackDir);
+                const capCenterMid = vScale(vAdd(capPivotBotCenter, capPivotTopCenter), 0.5);
+                
+                // Calculate centering offset for cap stack
+                let capTotalPosition = {x: 0, y: 0, z: 0};
+                for (let j = 0; j < state.vStackCount; j++) {
+                    const offsetValue = startOffset + j * (vW + gap);
+                    const stackOffsetVec = vScale(capStackDirNorm, offsetValue);
+                    const isPatternA = state.vStackReverse ? (j % 2 !== 0) : (j % 2 === 0);
+                    const patternMid = isPatternA ? capPatternA_mid : capPatternB_mid;
+                    capTotalPosition = vAdd(capTotalPosition, vAdd(patternMid, stackOffsetVec));
+                }
+                const capAvgMid = vScale(capTotalPosition, 1 / state.vStackCount);
+                const capOffsetToCenter = vSub(capCenterMid, capAvgMid);
+                const capCenteringOffset = vScale(capStackDirNorm, vDot(capOffsetToCenter, capStackDirNorm));
+                
+                // Create cap upright beams
+                for (let j = 0; j < state.vStackCount; j++) {
+                    const offsetValue = startOffset + j * (vW + gap);
+                    const stackOffset = vScale(capStackDirNorm, offsetValue);
+                    const isPatternA = state.vStackReverse ? (j % 2 !== 0) : (j % 2 === 0);
+                    
+                    let patternBot, patternTop, patternDir;
+                    if (isPatternA) {
+                        patternBot = capBotInner;
+                        patternTop = capTopOuter;
+                        patternDir = capPatternA_dir;
+                    } else {
+                        patternBot = capBotOuter;
+                        patternTop = capTopInner;
+                        patternDir = capPatternB_dir;
+                    }
+                    
+                    const beamStart = vAdd(vAdd(patternBot, capCenteringOffset), stackOffset);
+                    const beamEnd = vAdd(vAdd(patternTop, capCenteringOffset), stackOffset);
+                    const extStart = vAdd(beamStart, vScale(patternDir, -state.vertEndOffset));
+                    const extEnd = vAdd(beamEnd, vScale(patternDir, state.vertEndOffset));
+                    
+                    beams.push(new Beam3D(extStart, extEnd, vW, vT, woodColor, {
+                        moduleIndex: i,
+                        stackType: 'vertical-cap',
+                        stackId: -1  // Cap stack has special ID
+                    }));
+                }
             }
             
             // Place brackets and bolts at pivot points
@@ -1956,6 +2140,60 @@ function solveLinkage(foldAngle) {
                     // 3. CENTER pivot bolt (horizontal, where the two X beams cross)
                     // Use the exact center between the pivot endpoints
                     bolts.push(createHorizontalBolt(centerMid, vBoltDir, vBoltLength));
+                    
+                    // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
+                    if (i === 0 && state.archCapUprights) {
+                        // Cap upright pivot positions (using bl/tl instead of br/tr)
+                        const capBotInner = map(loc.bl, yMin);
+                        const capTopOuter = map(loc.tl, yMax);
+                        const capBotOuter = map(loc.tl, yMin);
+                        const capTopInner = map(loc.bl, yMax);
+                        const capCenterMid = vScale(vAdd(
+                            vScale(vAdd(capBotInner, capBotOuter), 0.5),
+                            vScale(vAdd(capTopOuter, capTopInner), 0.5)
+                        ), 0.5);
+                        
+                        // Calculate cap stack direction
+                        const capPatternA_dir = vNorm(vSub(capTopOuter, capBotInner));
+                        const capPatternB_dir = vNorm(vSub(capTopInner, capBotOuter));
+                        let capStackDir = vNorm(vCross(capPatternA_dir, capPatternB_dir));
+                        if (vMag(capStackDir) < 0.1) {
+                            const capAvgDir = vNorm(vScale(vAdd(capPatternA_dir, capPatternB_dir), 0.5));
+                            capStackDir = vNorm(vCross(capAvgDir, {x:0, y:1, z:0}));
+                        }
+                        const capBoltDir = vNorm(capStackDir);
+                        
+                        // Bottom pivot bolts for cap uprights
+                        bolts.push(createHorizontalBolt(capBotInner, capBoltDir, vBoltLength));
+                        bolts.push(createHorizontalBolt(capBotOuter, capBoltDir, vBoltLength));
+                        
+                        // Top pivot bolts for cap uprights
+                        bolts.push(createHorizontalBolt(capTopOuter, capBoltDir, vBoltLength));
+                        bolts.push(createHorizontalBolt(capTopInner, capBoltDir, vBoltLength));
+                        
+                        // Center pivot bolt for cap uprights
+                        bolts.push(createHorizontalBolt(capCenterMid, capBoltDir, vBoltLength));
+                    }
+                }
+                
+                // CAP UPRIGHT brackets (for first module when cap uprights enabled)
+                if (i === 0 && state.archCapUprights && state.showBrackets) {
+                    const capBotInner = map(loc.bl, 0);
+                    const capBotOuter = map(loc.tl, 0);
+                    const capTopInner = map(loc.bl, topH);
+                    const capTopOuter = map(loc.tl, topH);
+                    
+                    const capPatternA_dir = vNorm(vSub(capTopOuter, capBotInner));
+                    const capPatternB_dir = vNorm(vSub(capTopInner, capBotOuter));
+                    const capAvgDir = vNorm(vScale(vAdd(capPatternA_dir, capPatternB_dir), 0.5));
+                    
+                    // Bottom ring brackets for cap uprights
+                    brackets.push(createBracket(capBotInner, true, capAvgDir));
+                    brackets.push(createBracket(capBotOuter, true, capAvgDir));
+                    
+                    // Top ring brackets for cap uprights
+                    brackets.push(createBracket(capTopInner, false, capAvgDir));
+                    brackets.push(createBracket(capTopOuter, false, capAvgDir));
                 }
             }
         }
@@ -2030,7 +2268,336 @@ function solveLinkage(foldAngle) {
         curRot = nextRotation;
     }
     
-    const maxHeight = zHeight + (state.bracketOffset*2) + state.hBeamT + state.vertEndOffset;
+    let maxHeight = zHeight + (state.bracketOffset*2) + state.hBeamT + state.vertEndOffset;
+
+    // Apply orientation transformation for vertical (arch/bridge) mode
+    if (state.orientation === 'vertical') {
+        // For arch mode, transform the horizontal ring into a vertical arch
+        // The feet (outer pivots of first and last modules) should track along the ground
+        
+        // Step 1: Find the feet - outer pivots of first and last modules
+        // If cap uprights are present, use them for the left foot instead
+        const hBeams = beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
+        const capBeams = beams.filter(b => b.stackType === 'vertical-cap');
+        let leftFoot = null;
+        let rightFoot = null;
+        
+        // Check for cap uprights first - if present, use them for left foot
+        if (state.archCapUprights && capBeams.length > 0) {
+            // Find the outermost point of the cap uprights (largest radius)
+            let maxRadCap = -Infinity;
+            capBeams.forEach(beam => {
+                if (beam.p1) {
+                    const rad = Math.sqrt(beam.p1.x * beam.p1.x + beam.p1.z * beam.p1.z);
+                    if (rad > maxRadCap) { maxRadCap = rad; leftFoot = {...beam.p1}; }
+                }
+                if (beam.p2) {
+                    const rad = Math.sqrt(beam.p2.x * beam.p2.x + beam.p2.z * beam.p2.z);
+                    if (rad > maxRadCap) { maxRadCap = rad; leftFoot = {...beam.p2}; }
+                }
+                // Also check corners for more accurate foot position
+                if (beam.corners) {
+                    beam.corners.forEach(c => {
+                        if (c) {
+                            const rad = Math.sqrt(c.x * c.x + c.z * c.z);
+                            if (rad > maxRadCap) { maxRadCap = rad; leftFoot = {...c}; }
+                        }
+                    });
+                }
+            });
+        }
+        
+        if (hBeams.length >= 2) {
+            const sorted = [...hBeams].sort((a, b) => (a.moduleIndex ?? 0) - (b.moduleIndex ?? 0));
+            const minModule = sorted[0].moduleIndex;
+            const maxModule = sorted[sorted.length - 1].moduleIndex;
+            
+            // Get beams from first and last modules
+            const firstBeams = sorted.filter(b => b.moduleIndex === minModule);
+            const lastBeams = sorted.filter(b => b.moduleIndex === maxModule);
+            
+            // Only find left foot from first module if not already set by cap uprights
+            if (!leftFoot) {
+                let maxRadFirst = -Infinity;
+                firstBeams.forEach(beam => {
+                    if (beam.p1) {
+                        const rad = Math.sqrt(beam.p1.x * beam.p1.x + beam.p1.z * beam.p1.z);
+                        if (rad > maxRadFirst) { maxRadFirst = rad; leftFoot = {...beam.p1}; }
+                    }
+                    if (beam.p2) {
+                        const rad = Math.sqrt(beam.p2.x * beam.p2.x + beam.p2.z * beam.p2.z);
+                        if (rad > maxRadFirst) { maxRadFirst = rad; leftFoot = {...beam.p2}; }
+                    }
+                });
+            }
+            
+            // Find outermost pivot from last module for right foot
+            let maxRadLast = -Infinity;
+            lastBeams.forEach(beam => {
+                if (beam.p1) {
+                    const rad = Math.sqrt(beam.p1.x * beam.p1.x + beam.p1.z * beam.p1.z);
+                    if (rad > maxRadLast) { maxRadLast = rad; rightFoot = {...beam.p1}; }
+                }
+                if (beam.p2) {
+                    const rad = Math.sqrt(beam.p2.x * beam.p2.x + beam.p2.z * beam.p2.z);
+                    if (rad > maxRadLast) { maxRadLast = rad; rightFoot = {...beam.p2}; }
+                }
+            });
+        }
+        
+        // Fallback: use geometry center if feet not found
+        if (!leftFoot || !rightFoot) {
+            let sumX = 0, sumY = 0, sumZ = 0, count = 0;
+            beams.forEach(beam => {
+                if (beam.corners) {
+                    beam.corners.forEach(c => {
+                        if (c) { sumX += c.x; sumY += c.y; sumZ += c.z; count++; }
+                    });
+                }
+            });
+            const cx = count > 0 ? sumX / count : 0;
+            const cy = count > 0 ? sumY / count : 0;
+            const cz = count > 0 ? sumZ / count : 0;
+            leftFoot = leftFoot || {x: cx - 10, y: cy, z: cz};
+            rightFoot = rightFoot || {x: cx + 10, y: cy, z: cz};
+        }
+        
+        // Step 2: Calculate transformation based on feet positions
+        // Midpoint between feet becomes the center of rotation
+        const midX = (leftFoot.x + rightFoot.x) / 2;
+        const midY = (leftFoot.y + rightFoot.y) / 2;
+        const midZ = (leftFoot.z + rightFoot.z) / 2;
+        
+        // Angle to align feet with X axis
+        const dx = rightFoot.x - leftFoot.x;
+        const dz = rightFoot.z - leftFoot.z;
+        const footAngle = Math.atan2(dz, dx);
+        
+        // User rotation (additional rotation around Y before making vertical)
+        const userRotRad = (state.archRotation || 0) * Math.PI / 180;
+        const totalRotY = -footAngle + userRotRad;
+        const cosR = Math.cos(totalRotY);
+        const sinR = Math.sin(totalRotY);
+        
+        // Flip control
+        const flipY = state.archFlipVertical ? -1 : 1;
+        
+        // Step 3: Combined transformation
+        const transformPoint = (p) => {
+            if (!p || typeof p.x === 'undefined') return p;
+            
+            // Translate to center on feet midpoint
+            let x = p.x - midX;
+            let y = p.y - midY;
+            let z = p.z - midZ;
+            
+            // Rotate around Y to align feet with X axis + user rotation
+            const x2 = x * cosR - z * sinR;
+            const y2 = y;
+            const z2 = x * sinR + z * cosR;
+            
+            // Rotate 90° around X: (x, y, z) -> (x, z, -y), with flip
+            return { x: x2, y: z2 * flipY, z: -y2 };
+        };
+        
+        const transformDir = (v) => {
+            if (!v || typeof v.x === 'undefined') return v;
+            const x2 = v.x * cosR - v.z * sinR;
+            const y2 = v.y;
+            const z2 = v.x * sinR + v.z * cosR;
+            return { x: x2, y: z2 * flipY, z: -y2 };
+        };
+        
+        // Apply transformation to all geometry
+        beams.forEach(beam => {
+            if (beam.corners) beam.corners = beam.corners.map(c => transformPoint(c));
+            if (beam.p1) beam.p1 = transformPoint(beam.p1);
+            if (beam.p2) beam.p2 = transformPoint(beam.p2);
+            if (beam.center) beam.center = transformPoint(beam.center);
+        });
+        
+        brackets.forEach(bracket => {
+            if (bracket.pos) bracket.pos = transformPoint(bracket.pos);
+            if (bracket.baseY !== undefined && bracket.pos) bracket.baseY = bracket.pos.y;
+            if (bracket.beamDir) bracket.beamDir = transformDir(bracket.beamDir);
+            if (bracket.right) bracket.right = transformDir(bracket.right);
+            if (bracket.boltDir) bracket.boltDir = transformDir(bracket.boltDir);
+        });
+        
+        bolts.forEach(bolt => {
+            if (bolt.start) bolt.start = transformPoint(bolt.start);
+            if (bolt.end) bolt.end = transformPoint(bolt.end);
+            if (bolt.center) bolt.center = transformPoint(bolt.center);
+            if (bolt.dir) bolt.dir = transformDir(bolt.dir);
+        });
+        
+        // Transform feet positions too
+        leftFoot = transformPoint(leftFoot);
+        rightFoot = transformPoint(rightFoot);
+        
+        // Step 4: Ground to feet positions
+        // The feet should be at Y=0, and centered on X
+        const feetY = Math.min(leftFoot.y, rightFoot.y);
+        const feetCenterX = (leftFoot.x + rightFoot.x) / 2;
+        
+        const groundPoint = (p) => {
+            if (!p || typeof p.y === 'undefined') return p;
+            return { x: p.x - feetCenterX, y: p.y - feetY, z: p.z };
+        };
+        
+        beams.forEach(beam => {
+            if (beam.corners) beam.corners = beam.corners.map(c => groundPoint(c));
+            if (beam.p1) beam.p1 = groundPoint(beam.p1);
+            if (beam.p2) beam.p2 = groundPoint(beam.p2);
+            if (beam.center) beam.center = groundPoint(beam.center);
+        });
+        
+        brackets.forEach(bracket => {
+            if (bracket.pos) bracket.pos = groundPoint(bracket.pos);
+            if (bracket.baseY !== undefined) bracket.baseY -= feetY;
+        });
+        
+        bolts.forEach(bolt => {
+            if (bolt.start) bolt.start = groundPoint(bolt.start);
+            if (bolt.end) bolt.end = groundPoint(bolt.end);
+            if (bolt.center) bolt.center = groundPoint(bolt.center);
+        });
+        
+        // Calculate final dimensions
+        let maxY = -Infinity;
+        let maxAbsX = 0;
+        beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c) {
+                        if (typeof c.y !== 'undefined' && c.y > maxY) maxY = c.y;
+                        if (typeof c.x !== 'undefined' && Math.abs(c.x) > maxAbsX) maxAbsX = Math.abs(c.x);
+                    }
+                });
+            }
+        });
+        
+        maxHeight = maxY > 0 ? maxY : 0;
+        maxRad = maxAbsX;
+    }
+    
+    // Duplicate structure for array mode (tunnel/tube)
+    if (state.arrayCount > 1 && state.orientation === 'vertical') {
+        // Calculate the depth of a single structure in Z direction to determine spacing
+        // Find the frontmost and backmost points
+        let minZ = Infinity, maxZ = -Infinity;
+        beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c && typeof c.z !== 'undefined') {
+                        if (c.z < minZ) minZ = c.z;
+                        if (c.z > maxZ) maxZ = c.z;
+                    }
+                });
+            }
+            // Also check p1 and p2
+            if (beam.p1 && typeof beam.p1.z !== 'undefined') {
+                if (beam.p1.z < minZ) minZ = beam.p1.z;
+                if (beam.p1.z > maxZ) maxZ = beam.p1.z;
+            }
+            if (beam.p2 && typeof beam.p2.z !== 'undefined') {
+                if (beam.p2.z < minZ) minZ = beam.p2.z;
+                if (beam.p2.z > maxZ) maxZ = beam.p2.z;
+            }
+        });
+        const structureDepth = maxZ - minZ;
+        const spacing = structureDepth; // Connect structures end-to-end (no gap)
+        
+        // Store original geometry
+        const originalBeams = [...beams];
+        const originalBrackets = [...brackets];
+        const originalBolts = [...bolts];
+        
+        // Clear arrays for rebuilding
+        beams = [];
+        brackets = [];
+        bolts = [];
+        
+        // Create arrayCount copies, extending in Z direction (back)
+        // Center the array around Z=0
+        const totalArrayDepth = (state.arrayCount - 1) * spacing;
+        const startOffsetZ = -totalArrayDepth / 2;
+        
+        for (let i = 0; i < state.arrayCount; i++) {
+            const offsetZ = startOffsetZ + i * spacing; // Each structure is offset further back
+            
+            // Duplicate beams - ensure proper 3D geometry
+            originalBeams.forEach(beam => {
+                // Get beam endpoints with Z offset
+                const newP1 = {
+                    x: beam.p1.x || 0,
+                    y: beam.p1.y || 0,
+                    z: (beam.p1.z !== undefined ? beam.p1.z : 0) + offsetZ
+                };
+                const newP2 = {
+                    x: beam.p2.x || 0,
+                    y: beam.p2.y || 0,
+                    z: (beam.p2.z !== undefined ? beam.p2.z : 0) + offsetZ
+                };
+                
+                // Get width and thickness - check both w/t and hBeamW/hBeamT based on stack type
+                let width, thickness;
+                if (beam.stackType && beam.stackType.startsWith('horizontal')) {
+                    width = beam.w || state.hBeamW || 3.5;
+                    thickness = beam.t || state.hBeamT || 1.5;
+                } else {
+                    width = beam.w || state.vBeamW || 1.5;
+                    thickness = beam.t || state.vBeamT || 3.5;
+                }
+                
+                // Ensure valid dimensions
+                if (width <= 0) width = 3.5;
+                if (thickness <= 0) thickness = 1.5;
+                
+                // Create new beam - constructor will calculate everything
+                const newBeam = new Beam3D(
+                    newP1, newP2,
+                    width, thickness,
+                    beam.colorBase || WOOD_COLOR,
+                    {
+                        moduleIndex: beam.moduleIndex,
+                        stackType: beam.stackType,
+                        stackId: beam.stackId
+                    }
+                );
+                
+                beams.push(newBeam);
+            });
+            
+            // Duplicate brackets
+            originalBrackets.forEach(bracket => {
+                const newBracket = {...bracket};
+                if (newBracket.pos) {
+                    newBracket.pos = {x: bracket.pos.x, y: bracket.pos.y, z: bracket.pos.z + offsetZ};
+                }
+                brackets.push(newBracket);
+            });
+            
+            // Duplicate bolts
+            originalBolts.forEach(bolt => {
+                const newBolt = {...bolt};
+                if (newBolt.start) {
+                    newBolt.start = {x: bolt.start.x, y: bolt.start.y, z: bolt.start.z + offsetZ};
+                }
+                if (newBolt.end) {
+                    newBolt.end = {x: bolt.end.x, y: bolt.end.y, z: bolt.end.z + offsetZ};
+                }
+                if (newBolt.center) {
+                    newBolt.center = {x: bolt.center.x, y: bolt.center.y, z: bolt.center.z + offsetZ};
+                }
+                bolts.push(newBolt);
+            });
+        }
+        
+        // Update maxRad to account for array depth if needed
+        const arrayDepth = (state.arrayCount - 1) * spacing + structureDepth;
+        // maxRad is for X direction, so we don't need to update it for Z depth
+    }
 
     return { beams, brackets, bolts, maxRad, maxHeight };
 }
@@ -2132,8 +2699,8 @@ function render() {
         ctx.strokeRect(splitX, splitY, w - splitX, h - splitY);
         ctx.restore();
 
-        // Draw measurements if in measure mode
-        if (state.measureMode && state.measurePoints.length > 0) {
+        // Draw live measurements if in measure mode
+        if (state.measureMode) {
             drawMeasurements(ctx, data);
         }
     } catch (error) {
@@ -2166,9 +2733,13 @@ function updateHUD(data) {
 
     const heightFt = data.maxHeight / INCHES_PER_FOOT;
     const diameterFt = (data.maxRad * 2) / INCHES_PER_FOOT;
-    // Update stats panel (top-left)
+    // Update stats panel
     uiStats.h.innerText = formatNumber(heightFt, 2) + "'";
     uiStats.d.innerText = formatNumber(diameterFt, 2) + "'";
+    
+    // Calculate and display actuator stroke length
+    const actuatorInfo = calculateActuatorStroke();
+    uiStats.stroke.innerText = formatNumber(actuatorInfo.stroke, 2) + '"';
     
     // Update collision status
     if (state.enforceCollision) {
@@ -2237,8 +2808,10 @@ function updateHUD(data) {
  * @returns {{x: number, y: number, scale: number}} Center coordinates and optimal scale
  */
 function calculateViewCenterAndZoom(data, view, vw, vh) {
+    const splitX = canvas.width * 0.75;
+    const splitY = canvas.height * 0.35;
+    
     if (!data.beams || data.beams.length === 0) {
-        const splitX = canvas.width * 0.75;
         if (view === 'top') {
             return { 
                 x: splitX + vw / 2, 
@@ -2246,9 +2819,10 @@ function calculateViewCenterAndZoom(data, view, vw, vh) {
                 scale: state.view.orthoScale * (40 / state.modules)
             };
         } else {
+            // Side view starts at splitY from top, so add that offset
             return { 
                 x: splitX + vw / 2, 
-                y: vh / 2,
+                y: splitY + vh / 2,
                 scale: state.view.orthoScale * (40 / state.modules)
             };
         }
@@ -2285,18 +2859,20 @@ function calculateViewCenterAndZoom(data, view, vw, vh) {
     const scaleY = (vh - padding * 2) / height;
     const optimalScale = Math.min(scaleX, scaleY, state.view.orthoScale * (40 / state.modules));
     
-    // Calculate center position
-    const splitX = canvas.width * 0.75;
+    // Calculate center position in absolute canvas coordinates
     if (view === 'top') {
+        // Top view: positioned at (splitX, 0), center at (splitX + vw/2, vh/2)
         return { 
             x: splitX + vw / 2 - centerX * optimalScale,
             y: vh / 2 - centerY * optimalScale,
             scale: optimalScale
         };
     } else {
+        // Side view: positioned at (splitX, splitY), center at (splitX + vw/2, splitY + vh/2)
+        // Y is inverted (structure Y increases upward, canvas Y increases downward)
         return {
             x: splitX + vw / 2 - centerX * optimalScale,
-            y: vh / 2 + centerY * optimalScale, // Invert Y for side view
+            y: splitY + vh / 2 - centerY * optimalScale,
             scale: optimalScale
         };
     }
@@ -3458,7 +4034,7 @@ Ns 30.0
  */
 /**
  * Generates a comprehensive build guide as a JPEG image
- * Includes BOM, budget, and drill hole measurements for all beams
+ * Formatted as an architectural schematic with multiple views
  */
 function exportBuildGuide() {
     const data = solveLinkage(state.foldAngle);
@@ -3468,426 +4044,672 @@ function exportBuildGuide() {
     const hBeams = moduleCount * 2 * state.hStackCount;
     const vBeams = moduleCount * state.vStackCount;
     const uBrackets = moduleCount * 4;
-    const nBolts = moduleCount * (4 + 2);
+    const nBolts = moduleCount * (4 + 2 + 2); // bracket + vertical center + horizontal center
     const cost = (hBeams * state.hLengthFt + vBeams * state.vLengthFt) * state.costLumber
                + nBolts * state.costBolt + uBrackets * state.costBracket;
     
-    // Create canvas for JPEG
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const w = 2400; // High resolution for print quality
-    const h = 3800; // Increased height for parameters section
-    canvas.width = w;
-    canvas.height = h;
+    // Create canvas for JPEG - landscape orientation for schematic
+    const guideCanvas = document.createElement('canvas');
+    const ctx = guideCanvas.getContext('2d');
+    const w = 3600; // Wide format
+    const h = 3200; // Increased height for taller viewports
+    guideCanvas.width = w;
+    guideCanvas.height = h;
     
-    // White background
-    ctx.fillStyle = '#ffffff';
+    // Off-white background (architectural paper)
+    ctx.fillStyle = '#f8f6f2';
     ctx.fillRect(0, 0, w, h);
     
-    // Title with bold styling
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 64px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('LINKAGE STRUCTURE BUILD GUIDE', w / 2, 80);
-    
-    // Underline for title
-    ctx.strokeStyle = '#000000';
+    // Draw border
+    ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(w / 2 - 400, 95);
-    ctx.lineTo(w / 2 + 400, 95);
-    ctx.stroke();
+    ctx.strokeRect(20, 20, w - 40, h - 40);
+    ctx.lineWidth = 2;
+    ctx.strokeRect(32, 32, w - 64, h - 64);
     
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText(`Generated: ${new Date().toLocaleDateString()}`, w / 2, 130);
+    // Title block (bottom right, architectural style)
+    const titleBlockW = 600;
+    const titleBlockH = 200;
+    const titleBlockX = w - titleBlockW - 45;
+    const titleBlockY = h - titleBlockH - 45;
     
-    let yPos = 180;
-    const lineHeight = 36;
-    const sectionGap = 50;
-    const leftMargin = 80;
-    const rightCol = w / 2 + 40;
-    
-    // Structure Stats with bold styling
-    ctx.font = 'bold 40px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillStyle = '#1a1a1a';
-    ctx.fillText('STRUCTURE SPECIFICATIONS', leftMargin, yPos);
-    // Underline
-    ctx.strokeStyle = '#333333';
+    // Title block background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(titleBlockX, titleBlockY, titleBlockW, titleBlockH);
+    ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 500, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 15;
-    ctx.font = 'bold 28px Arial';
+    ctx.strokeRect(titleBlockX, titleBlockY, titleBlockW, titleBlockH);
+    
+    // Title block header bar
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(titleBlockX, titleBlockY, titleBlockW, 50);
+    
+    // Title block content
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 32px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('LINKAGE STRUCTURE', titleBlockX + titleBlockW / 2, titleBlockY + 36);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 24px Arial';
+    ctx.fillText('BUILD GUIDE', titleBlockX + titleBlockW / 2, titleBlockY + 85);
+    
+    ctx.font = 'bold 22px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#006600';
+    ctx.fillText(`Est. Cost: $${formatNumber(cost, 2)}`, titleBlockX + 25, titleBlockY + 130);
+    
+    ctx.fillStyle = '#666666';
+    ctx.font = '16px Arial';
+    ctx.fillText(`Generated: ${new Date().toLocaleDateString()}`, titleBlockX + 25, titleBlockY + 165);
+    ctx.fillText(`Modules: ${moduleCount} | Fold Angle: ${formatNumber(radToDeg(state.foldAngle), 1)}°`, titleBlockX + 25, titleBlockY + 190);
+    
+    // === RENDER STRUCTURE VIEWS ===
+    // Helper function to render a view to the guide canvas
+    const renderView = (viewType, destX, destY, destW, destH, label, showLabel = true) => {
+        // Create temporary canvas for rendering
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = destW * 2; // Higher res for quality
+        tempCanvas.height = destH * 2;
+        
+        // Save current state
+        const savedView = { ...state.view };
+        const savedCam = { ...state.cam };
+        
+        // Configure view
+        if (viewType === '3d') {
+            state.cam.yaw = -0.4;
+            state.cam.pitch = 0.3;
+            state.cam.dist = Math.max(data.maxHeight, data.maxRad * 2) * 2.5;
+            state.cam.panX = 0;
+            state.cam.panY = 0;
+        }
+        
+        // White background
+        tempCtx.fillStyle = '#ffffff';
+        tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+        
+        // Render the scene
+        const cx = tempCanvas.width / 2;
+        const cy = tempCanvas.height / 2;
+        
+        // Custom project function for this canvas
+        const cam = state.cam;
+        const project = (p) => {
+            if (viewType === 'top') {
+                // Top view (looking down Y axis)
+                const scale = Math.min(tempCanvas.width, tempCanvas.height) / (data.maxRad * 3);
+                return {
+                    x: cx + p.x * scale,
+                    y: cy + p.z * scale,
+                    z: p.y,
+                    s: scale / 50
+                };
+            } else if (viewType === 'front') {
+                // Front view (looking at XY plane) - centered vertically
+                // Use larger margin (2.5x) to ensure full structure is visible
+                const maxDim = Math.max(data.maxHeight * 1.2, data.maxRad * 2.5);
+                const scale = Math.min(tempCanvas.width, tempCanvas.height) / (maxDim * 2.2);
+                const yCenter = data.maxHeight / 2; // Center of structure height
+                return {
+                    x: cx + p.x * scale,
+                    y: cy - (p.y - yCenter) * scale, // Center around structure midpoint
+                    z: p.z,
+                    s: scale / 50
+                };
+            } else if (viewType === 'side') {
+                // Side view (looking at ZY plane) - centered vertically
+                // Use larger margin (2.5x) to ensure full structure is visible
+                const maxDim = Math.max(data.maxHeight * 1.2, data.maxRad * 2.5);
+                const scale = Math.min(tempCanvas.width, tempCanvas.height) / (maxDim * 2.2);
+                const yCenter = data.maxHeight / 2; // Center of structure height
+                return {
+                    x: cx + p.z * scale,
+                    y: cy - (p.y - yCenter) * scale, // Center around structure midpoint
+                    z: p.x,
+                    s: scale / 50
+                };
+            } else if (viewType === 'bottom') {
+                // Bottom view (looking up from below)
+                const scale = Math.min(tempCanvas.width, tempCanvas.height) / (data.maxRad * 3);
+                return {
+                    x: cx + p.x * scale,
+                    y: cy - p.z * scale, // Flipped from top view
+                    z: -p.y,
+                    s: scale / 50
+                };
+            } else {
+                // 3D perspective view
+                let x1 = p.x * Math.cos(-cam.yaw) - p.z * Math.sin(-cam.yaw);
+                let z1 = p.x * Math.sin(-cam.yaw) + p.z * Math.cos(-cam.yaw);
+                let y2 = p.y * Math.cos(cam.pitch) - z1 * Math.sin(cam.pitch);
+                let z2 = p.y * Math.sin(cam.pitch) + z1 * Math.cos(cam.pitch);
+                let depth = z2 + cam.dist;
+                if (depth < 50) depth = 50;
+                let scale = 800 / depth;
+                return {
+                    x: cx + x1 * scale,
+                    y: cy - y2 * scale,
+                    z: depth,
+                    s: scale
+                };
+            }
+        };
+        
+        // Collect and sort faces
+        const faces = [];
+        data.beams.forEach(beam => {
+            const pts = beam.corners.map(p => project(p));
+            if (pts.some(p => p.s <= 0)) return;
+            
+            beam.faces.forEach(f => {
+                const p0 = pts[f.idx[0]], p1 = pts[f.idx[1]], p2 = pts[f.idx[2]], p3 = pts[f.idx[3]];
+                const edge1 = {x: p1.x - p0.x, y: p1.y - p0.y};
+                const edge2 = {x: p2.x - p0.x, y: p2.y - p0.y};
+                const cross = edge1.x * edge2.y - edge1.y * edge2.x;
+                
+                if (cross < 0 || viewType !== '3d') {
+                    const minZ = Math.min(p0.z, p1.z, p2.z, p3.z);
+                    let light = 1;
+                    if (viewType === '3d') {
+                        const dot = vDot(f.norm, {x: 0.3, y: 0.8, z: 0.5});
+                        light = 0.5 + 0.5 * Math.max(0, dot);
+                    }
+                    faces.push({
+                        pts: [p0, p1, p2, p3],
+                        z: minZ,
+                        col: beam.colorBase,
+                        l: light
+                    });
+                }
+            });
+        });
+        
+        // Sort by depth
+        faces.sort((a, b) => b.z - a.z);
+        
+        // Draw faces
+        faces.forEach(f => {
+            const r = Math.floor(f.col.r * f.l);
+            const g = Math.floor(f.col.g * f.l);
+            const b = Math.floor(f.col.b * f.l);
+            tempCtx.fillStyle = `rgb(${r},${g},${b})`;
+            tempCtx.strokeStyle = 'rgba(0,0,0,0.4)';
+            tempCtx.lineWidth = 1;
+            
+            tempCtx.beginPath();
+            tempCtx.moveTo(f.pts[0].x, f.pts[0].y);
+            for (let i = 1; i < 4; i++) {
+                tempCtx.lineTo(f.pts[i].x, f.pts[i].y);
+            }
+            tempCtx.closePath();
+            tempCtx.fill();
+            tempCtx.stroke();
+        });
+        
+        // Restore state
+        state.view = savedView;
+        state.cam = savedCam;
+        
+        // Copy to main canvas - explicitly specify source and destination rectangles
+        ctx.drawImage(tempCanvas, 0, 0, tempCanvas.width, tempCanvas.height, destX, destY, destW, destH);
+        
+        // Draw border around view
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(destX, destY, destW, destH);
+        
+        // Draw label tab at top of view (architectural style) - only if showLabel is true
+        if (showLabel && label) {
+            const labelPadding = 12;
+            const labelWidth = label.length * 12 + 30;
+            const labelHeight = 32;
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(destX + labelPadding, destY + labelPadding, labelWidth, labelHeight);
+            ctx.strokeStyle = '#1a1a1a';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(destX + labelPadding, destY + labelPadding, labelWidth, labelHeight);
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'left';
+            ctx.fillText(label, destX + labelPadding + 12, destY + labelPadding + 22);
+        }
+    };
+    
+    // Layout: 2x2 grid of views at the top - taller viewports for better visibility
+    const viewMargin = 45;
+    const viewTop = 55;
+    const viewHeight = 680;
+    const viewWidth = (w - 3 * viewMargin) / 2;
+    const rowGap = 35;
+    
+    // Row 1: Perspective and Front Elevation (no labels)
+    renderView('3d', viewMargin, viewTop, viewWidth, viewHeight, '', false);
+    renderView('front', viewMargin * 2 + viewWidth, viewTop, viewWidth, viewHeight, '', false);
+    
+    // Row 2: Top View and Bottom View (with labels)
+    const row2Top = viewTop + viewHeight + rowGap;
+    renderView('top', viewMargin, row2Top, viewWidth, viewHeight, 'TOP VIEW (PLAN)', true);
+    renderView('bottom', viewMargin * 2 + viewWidth, row2Top, viewWidth, viewHeight, 'BOTTOM VIEW', true);
+    
+    // === SPECIFICATIONS SECTION ===
+    const specY = row2Top + viewHeight + 45;
+    const colWidth = (w - 120) / 4;
+    const lineHeight = 30;
+    
+    // Helper function to draw section header
+    const drawSectionHeader = (text, x, y, width) => {
+        ctx.fillStyle = '#2c3e50';
+        ctx.fillRect(x - 5, y - 22, width, 30);
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'left';
+        ctx.fillText(text, x, y);
+        return y + 38;
+    };
+    
+    // Column 1: Structure Stats + Bill of Materials
+    let col1X = 60;
+    const bomLineHeight = 24; // Tighter spacing for BOM items
+    
+    // Structure stats at top
+    let yPos = drawSectionHeader('STRUCTURE STATS', col1X, specY, 320);
+    
     const heightFt = data.maxHeight / INCHES_PER_FOOT;
     const diameterFt = (data.maxRad * 2) / INCHES_PER_FOOT;
-    ctx.fillText(`Height: ${formatNumber(heightFt, 2)}'`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Diameter: ${formatNumber(diameterFt, 2)}'`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Modules: ${moduleCount}`, leftMargin, yPos);
-    yPos += sectionGap;
     
-    // BOM Section with bold styling
-    ctx.font = 'bold 40px Arial';
-    ctx.fillText('BILL OF MATERIALS', leftMargin, yPos);
-    // Underline
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 500, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 15;
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText(`Horizontal Beams (${state.hLengthFt}'): ${hBeams}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical Beams (${state.vLengthFt}'): ${vBeams}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Brackets: ${uBrackets}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bolts: ${nBolts}`, leftMargin, yPos);
-    yPos += sectionGap;
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '18px Arial';
+    ctx.fillText(`Height: `, col1X, yPos);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${formatNumber(heightFt, 1)}'`, col1X + 60, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`Diameter: `, col1X + 130, yPos);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${formatNumber(diameterFt, 1)}'`, col1X + 210, yPos);
+    yPos += bomLineHeight;
+    ctx.font = '18px Arial';
+    ctx.fillText(`Modules: `, col1X, yPos);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${moduleCount}`, col1X + 75, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`Fold Angle: `, col1X + 130, yPos);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${formatNumber(radToDeg(state.foldAngle), 1)}°`, col1X + 220, yPos);
+    yPos += bomLineHeight;
     
-    // Budget Section with bold styling
-    ctx.font = 'bold 40px Arial';
-    ctx.fillText('ESTIMATED COST', leftMargin, yPos);
-    // Underline
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 500, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 15;
-    ctx.font = 'bold 28px Arial';
-    ctx.fillText(`Lumber: $${formatNumber((hBeams * state.hLengthFt + vBeams * state.vLengthFt) * state.costLumber, 2)}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bolts: $${formatNumber(nBolts * state.costBolt, 2)}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Brackets: $${formatNumber(uBrackets * state.costBracket, 2)}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.font = 'bold 36px Arial';
+    // Actuator stroke
+    const actuatorInfo = calculateActuatorStroke();
+    ctx.font = '18px Arial';
+    ctx.fillText(`Actuator Stroke: `, col1X, yPos);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${formatNumber(actuatorInfo.stroke, 2)}"`, col1X + 130, yPos);
+    yPos += bomLineHeight + 10;
+    
+    // Bill of Materials header
+    yPos = drawSectionHeader('BILL OF MATERIALS', col1X, yPos, 320);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${hBeams}×`, col1X, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`Horizontal Beams (${state.hLengthFt}')`, col1X + 45, yPos);
+    yPos += bomLineHeight;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${vBeams}×`, col1X, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`Vertical Beams (${state.vLengthFt}')`, col1X + 45, yPos);
+    yPos += bomLineHeight;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${uBrackets}×`, col1X, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`U-Brackets`, col1X + 45, yPos);
+    yPos += bomLineHeight;
+    ctx.font = 'bold 18px Arial';
+    ctx.fillText(`${nBolts}×`, col1X, yPos);
+    ctx.font = '18px Arial';
+    ctx.fillText(`Bolts (1/4" dia.)`, col1X + 45, yPos);
+    yPos += bomLineHeight + 10;
+    
+    // Cost breakdown with background
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(col1X - 5, yPos - 18, 290, 85);
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(col1X - 5, yPos - 18, 290, 85);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 16px Arial';
+    const lumberCost = (hBeams * state.hLengthFt + vBeams * state.vLengthFt) * state.costLumber;
+    const boltCost = nBolts * state.costBolt;
+    const bracketCost = uBrackets * state.costBracket;
+    ctx.fillText(`Lumber: $${formatNumber(lumberCost, 2)}`, col1X, yPos);
+    yPos += bomLineHeight - 2;
+    ctx.fillText(`Hardware: $${formatNumber(boltCost + bracketCost, 2)}`, col1X, yPos);
+    yPos += bomLineHeight + 2;
     ctx.fillStyle = '#006600';
-    ctx.fillText(`TOTAL: $${formatNumber(cost, 2)}`, leftMargin, yPos);
-    ctx.fillStyle = '#000000';
-    yPos += sectionGap * 2;
+    ctx.font = 'bold 22px Arial';
+    ctx.fillText(`TOTAL: $${formatNumber(cost, 2)}`, col1X, yPos);
     
-    // Drill Guide Section with bold styling
-    ctx.font = 'bold 44px Arial';
-    ctx.fillText('DRILL HOLE MEASUREMENTS', leftMargin, yPos);
-    // Underline
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 600, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 25;
+    // Column 2: Beam Specifications
+    let col2X = col1X + colWidth + 10;
+    yPos = drawSectionHeader('BEAM SPECIFICATIONS', col2X, specY, 320);
     
-    // Calculate beam measurements
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('Horizontal:', col2X, yPos);
+    ctx.font = '20px Arial';
+    yPos += lineHeight;
+    ctx.fillText(`${state.hBeamW}" × ${state.hBeamT}" × ${state.hLengthFt * 12}"`, col2X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Stack Count: ${state.hStackCount}`, col2X + 15, yPos);
+    yPos += lineHeight + 8;
+    
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText('Vertical:', col2X, yPos);
+    ctx.font = '20px Arial';
+    yPos += lineHeight;
+    ctx.fillText(`${state.vBeamW}" × ${state.vBeamT}" × ${state.vLengthFt * 12}"`, col2X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Stack Count: ${state.vStackCount}`, col2X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Stack Gap: ${formatNumber(state.stackGap, 2)}"`, col2X + 15, yPos);
+    
+    // Column 3: Drill Hole Locations
+    let col3X = col2X + colWidth + 10;
+    yPos = drawSectionHeader('DRILL HOLE LOCATIONS', col3X, specY, 340);
+    
     const hTotIn = state.hLengthFt * INCHES_PER_FOOT;
     const hActiveIn = hTotIn - state.offsetTopIn - state.offsetBotIn;
-    const vTotIn = state.vLengthFt * INCHES_PER_FOOT;
-    
-    // Horizontal beam measurements
-    ctx.font = 'bold 32px Arial';
-    ctx.fillText('HORIZONTAL BEAMS', leftMargin, yPos);
-    yPos += lineHeight + 12;
-    ctx.font = 'bold 26px Arial';
-    
-    // Calculate pivot positions for horizontal beams
     const pivotRatio = state.pivotPct / 100;
-    const activeLength = Math.max(1, hActiveIn);
-    const pivotDistFromBottom = state.offsetBotIn + (activeLength * pivotRatio);
-    const pivotDistFromTop = state.offsetTopIn + (activeLength * (1 - pivotRatio));
+    const pivotDistFromBottom = state.offsetBotIn + (hActiveIn * pivotRatio);
     
-    ctx.fillText(`Beam Length: ${formatNumber(hTotIn, 2)}" (${state.hLengthFt}')`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bottom Pivot: ${formatNumber(state.offsetBotIn, 2)}" from bottom`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Center Pivot: ${formatNumber(pivotDistFromBottom, 2)}" from bottom`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Top Pivot: ${formatNumber(hTotIn - state.offsetTopIn, 2)}" from bottom`, leftMargin, yPos);
-    yPos += sectionGap;
+    const vTotIn = state.vLengthFt * INCHES_PER_FOOT;
+    const vBottomPivot = state.bracketOffset;
+    const vTopPivot = vTotIn - state.bracketOffset;
+    const vCenterPivot = vTotIn / 2;
     
-    // Vertical beam measurements
-    // Measurements are from the bottom side of the beam
-    // Bottom pivot = offsetBotIn (extension at bottom)
-    // Top pivot = beamLength - offsetTopIn (beam length minus top extension)
-    // Center pivot = midpoint between bottom and top pivots
-    ctx.font = 'bold 32px Arial';
-    ctx.fillText('VERTICAL BEAMS', leftMargin, yPos);
-    yPos += lineHeight + 12;
-    ctx.font = 'bold 26px Arial';
-    
-    // Vertical beam total length (full beam including any end extensions)
-    const vBeamLength = vTotIn; // Total beam length in inches
-    const vBottomPivot = state.offsetBotIn;
-    const vTopPivot = vBeamLength - state.offsetTopIn;
-    const vCenterPivot = (vBottomPivot + vTopPivot) / 2;
-    
-    ctx.fillText(`Beam Length: ${formatNumber(vBeamLength, 2)}" (${state.vLengthFt}')`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bottom Pivot: ${formatNumber(vBottomPivot, 2)}" from bottom`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Center Pivot: ${formatNumber(vCenterPivot, 2)}" from bottom`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Top Pivot: ${formatNumber(vTopPivot, 2)}" from bottom`, leftMargin, yPos);
-    yPos += sectionGap;
-    
-    // Beam Dimensions
-    ctx.font = 'bold 32px Arial';
-    ctx.fillText('BEAM DIMENSIONS', leftMargin, yPos);
-    yPos += lineHeight + 12;
-    ctx.font = 'bold 26px Arial';
-    ctx.fillText(`Horizontal: ${state.hBeamW}" × ${state.hBeamT}" (W × T)`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical: ${state.vBeamW}" × ${state.vBeamT}" (W × T)`, leftMargin, yPos);
-    yPos += sectionGap;
-    
-    // Hardware Specifications
-    ctx.font = 'bold 32px Arial';
-    ctx.fillText('HARDWARE', leftMargin, yPos);
-    yPos += lineHeight + 12;
-    ctx.font = 'bold 26px Arial';
-    ctx.fillText(`Bracket Vertical Gap: ${formatNumber(state.bracketOffset, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Stack Gap: ${formatNumber(state.stackGap, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bolt Size: 1/4" diameter`, leftMargin, yPos);
-    
-    // Draw beam diagrams on the right side with correct aspect ratios
-    const diagramX = rightCol;
-    let diagramY = 200;
-    const diagramScale = 3.5; // Scale factor for diagrams (pixels per inch)
-    
-    // Horizontal beam diagram - maintain correct aspect ratio
-    // Beam length = hTotIn, beam width = state.hBeamW
-    const hDiagramLength = hTotIn * diagramScale;
-    const hDiagramWidth = state.hBeamW * diagramScale;
-    // Ensure minimum visibility
-    const minHWidth = Math.max(hDiagramWidth, 20);
-    
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(diagramX, diagramY, hDiagramLength, minHWidth);
-    
-    // Mark pivot points
-    ctx.fillStyle = '#ff0000';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    const bottomPivotX = diagramX + (state.offsetBotIn / hTotIn) * hDiagramLength;
-    const topPivotX = diagramX + ((hTotIn - state.offsetTopIn) / hTotIn) * hDiagramLength;
-    const centerPivotX = diagramX + (pivotDistFromBottom / hTotIn) * hDiagramLength;
-    
-    const pivotRadius = 8;
-    ctx.beginPath();
-    ctx.arc(bottomPivotX, diagramY + minHWidth / 2, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(centerPivotX, diagramY + minHWidth / 2, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(topPivotX, diagramY + minHWidth / 2, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Labels with bold styling
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 24px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText('HORIZONTAL BEAM', diagramX + hDiagramLength / 2, diagramY - 15);
+    ctx.fillStyle = '#1a1a1a';
     ctx.font = 'bold 20px Arial';
-    ctx.fillText(`${formatNumber(state.offsetBotIn, 2)}"`, bottomPivotX, diagramY + minHWidth + 35);
-    ctx.fillText(`${formatNumber(pivotDistFromBottom, 2)}"`, centerPivotX, diagramY + minHWidth + 35);
-    ctx.fillText(`${formatNumber(hTotIn - state.offsetTopIn, 2)}"`, topPivotX, diagramY + minHWidth + 35);
+    ctx.fillText('Horizontal Beam:', col3X, yPos);
+    ctx.font = '20px Arial';
+    yPos += lineHeight;
+    ctx.fillText(`Bottom: ${formatNumber(state.offsetBotIn, 2)}"`, col3X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Center: ${formatNumber(pivotDistFromBottom, 2)}"`, col3X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Top: ${formatNumber(hTotIn - state.offsetTopIn, 2)}"`, col3X + 15, yPos);
+    yPos += lineHeight + 8;
     
-    diagramY += Math.max(hDiagramLength, 200) + 80;
-    
-    // Vertical beam diagram - maintain correct aspect ratio
-    // Beam length = vTotIn, beam width = state.vBeamW
-    const vDiagramLength = vTotIn * diagramScale;
-    const vDiagramWidth = state.vBeamW * diagramScale;
-    // Ensure minimum visibility
-    const minVWidth = Math.max(vDiagramWidth, 20);
-    
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(diagramX, diagramY, minVWidth, vDiagramLength);
-    
-    // Mark pivot points (measured from bottom)
-    ctx.fillStyle = '#ff0000';
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    const vBottomPivotY = diagramY + (vBottomPivot / vBeamLength) * vDiagramLength;
-    const vTopPivotY = diagramY + (vTopPivot / vBeamLength) * vDiagramLength;
-    const vCenterPivotY = diagramY + (vCenterPivot / vBeamLength) * vDiagramLength;
-    
-    ctx.beginPath();
-    ctx.arc(diagramX + minVWidth / 2, vBottomPivotY, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(diagramX + minVWidth / 2, vCenterPivotY, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(diagramX + minVWidth / 2, vTopPivotY, pivotRadius, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    
-    // Labels with bold styling
-    ctx.fillStyle = '#000000';
-    ctx.font = 'bold 24px Arial';
-    ctx.save();
-    ctx.translate(diagramX - 40, diagramY + vDiagramLength / 2);
-    ctx.rotate(-Math.PI / 2);
-    ctx.fillText('VERTICAL BEAM', 0, 0);
-    ctx.restore();
-    ctx.textAlign = 'right';
     ctx.font = 'bold 20px Arial';
-    ctx.fillText(`${formatNumber(vBottomPivot, 2)}"`, diagramX - 15, vBottomPivotY + 7);
-    ctx.fillText(`${formatNumber(vCenterPivot, 2)}"`, diagramX - 15, vCenterPivotY + 7);
-    ctx.fillText(`${formatNumber(vTopPivot, 2)}"`, diagramX - 15, vTopPivotY + 7);
+    ctx.fillText('Vertical Beam:', col3X, yPos);
+    ctx.font = '20px Arial';
+    yPos += lineHeight;
+    ctx.fillText(`Bottom: ${formatNumber(vBottomPivot, 2)}"`, col3X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Center: ${formatNumber(vCenterPivot, 2)}"`, col3X + 15, yPos);
+    yPos += lineHeight - 4;
+    ctx.fillText(`Top: ${formatNumber(vTopPivot, 2)}"`, col3X + 15, yPos);
     
-    // Structure Parameters Section
-    yPos += Math.max(vDiagramLength, 200) + 80;
-    ctx.font = 'bold 40px Arial';
-    ctx.fillStyle = '#000000';
+    // Column 4: Structure Parameters
+    let col4X = col3X + colWidth + 10;
+    yPos = drawSectionHeader('STRUCTURE PARAMETERS', col4X, specY, 340);
+    
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '20px Arial';
+    ctx.fillText(`Modules: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${state.modules}`, col4X + 100, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Fold Angle: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(radToDeg(state.foldAngle), 1)}°`, col4X + 120, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Pivot Position: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.pivotPct, 1)}%`, col4X + 145, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Hoberman Angle: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.hobermanAng, 1)}°`, col4X + 175, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Pivot Angle: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.pivotAng, 1)}°`, col4X + 120, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Bracket Gap: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.bracketOffset, 2)}"`, col4X + 125, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Top Extension: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.offsetTopIn, 2)}"`, col4X + 140, yPos);
+    yPos += lineHeight;
+    ctx.font = '20px Arial';
+    ctx.fillText(`Bottom Extension: `, col4X, yPos);
+    ctx.font = 'bold 20px Arial';
+    ctx.fillText(`${formatNumber(state.offsetBotIn, 2)}"`, col4X + 175, yPos);
+    
+    // === BEAM DIAGRAMS ===
+    const diagramY = specY + 320;
+    const diagramHeight = 200;
+    
+    // Horizontal beam diagram
+    const hDiagX = 60;
+    const hDiagW = w / 2 - 100;
+    const hDiagScale = (hDiagW - 100) / hTotIn;
+    
+    // Section header for horizontal beam
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(hDiagX - 5, diagramY - 22, 420, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'left';
-    ctx.fillText('STRUCTURE PARAMETERS', leftMargin, yPos);
-    // Underline
-    ctx.strokeStyle = '#333333';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 600, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 20;
+    ctx.fillText('HORIZONTAL BEAM DRILL TEMPLATE', hDiagX, diagramY);
     
-    ctx.font = 'bold 26px Arial';
-    ctx.fillText(`Modules: ${state.modules}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Horizontal Length: ${state.hLengthFt}'`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical Length: ${state.vLengthFt}'`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Pivot %: ${formatNumber(state.pivotPct, 2)}%`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Hoberman Angle: ${formatNumber(state.hobermanAng, 2)}°`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Pivot Angle: ${formatNumber(state.pivotAng, 2)}°`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Horizontal Stack Count: ${state.hStackCount}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical Stack Count: ${state.vStackCount}`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Top Offset: ${formatNumber(state.offsetTopIn, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bottom Offset: ${formatNumber(state.offsetBotIn, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical End Offset: ${formatNumber(state.vertEndOffset, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Bracket Offset: ${formatNumber(state.bracketOffset, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Stack Gap: ${formatNumber(state.stackGap, 2)}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Horizontal Beam: ${state.hBeamW}" × ${state.hBeamT}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Vertical Beam: ${state.vBeamW}" × ${state.vBeamT}"`, leftMargin, yPos);
-    yPos += lineHeight;
-    ctx.fillText(`Fold Angle: ${formatNumber(radToDeg(state.foldAngle), 2)}°`, leftMargin, yPos);
-    yPos += sectionGap * 2;
-    
-    // CUT LIST SECTION
-    ctx.font = 'bold 40px Arial';
-    ctx.fillStyle = '#000000';
-    ctx.fillText('CUT LIST', leftMargin, yPos);
-    ctx.strokeStyle = '#333333';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos + 5);
-    ctx.lineTo(leftMargin + 200, yPos + 5);
-    ctx.stroke();
-    yPos += lineHeight + 15;
-    
-    // Create cut list entries
-    const cutList = [];
-    
-    // Horizontal beams
-    cutList.push({
-        description: `Horizontal Beams (${state.hBeamW}" × ${state.hBeamT}")`,
-        length: state.hLengthFt,
-        lengthIn: state.hLengthFt * INCHES_PER_FOOT,
-        quantity: hBeams
-    });
-    
-    // Vertical beams
-    cutList.push({
-        description: `Vertical Beams (${state.vBeamW}" × ${state.vBeamT}")`,
-        length: state.vLengthFt,
-        lengthIn: state.vLengthFt * INCHES_PER_FOOT,
-        quantity: vBeams
-    });
-    
-    // Sort by length (longest first)
-    cutList.sort((a, b) => b.lengthIn - a.lengthIn);
-    
-    // Draw cut list table
-    ctx.font = 'bold 24px Arial';
-    ctx.fillStyle = '#444444';
-    ctx.fillText('QTY', leftMargin, yPos);
-    ctx.fillText('LENGTH', leftMargin + 80, yPos);
-    ctx.fillText('DESCRIPTION', leftMargin + 220, yPos);
-    ctx.fillText('TOTAL FT', leftMargin + 600, yPos);
-    yPos += 8;
-    
-    // Table header line
-    ctx.strokeStyle = '#888888';
+    // Draw beam rectangle with wood grain effect
+    const hBeamY = diagramY + 55;
+    const hBeamH = 50;
+    ctx.fillStyle = '#e8d4b8';
+    ctx.fillRect(hDiagX + 50, hBeamY, (hTotIn * hDiagScale), hBeamH);
+    // Wood grain lines
+    ctx.strokeStyle = '#d4c4a8';
     ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos);
-    ctx.lineTo(leftMargin + 750, yPos);
-    ctx.stroke();
-    yPos += lineHeight - 10;
+    for (let i = 0; i < hTotIn * hDiagScale; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(hDiagX + 50 + i, hBeamY);
+        ctx.lineTo(hDiagX + 50 + i, hBeamY + hBeamH);
+        ctx.stroke();
+    }
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(hDiagX + 50, hBeamY, (hTotIn * hDiagScale), hBeamH);
     
-    ctx.font = 'bold 26px Arial';
-    ctx.fillStyle = '#000000';
-    let totalLinearFeet = 0;
+    // Draw pivot holes
+    const pivots = [
+        { pos: state.offsetBotIn, label: 'BOT' },
+        { pos: pivotDistFromBottom, label: 'CTR' },
+        { pos: hTotIn - state.offsetTopIn, label: 'TOP' }
+    ];
     
-    cutList.forEach(item => {
-        const totalFt = item.quantity * item.length;
-        totalLinearFeet += totalFt;
+    pivots.forEach(p => {
+        const px = hDiagX + 50 + (p.pos * hDiagScale);
+        // Hole shadow
+        ctx.fillStyle = '#990000';
+        ctx.beginPath();
+        ctx.arc(px + 2, hBeamY + hBeamH / 2 + 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Main hole
+        ctx.fillStyle = '#cc0000';
+        ctx.beginPath();
+        ctx.arc(px, hBeamY + hBeamH / 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
         
-        ctx.fillText(`${item.quantity}×`, leftMargin, yPos);
-        ctx.fillText(`${formatNumber(item.lengthIn, 1)}"`, leftMargin + 80, yPos);
-        ctx.fillText(item.description, leftMargin + 220, yPos);
-        ctx.fillText(`${formatNumber(totalFt, 1)}'`, leftMargin + 600, yPos);
-        yPos += lineHeight;
+        // Dimension line
+        ctx.strokeStyle = '#666666';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(px, hBeamY + hBeamH + 8);
+        ctx.lineTo(px, hBeamY + hBeamH + 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Measurement label with background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 30, hBeamY + hBeamH + 42, 60, 22);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${formatNumber(p.pos, 1)}"`, px, hBeamY + hBeamH + 58);
+        
+        // Position label above
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(p.label, px, hBeamY - 12);
     });
     
-    // Total row
-    yPos += 5;
-    ctx.strokeStyle = '#888888';
+    // Total length dimension
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(leftMargin, yPos - 10);
-    ctx.lineTo(leftMargin + 750, yPos - 10);
+    ctx.moveTo(hDiagX + 50, hBeamY + hBeamH + 85);
+    ctx.lineTo(hDiagX + 50 + hTotIn * hDiagScale, hBeamY + hBeamH + 85);
     ctx.stroke();
+    // End caps
+    ctx.beginPath();
+    ctx.moveTo(hDiagX + 50, hBeamY + hBeamH + 78);
+    ctx.lineTo(hDiagX + 50, hBeamY + hBeamH + 92);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(hDiagX + 50 + hTotIn * hDiagScale, hBeamY + hBeamH + 78);
+    ctx.lineTo(hDiagX + 50 + hTotIn * hDiagScale, hBeamY + hBeamH + 92);
+    ctx.stroke();
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText(`${formatNumber(hTotIn, 1)}" (${state.hLengthFt}')`, hDiagX + 50 + hTotIn * hDiagScale / 2, hBeamY + hBeamH + 112);
     
-    ctx.font = 'bold 28px Arial';
-    ctx.fillStyle = '#006600';
-    ctx.fillText(`TOTAL LINEAR FEET: ${formatNumber(totalLinearFeet, 1)}'`, leftMargin + 400, yPos + 10);
+    // Vertical beam diagram
+    const vDiagX = w / 2 + 50;
+    const vDiagScale = (hDiagW - 100) / vTotIn;
     
-    yPos += sectionGap;
-    
-    // Add note about measurement reference
+    // Section header for vertical beam
+    ctx.fillStyle = '#2c3e50';
+    ctx.fillRect(vDiagX - 5, diagramY - 22, 400, 30);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 20px Arial';
     ctx.textAlign = 'left';
-    ctx.font = 'bold 22px Arial';
-    ctx.fillStyle = '#333333';
-    ctx.fillText('Note: All measurements are from the bottom side of the beam', leftMargin, h - 50);
-    ctx.fillText('Drill holes are 1/4" diameter, centered on beam width', leftMargin, h - 20);
+    ctx.fillText('VERTICAL BEAM DRILL TEMPLATE', vDiagX, diagramY);
+    
+    // Draw beam rectangle with wood grain effect
+    ctx.fillStyle = '#e8d4b8';
+    ctx.fillRect(vDiagX + 50, hBeamY, (vTotIn * vDiagScale), hBeamH);
+    // Wood grain lines
+    ctx.strokeStyle = '#d4c4a8';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < vTotIn * vDiagScale; i += 20) {
+        ctx.beginPath();
+        ctx.moveTo(vDiagX + 50 + i, hBeamY);
+        ctx.lineTo(vDiagX + 50 + i, hBeamY + hBeamH);
+        ctx.stroke();
+    }
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(vDiagX + 50, hBeamY, (vTotIn * vDiagScale), hBeamH);
+    
+    // Draw pivot holes
+    const vPivots = [
+        { pos: vBottomPivot, label: 'BOT' },
+        { pos: vCenterPivot, label: 'CTR' },
+        { pos: vTopPivot, label: 'TOP' }
+    ];
+    
+    vPivots.forEach(p => {
+        const px = vDiagX + 50 + (p.pos * vDiagScale);
+        // Hole shadow
+        ctx.fillStyle = '#990000';
+        ctx.beginPath();
+        ctx.arc(px + 2, hBeamY + hBeamH / 2 + 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+        // Main hole
+        ctx.fillStyle = '#cc0000';
+        ctx.beginPath();
+        ctx.arc(px, hBeamY + hBeamH / 2, 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        
+        // Dimension line
+        ctx.strokeStyle = '#666666';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(px, hBeamY + hBeamH + 8);
+        ctx.lineTo(px, hBeamY + hBeamH + 40);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        
+        // Measurement label with background
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 30, hBeamY + hBeamH + 42, 60, 22);
+        ctx.fillStyle = '#1a1a1a';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${formatNumber(p.pos, 1)}"`, px, hBeamY + hBeamH + 58);
+        
+        // Position label above
+        ctx.fillStyle = '#2c3e50';
+        ctx.font = 'bold 16px Arial';
+        ctx.fillText(p.label, px, hBeamY - 12);
+    });
+    
+    // Total length dimension
+    ctx.strokeStyle = '#1a1a1a';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(vDiagX + 50, hBeamY + hBeamH + 85);
+    ctx.lineTo(vDiagX + 50 + vTotIn * vDiagScale, hBeamY + hBeamH + 85);
+    ctx.stroke();
+    // End caps
+    ctx.beginPath();
+    ctx.moveTo(vDiagX + 50, hBeamY + hBeamH + 78);
+    ctx.lineTo(vDiagX + 50, hBeamY + hBeamH + 92);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(vDiagX + 50 + vTotIn * vDiagScale, hBeamY + hBeamH + 78);
+    ctx.lineTo(vDiagX + 50 + vTotIn * vDiagScale, hBeamY + hBeamH + 92);
+    ctx.stroke();
+    ctx.font = 'bold 20px Arial';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.fillText(`${formatNumber(vTotIn, 1)}" (${state.vLengthFt}')`, vDiagX + 50 + vTotIn * vDiagScale / 2, hBeamY + hBeamH + 112);
+    
+    // Notes at bottom with better styling
+    ctx.fillStyle = '#f0f0f0';
+    ctx.fillRect(55, h - 90, w - 110, 45);
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(55, h - 90, w - 110, 45);
+    ctx.font = 'bold 18px Arial';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.textAlign = 'left';
+    ctx.fillText('NOTES:', 70, h - 62);
+    ctx.font = '18px Arial';
+    ctx.fillStyle = '#444444';
+    ctx.fillText('All measurements from beam end. Drill holes 1/4" diameter, centered on beam width. Red circles indicate pivot hole locations.', 145, h - 62);
     
     // Convert to JPEG and download
-    canvas.toBlob((blob) => {
+    guideCanvas.toBlob((blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -3905,9 +4727,10 @@ function exportBuildGuide() {
 /** List of configuration keys that are saved/loaded */
 const CONFIG_KEYS = [
     'modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
-    'hStackCount', 'vStackCount', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
+    'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
     'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
-    'costLumber', 'costBolt', 'costBracket'
+    'costLumber', 'costBolt', 'costBracket', 'orientation', 'archCapUprights',
+    'archFlipVertical', 'archRotation', 'arrayCount'
 ];
 
 /**
@@ -3924,6 +4747,9 @@ function getConfigSnapshot(includeMetadata = false) {
     
     // Fold angle is stored in radians but saved in degrees
     config.foldAngle = radToDeg(state.foldAngle);
+    
+    // Save animation stop angle
+    config.animationStopAngle = state.animation.stopAngle;
     
     if (includeMetadata) {
         config.version = 'v29';
@@ -3952,11 +4778,56 @@ function applyConfig(config, updateUI = true) {
         state.foldAngle = degToRad(config.foldAngle);
     }
     
+    // Load animation stop angle (or default to closed angle)
+    if (config.hasOwnProperty('animationStopAngle') && config.animationStopAngle !== null) {
+        state.animation.stopAngle = config.animationStopAngle;
+    } else {
+        // Default to closed angle
+        const closedAngle = getOptimalClosedAngleForAnimation();
+        state.animation.stopAngle = radToDeg(closedAngle);
+    }
+    
     // Invalidate geometry cache
     invalidateGeometryCache();
     
     if (updateUI) {
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+        // Sync checkbox states
+        const vstackReverseChk = document.getElementById('chk-vstack-reverse');
+        if (vstackReverseChk) vstackReverseChk.checked = state.vStackReverse;
+        // Sync orientation dropdown
+        const orientationSel = document.getElementById('sel-orientation');
+        if (orientationSel) orientationSel.value = state.orientation || 'horizontal';
+        // Sync cap uprights checkbox and visibility
+        const capUprightsChk = document.getElementById('chk-cap-uprights');
+        if (capUprightsChk) capUprightsChk.checked = state.archCapUprights || false;
+        const capUprightsRow = document.getElementById('cap-upright-row');
+        if (capUprightsRow) capUprightsRow.style.display = state.orientation === 'vertical' ? 'flex' : 'none';
+        // Sync arch orientation controls
+        const isVertical = state.orientation === 'vertical';
+        const archOrientGroup = document.getElementById('arch-orientation-group');
+        if (archOrientGroup) archOrientGroup.style.display = isVertical ? 'block' : 'none';
+        const archFlipChk = document.getElementById('chk-arch-flip');
+        if (archFlipChk) archFlipChk.checked = state.archFlipVertical || false;
+        const archRotSlider = document.getElementById('sl-arch-rotation');
+        const archRotNumber = document.getElementById('nb-arch-rotation');
+        if (archRotSlider) archRotSlider.value = state.archRotation || 0;
+        if (archRotNumber) archRotNumber.value = state.archRotation || 0;
+        const arrayCountSlider = document.getElementById('sl-array-count');
+        const arrayCountNumber = document.getElementById('nb-array-count');
+        if (arrayCountSlider) arrayCountSlider.value = state.arrayCount || 1;
+        if (arrayCountNumber) arrayCountNumber.value = state.arrayCount || 1;
+        // Sync animation stop angle
+        const stopAngleSlider = document.getElementById('sl-anim-stop');
+        const stopAngleNumber = document.getElementById('nb-anim-stop');
+        if (stopAngleSlider) {
+            const stopAngle = state.animation.stopAngle !== null ? state.animation.stopAngle : radToDeg(getOptimalClosedAngleForAnimation());
+            stopAngleSlider.value = stopAngle;
+        }
+        if (stopAngleNumber) {
+            const stopAngle = state.animation.stopAngle !== null ? state.animation.stopAngle : radToDeg(getOptimalClosedAngleForAnimation());
+            stopAngleNumber.value = stopAngle;
+        }
         requestRender();
     }
 }
@@ -4100,8 +4971,76 @@ function updateAnimationStatus() {
 }
 
 /**
+ * Calculates the optimal closed angle (where ring completes 360°)
+ * Cached for performance during animation
+ * @returns {number} The optimal closed angle in radians
+ */
+function getOptimalClosedAngleForAnimation() {
+    // Cache the calculation as it's expensive
+    if (state.animation.cachedClosedAngle !== undefined && 
+        state.animation.cachedModules === state.modules &&
+        state.animation.cachedPivotPct === state.pivotPct) {
+        return state.animation.cachedClosedAngle;
+    }
+    
+    const targetRotation = Math.PI * 2; // 360 degrees
+    const totalModules = state.modules;
+    
+    // Helper to calculate total rotation for a given fold angle
+    const getTotalRotation = (foldAngle) => {
+        const jointResult = calculateJointPositions(foldAngle, {
+            hActiveIn: state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        return Math.abs(jointResult.relativeRotation * totalModules);
+    };
+    
+    // Search for the angle where rotation = 360°
+    const stepSize = degToRad(1);
+    let bestAngle = MAX_FOLD_ANGLE;
+    let bestDiff = Infinity;
+    
+    for (let angle = MIN_FOLD_ANGLE; angle <= MAX_FOLD_ANGLE; angle += stepSize) {
+        const rotation = getTotalRotation(angle);
+        const diff = Math.abs(rotation - targetRotation);
+        
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            bestAngle = angle;
+        }
+        
+        // If we've passed 360° and are getting worse, stop
+        if (rotation > targetRotation && diff > bestDiff) {
+            break;
+        }
+    }
+    
+    // Fine-tune with smaller steps around the best angle
+    const fineStep = degToRad(0.1);
+    for (let angle = bestAngle - degToRad(2); angle <= bestAngle + degToRad(2); angle += fineStep) {
+        if (angle < MIN_FOLD_ANGLE || angle > MAX_FOLD_ANGLE) continue;
+        const rotation = getTotalRotation(angle);
+        const diff = Math.abs(rotation - targetRotation);
+        if (diff < bestDiff) {
+            bestDiff = diff;
+            bestAngle = angle;
+        }
+    }
+    
+    // Cache the result
+    state.animation.cachedClosedAngle = bestAngle;
+    state.animation.cachedModules = state.modules;
+    state.animation.cachedPivotPct = state.pivotPct;
+    
+    return bestAngle;
+}
+
+/**
  * Animates the fold/unfold sequence using requestAnimationFrame
  * Supports forward, reverse, loop, and ping-pong modes
+ * Animation stops at fully open (min angle) and fully closed (optimal 360° angle)
  * @param {number} timestamp - Current animation timestamp from requestAnimationFrame
  */
 function animateFold(timestamp) {
@@ -4117,8 +5056,14 @@ function animateFold(timestamp) {
     const deltaTime = timestamp - state.animation.lastTime;
     state.animation.lastTime = timestamp;
     
+    // Min angle = fully unfolded, Max angle = stop angle or optimal closed
     const minAngle = degToRad(5);
-    const maxAngle = degToRad(175);
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    // Use stopAngle if set, otherwise use closed angle
+    const stopAngleRad = state.animation.stopAngle !== null 
+        ? degToRad(state.animation.stopAngle) 
+        : closedAngle;
+    const maxAngle = Math.min(stopAngleRad, closedAngle); // Don't exceed closed angle
     const speed = state.animation.speed;
     const direction = state.animation.direction;
     
@@ -4128,13 +5073,23 @@ function animateFold(timestamp) {
     const angleRange = maxAngle - minAngle;
     const step = (angleRange / fullCycleMs) * deltaTime * direction;
     
+    // Check if we're in a pause state
+    if (state.animation.pauseUntil && timestamp < state.animation.pauseUntil) {
+        // Still pausing, continue waiting
+        state.animation.frameId = requestAnimationFrame(animateFold);
+        return;
+    }
+    state.animation.pauseUntil = null; // Clear pause flag
+    
     let currentAngle = state.foldAngle + step;
     let reachedEnd = false;
+    let reachedClosed = false;
     
-    // Check bounds
+    // Check bounds - use stop angle as maximum
     if (direction > 0 && currentAngle >= maxAngle) {
         currentAngle = maxAngle;
         reachedEnd = true;
+        reachedClosed = (maxAngle >= closedAngle - 0.01); // Reached fully closed if at closed angle
     } else if (direction < 0 && currentAngle <= minAngle) {
         currentAngle = minAngle;
         reachedEnd = true;
@@ -4142,20 +5097,35 @@ function animateFold(timestamp) {
     
     // Handle end of animation
     if (reachedEnd) {
-        if (state.animation.pingPong) {
-            // Reverse direction for ping-pong mode
-            state.animation.direction *= -1;
-            updateAnimationStatus();
-        } else if (state.animation.loop) {
-            // Reset to beginning for loop mode
-            currentAngle = direction > 0 ? minAngle : maxAngle;
+        // Update angle first
+        state.foldAngle = currentAngle;
+        syncUI('foldAngle');
+        requestRender();
+        
+        if (state.animation.pingPong || state.animation.loop) {
+            // Pause for 1 second at fully closed position before continuing
+            if (reachedClosed) {
+                state.animation.pauseUntil = timestamp + 1000; // 1 second pause
+            }
+            
+            if (state.animation.pingPong) {
+                // Reverse direction for ping-pong mode
+                state.animation.direction *= -1;
+                updateAnimationStatus();
+            } else if (state.animation.loop) {
+                // Reset to beginning for loop mode
+                state.foldAngle = direction > 0 ? minAngle : maxAngle;
+                syncUI('foldAngle');
+                requestRender();
+            }
+            
+            // Continue animation (will pause if pauseUntil is set)
+            state.animation.frameId = requestAnimationFrame(animateFold);
+            return;
         } else {
             // Stop animation
             state.animation.playing = false;
             updateAnimationStatus();
-            state.foldAngle = currentAngle;
-            syncUI('foldAngle');
-            requestRender();
             return;
         }
     }
@@ -4175,96 +5145,258 @@ function animateFold(timestamp) {
 // ============================================================================
 
 /**
- * Draws measurement annotations on the canvas
+ * Calculates critical measurements from the structure geometry
+ * @param {Object} data - Linkage data with beams array
+ * @returns {Object} Measurements object with inner/outer diameter, height, span
+ */
+function calculateMeasurements(data) {
+    if (!data || !data.beams || data.beams.length === 0) {
+        return { innerDia: 0, outerDia: 0, height: 0, span: 0, innerPoints: null, outerPoints: null };
+    }
+    
+    const hBeams = data.beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
+    
+    // Find inner pivots (smallest radius) and outer pivots (largest radius)
+    let minRad = Infinity, maxRad = -Infinity;
+    let innerPoint1 = null, innerPoint2 = null;
+    let outerPoint1 = null, outerPoint2 = null;
+    let minY = Infinity, maxY = -Infinity;
+    let minX = Infinity, maxX = -Infinity;
+    
+    // Collect all pivot points from horizontal beams
+    const pivotPoints = [];
+    hBeams.forEach(beam => {
+        if (beam.p1) pivotPoints.push({...beam.p1, moduleIndex: beam.moduleIndex});
+        if (beam.p2) pivotPoints.push({...beam.p2, moduleIndex: beam.moduleIndex});
+    });
+    
+    // Also check corners for more accurate measurements
+    data.beams.forEach(beam => {
+        if (beam.corners) {
+            beam.corners.forEach(c => {
+                if (c) {
+                    if (c.y < minY) minY = c.y;
+                    if (c.y > maxY) maxY = c.y;
+                    if (c.x < minX) minX = c.x;
+                    if (c.x > maxX) maxX = c.x;
+                }
+            });
+        }
+    });
+    
+    // For each pivot point, calculate radius from center
+    pivotPoints.forEach(p => {
+        const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+        
+        // Track inner (smallest radius) points
+        if (rad < minRad) {
+            minRad = rad;
+            innerPoint1 = p;
+        }
+        
+        // Track outer (largest radius) points  
+        if (rad > maxRad) {
+            maxRad = rad;
+            outerPoint1 = p;
+        }
+    });
+    
+    // Find the point on the opposite side for inner diameter (opposite X sign)
+    if (innerPoint1) {
+        let bestDist = -Infinity;
+        pivotPoints.forEach(p => {
+            // Must be on opposite side (different X sign or far apart)
+            const dist = Math.sqrt(Math.pow(p.x - innerPoint1.x, 2) + Math.pow((p.z || 0) - (innerPoint1.z || 0), 2));
+            if (dist > bestDist && p !== innerPoint1) {
+                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+                // Only consider inner points (within 20% of min radius)
+                if (rad < minRad * 1.2) {
+                    bestDist = dist;
+                    innerPoint2 = p;
+                }
+            }
+        });
+    }
+    
+    // Find the point on the opposite side for outer diameter
+    if (outerPoint1) {
+        let bestDist = -Infinity;
+        pivotPoints.forEach(p => {
+            const dist = Math.sqrt(Math.pow(p.x - outerPoint1.x, 2) + Math.pow((p.z || 0) - (outerPoint1.z || 0), 2));
+            if (dist > bestDist && p !== outerPoint1) {
+                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+                // Only consider outer points (within 20% of max radius)
+                if (rad > maxRad * 0.8) {
+                    bestDist = dist;
+                    outerPoint2 = p;
+                }
+            }
+        });
+    }
+    
+    // Calculate measurements
+    let innerDia = 0, outerDia = 0;
+    
+    if (innerPoint1 && innerPoint2) {
+        innerDia = Math.sqrt(
+            Math.pow(innerPoint2.x - innerPoint1.x, 2) +
+            Math.pow((innerPoint2.y || 0) - (innerPoint1.y || 0), 2) +
+            Math.pow((innerPoint2.z || 0) - (innerPoint1.z || 0), 2)
+        );
+    }
+    
+    if (outerPoint1 && outerPoint2) {
+        outerDia = Math.sqrt(
+            Math.pow(outerPoint2.x - outerPoint1.x, 2) +
+            Math.pow((outerPoint2.y || 0) - (outerPoint1.y || 0), 2) +
+            Math.pow((outerPoint2.z || 0) - (outerPoint1.z || 0), 2)
+        );
+    }
+    
+    const height = maxY - minY;
+    const span = maxX - minX;
+    
+    return {
+        innerDia,
+        outerDia,
+        height,
+        span,
+        innerPoints: innerPoint1 && innerPoint2 ? [innerPoint1, innerPoint2] : null,
+        outerPoints: outerPoint1 && outerPoint2 ? [outerPoint1, outerPoint2] : null,
+        heightPoints: [{x: 0, y: minY, z: 0}, {x: 0, y: maxY, z: 0}],
+        spanPoints: [{x: minX, y: minY, z: 0}, {x: maxX, y: minY, z: 0}]
+    };
+}
+
+/**
+ * Draws live measurement annotations on the canvas
  */
 function drawMeasurements(ctx, data) {
-    if (state.measurePoints.length === 0) return;
+    const measurements = calculateMeasurements(data);
     
+    // Update sidebar display
+    const innerEl = document.getElementById('meas-inner-dia');
+    const outerEl = document.getElementById('meas-outer-dia');
+    const heightEl = document.getElementById('meas-height');
+    const spanEl = document.getElementById('meas-span');
+    
+    if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
+    if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    if (heightEl) heightEl.textContent = `${formatNumber(measurements.height / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.height, 1)}")`;
+    if (spanEl) spanEl.textContent = `${formatNumber(measurements.span / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.span, 1)}")`;
+    
+    // Project 3D point to 2D screen coordinates (must match main renderer exactly)
     const project = (v) => {
         const cam = state.cam;
-        let x = v.x, y = v.y, z = v.z;
-        let x1 = x * Math.cos(-cam.yaw) - z * Math.sin(-cam.yaw) - cam.panX;
-        let z1 = x * Math.sin(-cam.yaw) + z * Math.cos(-cam.yaw);
-        let y2 = y * Math.cos(cam.pitch) - z1 * Math.sin(cam.pitch);
-        let z2 = y * Math.sin(cam.pitch) + z1 * Math.cos(cam.pitch);
+        const yawRad = cam.yaw;
+        const pitchRad = cam.pitch;
+        let x = v.x, y = v.y, z = v.z || 0;
+        
+        // Rotate around Y axis (yaw)
+        let x1 = x * Math.cos(-yawRad) - z * Math.sin(-yawRad);
+        let z1 = x * Math.sin(-yawRad) + z * Math.cos(-yawRad);
+        // Apply panX after yaw rotation
+        x1 -= cam.panX;
+        
+        // Rotate around X axis (pitch)
+        let y2 = y * Math.cos(pitchRad) - z1 * Math.sin(pitchRad);
+        let z2 = y * Math.sin(pitchRad) + z1 * Math.cos(pitchRad);
+        // Apply panY after pitch rotation
+        y2 += cam.panY;
+        
+        // Perspective projection
         let depth = z2 + cam.dist;
         if (depth < MIN_CAM_DIST) depth = MIN_CAM_DIST;
         let scale = PERSPECTIVE_SCALE / depth;
-        return { x: state.view.splitX / 2 + x1 * scale, y: canvas.height / 2 - y2 * scale };
+        
+        const cx = state.view.splitX / 2;
+        const cy = canvas.height / 2;
+        return { x: cx + x1 * scale, y: cy - y2 * scale, depth };
     };
     
     /**
-     * Draws a crosshair marker at a point
-     * @param {{x: number, y: number}} p - Screen position
-     * @param {string} color - Color for the crosshair
-     * @param {string} label - Label to display
+     * Draws a measurement line with label
      */
-    const drawCrosshair = (p, color, label) => {
-        const size = 12;
+    const drawMeasurementLine = (point1, point2, label, color, offset = 0) => {
+        if (!point1 || !point2) return;
+        
+        const p1 = project(point1);
+        const p2 = project(point2);
+        
+        // Draw dimension line
         ctx.strokeStyle = color;
-        ctx.fillStyle = color;
         ctx.lineWidth = 2;
         ctx.setLineDash([]);
-        
-        // Draw crosshair
-        ctx.beginPath();
-        ctx.moveTo(p.x - size, p.y);
-        ctx.lineTo(p.x + size, p.y);
-        ctx.moveTo(p.x, p.y - size);
-        ctx.lineTo(p.x, p.y + size);
-        ctx.stroke();
-        
-        // Draw circle around crosshair
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, size * 0.7, 0, Math.PI * 2);
-        ctx.stroke();
-        
-        // Draw label
-        ctx.font = 'bold 11px Arial';
-        ctx.fillText(label, p.x + size + 4, p.y - 4);
-    };
-    
-    // Draw first point crosshair
-    const p1 = project(state.measurePoints[0]);
-    drawCrosshair(p1, '#00d2d3', 'P1');
-    
-    // If we have two points, draw the measurement line and second point
-    if (state.measurePoints.length >= 2) {
-        const p2 = project(state.measurePoints[1]);
-        
-        // Draw second point crosshair
-        drawCrosshair(p2, '#f0ad4e', 'P2');
-        
-        // Draw measurement line
-        ctx.strokeStyle = '#00d2d3';
-        ctx.lineWidth = 2;
-        ctx.setLineDash([5, 5]);
         ctx.beginPath();
         ctx.moveTo(p1.x, p1.y);
         ctx.lineTo(p2.x, p2.y);
         ctx.stroke();
         
-        // Draw distance label at midpoint
-        const dist = vMag(vSub(state.measurePoints[1], state.measurePoints[0]));
-        const distFt = dist / INCHES_PER_FOOT;
+        // Draw end markers
+        const markerSize = 6;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.arc(p1.x, p1.y, markerSize, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(p2.x, p2.y, markerSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw label at midpoint
         const midX = (p1.x + p2.x) / 2;
-        const midY = (p1.y + p2.y) / 2;
+        const midY = (p1.y + p2.y) / 2 + offset;
         
         // Background for readability
-        ctx.fillStyle = 'rgba(21, 32, 43, 0.85)';
-        const text = `${formatNumber(distFt, 2)}' (${formatNumber(dist, 1)}")`;
-        ctx.font = 'bold 13px monospace';
-        const textWidth = ctx.measureText(text).width;
-        ctx.fillRect(midX - textWidth / 2 - 6, midY - 22, textWidth + 12, 20);
+        ctx.font = 'bold 12px Arial';
+        const textWidth = ctx.measureText(label).width;
+        ctx.fillStyle = 'rgba(21, 32, 43, 0.9)';
+        ctx.fillRect(midX - textWidth / 2 - 6, midY - 14, textWidth + 12, 20);
+        
+        // Border
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(midX - textWidth / 2 - 6, midY - 14, textWidth + 12, 20);
         
         // Text
-        ctx.fillStyle = '#00d2d3';
+        ctx.fillStyle = color;
         ctx.textAlign = 'center';
-        ctx.fillText(text, midX, midY - 8);
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, midX, midY - 4);
         ctx.textAlign = 'left';
-        
-        ctx.setLineDash([]);
+        ctx.textBaseline = 'alphabetic';
+    };
+    
+    // Draw inner diameter measurement (cyan)
+    if (measurements.innerPoints) {
+        const dist = measurements.innerDia;
+        const label = `Inner: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
     }
+    
+    // Draw outer diameter measurement (orange)
+    if (measurements.outerPoints) {
+        const dist = measurements.outerDia;
+        const label = `Outer: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
+    }
+    
+    // Draw height measurement (green) - vertical line on the side
+    if (measurements.height > 0) {
+        const heightPoint1 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[0].y, z: 0};
+        const heightPoint2 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[1].y, z: 0};
+        const label = `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(heightPoint1, heightPoint2, label, '#2ecc71', 0);
+    }
+    
+    // Draw span measurement (purple) - horizontal line at bottom
+    if (measurements.span > 0) {
+        const spanPoint1 = {x: measurements.spanPoints[0].x, y: measurements.spanPoints[0].y - 10, z: 0};
+        const spanPoint2 = {x: measurements.spanPoints[1].x, y: measurements.spanPoints[0].y - 10, z: 0};
+        const label = `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(spanPoint1, spanPoint2, label, '#9b59b6', 0);
+    }
+    
+    ctx.setLineDash([]);
 }
 
 // ============================================================================
@@ -4293,6 +5425,7 @@ function computeGeometryHash() {
         state.pivotAng,
         state.hStackCount,
         state.vStackCount,
+        state.vStackReverse,
         state.offsetTopIn,
         state.offsetBotIn,
         state.vertEndOffset,
@@ -4302,7 +5435,8 @@ function computeGeometryHash() {
         state.hBeamT,
         state.vBeamW,
         state.vBeamT,
-        state.foldAngle.toFixed(6)
+        state.foldAngle.toFixed(6),
+        state.orientation
     ];
     return params.join('|');
 }
@@ -4447,10 +5581,23 @@ function updateState(key, val) {
         
         // Invalidate cache when geometry-changing parameters are updated
         const geometryKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
-                              'hStackCount', 'vStackCount', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
-                              'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle'];
+                              'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
+                              'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
+                              'archCapUprights', 'archFlipVertical', 'archRotation', 'arrayCount'];
         if (geometryKeys.includes(key)) {
             invalidateGeometryCache();
+            // Also invalidate animation closed angle cache when relevant params change
+            if (['modules', 'hLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng', 'offsetTopIn', 'offsetBotIn'].includes(key)) {
+                state.animation.cachedClosedAngle = undefined;
+                // Update stop angle to closed angle when geometry changes
+                const closedAngle = getOptimalClosedAngleForAnimation();
+                state.animation.stopAngle = radToDeg(closedAngle);
+                // Update UI
+                const stopSlider = document.getElementById('sl-anim-stop');
+                const stopNumber = document.getElementById('nb-anim-stop');
+                if (stopSlider) stopSlider.value = state.animation.stopAngle;
+                if (stopNumber) stopNumber.value = state.animation.stopAngle;
+            }
         }
         
         // Check collisions if enabled and limit fold angle if needed
@@ -4505,73 +5652,117 @@ Object.keys(idMap).forEach(k => {
     }
 });
 
-document.getElementById('sidebar').addEventListener('mousedown', e => e.stopPropagation());
-document.getElementById('sidebar').addEventListener('wheel', e => e.stopPropagation());
+// Prevent sidebar interactions from affecting canvas
+const sidebar = document.getElementById('sidebar');
+sidebar.addEventListener('mousedown', e => e.stopPropagation(), true);
+sidebar.addEventListener('mousemove', e => e.stopPropagation(), true);
+sidebar.addEventListener('mouseup', e => e.stopPropagation(), true);
+sidebar.addEventListener('wheel', e => e.stopPropagation(), true);
 
 // Auto-save pending flag - tracks if autosave was requested during drag
 let autoSavePending = false;
 
-let drag = {active:false, x:0, y:0, mode:'orbit'};
-canvas.onmousedown = e => { 
-    if(e.clientX < state.view.splitX) { 
-        drag.active = true; drag.x = e.clientX; drag.y = e.clientY; 
-        drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit'; 
-    } else {
-        drag.active = true; drag.x = e.clientX; drag.y = e.clientY; drag.mode = 'fold';
+let drag = {active: false, x: 0, y: 0, mode: 'orbit'};
+
+/**
+ * Check if an element or its ancestors are form inputs
+ */
+function isFormElement(el) {
+    if (!el) return false;
+    const tagName = el.tagName;
+    if (tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || tagName === 'BUTTON') {
+        return true;
     }
-};
-window.onmouseup = () => {
-    drag.active = false;
-    // If autosave was pending, trigger it now that dragging stopped
-    if (autoSavePending) {
-        autoSavePending = false;
-        autoSave();
+    // Check for custom controls
+    if (el.closest('.input-wrap') || el.closest('#sidebar')) {
+        return true;
     }
-};
-window.onmousemove = e => {
-    if (drag.active) {
-        const dx = e.clientX - drag.x;
-        const dy = e.clientY - drag.y;
-        if (drag.mode === 'orbit') {
-            state.cam.yaw -= dx * 0.01;
-            state.cam.pitch += dy * 0.01;
-        } else if (drag.mode === 'pan') {
-            state.cam.panX += dx;
-            state.cam.panY += dy;
-        } else if (drag.mode === 'fold') {
-            let newAngle = state.foldAngle + dx * 0.005;
-            newAngle = clamp(newAngle, MIN_FOLD_ANGLE, MAX_FOLD_ANGLE);
-            
-            // If collision enforcement is enabled, limit to safe range
-            if (state.enforceCollision) {
-                // Invalidate cache during drag
-                invalidateGeometryCache();
-                const data = solveLinkage(newAngle);
-                const collisions = detectCollisions(data);
-                if (collisions.length > 0) {
-                    // Find safe angle in the direction we're trying to move
-                    // dx > 0 means increasing angle (extending), dx < 0 means decreasing (folding)
-                    const previousAngle = state.foldAngle;
-                    const safeAngle = findSafeFoldAngle(newAngle, previousAngle);
-                    if (safeAngle !== null) {
-                        newAngle = safeAngle;
-                    } else {
-                        // Can't find safe angle, don't change
-                        newAngle = state.foldAngle;
-                    }
-                }
-            }
-            
-            state.foldAngle = newAngle;
-            syncUI('foldAngle');
-            // Mark autosave as pending during drag (will save when drag ends)
-            autoSavePending = true;
-        }
+    return false;
+}
+
+// Only start drag when clicking directly on the canvas element
+canvas.addEventListener('mousedown', e => {
+    // Don't interfere with form elements or sidebar
+    if (e.target !== canvas || isFormElement(e.target)) return;
+    
+    e.preventDefault(); // Prevent text selection during drag
+    
+    if (e.clientX < state.view.splitX) {
+        drag.active = true;
         drag.x = e.clientX;
         drag.y = e.clientY;
-        requestRender();
+        drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+    } else {
+        drag.active = true;
+        drag.x = e.clientX;
+        drag.y = e.clientY;
+        drag.mode = 'fold';
     }
-};
+});
+
+// Use document-level listeners to catch mouse events even when cursor leaves canvas
+document.addEventListener('mouseup', e => {
+    if (drag.active) {
+        drag.active = false;
+        // If autosave was pending, trigger it now that dragging stopped
+        if (autoSavePending) {
+            autoSavePending = false;
+            autoSave();
+        }
+    }
+});
+
+document.addEventListener('mousemove', e => {
+    // Only process if we started a drag on the canvas
+    if (!drag.active) return;
+    
+    // Stop drag if mouse is over sidebar (user moved there while dragging)
+    if (isFormElement(e.target)) {
+        return;
+    }
+    
+    const dx = e.clientX - drag.x;
+    const dy = e.clientY - drag.y;
+    
+    if (drag.mode === 'orbit') {
+        state.cam.yaw -= dx * 0.01;
+        state.cam.pitch += dy * 0.01;
+    } else if (drag.mode === 'pan') {
+        state.cam.panX += dx;
+        state.cam.panY += dy;
+    } else if (drag.mode === 'fold') {
+        let newAngle = state.foldAngle + dx * 0.005;
+        newAngle = clamp(newAngle, MIN_FOLD_ANGLE, MAX_FOLD_ANGLE);
+        
+        // If collision enforcement is enabled, limit to safe range
+        if (state.enforceCollision) {
+            // Invalidate cache during drag
+            invalidateGeometryCache();
+            const data = solveLinkage(newAngle);
+            const collisions = detectCollisions(data);
+            if (collisions.length > 0) {
+                // Find safe angle in the direction we're trying to move
+                const previousAngle = state.foldAngle;
+                const safeAngle = findSafeFoldAngle(newAngle, previousAngle);
+                if (safeAngle !== null) {
+                    newAngle = safeAngle;
+                } else {
+                    // Can't find safe angle, don't change
+                    newAngle = state.foldAngle;
+                }
+            }
+        }
+        
+        state.foldAngle = newAngle;
+        syncUI('foldAngle');
+        // Mark autosave as pending during drag (will save when drag ends)
+        autoSavePending = true;
+    }
+    
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+    requestRender();
+});
 canvas.onwheel = e => {
     e.preventDefault();
     if (e.clientX < state.view.splitX) {
@@ -4911,9 +6102,73 @@ document.getElementById('chk-bolts').onchange = e => {
     state.showBolts = e.target.checked;
     requestRender();
 };
+document.getElementById('sel-orientation').onchange = e => {
+    state.orientation = e.target.value;
+    const isVertical = e.target.value === 'vertical';
+    // Show/hide arch-specific options based on orientation
+    document.getElementById('cap-upright-row').style.display = isVertical ? 'flex' : 'none';
+    document.getElementById('arch-orientation-group').style.display = isVertical ? 'block' : 'none';
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('chk-cap-uprights').onchange = e => {
+    state.archCapUprights = e.target.checked;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('chk-arch-flip').onchange = e => {
+    state.archFlipVertical = e.target.checked;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('sl-arch-rotation').oninput = e => {
+    const val = parseFloat(e.target.value) || 0;
+    state.archRotation = val;
+    document.getElementById('nb-arch-rotation').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-arch-rotation').onchange = e => {
+    let val = parseFloat(e.target.value) || 0;
+    val = Math.max(-180, Math.min(180, val));
+    state.archRotation = val;
+    document.getElementById('sl-arch-rotation').value = val;
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('btn-arch-reset').onclick = () => {
+    state.archFlipVertical = false;
+    state.archRotation = 0;
+    document.getElementById('chk-arch-flip').checked = false;
+    document.getElementById('sl-arch-rotation').value = 0;
+    document.getElementById('nb-arch-rotation').value = 0;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('sl-array-count').oninput = e => {
+    const val = parseInt(e.target.value) || 1;
+    state.arrayCount = val;
+    document.getElementById('nb-array-count').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-array-count').onchange = e => {
+    let val = parseInt(e.target.value) || 1;
+    val = Math.max(1, Math.min(10, val));
+    state.arrayCount = val;
+    document.getElementById('sl-array-count').value = val;
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('chk-vstack-reverse').onchange = e => {
+    state.vStackReverse = e.target.checked;
+    invalidateGeometryCache();
+    requestRender();
+};
 document.getElementById('chk-measure').onchange = e => {
     state.measureMode = e.target.checked;
-    state.measurePoints = [];
     document.getElementById('measure-display').style.display = state.measureMode ? 'block' : 'none';
     requestRender();
 };
@@ -4983,6 +6238,23 @@ document.getElementById('chk-anim-pingpong').onchange = e => {
         state.animation.loop = false;
     }
 };
+document.getElementById('sl-anim-stop').oninput = e => {
+    const val = parseFloat(e.target.value) || null;
+    state.animation.stopAngle = val;
+    document.getElementById('nb-anim-stop').value = val;
+};
+document.getElementById('nb-anim-stop').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val) || val < 5 || val > 175) {
+        // Reset to closed angle if invalid
+        const closedAngle = radToDeg(getOptimalClosedAngleForAnimation());
+        val = closedAngle;
+        e.target.value = val;
+        document.getElementById('sl-anim-stop').value = val;
+    }
+    state.animation.stopAngle = val;
+    document.getElementById('sl-anim-stop').value = val;
+};
 
 // Undo/Redo buttons
 document.getElementById('btn-undo').onclick = undo;
@@ -4993,50 +6265,9 @@ document.getElementById('sidebar-toggle').onclick = () => {
     document.getElementById('sidebar').classList.toggle('collapsed');
 };
 
-// Measurement mode canvas click
+// Canvas click handler (reserved for future use)
 canvas.onclick = e => {
-    if (!state.measureMode) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Only handle clicks in perspective view (left side)
-    if (x < state.view.splitX) {
-        const data = cachedLinkageData || solveLinkage(state.foldAngle);
-        if (data.beams.length > 0) {
-            // Calculate viewport center
-            const cx = state.view.splitX / 2;
-            const cy = canvas.height / 2;
-            
-            // Create ray from click position
-            const ray = screenToRay(x, y, cx, cy);
-            
-            // Find closest beam hit
-            const hit = findClosestBeamHit(ray, data.beams);
-            
-            if (hit.point) {
-                state.measurePoints.push(hit.point);
-                if (state.measurePoints.length > 2) state.measurePoints.shift();
-                
-                const display = document.getElementById('measure-display');
-                if (state.measurePoints.length === 1) {
-                    display.textContent = 'Point 1 selected. Click another point.';
-                } else if (state.measurePoints.length === 2) {
-                    const dist = vMag(vSub(state.measurePoints[1], state.measurePoints[0]));
-                    const distIn = dist;
-                    const distFt = dist / INCHES_PER_FOOT;
-                    display.innerHTML = `
-                        <strong>Distance:</strong> ${formatNumber(distFt, 2)}' (${formatNumber(distIn, 1)}")<br>
-                        <small>Click to measure new points</small>
-                    `;
-                }
-                requestRender();
-            } else {
-                showToast('No beam at click position', 'info');
-            }
-        }
-    }
+    // Currently no click functionality needed
 };
 
 // ============================================================================
@@ -5075,6 +6306,16 @@ if (saved) {
     }
 }
 
+// Initialize animation stop angle to closed angle if not set
+if (state.animation.stopAngle === null || state.animation.stopAngle === undefined) {
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    state.animation.stopAngle = radToDeg(closedAngle);
+    const stopSlider = document.getElementById('sl-anim-stop');
+    const stopNumber = document.getElementById('nb-anim-stop');
+    if (stopSlider) stopSlider.value = state.animation.stopAngle;
+    if (stopNumber) stopNumber.value = state.animation.stopAngle;
+}
+
 // Initialize preset dropdown
 updatePresetSelect();
 
@@ -5087,9 +6328,7 @@ requestRender();
 // Add view labels
 const d = document.createElement('div');
 d.innerHTML = `
-    <div class="view-label" style="top:20px; left:20px;" aria-label="Perspective view">Perspective</div>
     <div class="view-label" style="top:20px; right:20px;" aria-label="Top view">Top</div>
-    <div class="view-label" style="bottom:20px; right:20px;" aria-label="Side view">Side</div>
 `;
 document.getElementById('viewport').appendChild(d);
 
