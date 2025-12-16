@@ -1498,8 +1498,43 @@
                         </select>
                     </div>
                     
-                    <!-- Rectangular Mode Controls -->
-                    <div id="rect-mode-controls">
+                    <!-- Panel Location Options (Cylinder mode only) -->
+                    <div id="cylinder-panel-options" style="display:none; margin:8px 0;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Panel Locations</div>
+                        <div class="ctrl-row" style="margin-bottom:4px;">
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-top-panels" checked> Top Surface Panels
+                            </label>
+                        </div>
+                        <div class="ctrl-row">
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-side-wall-panels"> Side Wall Panels
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Top Surface Panel Grid Controls (Cylinder mode only) -->
+                    <div id="top-panel-grid-controls" style="display:none;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Top Panel Grid</div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Rows</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-top-panel-rows" min="1" max="10" step="1" value="2">
+                                <input type="number" id="nb-top-panel-rows" min="1" max="10" step="1" value="2">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Columns</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-top-panel-cols" min="1" max="10" step="1" value="2">
+                                <input type="number" id="nb-top-panel-cols" min="1" max="10" step="1" value="2">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Side/Arch Panel Grid Controls (Arch mode or side wall panels) -->
+                    <div id="side-panel-grid-controls" style="display:none;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Side Panel Grid</div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Rows</span></div>
                             <div class="input-wrap">
@@ -1514,6 +1549,10 @@
                                 <input type="number" id="nb-grid-cols" min="1" max="10" step="1" value="2">
                             </div>
                         </div>
+                    </div>
+                    
+                    <!-- Rectangular Mode Controls (Rotation only, shown for top panels in cylinder mode) -->
+                    <div id="rect-mode-controls">
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                             <div class="input-wrap">
@@ -3075,10 +3114,13 @@ const state = {
         layoutMode: 'rectangular',  // 'rectangular', 'radial', 'spiral'
         paddingX: 2,          // inches between panels (X direction)
         paddingY: 2,          // inches between panels (Y direction)
-        // Rectangular mode
-        gridRows: 2,
-        gridCols: 2,
+        // Rectangular mode (and arch/side wall panel grid)
+        gridRows: 2,          // rows for arch/side wall panels
+        gridCols: 2,          // columns for arch/side wall panels
         gridRotation: 0,      // rotation angle in degrees for rectangular grid
+        // Top surface panel grid (cylinder mode only)
+        topPanelRows: 2,      // rows for top surface panels in cylinder mode
+        topPanelCols: 2,      // columns for top surface panels in cylinder mode
         // Radial/Pinwheel mode
         radialCount: 8,       // number of panels in ring
         radialOffset: 0,      // offset from center (inches)
@@ -3104,7 +3146,9 @@ const state = {
         // Arch mode panel positioning controls
         archPanelOffset: 2,       // inches - lift panels above roof surface
         archPanelSlide: 0.5,      // inches - A/B mirrored slide along tilt angle (front-back, perpendicular to width axis, in face plane)
-        archPanelSeparation: 0    // inches - additional offset along slope (0 = properly aligned, built-in offset of 4.6 applied internally)
+        archPanelSeparation: 0,   // inches - additional offset along slope (0 = properly aligned, built-in offset of 4.6 applied internally)
+        sideWallPanels: false,    // Enable side wall panels in cylinder mode (uses arch layout system)
+        topPanels: true           // Enable top surface panels in cylinder mode (rectangular/radial/spiral layouts)
     },
     
     history: [],
@@ -3687,15 +3731,17 @@ class RoofFace {
      * @param {number} moduleIndex - Index of the parent module
      * @param {number} faceIndex - Global face index
      * @param {{x,y,z}} structureCenter - Center of the structure for outward direction
-     * @param {{x,y,z}} moduleSlideAxis - Module-wide slide axis (same for A and B)
+     * @param {{x,y,z}} moduleCenter - Module center for face orientation (optional)
+     * @param {string} orientation - 'vertical' (arch) or 'horizontal' (cylinder)
      */
-    constructor(topBeam, botBeam, isAFace, moduleIndex, faceIndex, structureCenter, moduleCenter = null) {
+    constructor(topBeam, botBeam, isAFace, moduleIndex, faceIndex, structureCenter, moduleCenter = null, orientation = 'vertical') {
         this.topBeam = topBeam;
         this.botBeam = botBeam;
         this.isAFace = isAFace;
         this.moduleIndex = moduleIndex;
         this.faceIndex = faceIndex;
         this.moduleCenter = moduleCenter;
+        this.orientation = orientation;
         
         // Pre-compute all geometry at construction time
         this._computeGeometry(structureCenter);
@@ -3746,20 +3792,41 @@ class RoofFace {
         // For closed polygon structures (pentagon, etc.), "outward" is different for EACH FACE.
         // Each face should point away from the MODULE CENTER (center of all 4 beams).
         // The module center is passed from ModuleGeometry.createFaces().
+        // 
+        // CRITICAL: The outward direction calculation depends on the mode:
+        // - Arch/Vertical mode: arch stands upright, cylinder axis is Z, radial is in XY plane
+        // - Cylinder/Horizontal mode: cylinder is horizontal, axis is along Y, radial is in XZ plane
         
         let outwardHint;
+        const isCylinderMode = this.orientation === 'horizontal';
+        
         if (this.moduleCenter) {
             // Outward direction: from face center to module center (AWAY from face surface)
             // We want panels to face OUTWARD from each face, which is TOWARD the module center
-            const toModuleCenter = {
-                x: this.moduleCenter.x - this.center.x,
-                y: this.moduleCenter.y - this.center.y,
-                z: 0
-            };
-            const toMag = Math.sqrt(toModuleCenter.x * toModuleCenter.x + toModuleCenter.y * toModuleCenter.y);
+            let toModuleCenter;
+            
+            if (isCylinderMode) {
+                // Cylinder mode: radial direction is in XZ plane (ignore Y which is the cylinder axis)
+                toModuleCenter = {
+                    x: this.moduleCenter.x - this.center.x,
+                    y: 0,  // Ignore Y - it's along the cylinder length
+                    z: this.moduleCenter.z - this.center.z
+                };
+            } else {
+                // Arch mode: radial direction is in XY plane (ignore Z which is the arch depth)
+                toModuleCenter = {
+                    x: this.moduleCenter.x - this.center.x,
+                    y: this.moduleCenter.y - this.center.y,
+                    z: 0  // Ignore Z
+                };
+            }
+            
+            const toMag = Math.sqrt(toModuleCenter.x * toModuleCenter.x + 
+                                   toModuleCenter.y * toModuleCenter.y + 
+                                   toModuleCenter.z * toModuleCenter.z);
             
             if (toMag > 0.1) {
-                outwardHint = {x: toModuleCenter.x / toMag, y: toModuleCenter.y / toMag, z: 0};
+                outwardHint = vScale(toModuleCenter, 1 / toMag);
             } else {
                 // Fallback: use beam's axisY
                 const topAxisY = topBeam.axisY || {x: 0, y: 1, z: 0};
@@ -3847,8 +3914,9 @@ class ModuleGeometry {
      * Create roof faces from the beam pairs
      * @param {{x,y,z}} structureCenter - Center of structure for outward direction
      * @param {number} baseFaceIndex - Starting face index
+     * @param {string} orientation - 'vertical' (arch) or 'horizontal' (cylinder)
      */
-    createFaces(structureCenter, baseFaceIndex) {
+    createFaces(structureCenter, baseFaceIndex, orientation = 'vertical') {
         if (this.topBeams.length >= 2 && this.botBeams.length >= 2) {
             // Compute TRUE module center from all 4 beam centers
             // This is crucial for determining "outward" direction for each face
@@ -3864,12 +3932,12 @@ class ModuleGeometry {
             // Face A: topBeams[0] with botBeams[0] (Pattern A beams)
             const faceA = new RoofFace(
                 this.topBeams[0], this.botBeams[0],
-                true, this.index, baseFaceIndex, structureCenter, moduleCenter
+                true, this.index, baseFaceIndex, structureCenter, moduleCenter, orientation
             );
             // Face B: topBeams[1] with botBeams[1] (Pattern B beams)
             const faceB = new RoofFace(
                 this.topBeams[1], this.botBeams[1],
-                false, this.index, baseFaceIndex + 1, structureCenter, moduleCenter
+                false, this.index, baseFaceIndex + 1, structureCenter, moduleCenter, orientation
             );
             this.faces = [faceA, faceB];
         }
@@ -3902,8 +3970,9 @@ class StructureGeometry {
     
     /**
      * Collect all geometry from modules into flat arrays
+     * @param {string} orientation - 'vertical' (arch) or 'horizontal' (cylinder)
      */
-    collectGeometry() {
+    collectGeometry(orientation = 'vertical') {
         this.beams = [];
         this.brackets = [];
         this.bolts = [];
@@ -3929,7 +3998,7 @@ class StructureGeometry {
         // Create faces for each module
         let faceIndex = 0;
         this.modules.forEach(module => {
-            module.createFaces(this.structureCenter, faceIndex);
+            module.createFaces(this.structureCenter, faceIndex, orientation);
             faceIndex += 2;
         });
         
@@ -5574,7 +5643,8 @@ function buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight) {
     });
     
     // Collect geometry creates faces using RoofFace class
-    geometry.collectGeometry();
+    // Pass orientation so faces know which plane to use for "outward" calculation
+    geometry.collectGeometry(state.orientation);
     
     console.log('buildStructureGeometry: modules:', geometry.modules.length, 'faces:', geometry.faces.length);
     if (geometry.faces.length > 0) {
@@ -6251,46 +6321,69 @@ function updateArchWallFacesUI() {
     const rectControls = document.getElementById('rect-mode-controls');
     const radialControls = document.getElementById('radial-mode-controls');
     const spiralControls = document.getElementById('spiral-mode-controls');
+    const cylinderPanelOptions = document.getElementById('cylinder-panel-options');
+    const topPanelGridControls = document.getElementById('top-panel-grid-controls');
+    const sidePanelGridControls = document.getElementById('side-panel-grid-controls');
     
     const isArchMode = state.orientation === 'vertical';
     const solarEnabled = state.solarPanels.enabled;
+    const sideWallEnabled = !isArchMode && state.solarPanels.sideWallPanels;
+    const topPanelsEnabled = !isArchMode && state.solarPanels.topPanels;
+    const showArchControls = isArchMode || sideWallEnabled;
     
-    // Show/hide arch-specific controls
+    // Show/hide cylinder panel options (cylinder mode only)
+    if (cylinderPanelOptions) {
+        cylinderPanelOptions.style.display = (!isArchMode && solarEnabled) ? 'block' : 'none';
+    }
+    
+    // Show/hide arch-specific controls (arch mode or side wall panels enabled in cylinder mode)
     if (archControls) {
-        archControls.style.display = (isArchMode && solarEnabled) ? 'block' : 'none';
+        archControls.style.display = (showArchControls && solarEnabled) ? 'block' : 'none';
     }
     
-    // Hide cylinder-mode-only controls in arch mode
+    // Show cylinder-mode-only controls when top panels are enabled (not in arch mode, not side wall only)
+    const showCylinderTopControls = !isArchMode && topPanelsEnabled && solarEnabled;
+    
+    // Panel lift control (cylinder mode top panels only)
     if (panelLiftRow) {
-        panelLiftRow.style.display = isArchMode ? 'none' : 'flex';
+        panelLiftRow.style.display = showCylinderTopControls ? 'flex' : 'none';
     }
     
-    // Hide layout mode selector in arch mode (but keep row/column controls)
+    // Layout mode selector (cylinder mode top panels only)
     if (layoutRow) {
-        layoutRow.style.display = isArchMode ? 'none' : 'flex';
+        layoutRow.style.display = showCylinderTopControls ? 'flex' : 'none';
     }
     
-    // In arch mode, show row/column controls for panel count
-    // Hide radial and spiral controls (they don't apply to arch mode)
+    // Top panel grid controls (cylinder mode with top panels enabled)
+    if (topPanelGridControls) {
+        topPanelGridControls.style.display = showCylinderTopControls ? 'block' : 'none';
+    }
+    
+    // Side panel grid controls (arch mode OR cylinder mode with side walls enabled)
+    if (sidePanelGridControls) {
+        sidePanelGridControls.style.display = (showArchControls && solarEnabled) ? 'block' : 'none';
+    }
+    
+    // Rectangular mode controls (rotation only, for top panels in rectangular layout)
     if (rectControls) {
-        // Show in arch mode (for panel count) or when rectangular layout is selected in cylinder mode
-        rectControls.style.display = (isArchMode && solarEnabled) || (!isArchMode && state.solarPanels.layoutMode === 'rectangular') ? 'block' : 'none';
-        
-        // In arch mode, hide the grid rotation control (we have dedicated arch panel controls)
-        const rotationRow = rectControls.querySelector('#sl-grid-rotation')?.closest('.ctrl-row');
-        if (rotationRow) {
-            rotationRow.style.display = isArchMode ? 'none' : 'flex';
-        }
-    }
-    if (radialControls) {
-        radialControls.style.display = (isArchMode || state.solarPanels.layoutMode !== 'radial') ? 'none' : 'block';
-    }
-    if (spiralControls) {
-        spiralControls.style.display = (isArchMode || state.solarPanels.layoutMode !== 'spiral') ? 'none' : 'block';
+        const showRect = showCylinderTopControls && state.solarPanels.layoutMode === 'rectangular';
+        rectControls.style.display = showRect ? 'block' : 'none';
     }
     
-    // Generate wall face buttons if in arch mode
-    if (isArchMode && solarEnabled) {
+    // Radial controls (for top panels in radial layout)
+    if (radialControls) {
+        const showRadial = showCylinderTopControls && state.solarPanels.layoutMode === 'radial';
+        radialControls.style.display = showRadial ? 'block' : 'none';
+    }
+    
+    // Spiral controls (for top panels in spiral layout)
+    if (spiralControls) {
+        const showSpiral = showCylinderTopControls && state.solarPanels.layoutMode === 'spiral';
+        spiralControls.style.display = showSpiral ? 'block' : 'none';
+    }
+    
+    // Generate wall face buttons if in arch mode or side wall mode
+    if (showArchControls && solarEnabled) {
         generateWallFaceButtons();
     }
 }
@@ -6693,19 +6786,40 @@ function calculateSolarPanels(data) {
         // Arch mode uses wall face-based layout
         panels = calculateArchLayout(canopy, config, data);
     } else {
-        // Horizontal mode uses selected layout
-        switch (config.layoutMode) {
-            case 'rectangular':
-                panels = calculateRectangularLayout(canopy, config);
-                break;
-            case 'radial':
-                panels = calculateRadialLayout(canopy, config);
-                break;
-            case 'spiral':
-                panels = calculateSpiralLayout(canopy, config);
-                break;
-            default:
-                panels = calculateRectangularLayout(canopy, config);
+        // Horizontal/Cylinder mode - can have both top and side panels independently
+        const showTopPanels = config.topPanels !== false;  // Default to true
+        const showSideWallPanels = config.sideWallPanels === true;
+        
+        // Collect top surface panels if enabled
+        if (showTopPanels) {
+            // Create config for top panels using topPanelRows/Cols
+            const topConfig = {
+                ...config,
+                gridRows: config.topPanelRows || 2,
+                gridCols: config.topPanelCols || 2
+            };
+            
+            let topPanels = [];
+            switch (config.layoutMode) {
+                case 'rectangular':
+                    topPanels = calculateRectangularLayout(canopy, topConfig);
+                    break;
+                case 'radial':
+                    topPanels = calculateRadialLayout(canopy, topConfig);
+                    break;
+                case 'spiral':
+                    topPanels = calculateSpiralLayout(canopy, topConfig);
+                    break;
+                default:
+                    topPanels = calculateRectangularLayout(canopy, topConfig);
+            }
+            panels.push(...topPanels);
+        }
+        
+        // Collect side wall panels if enabled (uses gridRows/gridCols from config)
+        if (showSideWallPanels) {
+            const sidePanels = calculateArchLayout(canopy, config, data);
+            panels.push(...sidePanels);
         }
     }
     
@@ -8930,7 +9044,7 @@ const SOLAR_PANEL_KEYS = [
     'showSupportBeams', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
     'supportBeamOffsetH', 'supportBeamOffsetV', 'panelLift',
     'archPanelOffset', 'archPanelSlide', 'archPanelSeparation',
-    'archWallFaces'
+    'archWallFaces', 'sideWallPanels', 'topPanels', 'topPanelRows', 'topPanelCols'
 ];
 
 /**
@@ -9005,12 +9119,16 @@ function applyV30Config(config) {
             if (p.layout.mode !== undefined) sp.layoutMode = p.layout.mode;
             if (p.layout.paddingX !== undefined) sp.paddingX = p.layout.paddingX;
             if (p.layout.paddingY !== undefined) sp.paddingY = p.layout.paddingY;
+            if (p.layout.sideWallPanels !== undefined) sp.sideWallPanels = p.layout.sideWallPanels;
+            if (p.layout.topPanels !== undefined) sp.topPanels = p.layout.topPanels;
         }
         
         if (p.grid) {
             if (p.grid.rows !== undefined) sp.gridRows = p.grid.rows;
             if (p.grid.cols !== undefined) sp.gridCols = p.grid.cols;
             if (p.grid.rotation !== undefined) sp.gridRotation = p.grid.rotation;
+            if (p.grid.topRows !== undefined) sp.topPanelRows = p.grid.topRows;
+            if (p.grid.topCols !== undefined) sp.topPanelCols = p.grid.topCols;
         }
         
         if (p.positioning) {
@@ -9148,12 +9266,16 @@ function getConfigSnapshot(includeMetadata = false) {
             layout: {
                 mode: state.solarPanels.layoutMode,
                 paddingX: state.solarPanels.paddingX,
-                paddingY: state.solarPanels.paddingY
+                paddingY: state.solarPanels.paddingY,
+                sideWallPanels: state.solarPanels.sideWallPanels,
+                topPanels: state.solarPanels.topPanels
             },
             grid: {
                 rows: state.solarPanels.gridRows,
                 cols: state.solarPanels.gridCols,
-                rotation: state.solarPanels.gridRotation
+                rotation: state.solarPanels.gridRotation,
+                topRows: state.solarPanels.topPanelRows,
+                topCols: state.solarPanels.topPanelCols
             },
             positioning: {
                 lift: state.solarPanels.archPanelOffset,
@@ -9380,7 +9502,13 @@ function applyConfig(config, updateUI = true) {
         if (radialControls) radialControls.style.display = sp.layoutMode === 'radial' ? 'block' : 'none';
         if (spiralControls) spiralControls.style.display = sp.layoutMode === 'spiral' ? 'block' : 'none';
         
-        // Rectangular mode
+        // Cylinder mode panel options
+        const chkSideWallPanels = document.getElementById('chk-side-wall-panels');
+        if (chkSideWallPanels) chkSideWallPanels.checked = sp.sideWallPanels || false;
+        const chkTopPanels = document.getElementById('chk-top-panels');
+        if (chkTopPanels) chkTopPanels.checked = sp.topPanels !== false;  // Default to true
+        
+        // Side/Arch panel grid (rectangular mode)
         const slGridRows = document.getElementById('sl-grid-rows');
         const nbGridRows = document.getElementById('nb-grid-rows');
         if (slGridRows) slGridRows.value = sp.gridRows;
@@ -9389,6 +9517,17 @@ function applyConfig(config, updateUI = true) {
         const nbGridCols = document.getElementById('nb-grid-cols');
         if (slGridCols) slGridCols.value = sp.gridCols;
         if (nbGridCols) nbGridCols.value = sp.gridCols;
+        
+        // Top panel grid (cylinder mode)
+        const slTopPanelRows = document.getElementById('sl-top-panel-rows');
+        const nbTopPanelRows = document.getElementById('nb-top-panel-rows');
+        if (slTopPanelRows) slTopPanelRows.value = sp.topPanelRows || 2;
+        if (nbTopPanelRows) nbTopPanelRows.value = sp.topPanelRows || 2;
+        const slTopPanelCols = document.getElementById('sl-top-panel-cols');
+        const nbTopPanelCols = document.getElementById('nb-top-panel-cols');
+        if (slTopPanelCols) slTopPanelCols.value = sp.topPanelCols || 2;
+        if (nbTopPanelCols) nbTopPanelCols.value = sp.topPanelCols || 2;
+        
         const slGridRotation = document.getElementById('sl-grid-rotation');
         const nbGridRotation = document.getElementById('nb-grid-rotation');
         if (slGridRotation) slGridRotation.value = sp.gridRotation || 0;
@@ -9492,6 +9631,9 @@ function applyConfig(config, updateUI = true) {
         const nbArchPanelSep = document.getElementById('nb-arch-panel-sep');
         if (slArchPanelSep) slArchPanelSep.value = sp.archPanelSeparation ?? 0;
         if (nbArchPanelSep) nbArchPanelSep.value = sp.archPanelSeparation ?? 0;
+        
+        // Update arch/side wall panel controls visibility
+        updateArchWallFacesUI();
         
         requestRender();
     }
@@ -11181,6 +11323,20 @@ document.getElementById('sel-panel-layout').onchange = e => {
     requestRender();
 };
 
+// Side wall panels checkbox (cylinder mode)
+document.getElementById('chk-side-wall-panels').onchange = e => {
+    state.solarPanels.sideWallPanels = e.target.checked;
+    updateArchWallFacesUI();
+    requestRender();
+};
+
+// Top surface panels checkbox (cylinder mode)
+document.getElementById('chk-top-panels').onchange = e => {
+    state.solarPanels.topPanels = e.target.checked;
+    updateArchWallFacesUI();
+    requestRender();
+};
+
 // Rectangular mode controls
 document.getElementById('sl-grid-rows').oninput = e => {
     const val = parseInt(e.target.value);
@@ -11210,6 +11366,37 @@ document.getElementById('nb-grid-cols').onchange = e => {
     e.target.value = val;
     requestRender();
 };
+
+// Top panel grid controls (cylinder mode)
+document.getElementById('sl-top-panel-rows').oninput = e => {
+    const val = parseInt(e.target.value);
+    state.solarPanels.topPanelRows = val;
+    document.getElementById('nb-top-panel-rows').value = val;
+    requestRender();
+};
+document.getElementById('nb-top-panel-rows').onchange = e => {
+    let val = parseInt(e.target.value) || 2;
+    val = Math.max(1, Math.min(10, val));
+    state.solarPanels.topPanelRows = val;
+    document.getElementById('sl-top-panel-rows').value = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-top-panel-cols').oninput = e => {
+    const val = parseInt(e.target.value);
+    state.solarPanels.topPanelCols = val;
+    document.getElementById('nb-top-panel-cols').value = val;
+    requestRender();
+};
+document.getElementById('nb-top-panel-cols').onchange = e => {
+    let val = parseInt(e.target.value) || 2;
+    val = Math.max(1, Math.min(10, val));
+    state.solarPanels.topPanelCols = val;
+    document.getElementById('sl-top-panel-cols').value = val;
+    e.target.value = val;
+    requestRender();
+};
+
 document.getElementById('sl-grid-rotation').oninput = e => {
     const val = parseFloat(e.target.value);
     state.solarPanels.gridRotation = val;
