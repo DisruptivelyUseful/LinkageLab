@@ -121,14 +121,19 @@
         }
         
         .topbar-btn {
-            padding: 5px 10px;
-            font-size: 0.7rem;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            min-width: 32px;
+            height: 32px;
             background: var(--bg-input);
             border: 1px solid var(--border-light);
             color: var(--text-primary);
             border-radius: var(--radius-sm);
             cursor: pointer;
             transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
         }
         .topbar-btn:hover {
             background: var(--bg-toolbar);
@@ -174,6 +179,37 @@
             height: 24px;
             background: var(--border-light);
             margin: 0 8px;
+        }
+        .topbar-chk {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            cursor: pointer;
+        }
+        .topbar-chk input[type="checkbox"] {
+            width: 12px;
+            height: 12px;
+            margin: 0;
+        }
+        .topbar-chk input[type="number"] {
+            width: 40px;
+            padding: 2px 4px;
+            font-size: 0.65rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: 3px;
+        }
+        .topbar-sun {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .topbar-sun input[type="range"] {
+            width: 50px;
+            height: 4px;
         }
 
         /* SIDEBAR - Narrower, more compact */
@@ -1072,6 +1108,8 @@
             }
         }
     </style>
+    <!-- Three.js for WebGL rendering - UMD build works with file:// protocol -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
 <body>
 
@@ -1080,23 +1118,34 @@
         <h1>StarShade Linkage Lab</h1>
     </div>
     <div class="topbar-center">
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">Fold:</span>
+            <input type="range" id="sl-fold" min="5" max="175" step="0.1" style="width:100px;" title="Fold Angle">
+            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:55px;" title="Fold Angle (degrees)">
+            <span style="font-size:0.75rem; color:#8899a6;">°</span>
+        </div>
+        <div class="topbar-divider"></div>
         <div class="topbar-anim">
             <button id="btn-anim-play" title="Play Animation">▶</button>
             <button id="btn-anim-pause" title="Pause Animation">⏸</button>
             <button id="btn-anim-reverse" title="Reverse Direction">⟲</button>
             <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed">
-            <span class="topbar-anim-status" id="anim-status-top">Stopped</span>
+            <label class="topbar-chk" title="Ping-pong animation"><input type="checkbox" id="chk-anim-pingpong-top"> Loop</label>
+            <label class="topbar-chk" title="Close limit"><input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:42px;"></label>
         </div>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-fit-top" title="Recenter View">⌖ Center</button>
-        <button class="topbar-btn" id="btn-measure-top" title="Toggle Measurements">📏 Measure</button>
+        <div class="topbar-sun" title="Sun Position">
+            <span style="font-size:0.9rem;">☀️</span>
+            <input type="range" id="sl-sun-azimuth-top" min="0" max="360" value="135" step="5" title="Sun Azimuth" style="width:50px;">
+            <input type="range" id="sl-sun-elevation-top" min="5" max="90" value="45" step="5" title="Sun Elevation" style="width:50px;">
+        </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn" id="btn-save-top" title="Save Configuration">💾 Save</button>
-        <button class="topbar-btn" id="btn-load-top" title="Load Configuration">📂 Load</button>
+        <button class="topbar-btn" id="btn-save-top" title="Save Configuration">💾</button>
+        <button class="topbar-btn" id="btn-load-top" title="Load Configuration">📂</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-export-json-top" title="Export as JSON">JSON</button>
-        <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋 Guide</button>
+        <button class="topbar-btn" id="btn-export-json-top" title="Export as JSON">{ }</button>
+        <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋</button>
     </div>
 </div>
 
@@ -1121,6 +1170,10 @@
         
         <div id="cap-upright-row" class="ctrl-row" style="display:none; padding: 6px 0;">
             <label class="chk-label"><input type="checkbox" id="chk-cap-uprights"> Cap Uprights (End Supports)</label>
+        </div>
+        
+        <div class="ctrl-row" style="padding: 6px 0;">
+            <label class="chk-label"><input type="checkbox" id="chk-fixed-beams"> Fixed Straight Beams (Constant Spacing)</label>
         </div>
         
         <div id="arch-orientation-group" class="group" style="display:none;">
@@ -1162,18 +1215,6 @@
             </button>
         </div>
 
-        <div class="group">
-            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Deploy State</div>
-            <div class="group-content">
-                <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                    <div class="input-wrap">
-                        <input type="range" id="sl-fold" min="5" max="175" step="0.1">
-                        <input type="number" id="nb-fold" min="5" max="175" step="0.1">
-                    </div>
-                </div>
-            </div>
-        </div>
 
         <div class="group">
             <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Lumber Dimensions</div>
@@ -1390,21 +1431,21 @@
                     <input type="checkbox" id="chk-solar-panels"> Enable Solar Panels
                 </label>
                 
-                <div id="solar-panel-controls" style="display:none; margin-top:12px;">
+                <div id="solar-panel-controls" style="margin-top:12px;">
                     <!-- Panel Dimensions -->
                     <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Panel Dimensions</div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-panel-length" min="12" max="120" step="1" value="65">
-                            <input type="number" id="nb-panel-length" min="12" max="120" step="1" value="65">
+                            <input type="range" id="sl-panel-length" min="12" max="120" step="0.1" value="65">
+                            <input type="number" id="nb-panel-length" min="12" max="120" step="0.1" value="65">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-panel-width" min="12" max="80" step="1" value="39">
-                            <input type="number" id="nb-panel-width" min="12" max="80" step="1" value="39">
+                            <input type="range" id="sl-panel-width" min="12" max="80" step="0.1" value="39">
+                            <input type="number" id="nb-panel-width" min="12" max="80" step="0.1" value="39">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -1598,30 +1639,61 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Slide</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-arch-panel-offset-y" min="-48" max="48" step="0.5" value="0">
-                                <input type="number" id="nb-arch-panel-offset-y" min="-96" max="96" step="0.5" value="0">
+                                <input type="range" id="sl-arch-panel-offset-y" min="-48" max="48" step="0.5" value="0.5">
+                                <input type="number" id="nb-arch-panel-offset-y" min="-96" max="96" step="0.5" value="0.5">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>A/B Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-arch-panel-sep" min="-2" max="2" step="0.05" value="0.75">
-                                <input type="number" id="nb-arch-panel-sep" min="-4" max="4" step="0.05" value="0.75">
+                                <input type="range" id="sl-arch-panel-sep" min="-48" max="48" step="0.1" value="0">
+                                <input type="number" id="nb-arch-panel-sep" min="-96" max="96" step="0.1" value="0">
                             </div>
                         </div>
                     </div>
                     
-                    <!-- Support Beams Toggle -->
+                    <!-- Support Beams Section -->
                     <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border-light);">
-                        <label class="chk-label">
-                            <input type="checkbox" id="chk-support-beams"> Show Support Beams
-                        </label>
-                        <div id="support-beam-controls" style="display:none; margin-top:8px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                            <span style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent);">Support Beams</span>
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-support-beams"> Enable
+                            </label>
+                        </div>
+                        <div id="support-beam-controls" style="display:none;">
                             <div class="ctrl-row">
-                                <div class="ctrl-head"><span>Support Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-support-length" min="24" max="240" step="1" value="96">
+                                    <input type="number" id="nb-support-length" min="12" max="360" step="1" value="96">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-support-fold" min="-90" max="90" step="1" value="0">
+                                    <input type="number" id="nb-support-fold" min="-90" max="90" step="1" value="0">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                                 <div class="input-wrap">
                                     <input type="range" id="sl-support-rotation" min="-45" max="45" step="1" value="0">
-                                    <input type="number" id="nb-support-rotation" min="-90" max="90" step="1" value="0">
+                                    <input type="number" id="nb-support-rotation" min="-180" max="180" step="1" value="0">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>H Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-support-offset-h" min="-120" max="120" step="0.5" value="-120">
+                                    <input type="number" id="nb-support-offset-h" step="0.5" value="-120">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>V Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-support-offset-v" min="-120" max="120" step="0.5" value="0">
+                                    <input type="number" id="nb-support-offset-v" step="0.5" value="0">
                                 </div>
                             </div>
                         </div>
@@ -1657,17 +1729,20 @@
 
 <button id="sidebar-toggle">◀</button>
 <div id="viewport">
-    <canvas id="canvas"></canvas>
+    <canvas id="canvas-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+    <canvas id="canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
     <div id="toast"></div>
 </div>
 
 <div id="right-panel">
     <div class="view-section" id="top-view-section">
-        <canvas id="canvas-top"></canvas>
+        <canvas id="canvas-top-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+        <canvas id="canvas-top" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
         <div class="view-label">Top View</div>
     </div>
     <div class="view-section" id="side-view-section">
-        <canvas id="canvas-side"></canvas>
+        <canvas id="canvas-side-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+        <canvas id="canvas-side" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
         <div class="view-label">Side View</div>
     </div>
     <div id="stats-panel">
@@ -1793,9 +1868,1041 @@ const MAX_HISTORY_SIZE = 50;
 /** Animation frame rate target (ms) */
 const ANIM_FRAME_RATE = 16.67; // ~60fps
 
-// Canvas setup
+// Canvas setup - get references to both 2D overlay and WebGL canvases
 const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas.getContext('2d', { alpha: true });
+const canvasWebGL = document.getElementById('canvas-webgl');
+
+// ============================================================================
+// THREE.JS RENDERER SYSTEM
+// ============================================================================
+
+// Three.js library reference (loaded via script tag, available globally)
+// Using window.THREE to access it
+
+/**
+ * Three.js renderer manager - manages WebGL renderers, scenes, and cameras
+ */
+const threeRenderer = {
+    main: null,      // WebGLRenderer for main 3D view
+    top: null,       // WebGLRenderer for top view  
+    side: null,      // WebGLRenderer for side view
+    mainScene: null,
+    topScene: null,
+    sideScene: null,
+    mainCamera: null,
+    topCamera: null,
+    sideCamera: null,
+    initialized: false,
+    meshCache: new Map(),  // Cache meshes to avoid recreation
+    beamGroup: null,       // Group for beam meshes
+    panelGroup: null,      // Group for panel meshes
+    bracketGroup: null,    // Group for bracket meshes
+    boltGroup: null,       // Group for bolt meshes
+    gridHelper: null       // Grid helper mesh
+};
+
+/**
+ * Initializes the Three.js rendering system
+ */
+function initThreeJS() {
+    if (threeRenderer.initialized || typeof THREE === 'undefined') return;
+    
+    try {
+        // Create WebGL renderer for main 3D view using the WebGL-specific canvas
+        const mainWebGLCanvas = document.getElementById('canvas-webgl');
+        if (!mainWebGLCanvas) {
+            console.error('WebGL canvas not found');
+            return;
+        }
+        
+        // Set canvas dimensions to match viewport
+        const viewport = document.getElementById('viewport');
+        if (viewport) {
+            mainWebGLCanvas.width = viewport.clientWidth;
+            mainWebGLCanvas.height = viewport.clientHeight;
+        }
+        
+        threeRenderer.main = new THREE.WebGLRenderer({
+            canvas: mainWebGLCanvas,
+            antialias: true,
+            alpha: false,
+            logarithmicDepthBuffer: true  // Better depth precision for close objects
+        });
+        threeRenderer.main.setPixelRatio(window.devicePixelRatio);
+        threeRenderer.main.setClearColor(0x15202b); // Match background color
+        threeRenderer.main.sortObjects = true;  // Ensure objects are sorted by depth
+        
+        // Create WebGL renderer for top view
+        const topWebGLCanvas = document.getElementById('canvas-top-webgl');
+        const topSection = document.getElementById('top-view-section');
+        if (topWebGLCanvas && topSection) {
+            topWebGLCanvas.width = topSection.clientWidth;
+            topWebGLCanvas.height = topSection.clientHeight;
+            threeRenderer.top = new THREE.WebGLRenderer({
+                canvas: topWebGLCanvas,
+                antialias: true,
+                alpha: false,
+                logarithmicDepthBuffer: true
+            });
+            threeRenderer.top.setPixelRatio(window.devicePixelRatio);
+            threeRenderer.top.setClearColor(0x192734);
+            threeRenderer.top.sortObjects = true;
+        }
+        
+        // Create WebGL renderer for side view
+        const sideWebGLCanvas = document.getElementById('canvas-side-webgl');
+        const sideSection = document.getElementById('side-view-section');
+        if (sideWebGLCanvas && sideSection) {
+            sideWebGLCanvas.width = sideSection.clientWidth;
+            sideWebGLCanvas.height = sideSection.clientHeight;
+            threeRenderer.side = new THREE.WebGLRenderer({
+                canvas: sideWebGLCanvas,
+                antialias: true,
+                alpha: false,
+                logarithmicDepthBuffer: true
+            });
+            threeRenderer.side.setPixelRatio(window.devicePixelRatio);
+            threeRenderer.side.setClearColor(0x192734);
+            threeRenderer.side.sortObjects = true;
+        }
+    } catch (e) {
+        console.error('Failed to create WebGL renderers:', e);
+        return;
+    }
+    
+    // Create scenes with background colors
+    threeRenderer.mainScene = new THREE.Scene();
+    threeRenderer.mainScene.background = new THREE.Color(0x15202b);
+    
+    threeRenderer.topScene = new THREE.Scene();
+    threeRenderer.topScene.background = new THREE.Color(0x192734);
+    
+    threeRenderer.sideScene = new THREE.Scene();
+    threeRenderer.sideScene.background = new THREE.Color(0x192734);
+    
+    // Create object groups for organization
+    threeRenderer.beamGroup = new THREE.Group();
+    threeRenderer.panelGroup = new THREE.Group();
+    threeRenderer.bracketGroup = new THREE.Group();
+    threeRenderer.boltGroup = new THREE.Group();
+    
+    threeRenderer.mainScene.add(threeRenderer.beamGroup);
+    threeRenderer.mainScene.add(threeRenderer.panelGroup);
+    threeRenderer.mainScene.add(threeRenderer.bracketGroup);
+    threeRenderer.mainScene.add(threeRenderer.boltGroup);
+    
+    // Clone groups for other scenes
+    threeRenderer.topScene.add(new THREE.Group()); // beams
+    threeRenderer.topScene.add(new THREE.Group()); // panels
+    threeRenderer.sideScene.add(new THREE.Group()); // beams
+    threeRenderer.sideScene.add(new THREE.Group()); // panels
+    
+    // Setup cameras
+    createMainCamera();
+    createTopCamera();
+    createSideCamera();
+    
+    // Setup lighting
+    setupThreeJSLighting();
+    
+    // Create grid
+    createGridMesh();
+    
+    threeRenderer.initialized = true;
+    console.log('Three.js initialized successfully');
+}
+
+/**
+ * Creates the main perspective camera
+ */
+function createMainCamera() {
+    const viewport = document.getElementById('viewport');
+    const aspect = viewport ? (viewport.clientWidth / viewport.clientHeight) : 1.5;
+    // Near plane at 10 gives better depth precision, far at 5000 is sufficient
+    threeRenderer.mainCamera = new THREE.PerspectiveCamera(45, aspect, 10, 5000);
+    updateMainCamera();
+}
+
+/**
+ * Updates the main camera position based on state.cam values
+ */
+function updateMainCamera(structureCenter = null) {
+    const cam = state.cam;
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Calculate camera position from yaw, pitch, and distance
+    const x = cam.dist * Math.sin(cam.yaw) * Math.cos(cam.pitch);
+    const y = cam.dist * Math.sin(cam.pitch);
+    const z = cam.dist * Math.cos(cam.yaw) * Math.cos(cam.pitch);
+    
+    // Position camera relative to structure center
+    threeRenderer.mainCamera.position.set(
+        sc.x + x - cam.panX * 0.5,
+        sc.y + y + cam.panY * 0.5,
+        sc.z + z
+    );
+    
+    // Look at structure center
+    threeRenderer.mainCamera.lookAt(sc.x, sc.y, sc.z);
+    
+    // Update aspect ratio
+    const viewport = document.getElementById('viewport');
+    if (viewport && threeRenderer.mainCamera) {
+        const aspect = viewport.clientWidth / viewport.clientHeight;
+        threeRenderer.mainCamera.aspect = aspect;
+        threeRenderer.mainCamera.updateProjectionMatrix();
+    }
+}
+
+/**
+ * Creates the orthographic camera for top view
+ */
+function createTopCamera() {
+    const topSection = document.getElementById('top-view-section');
+    if (!topSection) return;
+    const topCanvas = topSection; // Use section for dimensions
+    
+    const w = topCanvas.clientWidth;
+    const h = topCanvas.clientHeight;
+    const frustumSize = 500;
+    const aspect = w / h;
+    
+    threeRenderer.topCamera = new THREE.OrthographicCamera(
+        -frustumSize * aspect / 2,
+        frustumSize * aspect / 2,
+        frustumSize / 2,
+        -frustumSize / 2,
+        1,      // Near plane - better depth precision
+        3000    // Far plane - sufficient for structure
+    );
+    threeRenderer.topCamera.position.set(0, 1000, 0);
+    threeRenderer.topCamera.lookAt(0, 0, 0);
+    threeRenderer.topCamera.up.set(0, 0, -1); // Z is forward in top view
+}
+
+/**
+ * Updates the top camera based on structure bounds
+ */
+function updateTopCamera(data, structureCenter = null) {
+    const topSection = document.getElementById('top-view-section');
+    if (!topSection || !threeRenderer.topCamera) return;
+    
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    const w = topSection.clientWidth;
+    const h = topSection.clientHeight;
+    
+    // Calculate bounding box
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            beam.corners.forEach(c => {
+                minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x);
+                minZ = Math.min(minZ, c.z); maxZ = Math.max(maxZ, c.z);
+            });
+        });
+    }
+    
+    const width = maxX - minX || 100;
+    const depth = maxZ - minZ || 100;
+    const padding = 1.2;
+    
+    const frustumWidth = Math.max(width, depth * (w / h)) * padding;
+    const frustumHeight = frustumWidth * (h / w);
+    
+    threeRenderer.topCamera.left = -frustumWidth / 2;
+    threeRenderer.topCamera.right = frustumWidth / 2;
+    threeRenderer.topCamera.top = frustumHeight / 2;
+    threeRenderer.topCamera.bottom = -frustumHeight / 2;
+    
+    threeRenderer.topCamera.position.set(sc.x, 1000, sc.z);
+    threeRenderer.topCamera.lookAt(sc.x, 0, sc.z);
+    threeRenderer.topCamera.updateProjectionMatrix();
+}
+
+/**
+ * Creates the orthographic camera for side view
+ */
+function createSideCamera() {
+    const sideSection = document.getElementById('side-view-section');
+    if (!sideSection) return;
+    
+    const w = sideSection.clientWidth;
+    const h = sideSection.clientHeight;
+    const frustumSize = 500;
+    const aspect = w / h;
+    
+    threeRenderer.sideCamera = new THREE.OrthographicCamera(
+        -frustumSize * aspect / 2,
+        frustumSize * aspect / 2,
+        frustumSize / 2,
+        -frustumSize / 2,
+        1,      // Near plane - better depth precision
+        3000    // Far plane - sufficient for structure
+    );
+    threeRenderer.sideCamera.position.set(0, 0, 1000);
+    threeRenderer.sideCamera.lookAt(0, 0, 0);
+}
+
+/**
+ * Updates the side camera based on structure bounds
+ */
+function updateSideCamera(data, structureCenter = null) {
+    const sideSection = document.getElementById('side-view-section');
+    if (!sideSection || !threeRenderer.sideCamera) return;
+    
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    const w = sideSection.clientWidth;
+    const h = sideSection.clientHeight;
+    
+    // Calculate bounding box
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            beam.corners.forEach(c => {
+                minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x);
+                minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y);
+            });
+        });
+    }
+    
+    const width = maxX - minX || 100;
+    const height = maxY - minY || 100;
+    const padding = 1.2;
+    
+    const frustumWidth = Math.max(width, height * (w / h)) * padding;
+    const frustumHeight = frustumWidth * (h / w);
+    
+    threeRenderer.sideCamera.left = -frustumWidth / 2;
+    threeRenderer.sideCamera.right = frustumWidth / 2;
+    threeRenderer.sideCamera.top = frustumHeight / 2;
+    threeRenderer.sideCamera.bottom = -frustumHeight / 2;
+    
+    threeRenderer.sideCamera.position.set(sc.x, sc.y, 1000);
+    threeRenderer.sideCamera.lookAt(sc.x, sc.y, 0);
+    threeRenderer.sideCamera.updateProjectionMatrix();
+}
+
+/**
+ * Sets up lighting for all Three.js scenes
+ */
+function setupThreeJSLighting() {
+    // === MAIN SUN LIGHT - user controllable ===
+    // Bright directional light simulating the sun
+    threeRenderer.sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    updateSunPosition(); // Set initial position based on state.sunAzimuth/sunElevation
+    
+    // Fill light - cooler, softer from opposite side (sky bounce)
+    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.4);
+    fillLight.position.set(-100, 50, -100);
+    
+    // Ambient light for base illumination (prevents pitch black shadows)
+    const ambientLight = new THREE.AmbientLight(0x404050, 0.6);
+    
+    // Hemisphere light - sky blue from above, ground reflection from below
+    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x444444, 0.4);
+    
+    // Add to main scene
+    threeRenderer.mainScene.add(threeRenderer.sunLight);
+    threeRenderer.mainScene.add(fillLight);
+    threeRenderer.mainScene.add(ambientLight);
+    threeRenderer.mainScene.add(hemiLight);
+    
+    // Orthographic views get flat, even lighting
+    threeRenderer.topScene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    threeRenderer.topScene.add(new THREE.DirectionalLight(0xffffff, 0.5));
+    threeRenderer.sideScene.add(new THREE.AmbientLight(0xffffff, 1.2));
+    threeRenderer.sideScene.add(new THREE.DirectionalLight(0xffffff, 0.5));
+}
+
+/**
+ * Updates sun light position based on azimuth and elevation angles
+ */
+function updateSunPosition() {
+    if (!threeRenderer.sunLight) return;
+    
+    const azimuth = state.sunAzimuth || 135;     // Degrees from north (0=N, 90=E, 180=S, 270=W)
+    const elevation = state.sunElevation || 45;  // Degrees above horizon
+    
+    // Convert to radians
+    const azRad = (azimuth - 90) * Math.PI / 180;  // Adjust so 0 = East
+    const elRad = elevation * Math.PI / 180;
+    
+    // Calculate sun position on unit sphere, then scale
+    const dist = 500;
+    const x = dist * Math.cos(elRad) * Math.cos(azRad);
+    const y = dist * Math.sin(elRad);
+    const z = dist * Math.cos(elRad) * Math.sin(azRad);
+    
+    threeRenderer.sunLight.position.set(x, y, z);
+    
+    // Adjust intensity based on elevation (dimmer near horizon)
+    const intensityFactor = 0.5 + 0.5 * Math.sin(elRad);
+    threeRenderer.sunLight.intensity = 1.2 * intensityFactor;
+    
+    // Warm up color near horizon (sunrise/sunset effect)
+    if (elevation < 30) {
+        const warmth = 1 - (elevation / 30);
+        const r = 1;
+        const g = 1 - warmth * 0.3;
+        const b = 1 - warmth * 0.5;
+        threeRenderer.sunLight.color.setRGB(r, g, b);
+    } else {
+        threeRenderer.sunLight.color.setHex(0xffffff);
+    }
+}
+
+/**
+ * Creates the ground grid mesh
+ */
+function createGridMesh() {
+    const gridSize = GRID_RANGE * 2;
+    const gridDivisions = (GRID_RANGE * 2) / GRID_SPACING;
+    
+    threeRenderer.gridHelper = new THREE.GridHelper(
+        gridSize,
+        gridDivisions,
+        0x00a8a0,  // Center line color (teal)
+        0x00a8a0   // Grid line color (teal)
+    );
+    threeRenderer.gridHelper.material.opacity = 0.2;
+    threeRenderer.gridHelper.material.transparent = true;
+    threeRenderer.gridHelper.material.depthWrite = false; // Prevent grid from occluding objects
+    threeRenderer.gridHelper.renderOrder = -1; // Render grid first (behind everything)
+    
+    threeRenderer.mainScene.add(threeRenderer.gridHelper);
+}
+
+/**
+ * Updates grid position based on structure center
+ */
+function updateGridPosition(structureCenter) {
+    if (threeRenderer.gridHelper && structureCenter) {
+        threeRenderer.gridHelper.position.set(structureCenter.x, 0, structureCenter.z);
+    }
+}
+
+/**
+ * Converts RGB object to Three.js color
+ */
+function rgbToThreeColor(rgb) {
+    return new THREE.Color(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+}
+
+/**
+ * Creates a Three.js mesh from a Beam3D object
+ * Uses explicit face geometry with proper normals to avoid rendering artifacts
+ */
+function createBeamMesh(beam, isColliding = false) {
+    const geometry = new THREE.BufferGeometry();
+    const c = beam.corners;
+    
+    // Build vertices and normals for each face separately
+    const positions = [];
+    const normals = [];
+    
+    // Helper to calculate face normal - ensure it points outward from beam center
+    function calcOutwardNormal(p0, p1, p2, faceCenter, beamCenter) {
+        const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
+        const bx = p2.x - p0.x, by = p2.y - p0.y, bz = p2.z - p0.z;
+        let nx = ay * bz - az * by;
+        let ny = az * bx - ax * bz;
+        let nz = ax * by - ay * bx;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        nx /= len; ny /= len; nz /= len;
+        
+        // Check if normal points outward (away from beam center)
+        const toCenterX = beamCenter.x - faceCenter.x;
+        const toCenterY = beamCenter.y - faceCenter.y;
+        const toCenterZ = beamCenter.z - faceCenter.z;
+        const dot = nx * toCenterX + ny * toCenterY + nz * toCenterZ;
+        
+        // If normal points toward center, flip it
+        if (dot > 0) { nx = -nx; ny = -ny; nz = -nz; }
+        
+        return { x: nx, y: ny, z: nz };
+    }
+    
+    // Calculate beam center
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < 8; i++) { cx += c[i].x; cy += c[i].y; cz += c[i].z; }
+    const beamCenter = { x: cx / 8, y: cy / 8, z: cz / 8 };
+    
+    // Helper to add a quad with outward-facing normal
+    function addQuad(p0, p1, p2, p3) {
+        const faceCenter = {
+            x: (p0.x + p1.x + p2.x + p3.x) / 4,
+            y: (p0.y + p1.y + p2.y + p3.y) / 4,
+            z: (p0.z + p1.z + p2.z + p3.z) / 4
+        };
+        const n = calcOutwardNormal(p0, p1, p2, faceCenter, beamCenter);
+        
+        // Triangle 1: p0, p1, p2
+        positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+        normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+        // Triangle 2: p0, p2, p3
+        positions.push(p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
+        normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+    }
+    
+    // Add all 6 faces - winding order doesn't matter now since we force outward normals
+    addQuad(c[0], c[1], c[2], c[3]); // Near end
+    addQuad(c[4], c[7], c[6], c[5]); // Far end
+    addQuad(c[0], c[4], c[5], c[1]); // Bottom
+    addQuad(c[2], c[6], c[7], c[3]); // Top
+    addQuad(c[0], c[3], c[7], c[4]); // Left
+    addQuad(c[1], c[5], c[6], c[2]); // Right
+    
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+    
+    // Create material - darker, warmer wood tone
+    let woodColor;
+    if (isColliding) {
+        woodColor = new THREE.Color(0.9, 0.2, 0.1);
+    } else {
+        // Darken and warm up the base color
+        const base = beam.colorBase;
+        woodColor = new THREE.Color(
+            Math.max(0, (base.r * 0.7 - 20)) / 255,
+            Math.max(0, (base.g * 0.65 - 15)) / 255,
+            Math.max(0, (base.b * 0.5 - 10)) / 255
+        );
+    }
+    
+    const material = new THREE.MeshLambertMaterial({
+        color: woodColor,
+        side: THREE.DoubleSide,  // Render both sides to prevent x-ray effect
+    });
+    
+    // Use polygon offset to prevent z-fighting
+    material.polygonOffset = true;
+    material.polygonOffsetFactor = 1;
+    material.polygonOffsetUnits = 1;
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.userData.beam = beam;
+    mesh.userData.type = 'beam';
+    mesh.renderOrder = 1;
+    
+    return mesh;
+}
+
+/**
+ * Creates a Three.js mesh from a Panel3D object
+ * Creates realistic solar panel with:
+ * - Shiny reflective blue/black front face with cell grid
+ * - White backsheet with black border (1.5" inset)
+ * - Black border on front (0.25" inset)
+ * - Dark aluminum frame edges
+ */
+function createPanelMesh(panel) {
+    const group = new THREE.Group();
+    const c = panel.corners;
+    
+    // Border insets in inches
+    const FRONT_BORDER = 0.5;
+    const BACK_BORDER = 1.5;
+    
+    // Calculate panel center
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < 8; i++) { cx += c[i].x; cy += c[i].y; cz += c[i].z; }
+    const panelCenter = { x: cx / 8, y: cy / 8, z: cz / 8 };
+    
+    // Helper to calculate outward normal
+    function calcOutwardNormal(p0, p1, p2, faceCenter) {
+        const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
+        const bx = p2.x - p0.x, by = p2.y - p0.y, bz = p2.z - p0.z;
+        let nx = ay * bz - az * by;
+        let ny = az * bx - ax * bz;
+        let nz = ax * by - ay * bx;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        nx /= len; ny /= len; nz /= len;
+        
+        const toCenterX = panelCenter.x - faceCenter.x;
+        const toCenterY = panelCenter.y - faceCenter.y;
+        const toCenterZ = panelCenter.z - faceCenter.z;
+        if (nx * toCenterX + ny * toCenterY + nz * toCenterZ > 0) {
+            nx = -nx; ny = -ny; nz = -nz;
+        }
+        return { x: nx, y: ny, z: nz };
+    }
+    
+    // Helper to create a quad mesh
+    function createQuadMesh(p0, p1, p2, p3, material) {
+        const geo = new THREE.BufferGeometry();
+        const positions = [
+            p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z,
+            p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z
+        ];
+        const faceCenter = {
+            x: (p0.x + p1.x + p2.x + p3.x) / 4,
+            y: (p0.y + p1.y + p2.y + p3.y) / 4,
+            z: (p0.z + p1.z + p2.z + p3.z) / 4
+        };
+        const n = calcOutwardNormal(p0, p1, p2, faceCenter);
+        const normals = [n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z,
+                        n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z];
+        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+        geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+        return new THREE.Mesh(geo, material);
+    }
+    
+    // Helper to interpolate between two points
+    function lerp(p0, p1, t) {
+        return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t, z: p0.z + (p1.z - p0.z) * t };
+    }
+    
+    // Helper to create inset corners for a face
+    function getInsetCorners(corners, inset) {
+        // corners = [p0, p1, p2, p3] defining a quad
+        // Calculate edge lengths to determine inset ratios
+        const edge01 = Math.sqrt(
+            Math.pow(corners[1].x - corners[0].x, 2) +
+            Math.pow(corners[1].y - corners[0].y, 2) +
+            Math.pow(corners[1].z - corners[0].z, 2)
+        );
+        const edge03 = Math.sqrt(
+            Math.pow(corners[3].x - corners[0].x, 2) +
+            Math.pow(corners[3].y - corners[0].y, 2) +
+            Math.pow(corners[3].z - corners[0].z, 2)
+        );
+        
+        const t01 = Math.min(0.4, inset / edge01); // Ratio along 0->1 edge
+        const t03 = Math.min(0.4, inset / edge03); // Ratio along 0->3 edge
+        
+        // Inset each corner
+        return [
+            lerp(lerp(corners[0], corners[1], t01), lerp(corners[0], corners[3], t03), 0.5),
+            lerp(lerp(corners[1], corners[0], t01), lerp(corners[1], corners[2], t03), 0.5),
+            lerp(lerp(corners[2], corners[3], t01), lerp(corners[2], corners[1], t03), 0.5),
+            lerp(lerp(corners[3], corners[2], t01), lerp(corners[3], corners[0], t03), 0.5)
+        ].map((p, i) => {
+            // Proper inset calculation
+            const c0 = corners[i];
+            const c1 = corners[(i + 1) % 4];
+            const c3 = corners[(i + 3) % 4];
+            const dir01 = { x: c1.x - c0.x, y: c1.y - c0.y, z: c1.z - c0.z };
+            const dir03 = { x: c3.x - c0.x, y: c3.y - c0.y, z: c3.z - c0.z };
+            const len01 = Math.sqrt(dir01.x * dir01.x + dir01.y * dir01.y + dir01.z * dir01.z) || 1;
+            const len03 = Math.sqrt(dir03.x * dir03.x + dir03.y * dir03.y + dir03.z * dir03.z) || 1;
+            return {
+                x: c0.x + (dir01.x / len01) * inset + (dir03.x / len03) * inset,
+                y: c0.y + (dir01.y / len01) * inset + (dir03.y / len03) * inset,
+                z: c0.z + (dir01.z / len01) * inset + (dir03.z / len03) * inset
+            };
+        });
+    }
+    
+    // Materials
+    const cellColor = rgbToThreeColor(panel.colorBase);
+    
+    // Front face material - SHINY reflective solar cells (glass-like)
+    const frontMaterial = new THREE.MeshPhongMaterial({
+        color: cellColor,
+        specular: 0x888899,
+        shininess: 80,
+        reflectivity: 0.8,
+        side: THREE.DoubleSide,
+    });
+    frontMaterial.polygonOffset = true;
+    frontMaterial.polygonOffsetFactor = 2;
+    frontMaterial.polygonOffsetUnits = 2;
+    
+    // Back face material - matte white backsheet
+    const backMaterial = new THREE.MeshLambertMaterial({
+        color: 0xf5f5f5,
+        side: THREE.DoubleSide,
+    });
+    backMaterial.polygonOffset = true;
+    backMaterial.polygonOffsetFactor = 2;
+    backMaterial.polygonOffsetUnits = 2;
+    
+    // Black border/bevel material
+    const borderMaterial = new THREE.MeshLambertMaterial({
+        color: 0x151518,
+        side: THREE.DoubleSide,
+    });
+    borderMaterial.polygonOffset = true;
+    borderMaterial.polygonOffsetFactor = 1.8;
+    borderMaterial.polygonOffsetUnits = 1.8;
+    
+    // Edge material - dark aluminum frame (slightly reflective)
+    const edgeMaterial = new THREE.MeshPhongMaterial({
+        color: 0x404045,
+        specular: 0x333333,
+        shininess: 20,
+        side: THREE.DoubleSide,
+    });
+    edgeMaterial.polygonOffset = true;
+    edgeMaterial.polygonOffsetFactor = 1.5;
+    edgeMaterial.polygonOffsetUnits = 1.5;
+    
+    // === BACK FACE (corners 0,1,2,3) - white backsheet with black border ===
+    const backCorners = [c[0], c[1], c[2], c[3]];
+    const backInset = getInsetCorners(backCorners, BACK_BORDER);
+    
+    // Inner white area
+    group.add(createQuadMesh(backInset[0], backInset[1], backInset[2], backInset[3], backMaterial));
+    
+    // Black border strips (4 trapezoids around the edge)
+    group.add(createQuadMesh(backCorners[0], backCorners[1], backInset[1], backInset[0], borderMaterial));
+    group.add(createQuadMesh(backCorners[1], backCorners[2], backInset[2], backInset[1], borderMaterial));
+    group.add(createQuadMesh(backCorners[2], backCorners[3], backInset[3], backInset[2], borderMaterial));
+    group.add(createQuadMesh(backCorners[3], backCorners[0], backInset[0], backInset[3], borderMaterial));
+    
+    // === FRONT FACE (corners 4,5,6,7) - blue solar cells with black border ===
+    const frontCorners = [c[4], c[7], c[6], c[5]]; // Note: different winding for front
+    const frontInset = getInsetCorners(frontCorners, FRONT_BORDER);
+    
+    // Inner blue solar cell area
+    group.add(createQuadMesh(frontInset[0], frontInset[1], frontInset[2], frontInset[3], frontMaterial));
+    
+    // Black border strips
+    group.add(createQuadMesh(frontCorners[0], frontCorners[1], frontInset[1], frontInset[0], borderMaterial));
+    group.add(createQuadMesh(frontCorners[1], frontCorners[2], frontInset[2], frontInset[1], borderMaterial));
+    group.add(createQuadMesh(frontCorners[2], frontCorners[3], frontInset[3], frontInset[2], borderMaterial));
+    group.add(createQuadMesh(frontCorners[3], frontCorners[0], frontInset[0], frontInset[3], borderMaterial));
+    
+    // === EDGE FACES - aluminum frame ===
+    group.add(createQuadMesh(c[0], c[4], c[5], c[1], edgeMaterial)); // Bottom edge
+    group.add(createQuadMesh(c[2], c[6], c[7], c[3], edgeMaterial)); // Top edge
+    group.add(createQuadMesh(c[0], c[3], c[7], c[4], edgeMaterial)); // Left edge
+    group.add(createQuadMesh(c[1], c[5], c[6], c[2], edgeMaterial)); // Right edge
+    
+    // Add cell grid lines on the front face (inside the border)
+    const gridLines = createCellGridLines(frontInset[0], frontInset[3], frontInset[2], frontInset[1], panel);
+    if (gridLines) group.add(gridLines);
+    
+    group.userData.panel = panel;
+    group.userData.type = 'panel';
+    group.renderOrder = 2;
+    
+    return group;
+}
+
+/**
+ * Creates grid lines to represent solar cells on a panel face
+ */
+function createCellGridLines(p0, p1, p2, p3, panel) {
+    // Create line segments for cell divisions
+    const positions = [];
+    
+    // Number of cell divisions (creates a grid pattern)
+    const cellsX = 6; // Number of cell columns
+    const cellsY = 10; // Number of cell rows
+    
+    // Calculate edge vectors
+    const edgeX = { x: p1.x - p0.x, y: p1.y - p0.y, z: p1.z - p0.z };
+    const edgeY = { x: p3.x - p0.x, y: p3.y - p0.y, z: p3.z - p0.z };
+    
+    // Calculate normal for slight offset above surface
+    const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
+    const bx = p3.x - p0.x, by = p3.y - p0.y, bz = p3.z - p0.z;
+    let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+    nx /= nLen; ny /= nLen; nz /= nLen;
+    const offset = 0.03; // Small offset above surface
+    
+    // Horizontal lines (across width, dividing rows)
+    for (let i = 1; i < cellsY; i++) {
+        const t = i / cellsY;
+        const startX = p0.x + edgeY.x * t + nx * offset;
+        const startY = p0.y + edgeY.y * t + ny * offset;
+        const startZ = p0.z + edgeY.z * t + nz * offset;
+        const endX = startX + edgeX.x;
+        const endY = startY + edgeX.y;
+        const endZ = startZ + edgeX.z;
+        positions.push(startX, startY, startZ, endX, endY, endZ);
+    }
+    
+    // Vertical lines (across height, dividing columns)
+    for (let i = 1; i < cellsX; i++) {
+        const t = i / cellsX;
+        const startX = p0.x + edgeX.x * t + nx * offset;
+        const startY = p0.y + edgeX.y * t + ny * offset;
+        const startZ = p0.z + edgeX.z * t + nz * offset;
+        const endX = startX + edgeY.x;
+        const endY = startY + edgeY.y;
+        const endZ = startZ + edgeY.z;
+        positions.push(startX, startY, startZ, endX, endY, endZ);
+    }
+    
+    if (positions.length === 0) return null;
+    
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    
+    // Subtle dark lines for cell divisions
+    const material = new THREE.LineBasicMaterial({
+        color: 0x101520,
+        linewidth: 1,
+        transparent: true,
+        opacity: 0.5,
+    });
+    
+    return new THREE.LineSegments(geometry, material);
+}
+
+/**
+ * Creates a Three.js mesh for a bracket
+ */
+function createBracketMesh(bracket) {
+    const geometry = new THREE.BoxGeometry(bracket.w, bracket.h, bracket.d);
+    const material = new THREE.MeshLambertMaterial({
+        color: 0x909090,
+    });
+    
+    material.polygonOffset = true;
+    material.polygonOffsetFactor = 0.5;
+    material.polygonOffsetUnits = 0.5;
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(bracket.pos.x, bracket.pos.y, bracket.pos.z);
+    mesh.userData.bracket = bracket;
+    mesh.userData.type = 'bracket';
+    mesh.renderOrder = 0;
+    
+    return mesh;
+}
+
+/**
+ * Creates a Three.js mesh for a bolt
+ */
+function createBoltMesh(bolt) {
+    // Create cylinder for shaft
+    const shaftGeometry = new THREE.CylinderGeometry(
+        bolt.radius,
+        bolt.radius,
+        bolt.length,
+        8
+    );
+    
+    const material = new THREE.MeshLambertMaterial({
+        color: 0x505050,
+    });
+    
+    material.polygonOffset = true;
+    material.polygonOffsetFactor = -1;
+    material.polygonOffsetUnits = -1;
+    
+    const mesh = new THREE.Mesh(shaftGeometry, material);
+    
+    // Position and orient the bolt
+    mesh.position.set(bolt.center.x, bolt.center.y, bolt.center.z);
+    
+    // Orient along bolt direction
+    if (bolt.dir) {
+        const dir = new THREE.Vector3(bolt.dir.x, bolt.dir.y, bolt.dir.z);
+        const up = new THREE.Vector3(0, 1, 0);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize());
+        mesh.quaternion.copy(quaternion);
+    }
+    
+    mesh.userData.bolt = bolt;
+    mesh.userData.type = 'bolt';
+    mesh.renderOrder = 3;
+    
+    return mesh;
+}
+
+/**
+ * Clears all meshes from a group (recursively handles nested groups)
+ */
+function clearGroup(group) {
+    while (group.children.length > 0) {
+        const child = group.children[0];
+        
+        // Recursively clear nested groups
+        if (child.children && child.children.length > 0) {
+            clearGroup(child);
+        }
+        
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+            } else {
+                child.material.dispose();
+            }
+        }
+        group.remove(child);
+    }
+}
+
+/**
+ * Updates all Three.js scenes with current geometry data
+ */
+function updateThreeJSScenes(data) {
+    if (!threeRenderer.initialized) return;
+    
+    // Clear existing meshes
+    clearGroup(threeRenderer.beamGroup);
+    clearGroup(threeRenderer.panelGroup);
+    clearGroup(threeRenderer.bracketGroup);
+    clearGroup(threeRenderer.boltGroup);
+    
+    // Check if a beam is colliding
+    const isColliding = (beam) => state.collisions.some(c => c.beam === beam || c.other === beam);
+    
+    // Add beams
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            const mesh = createBeamMesh(beam, isColliding(beam));
+            threeRenderer.beamGroup.add(mesh);
+        });
+    }
+    
+    // Add panels
+    if (data.panels && data.panels.length > 0) {
+        data.panels.forEach(panel => {
+            const mesh = createPanelMesh(panel);
+            threeRenderer.panelGroup.add(mesh);
+        });
+    }
+    
+    // Add brackets if enabled
+    if (state.showBrackets && data.brackets) {
+        data.brackets.forEach(bracket => {
+            const mesh = createBracketMesh(bracket);
+            threeRenderer.bracketGroup.add(mesh);
+        });
+    }
+    
+    // Add bolts if enabled
+    if (state.showBolts && data.bolts) {
+        data.bolts.forEach(bolt => {
+            const mesh = createBoltMesh(bolt);
+            threeRenderer.boltGroup.add(mesh);
+        });
+    }
+    
+    // Update top and side scenes (simplified - just clone beam/panel geometry)
+    updateOrthoScenes(data);
+}
+
+/**
+ * Updates orthographic scene content (top and side views)
+ */
+function updateOrthoScenes(data) {
+    // Clear top and side scenes
+    const topBeamGroup = threeRenderer.topScene.children[0];
+    const topPanelGroup = threeRenderer.topScene.children[1];
+    const sideBeamGroup = threeRenderer.sideScene.children[0];
+    const sidePanelGroup = threeRenderer.sideScene.children[1];
+    
+    if (topBeamGroup) clearGroup(topBeamGroup);
+    if (topPanelGroup) clearGroup(topPanelGroup);
+    if (sideBeamGroup) clearGroup(sideBeamGroup);
+    if (sidePanelGroup) clearGroup(sidePanelGroup);
+    
+    // Add beams to ortho views
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            const topMesh = createBeamMesh(beam, false);
+            const sideMesh = createBeamMesh(beam, false);
+            if (topBeamGroup) topBeamGroup.add(topMesh);
+            if (sideBeamGroup) sideBeamGroup.add(sideMesh);
+        });
+    }
+    
+    // Add panels to ortho views
+    if (data.panels && data.panels.length > 0) {
+        data.panels.forEach(panel => {
+            const topMesh = createPanelMesh(panel);
+            const sideMesh = createPanelMesh(panel);
+            if (topPanelGroup) topPanelGroup.add(topMesh);
+            if (sidePanelGroup) sidePanelGroup.add(sideMesh);
+        });
+    }
+}
+
+/**
+ * Renders all Three.js viewports
+ */
+function renderThreeJS(data, structureCenter) {
+    // Check if Three.js is loaded
+    if (typeof THREE === 'undefined') {
+        console.log('Three.js not loaded yet, waiting...');
+        return false; // Return false to indicate fallback needed
+    }
+    
+    if (!threeRenderer.initialized) {
+        initThreeJS();
+    }
+    
+    // If initialization failed, return false for fallback
+    if (!threeRenderer.initialized || !threeRenderer.main) {
+        console.log('Three.js not initialized');
+        return false;
+    }
+    
+    // Ensure WebGL canvas is visible and 2D canvas is hidden
+    const mainWebGLCanvas = document.getElementById('canvas-webgl');
+    const main2DCanvas = document.getElementById('canvas');
+    if (mainWebGLCanvas) mainWebGLCanvas.style.display = 'block';
+    if (main2DCanvas) main2DCanvas.style.display = 'none';
+    
+    // Update renderer sizes using the WebGL canvases
+    const viewport = document.getElementById('viewport');
+    if (mainWebGLCanvas && viewport) {
+        const w = viewport.clientWidth;
+        const h = viewport.clientHeight;
+        mainWebGLCanvas.width = w;
+        mainWebGLCanvas.height = h;
+        threeRenderer.main.setSize(w, h, false);
+    }
+    
+    const topWebGLCanvas = document.getElementById('canvas-top-webgl');
+    const top2DCanvas = document.getElementById('canvas-top');
+    const topSection = document.getElementById('top-view-section');
+    if (topWebGLCanvas) topWebGLCanvas.style.display = 'block';
+    if (top2DCanvas) top2DCanvas.style.display = 'none';
+    if (topWebGLCanvas && topSection && threeRenderer.top) {
+        const tw = topSection.clientWidth;
+        const th = topSection.clientHeight;
+        topWebGLCanvas.width = tw;
+        topWebGLCanvas.height = th;
+        threeRenderer.top.setSize(tw, th, false);
+    }
+    
+    const sideWebGLCanvas = document.getElementById('canvas-side-webgl');
+    const side2DCanvas = document.getElementById('canvas-side');
+    const sideSection = document.getElementById('side-view-section');
+    if (sideWebGLCanvas) sideWebGLCanvas.style.display = 'block';
+    if (side2DCanvas) side2DCanvas.style.display = 'none';
+    if (sideWebGLCanvas && sideSection && threeRenderer.side) {
+        const sw = sideSection.clientWidth;
+        const sh = sideSection.clientHeight;
+        sideWebGLCanvas.width = sw;
+        sideWebGLCanvas.height = sh;
+        threeRenderer.side.setSize(sw, sh, false);
+    }
+    
+    // Update scenes
+    updateThreeJSScenes(data);
+    
+    // Update cameras
+    updateMainCamera(structureCenter);
+    updateTopCamera(data, structureCenter);
+    updateSideCamera(data, structureCenter);
+    
+    // Update grid position
+    updateGridPosition(structureCenter);
+    
+    // Render all views
+    threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
+    
+    if (threeRenderer.top && threeRenderer.topCamera) {
+        threeRenderer.top.render(threeRenderer.topScene, threeRenderer.topCamera);
+    }
+    
+    if (threeRenderer.side && threeRenderer.sideCamera) {
+        threeRenderer.side.render(threeRenderer.sideScene, threeRenderer.sideCamera);
+    }
+    
+    return true; // Success
+}
 
 // ============================================================================
 // UTILITY FUNCTIONS
@@ -1913,6 +3020,12 @@ const state = {
     // Cap uprights: add vertical uprights to open ends in arch mode for better ground tracking
     archCapUprights: false,
     
+    // Fixed straight beams: add non-folding straight beams between horizontal rings
+    // These maintain constant spacing and prevent panels from flipping
+    useFixedBeams: false,
+    fixedBeamLength: null,  // Calculated at reference angle, null = auto-calculate
+    fixedBeamHeight: null,  // Constant height when using fixed beams, null = auto-calculate
+    
     // Arch orientation controls
     archFlipVertical: false,    // Flip the arch upside down
     archRotation: 0,            // Rotation around vertical axis (degrees)
@@ -1923,6 +3036,10 @@ const state = {
     light: {x: 0.4, y: -0.8, z: 0.5},
     cam: { yaw: 0.4, pitch: -0.3, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 },
     view: { w: 0, h: 0, splitX: 0.7, orthoScale: 4.0 },
+    
+    // Sun position for lighting simulation
+    sunAzimuth: 135,    // Degrees from north (0=N, 90=E, 180=S, 270=W) - default: SE
+    sunElevation: 45,   // Degrees above horizon (0-90)
     
     // New state properties
     measureMode: false,
@@ -1974,7 +3091,11 @@ const state = {
         spiralSpacing: 1.2,   // spacing multiplier
         // Support beams
         showSupportBeams: false,
-        supportBeamRotation: 0,  // degrees, 0 = aligned with vertical uprights
+        supportBeamRotation: 0,   // degrees, 0 = aligned with vertical uprights
+        supportBeamLength: 96,    // inches (8 feet default)
+        supportBeamFoldAngle: 0,  // degrees from vertical (0 = horizontal, 90 = pointing down)
+        supportBeamOffsetH: -120,    // horizontal offset from pivot (inches)
+        supportBeamOffsetV: 0,    // vertical offset from pivot (inches)
         // Panel lift (cylinder mode)
         panelLift: 0,  // inches above closed structure
         // Arch mode wall faces - array of booleans for each wall face (2 per module)
@@ -1982,8 +3103,8 @@ const state = {
         archWallFaces: null,
         // Arch mode panel positioning controls
         archPanelOffset: 2,       // inches - lift panels above roof surface
-        archPanelSlide: 0,        // inches - slide panels along slope direction
-        archPanelSeparation: 0.75 // inches - lateral separation between A/B face panels
+        archPanelSlide: 0.5,      // inches - A/B mirrored slide along tilt angle (front-back, perpendicular to width axis, in face plane)
+        archPanelSeparation: 0    // inches - additional offset along slope (0 = properly aligned, built-in offset of 4.6 applied internally)
     },
     
     history: [],
@@ -2551,6 +3672,560 @@ class Panel3D {
 }
 
 // ============================================================================
+// STRUCTURE GEOMETRY CLASSES (Refactored Architecture)
+// ============================================================================
+
+/**
+ * Represents a roof face for solar panel placement.
+ * Pre-computes all properties at construction time for stable orientation.
+ */
+class RoofFace {
+    /**
+     * @param {Beam3D} topBeam - The top horizontal beam defining this face
+     * @param {Beam3D} botBeam - The bottom horizontal beam defining this face
+     * @param {boolean} isAFace - True for A pattern faces (even index), false for B
+     * @param {number} moduleIndex - Index of the parent module
+     * @param {number} faceIndex - Global face index
+     * @param {{x,y,z}} structureCenter - Center of the structure for outward direction
+     * @param {{x,y,z}} moduleSlideAxis - Module-wide slide axis (same for A and B)
+     */
+    constructor(topBeam, botBeam, isAFace, moduleIndex, faceIndex, structureCenter, moduleCenter = null) {
+        this.topBeam = topBeam;
+        this.botBeam = botBeam;
+        this.isAFace = isAFace;
+        this.moduleIndex = moduleIndex;
+        this.faceIndex = faceIndex;
+        this.moduleCenter = moduleCenter;
+        
+        // Pre-compute all geometry at construction time
+        this._computeGeometry(structureCenter);
+    }
+    
+    _computeGeometry(structureCenter) {
+        const topBeam = this.topBeam;
+        const botBeam = this.botBeam;
+        
+        // Ensure consistent beam direction
+        const topDir = vNorm(vSub(topBeam.p2, topBeam.p1));
+        const botDir = vNorm(vSub(botBeam.p2, botBeam.p1));
+        const sameDirection = vDot(topDir, botDir) > 0;
+        
+        // Calculate corners
+        const tl = topBeam.p1;
+        const tr = topBeam.p2;
+        const bl = sameDirection ? botBeam.p1 : botBeam.p2;
+        const br = sameDirection ? botBeam.p2 : botBeam.p1;
+        
+        this.corners = [tl, tr, br, bl];
+        
+        // Calculate center
+        this.center = {
+            x: (tl.x + tr.x + bl.x + br.x) / 4,
+            y: (tl.y + tr.y + bl.y + br.y) / 4,
+            z: (tl.z + tr.z + bl.z + br.z) / 4
+        };
+        
+        // Calculate face dimensions and axes
+        const topEdge = vSub(tr, tl);
+        const botEdge = vSub(br, bl);
+        const leftEdge = vSub(bl, tl);
+        const rightEdge = vSub(br, tr);
+        
+        this.width = (vMag(topEdge) + vMag(botEdge)) / 2;
+        this.height = (vMag(leftEdge) + vMag(rightEdge)) / 2;
+        
+        // Width axis: along the beams
+        this.widthAxis = vNorm(vScale(vAdd(topEdge, botEdge), 0.5));
+        
+        // Height axis: from top to bottom (slope direction)
+        this.heightAxis = vNorm(vScale(vAdd(leftEdge, rightEdge), 0.5));
+        
+        // Normal: perpendicular to face, pointing outward
+        this.normal = vNorm(vCross(this.widthAxis, this.heightAxis));
+        
+        // For closed polygon structures (pentagon, etc.), "outward" is different for EACH FACE.
+        // Each face should point away from the MODULE CENTER (center of all 4 beams).
+        // The module center is passed from ModuleGeometry.createFaces().
+        
+        let outwardHint;
+        if (this.moduleCenter) {
+            // Outward direction: from face center to module center (AWAY from face surface)
+            // We want panels to face OUTWARD from each face, which is TOWARD the module center
+            const toModuleCenter = {
+                x: this.moduleCenter.x - this.center.x,
+                y: this.moduleCenter.y - this.center.y,
+                z: 0
+            };
+            const toMag = Math.sqrt(toModuleCenter.x * toModuleCenter.x + toModuleCenter.y * toModuleCenter.y);
+            
+            if (toMag > 0.1) {
+                outwardHint = {x: toModuleCenter.x / toMag, y: toModuleCenter.y / toMag, z: 0};
+            } else {
+                // Fallback: use beam's axisY
+                const topAxisY = topBeam.axisY || {x: 0, y: 1, z: 0};
+                const botAxisY = botBeam.axisY || {x: 0, y: 1, z: 0};
+                outwardHint = vNorm(vAdd(topAxisY, botAxisY));
+            }
+        } else {
+            // Fallback: use beam's axisY
+            const topAxisY = topBeam.axisY || {x: 0, y: 1, z: 0};
+            const botAxisY = botBeam.axisY || {x: 0, y: 1, z: 0};
+            outwardHint = vNorm(vAdd(topAxisY, botAxisY));
+        }
+        
+        // Flip normal if not aligned with outward hint
+        if (vDot(this.normal, outwardHint) < 0) {
+            this.normal = vScale(this.normal, -1);
+            this.heightAxis = vScale(this.heightAxis, -1);
+        }
+        
+        // Re-orthogonalize axes
+        this.heightAxis = vNorm(vSub(this.heightAxis, vScale(this.normal, vDot(this.heightAxis, this.normal))));
+        this.widthAxis = vNorm(vCross(this.heightAxis, this.normal));
+        
+        // SLIDE AXIS: Use face's own widthAxis (beam direction along its length)
+        // widthAxis points along the beam, and since A and B beams CROSS,
+        // their widthAxis directions naturally point in different (opposite) directions.
+        // Using widthAxis directly (same sign for both) creates the "apart/together" effect.
+        this.slideAxis = this.widthAxis;
+    }
+    
+    /**
+     * Transform this face using a transformation function
+     * @param {Function} transformPoint - Function to transform a point
+     * @param {Function} transformDir - Function to transform a direction vector
+     */
+    transform(transformPoint, transformDir) {
+        this.corners = this.corners.map(c => transformPoint(c));
+        this.center = transformPoint(this.center);
+        this.normal = transformDir(this.normal);
+        this.widthAxis = transformDir(this.widthAxis);
+        this.heightAxis = transformDir(this.heightAxis);
+        this.slideAxis = transformDir(this.slideAxis);
+    }
+}
+
+/**
+ * Represents geometry for a single linkage module.
+ * Contains beams, faces, and pivot points for one module of the structure.
+ */
+class ModuleGeometry {
+    /**
+     * @param {number} index - Module index (0 to modules-1)
+     */
+    constructor(index) {
+        this.index = index;
+        this.topBeams = [];      // 2 horizontal beams (A/B crossing pattern)
+        this.botBeams = [];      // 2 horizontal beams (A/B crossing pattern)
+        this.uprights = [];      // Vertical beams (scissor or fixed)
+        this.faces = [];         // 2 RoofFace objects (A and B)
+        this.pivotInner = null;  // Inner pivot point (br in 2D)
+        this.pivotOuter = null;  // Outer pivot point (tr in 2D)
+        this.brackets = [];      // Bracket components
+        this.bolts = [];         // Bolt components
+    }
+    
+    /**
+     * Add a horizontal beam pair (top ring)
+     * @param {Beam3D} beamA - First beam of crossing pair
+     * @param {Beam3D} beamB - Second beam of crossing pair
+     */
+    addTopBeams(beamA, beamB) {
+        this.topBeams = [beamA, beamB];
+    }
+    
+    /**
+     * Add a horizontal beam pair (bottom ring)
+     * @param {Beam3D} beamA - First beam of crossing pair
+     * @param {Beam3D} beamB - Second beam of crossing pair
+     */
+    addBotBeams(beamA, beamB) {
+        this.botBeams = [beamA, beamB];
+    }
+    
+    /**
+     * Create roof faces from the beam pairs
+     * @param {{x,y,z}} structureCenter - Center of structure for outward direction
+     * @param {number} baseFaceIndex - Starting face index
+     */
+    createFaces(structureCenter, baseFaceIndex) {
+        if (this.topBeams.length >= 2 && this.botBeams.length >= 2) {
+            // Compute TRUE module center from all 4 beam centers
+            // This is crucial for determining "outward" direction for each face
+            const moduleCenter = {
+                x: (this.topBeams[0].center.x + this.topBeams[1].center.x + 
+                    this.botBeams[0].center.x + this.botBeams[1].center.x) / 4,
+                y: (this.topBeams[0].center.y + this.topBeams[1].center.y + 
+                    this.botBeams[0].center.y + this.botBeams[1].center.y) / 4,
+                z: (this.topBeams[0].center.z + this.topBeams[1].center.z + 
+                    this.botBeams[0].center.z + this.botBeams[1].center.z) / 4
+            };
+            
+            // Face A: topBeams[0] with botBeams[0] (Pattern A beams)
+            const faceA = new RoofFace(
+                this.topBeams[0], this.botBeams[0],
+                true, this.index, baseFaceIndex, structureCenter, moduleCenter
+            );
+            // Face B: topBeams[1] with botBeams[1] (Pattern B beams)
+            const faceB = new RoofFace(
+                this.topBeams[1], this.botBeams[1],
+                false, this.index, baseFaceIndex + 1, structureCenter, moduleCenter
+            );
+            this.faces = [faceA, faceB];
+        }
+    }
+}
+
+/**
+ * Holds all geometry for the linkage structure in structure space.
+ * This is the central data structure before mode-specific transformations.
+ */
+class StructureGeometry {
+    constructor() {
+        this.modules = [];       // Array of ModuleGeometry
+        this.beams = [];         // All Beam3D objects
+        this.brackets = [];      // All Bracket3D objects
+        this.bolts = [];         // All bolt objects
+        this.faces = [];         // All RoofFace objects for panels
+        this.maxRadius = 0;      // Maximum radial extent
+        this.maxHeight = 0;      // Maximum height
+        this.structureCenter = {x: 0, y: 0, z: 0};  // Structure center point
+    }
+    
+    /**
+     * Add a module to the structure
+     * @param {ModuleGeometry} module - Module to add
+     */
+    addModule(module) {
+        this.modules.push(module);
+    }
+    
+    /**
+     * Collect all geometry from modules into flat arrays
+     */
+    collectGeometry() {
+        this.beams = [];
+        this.brackets = [];
+        this.bolts = [];
+        this.faces = [];
+        
+        // Calculate structure center from all horizontal beams
+        let centerSum = {x: 0, y: 0, z: 0};
+        let beamCount = 0;
+        
+        this.modules.forEach(module => {
+            [...module.topBeams, ...module.botBeams].forEach(beam => {
+                if (beam && beam.center) {
+                    centerSum = vAdd(centerSum, beam.center);
+                    beamCount++;
+                }
+            });
+        });
+        
+        if (beamCount > 0) {
+            this.structureCenter = vScale(centerSum, 1 / beamCount);
+        }
+        
+        // Create faces for each module
+        let faceIndex = 0;
+        this.modules.forEach(module => {
+            module.createFaces(this.structureCenter, faceIndex);
+            faceIndex += 2;
+        });
+        
+        // Collect all geometry
+        this.modules.forEach(module => {
+            this.beams.push(...module.topBeams, ...module.botBeams, ...module.uprights);
+            this.brackets.push(...module.brackets);
+            this.bolts.push(...module.bolts);
+            this.faces.push(...module.faces);
+        });
+    }
+    
+    /**
+     * Apply a transformation to all geometry
+     * @param {Function} transformPoint - Function to transform a point
+     * @param {Function} transformDir - Function to transform a direction
+     */
+    transform(transformPoint, transformDir) {
+        // Transform beams
+        this.beams.forEach(beam => {
+            if (beam.corners) beam.corners = beam.corners.map(c => transformPoint(c));
+            if (beam.p1) beam.p1 = transformPoint(beam.p1);
+            if (beam.p2) beam.p2 = transformPoint(beam.p2);
+            if (beam.center) beam.center = transformPoint(beam.center);
+            if (beam.axisX) beam.axisX = transformDir(beam.axisX);
+            if (beam.axisY) beam.axisY = transformDir(beam.axisY);
+            if (beam.axisZ) beam.axisZ = transformDir(beam.axisZ);
+            if (beam.faces) {
+                beam.faces.forEach(face => {
+                    if (face.norm) face.norm = transformDir(face.norm);
+                });
+            }
+        });
+        
+        // Transform brackets
+        this.brackets.forEach(bracket => {
+            if (bracket.pos) bracket.pos = transformPoint(bracket.pos);
+        });
+        
+        // Transform bolts
+        this.bolts.forEach(bolt => {
+            if (bolt.pos) bolt.pos = transformPoint(bolt.pos);
+            if (bolt.dir) bolt.dir = transformDir(bolt.dir);
+        });
+        
+        // Transform faces
+        this.faces.forEach(face => {
+            face.transform(transformPoint, transformDir);
+        });
+        
+        // Transform structure center
+        this.structureCenter = transformPoint(this.structureCenter);
+    }
+}
+
+/**
+ * Transforms structure geometry for cylinder mode (horizontal orientation).
+ * In cylinder mode, the structure is a horizontal ring with Y pointing up.
+ */
+class CylinderTransform {
+    constructor(options = {}) {
+        this.options = options;
+    }
+    
+    /**
+     * Apply cylinder transformation (identity - no change needed for cylinder mode)
+     * @param {StructureGeometry} geometry - Structure geometry to transform
+     * @returns {StructureGeometry} Transformed geometry
+     */
+    apply(geometry) {
+        // Cylinder mode is the default structure space orientation
+        // No transformation needed
+        return geometry;
+    }
+}
+
+/**
+ * Transforms structure geometry for arch mode (vertical orientation).
+ * Rotates the structure to stand vertically with feet on the ground.
+ */
+class ArchTransform {
+    constructor(options = {}) {
+        this.flipVertical = options.flipVertical || false;
+        this.rotation = options.rotation || 0;
+        this.capUprights = options.capUprights || false;
+    }
+    
+    /**
+     * Apply arch transformation to make structure vertical with ground tracking
+     * @param {StructureGeometry} geometry - Structure geometry to transform
+     * @param {Object} footInfo - Information about left/right foot positions
+     * @returns {StructureGeometry} Transformed geometry
+     */
+    apply(geometry, footInfo) {
+        if (!footInfo || !footInfo.leftFoot || !footInfo.rightFoot) {
+            return geometry;
+        }
+        
+        const { leftFoot, rightFoot } = footInfo;
+        
+        // Calculate transformation
+        const midX = (leftFoot.x + rightFoot.x) / 2;
+        const midY = (leftFoot.y + rightFoot.y) / 2;
+        const midZ = (leftFoot.z + rightFoot.z) / 2;
+        
+        const dx = rightFoot.x - leftFoot.x;
+        const dz = rightFoot.z - leftFoot.z;
+        const footAngle = Math.atan2(dz, dx);
+        
+        const userRotRad = (this.rotation || 0) * Math.PI / 180;
+        const totalRotY = -footAngle + userRotRad;
+        const cosR = Math.cos(totalRotY);
+        const sinR = Math.sin(totalRotY);
+        
+        const flipY = this.flipVertical ? -1 : 1;
+        
+        const transformPoint = (p) => {
+            let x = p.x - midX;
+            let y = p.y - midY;
+            let z = p.z - midZ;
+            
+            const x2 = x * cosR - z * sinR;
+            const y2 = y;
+            const z2 = x * sinR + z * cosR;
+            
+            return { x: x2, y: z2 * flipY, z: -y2 };
+        };
+        
+        const transformDir = (v) => {
+            if (!v || typeof v.x === 'undefined') return v;
+            const x2 = v.x * cosR - v.z * sinR;
+            const y2 = v.y;
+            const z2 = v.x * sinR + v.z * cosR;
+            return { x: x2, y: z2 * flipY, z: -y2 };
+        };
+        
+        geometry.transform(transformPoint, transformDir);
+        
+        // Ground tracking: move structure so lowest point is at Y=0
+        let minY = Infinity;
+        geometry.beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c.y < minY) minY = c.y;
+                });
+            }
+        });
+        
+        if (minY !== Infinity && Math.abs(minY) > 0.01) {
+            const groundOffset = -minY;
+            const translatePoint = (p) => ({ x: p.x, y: p.y + groundOffset, z: p.z });
+            const identityDir = (v) => v;
+            geometry.transform(translatePoint, identityDir);
+        }
+        
+        return geometry;
+    }
+}
+
+/**
+ * Places solar panels on roof faces with simple, predictable positioning.
+ */
+class PanelPlacer {
+    /**
+     * @param {Object} config - Panel configuration
+     */
+    constructor(config) {
+        this.panelWidth = config.panelWidth || 40;
+        this.panelLength = config.panelLength || 65;
+        this.panelThickness = config.panelThickness || 1.5;
+        this.paddingX = config.paddingX || 0;
+        this.paddingY = config.paddingY || 0;
+        this.rows = config.gridRows || 2;
+        this.cols = config.gridCols || 1;
+        
+        // Positioning parameters
+        this.lift = config.archPanelOffset || 1.5;
+        this.slide = config.archPanelSlide || 0;
+        this.separation = config.archPanelSeparation || 0;
+        this.separationBaseline = 4.6;  // Built-in alignment offset
+    }
+    
+    /**
+     * Place panels on a single roof face
+     * @param {RoofFace} face - The face to place panels on
+     * @returns {Panel3D[]} Array of panels
+     */
+    placeOnFace(face) {
+        const panels = [];
+        
+        // 1. Start at face center
+        let baseCenter = { ...face.center };
+        
+        // 2. Apply separation (all panels move together along height axis)
+        const totalSeparation = this.separation + this.separationBaseline;
+        baseCenter = vAdd(baseCenter, vScale(face.heightAxis, totalSeparation));
+        
+        // 3. Apply slide (A/B move opposite along pre-computed slideAxis)
+        // slideAxis already encodes the A/B direction
+        baseCenter = vAdd(baseCenter, vScale(face.slideAxis, this.slide));
+        
+        // 4. Apply lift (along normal)
+        const liftOffset = this.lift + this.panelThickness / 2;
+        baseCenter = vAdd(baseCenter, vScale(face.normal, liftOffset));
+        
+        // 5. Generate grid of panels
+        for (let row = 0; row < this.rows; row++) {
+            for (let col = 0; col < this.cols; col++) {
+                const localX = (col - (this.cols - 1) / 2) * (this.panelWidth + this.paddingX);
+                const localY = (row - (this.rows - 1) / 2) * (this.panelLength + this.paddingY);
+                
+                const panelCenter = vAdd(
+                    vAdd(baseCenter, vScale(face.widthAxis, localX)),
+                    vScale(face.heightAxis, localY)
+                );
+                
+                // Create panel with face orientation
+                const panel = new Panel3D(
+                    panelCenter,
+                    this.panelWidth,
+                    this.panelLength,
+                    this.panelThickness,
+                    0,
+                    face.normal
+                );
+                
+                // Override axes to match face
+                panel.axisX = face.widthAxis;
+                panel.axisZ = face.heightAxis;
+                panel.axisY = face.normal;
+                
+                // Recalculate corners
+                this._recalculateCorners(panel);
+                
+                panels.push(panel);
+            }
+        }
+        
+        return panels;
+    }
+    
+    /**
+     * Place panels on multiple faces
+     * @param {RoofFace[]} faces - Array of faces
+     * @param {boolean[]} enabledFaces - Which faces are enabled
+     * @returns {Panel3D[]} Array of all panels
+     */
+    placeOnFaces(faces, enabledFaces) {
+        const allPanels = [];
+        
+        faces.forEach((face, idx) => {
+            if (enabledFaces && idx < enabledFaces.length && !enabledFaces[idx]) {
+                return;
+            }
+            const facePanels = this.placeOnFace(face);
+            allPanels.push(...facePanels);
+        });
+        
+        return allPanels;
+    }
+    
+    /**
+     * Recalculate panel corners based on axes
+     * @param {Panel3D} panel - Panel to update
+     */
+    _recalculateCorners(panel) {
+        const hw = panel.width / 2;
+        const hl = panel.length / 2;
+        const ht = panel.thickness / 2;
+        
+        const offsets = [
+            {x: -hw, z: -hl}, {x: hw, z: -hl},
+            {x: hw, z: hl}, {x: -hw, z: hl}
+        ];
+        
+        panel.corners = [];
+        
+        // Bottom corners
+        offsets.forEach(o => {
+            let p = vAdd(panel.center, vScale(panel.axisX, o.x));
+            p = vAdd(p, vScale(panel.axisZ, o.z));
+            p = vAdd(p, vScale(panel.axisY, -ht));
+            panel.corners.push(p);
+        });
+        
+        // Top corners
+        offsets.forEach(o => {
+            let p = vAdd(panel.center, vScale(panel.axisX, o.x));
+            p = vAdd(p, vScale(panel.axisZ, o.z));
+            p = vAdd(p, vScale(panel.axisY, ht));
+            panel.corners.push(p);
+        });
+    }
+}
+
+// ============================================================================
 // LINKAGE SOLVER
 // ============================================================================
 
@@ -2715,7 +4390,7 @@ function createBeamStack(stackParams) {
             offsetStart,
             offsetEnd,
             width, thick, color,
-            {moduleIndex, stackType, stackId}
+            {moduleIndex, stackType, stackId, patternId: isPatternA ? 'A' : 'B'}
         ));
     }
     
@@ -2748,12 +4423,25 @@ function solveLinkage(foldAngle) {
     const relativeRotation = jointResult.relativeRotation;
 
     // Calculate vertical beam height from radial span
-    const dx = loc.tr.x - loc.br.x;
-    const dy = loc.tr.y - loc.br.y;
-    const radialSpan = Math.sqrt(dx*dx + dy*dy);
-    
+    // When using fixed beams, adjust height to maintain fixed beam spacing
     let zHeight = 0;
-    if (safeV > radialSpan) zHeight = Math.sqrt(safeV*safeV - radialSpan*radialSpan);
+    if (state.useFixedBeams) {
+        // With fixed beams, use the V beam length directly as the height
+        // The structure height equals the fixed beam length (converted to inches)
+        const fixedBeamLengthInches = state.vLengthFt * INCHES_PER_FOOT;
+        
+        // Set zHeight directly from the V beam length
+        // This ensures fixed beams are always the user-specified length
+        zHeight = fixedBeamLengthInches;
+        state.fixedBeamHeight = zHeight; // Store for reference
+        state.fixedBeamLength = fixedBeamLengthInches;
+    } else {
+        // Normal scissor behavior: height changes with radial span
+        const dx = loc.tr.x - loc.br.x;
+        const dy = loc.tr.y - loc.br.y;
+        const radialSpan = Math.sqrt(dx*dx + dy*dy);
+        if (safeV > radialSpan) zHeight = Math.sqrt(safeV*safeV - radialSpan*radialSpan);
+    }
 
     let beams = [];
     let brackets = [];
@@ -2810,8 +4498,9 @@ function solveLinkage(foldAngle) {
             i, 'horizontal-top', i * 2 + 1  // moduleIndex, stackType, stackId
         );
 
-        // --- VERTICAL UPRIGHTS ---
-        if (zHeight > 1) {
+        // --- VERTICAL UPRIGHTS (scissor cross-beams) ---
+        // Skip when using fixed straight beams (they replace the scissor uprights)
+        if (zHeight > 1 && !state.useFixedBeams) {
             const yMin = state.bracketOffset;
             const yMax = topH - state.bracketOffset;
             
@@ -3186,17 +4875,14 @@ function solveLinkage(foldAngle) {
                     // These go through the vertical beam stack at the actual pivot points
                     
                     // 1. Bottom pivot bolts - at yMin (where vertical beams attach to bottom ring)
-                    // Use the actual vertical pivot positions (pBotInner/pBotOuter at yMin)
                     bolts.push(createHorizontalBolt(pBotInner, vBoltDir, vBoltLength));
                     bolts.push(createHorizontalBolt(pBotOuter, vBoltDir, vBoltLength));
                     
                     // 2. Top pivot bolts - at yMax (where vertical beams attach to top ring)
-                    // Use the actual vertical pivot positions (pTopInner/pTopOuter at yMax)
                     bolts.push(createHorizontalBolt(pTopOuter, vBoltDir, vBoltLength));
                     bolts.push(createHorizontalBolt(pTopInner, vBoltDir, vBoltLength));
                     
                     // 3. CENTER pivot bolt (horizontal, where the two X beams cross)
-                    // Use the exact center between the pivot endpoints
                     bolts.push(createHorizontalBolt(centerMid, vBoltDir, vBoltLength));
                     
                     // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
@@ -3252,6 +4938,85 @@ function solveLinkage(foldAngle) {
                     // Top ring brackets for cap uprights
                     brackets.push(createBracket(capTopInner, false, capAvgDir));
                     brackets.push(createBracket(capTopOuter, false, capAvgDir));
+                }
+            }
+        }
+        
+        // --- FIXED STRAIGHT BEAMS (non-folding, constant spacing) ---
+        // Create beams regardless of zHeight - they connect bottom ring to top ring
+        // This block is OUTSIDE the scissor uprights block
+        if (state.useFixedBeams) {
+            // Use vLengthFt for fixed beam length (convert to inches)
+            const fixedBeamLengthInches = state.vLengthFt * INCHES_PER_FOOT;
+            state.fixedBeamLength = fixedBeamLengthInches;
+            
+            // Fixed beam dimensions - use vertical beam dimensions
+            const fixedBeamWidth = state.vBeamW;
+            const fixedBeamThick = state.vBeamT;
+            
+            // Get pivot points at the horizontal ring level (not offset by bracketOffset)
+            // Bottom ring points
+            const bottomInner = map(loc.br, 0);
+            const bottomOuter = map(loc.tr, 0);
+            // Top ring points (at fixed height above bottom)
+            const topInner = map(loc.br, topH);
+            const topOuter = map(loc.tr, topH);
+            
+            // Create fixed straight beams connecting bottom to top
+            // Beam 1: Inner pivot - straight vertical beam
+            const beam1Start = bottomInner;
+            const beam1End = topInner;
+            
+            // Only create if start and end are different
+            const beam1Len = vMag(vSub(beam1End, beam1Start));
+            if (beam1Len > 0.1) {
+                beams.push(new Beam3D(beam1Start, beam1End, fixedBeamWidth, fixedBeamThick, woodColor, {
+                    moduleIndex: i,
+                    stackType: 'fixed-beam',
+                    stackId: i * 2 + 0
+                }));
+            }
+            
+            // Beam 2: Outer pivot - straight vertical beam
+            const beam2Start = bottomOuter;
+            const beam2End = topOuter;
+            
+            const beam2Len = vMag(vSub(beam2End, beam2Start));
+            if (beam2Len > 0.1) {
+                beams.push(new Beam3D(beam2Start, beam2End, fixedBeamWidth, fixedBeamThick, woodColor, {
+                    moduleIndex: i,
+                    stackType: 'fixed-beam',
+                    stackId: i * 2 + 1
+                }));
+            }
+            
+            // --- FIXED CAP BEAMS (for arch mode with cap uprights) ---
+            // Add fixed straight beams at the cap position (first module, left side)
+            if (i === 0 && state.archCapUprights) {
+                // Cap beams use LEFT side pivot points (bl/tl) instead of right side (br/tr)
+                const capBottomInner = map(loc.bl, 0);
+                const capBottomOuter = map(loc.tl, 0);
+                const capTopInner = map(loc.bl, topH);
+                const capTopOuter = map(loc.tl, topH);
+                
+                // Cap Beam 1: Inner pivot (bl)
+                const capBeam1Len = vMag(vSub(capTopInner, capBottomInner));
+                if (capBeam1Len > 0.1) {
+                    beams.push(new Beam3D(capBottomInner, capTopInner, fixedBeamWidth, fixedBeamThick, woodColor, {
+                        moduleIndex: i,
+                        stackType: 'fixed-beam-cap',
+                        stackId: -2  // Special ID for cap beams
+                    }));
+                }
+                
+                // Cap Beam 2: Outer pivot (tl)
+                const capBeam2Len = vMag(vSub(capTopOuter, capBottomOuter));
+                if (capBeam2Len > 0.1) {
+                    beams.push(new Beam3D(capBottomOuter, capTopOuter, fixedBeamWidth, fixedBeamThick, woodColor, {
+                        moduleIndex: i,
+                        stackType: 'fixed-beam-cap',
+                        stackId: -3  // Special ID for cap beams
+                    }));
                 }
             }
         }
@@ -3336,11 +5101,12 @@ function solveLinkage(foldAngle) {
         // Step 1: Find the feet - outer pivots of first and last modules
         // If cap uprights are present, use them for the left foot instead
         const hBeams = beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
-        const capBeams = beams.filter(b => b.stackType === 'vertical-cap');
+        // Include both regular cap uprights AND fixed cap beams
+        const capBeams = beams.filter(b => b.stackType === 'vertical-cap' || b.stackType === 'fixed-beam-cap');
         let leftFoot = null;
         let rightFoot = null;
         
-        // Check for cap uprights first - if present, use them for left foot
+        // Check for cap uprights/beams first - if present, use them for left foot
         if (state.archCapUprights && capBeams.length > 0) {
             // Find the outermost point of the cap uprights (largest radius)
             let maxRadCap = -Infinity;
@@ -3673,7 +5439,150 @@ function solveLinkage(foldAngle) {
         // maxRad is for X direction, so we don't need to update it for Z depth
     }
 
-    return { beams, brackets, bolts, maxRad, maxHeight };
+    // Build StructureGeometry from the generated beams for panel placement
+    const structureGeometry = buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight);
+    
+    return { beams, brackets, bolts, maxRad, maxHeight, structureGeometry };
+}
+
+/**
+ * Builds a StructureGeometry object from the beam arrays generated by solveLinkage.
+ * This provides the foundation for stable solar panel placement.
+ * @param {Beam3D[]} beams - Array of all beams
+ * @param {Bracket3D[]} brackets - Array of all brackets
+ * @param {Array} bolts - Array of all bolts
+ * @param {number} maxRad - Maximum radius
+ * @param {number} maxHeight - Maximum height
+ * @returns {StructureGeometry} The structure geometry object
+ */
+function buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight) {
+    const geometry = new StructureGeometry();
+    geometry.maxRadius = maxRad;
+    geometry.maxHeight = maxHeight;
+    geometry.beams = beams;
+    geometry.brackets = brackets;
+    geometry.bolts = bolts;
+    
+    // Calculate structure center from all horizontal beams
+    let centerSum = {x: 0, y: 0, z: 0};
+    let beamCount = 0;
+    beams.forEach(beam => {
+        if (beam.stackType && beam.stackType.startsWith('horizontal') && beam.center) {
+            centerSum = vAdd(centerSum, beam.center);
+            beamCount++;
+        }
+    });
+    if (beamCount > 0) {
+        geometry.structureCenter = vScale(centerSum, 1 / beamCount);
+    }
+    
+    // Group beams by module and array index
+    const topHBeams = beams.filter(b => b.stackType === 'horizontal-top');
+    const botHBeams = beams.filter(b => b.stackType === 'horizontal-bottom');
+    
+    // Group by arrayIndex (for tunnel mode)
+    const groupByArrayIndex = (beamList) => {
+        const groups = {};
+        beamList.forEach(beam => {
+            const idx = beam.arrayIndex !== undefined ? beam.arrayIndex : 0;
+            if (!groups[idx]) groups[idx] = [];
+            groups[idx].push(beam);
+        });
+        return groups;
+    };
+    
+    const topArrayGroups = groupByArrayIndex(topHBeams);
+    const botArrayGroups = groupByArrayIndex(botHBeams);
+    
+    // Process each array copy
+    Object.keys(topArrayGroups).forEach(arrayIdxStr => {
+        const arrayIdx = parseInt(arrayIdxStr);
+        const topBeamsInArray = topArrayGroups[arrayIdx] || [];
+        const botBeamsInArray = botArrayGroups[arrayIdx] || [];
+        
+        if (topBeamsInArray.length === 0 || botBeamsInArray.length === 0) return;
+        
+        // Group beams by moduleIndex
+        const topByModule = {};
+        const botByModule = {};
+        topBeamsInArray.forEach(beam => {
+            const mi = beam.moduleIndex !== undefined ? beam.moduleIndex : 0;
+            if (!topByModule[mi]) topByModule[mi] = [];
+            topByModule[mi].push(beam);
+        });
+        botBeamsInArray.forEach(beam => {
+            const mi = beam.moduleIndex !== undefined ? beam.moduleIndex : 0;
+            if (!botByModule[mi]) botByModule[mi] = [];
+            botByModule[mi].push(beam);
+        });
+        
+        // Create ModuleGeometry for each module
+        const moduleIndices = [...new Set([
+            ...Object.keys(topByModule).map(k => parseInt(k)),
+            ...Object.keys(botByModule).map(k => parseInt(k))
+        ])].sort((a, b) => a - b);
+        
+        moduleIndices.forEach(moduleIdx => {
+            const topBeamsForModule = topByModule[moduleIdx] || [];
+            const botBeamsForModule = botByModule[moduleIdx] || [];
+            
+            if (topBeamsForModule.length < 2 || botBeamsForModule.length < 2) return;
+            
+            // CRITICAL: Separate beams by crossing pattern (A vs B), not just by stack order
+            // Pattern A and B are the two crossing directions of the scissor module
+            const topPatternA = topBeamsForModule.filter(b => b.patternId === 'A');
+            const topPatternB = topBeamsForModule.filter(b => b.patternId === 'B');
+            const botPatternA = botBeamsForModule.filter(b => b.patternId === 'A');
+            const botPatternB = botBeamsForModule.filter(b => b.patternId === 'B');
+            
+            console.log(`Module ${moduleIdx}: topA=${topPatternA.length}, topB=${topPatternB.length}, botA=${botPatternA.length}, botB=${botPatternB.length}`);
+            
+            // If we don't have both patterns, fall back to using beam positions
+            let topBeamA, topBeamB, botBeamA, botBeamB;
+            if (topPatternA.length > 0 && topPatternB.length > 0) {
+                topBeamA = topPatternA[0];
+                topBeamB = topPatternB[0];
+            } else {
+                // Fallback: separate by X position (pattern beams are at different X positions)
+                const sorted = [...topBeamsForModule].sort((a, b) => a.center.x - b.center.x);
+                topBeamA = sorted[0];
+                topBeamB = sorted[sorted.length - 1];
+            }
+            
+            if (botPatternA.length > 0 && botPatternB.length > 0) {
+                botBeamA = botPatternA[0];
+                botBeamB = botPatternB[0];
+            } else {
+                const sorted = [...botBeamsForModule].sort((a, b) => a.center.x - b.center.x);
+                botBeamA = sorted[0];
+                botBeamB = sorted[sorted.length - 1];
+            }
+            
+            const module = new ModuleGeometry(moduleIdx);
+            module.topBeams = [topBeamA, topBeamB];
+            module.botBeams = [botBeamA, botBeamB];
+            
+            // Find uprights for this module
+            module.uprights = beams.filter(b => 
+                (b.stackType === 'vertical' || b.stackType === 'fixed-beam') &&
+                b.moduleIndex === moduleIdx &&
+                (b.arrayIndex === undefined || b.arrayIndex === arrayIdx)
+            );
+            
+            geometry.addModule(module);
+        });
+    });
+    
+    // Collect geometry creates faces using RoofFace class
+    geometry.collectGeometry();
+    
+    console.log('buildStructureGeometry: modules:', geometry.modules.length, 'faces:', geometry.faces.length);
+    if (geometry.faces.length > 0) {
+        console.log('  face[0] slideAxis:', geometry.faces[0].slideAxis);
+        console.log('  face[1] slideAxis:', geometry.faces[1]?.slideAxis);
+    }
+    
+    return geometry;
 }
 
 // ============================================================================
@@ -3968,6 +5877,27 @@ function calculateArchWallFaces(data) {
         return roofFaces;
     }
     
+    // Calculate structure center from all horizontal beams
+    // This is used as the "interior" reference point for determining outward direction
+    // Using actual beam centers is more accurate than assuming origin, especially after ground tracking
+    let structureCenter = {x: 0, y: 0, z: 0};
+    let beamCount = 0;
+    data.beams.forEach(beam => {
+        if (beam.stackType && beam.stackType.startsWith('horizontal') && beam.center) {
+            structureCenter.x += beam.center.x;
+            structureCenter.y += beam.center.y;
+            structureCenter.z += beam.center.z;
+            beamCount++;
+        }
+    });
+    if (beamCount > 0) {
+        structureCenter = {
+            x: structureCenter.x / beamCount,
+            y: structureCenter.y / beamCount,
+            z: structureCenter.z / beamCount
+        };
+    }
+    
     // Get horizontal beams - these define the roof surfaces
     const topHBeams = data.beams.filter(b => b.stackType === 'horizontal-top');
     const botHBeams = data.beams.filter(b => b.stackType === 'horizontal-bottom');
@@ -4105,10 +6035,47 @@ function calculateArchWallFaces(data) {
         
         const beamPairs = matchBeams(topBeams, botBeams);
         
+        // Calculate TRUE module center from ALL beams in this module
+        // This is the center of the X-crossing and should be the SAME for all faces in the module
+        let trueModuleCenter = {x: 0, y: 0, z: 0};
+        let beamCountForCenter = 0;
+        [...topBeams, ...botBeams].forEach(beam => {
+            if (beam.center) {
+                trueModuleCenter.x += beam.center.x;
+                trueModuleCenter.y += beam.center.y;
+                trueModuleCenter.z += beam.center.z;
+                beamCountForCenter++;
+            }
+        });
+        if (beamCountForCenter > 0) {
+            trueModuleCenter.x /= beamCountForCenter;
+            trueModuleCenter.y /= beamCountForCenter;
+            trueModuleCenter.z /= beamCountForCenter;
+        }
+        
+        // Calculate a MODULE-WIDE slide axis from the two crossing beams
+        // This axis is perpendicular to the line connecting the two beam centers (in XY plane)
+        // This ensures A and B faces use the SAME axis (just flipped) for consistent opposite movement
+        let moduleSlideAxis = {x: 0, y: 1, z: 0};  // Default fallback
+        if (topBeams.length >= 2) {
+            const beam1Center = topBeams[0].center;
+            const beam2Center = topBeams[1].center;
+            // Direction from beam1 to beam2 in XY plane
+            const dx = beam2Center.x - beam1Center.x;
+            const dy = beam2Center.y - beam1Center.y;
+            const mag = Math.sqrt(dx * dx + dy * dy);
+            if (mag > 0.01) {
+                // Perpendicular direction (rotate 90° in XY plane): (-dy, dx)
+                moduleSlideAxis = {x: -dy / mag, y: dx / mag, z: 0};
+            }
+        }
+        
         // Create a face for each beam pair
-        beamPairs.forEach((pair) => {
+        // Track which face is A (even index) vs B (odd index) for consistent slide direction
+        beamPairs.forEach((pair, pairIndex) => {
             const topBeam = pair.top;
             const botBeam = pair.bot;
+            const isAFace = (pairIndex % 2) === 0;  // A faces are even, B faces are odd
             
             if (!topBeam.p1 || !topBeam.p2 || !botBeam.p1 || !botBeam.p2) return;
             
@@ -4133,29 +6100,44 @@ function calculateArchWallFaces(data) {
             const botDir = vNorm(vSub(botBeam.p2, botBeam.p1));
             const sameDirection = vDot(topDir, botDir) > 0;
             
-            let tl = {...topBeam.p1};
-            let tr = {...topBeam.p2};
+            // Calculate face center FIRST (before offsetting corners)
+            // This gives us a stable reference for determining "outward"
+            const rawCenter = {
+                x: (topBeam.p1.x + topBeam.p2.x + (sameDirection ? botBeam.p1.x : botBeam.p2.x) + (sameDirection ? botBeam.p2.x : botBeam.p1.x)) / 4,
+                y: (topBeam.p1.y + topBeam.p2.y + (sameDirection ? botBeam.p1.y : botBeam.p2.y) + (sameDirection ? botBeam.p2.y : botBeam.p1.y)) / 4,
+                z: (topBeam.p1.z + topBeam.p2.z + (sameDirection ? botBeam.p1.z : botBeam.p2.z) + (sameDirection ? botBeam.p2.z : botBeam.p1.z)) / 4
+            };
+            
+            // Calculate outward direction from structure center to face center
+            // IMPORTANT: For vertical arch mode, use XY coordinates only (ignore Z)
+            // This ensures "outward" is radial from the arch axis, not influenced by vertical position
+            // The arch axis runs along Z, so faces are arrayed around it in the XY plane
+            // Using full 3D can cause the dot product to hover near zero and flip at certain angles
+            const toFaceFromCenterXY = {
+                x: rawCenter.x - structureCenter.x,
+                y: rawCenter.y - structureCenter.y,
+                z: 0  // Ignore Z for outward direction calculation
+            };
+            const toFaceMagXY = Math.sqrt(toFaceFromCenterXY.x * toFaceFromCenterXY.x + toFaceFromCenterXY.y * toFaceFromCenterXY.y);
+            const outwardDir = toFaceMagXY > 0.01 ? {x: toFaceFromCenterXY.x / toFaceMagXY, y: toFaceFromCenterXY.y / toFaceMagXY, z: 0} : {x: 0, y: 1, z: 0};
+            
+            // Use the outward direction for corner offset instead of beam.axisY
+            // This ensures corners are always offset to the EXTERIOR of the structure
+            // regardless of how the beam's local coordinate system is oriented
+            const halfThick = (topBeam.t || 1.5) / 2;
+            
+            let tl = vAdd({...topBeam.p1}, vScale(outwardDir, halfThick));
+            let tr = vAdd({...topBeam.p2}, vScale(outwardDir, halfThick));
             let bl, br;
             
             if (sameDirection) {
-                bl = {...botBeam.p1};
-                br = {...botBeam.p2};
+                bl = vAdd({...botBeam.p1}, vScale(outwardDir, halfThick));
+                br = vAdd({...botBeam.p2}, vScale(outwardDir, halfThick));
             } else {
                 // Flip bottom beam endpoints
-                bl = {...botBeam.p2};
-                br = {...botBeam.p1};
+                bl = vAdd({...botBeam.p2}, vScale(outwardDir, halfThick));
+                br = vAdd({...botBeam.p1}, vScale(outwardDir, halfThick));
             }
-            
-            // Offset all corners outward by the beam's axisY (thickness direction)
-            // This places the face on the outer surface of the beams
-            const topAxisY = topBeam.axisY || {x: 0, y: 1, z: 0};
-            const botAxisY = botBeam.axisY || {x: 0, y: 1, z: 0};
-            const halfThick = (topBeam.t || 1.5) / 2;
-            
-            tl = vAdd(tl, vScale(topAxisY, halfThick));
-            tr = vAdd(tr, vScale(topAxisY, halfThick));
-            bl = vAdd(bl, vScale(botAxisY, halfThick));
-            br = vAdd(br, vScale(botAxisY, halfThick));
             
             // Calculate face geometry
             const topEdge = vSub(tr, tl);  // Width direction (along beam)
@@ -4185,20 +6167,13 @@ function calculateArchWallFaces(data) {
             let normal = vNorm(vCross(widthAxis, heightAxis));
             
             // CRITICAL: Determine "outward" direction for this face
-            // For an arch, outward = away from the interior (center at ground level)
-            // The arch interior is approximately at (0, 0, 0) or the center of all beams at y=0
-            // 
-            // Calculate outward direction: from arch center toward face center
-            // For faces above ground, this generally points up and out
-            // For faces on the sides, this points sideways
-            const archInterior = {x: 0, y: 0, z: 0};  // Arch interior at ground level center
-            const toFaceCenter = vSub(center, archInterior);
+            // For arch mode, "outward" means away from the interior of the arch
+            // Use the outwardDir we already calculated (from structureCenter to rawCenter)
+            // This is more stable than recalculating from offset center which can cause flipping
+            // at certain fold angles when the face is near the structure center
             
-            // Normalize but keep vertical component to properly handle top vs sides
-            const outwardHint = vNorm(toFaceCenter);
-            
-            // If normal points toward the arch interior (negative dot), flip it
-            if (vDot(normal, outwardHint) < 0) {
+            // If normal points toward the arch interior (negative dot with outwardDir), flip it
+            if (vDot(normal, outwardDir) < 0) {
                 normal = vScale(normal, -1);
                 heightAxis = vScale(heightAxis, -1);
             }
@@ -4208,15 +6183,53 @@ function calculateArchWallFaces(data) {
             heightAxis = vNorm(vSub(heightAxis, vScale(normal, vDot(heightAxis, normal))));
             widthAxis = vNorm(vCross(heightAxis, normal));
             
+            // Calculate the beam direction (along the horizontal beam's length)
+            // Use the top beam's axisZ which is the beam's length direction
+            // This direction follows the beam's 3D orientation which changes with fold angle
+            const beamDirection = topBeam.axisZ || topDir;
+            
+            // Calculate direction towards outer pivot (top pivot in arch terminology)
+            // The outer pivot is the beam endpoint that's away from the module center
+            // We use the TRUE MODULE center (calculated from ALL beams in the module)
+            // This ensures A and B faces in the same module select OPPOSITE outer pivots
+            // (since they're on opposite sides of the X-crossing)
+            
+            // Direction from true module center to face center - this is OPPOSITE for A vs B faces
+            const faceOutwardFromModule = vSub(rawCenter, trueModuleCenter);
+            const faceOutwardMag = vMag(faceOutwardFromModule);
+            const faceOutwardDir = faceOutwardMag > 0.01 ? vScale(faceOutwardFromModule, 1 / faceOutwardMag) : outwardDir;
+            
+            // The outer pivot is the endpoint more aligned with faceOutwardDir
+            const p1FromCenter = vSub(topBeam.p1, rawCenter);
+            const p2FromCenter = vSub(topBeam.p2, rawCenter);
+            const p1OutwardDot = vDot(p1FromCenter, faceOutwardDir);
+            const p2OutwardDot = vDot(p2FromCenter, faceOutwardDir);
+            const outerPivot = p1OutwardDot > p2OutwardDot ? topBeam.p1 : topBeam.p2;
+            
+            // For slide direction, use the MODULE-WIDE slide axis calculated above
+            // This axis is perpendicular to the line connecting beam centers
+            // Using the SAME axis for all faces in the module (just flipped for A vs B)
+            // ensures consistent opposite directions at ALL fold angles
+            // A faces (even index) slide in +moduleSlideAxis direction
+            // B faces (odd index) slide in -moduleSlideAxis direction
+            // Project moduleSlideAxis onto the face plane to keep movement on the face
+            const slideAxisOnPlane = vSub(moduleSlideAxis, vScale(normal, vDot(moduleSlideAxis, normal)));
+            const slideAxisMag = vMag(slideAxisOnPlane);
+            const projectedSlideAxis = slideAxisMag > 0.01 ? vScale(slideAxisOnPlane, 1 / slideAxisMag) : widthAxis;
+            const slideDirection = isAFace ? projectedSlideAxis : vScale(projectedSlideAxis, -1);
+            
             roofFaces.push({
                 moduleIndex: moduleIdx,
                 faceType: 'roof',
                 faceIndex: faceIndex++,
+                isAFace: isAFace,  // Track A vs B pattern for consistent slide direction
                 corners: [tl, tr, br, bl],
                 center: center,
                 normal: normal,
                 widthAxis: widthAxis,
                 heightAxis: heightAxis,
+                beamDirection: beamDirection,  // The actual beam's 3D direction
+                slideDirection: slideDirection,  // Direction to slide panels (A and B in opposite directions)
                 width: width,
                 height: height,
                 area: width * height
@@ -4484,17 +6497,17 @@ function calculateSpiralLayout(canopy, config) {
 
 /**
  * Calculates arch mode panel layout on roof faces.
- * Panels are placed on the zig-zag roof surfaces of the structure,
- * matching the pitch and orientation of each face.
+ * Uses the refactored RoofFace objects with pre-computed slideAxis for stable orientation.
  * 
- * Controls:
- * - gridRows/gridCols: number of panels per face
- * - archPanelOffset (Lift): distance above roof surface
- * - archPanelSlide (Slide): offset along slope direction
+ * REFACTORED: Now uses StructureGeometry.faces (RoofFace objects) when available,
+ * falling back to calculateArchWallFaces for backwards compatibility.
+ * 
+ * Key improvement: RoofFace.slideAxis is pre-computed based on isAFace,
+ * eliminating the fragile runtime slide direction calculations.
  * 
  * @param {Object} canopy - Canopy area information (unused)
  * @param {Object} config - Solar panel configuration from state
- * @param {Object} data - Linkage data with beams array
+ * @param {Object} data - Linkage data with beams and structureGeometry
  * @returns {Panel3D[]} Array of Panel3D objects
  */
 function calculateArchLayout(canopy, config, data) {
@@ -4502,147 +6515,70 @@ function calculateArchLayout(canopy, config, data) {
     
     if (!data || !data.beams) return panels;
     
-    // Calculate wall faces from the structure
-    const wallFaces = calculateArchWallFaces(data);
+    // REFACTORED: Use StructureGeometry.faces (RoofFace objects) if available
+    // These have pre-computed slideAxis for stable slide direction
+    let wallFaces;
+    const hasStructGeom = data.structureGeometry && data.structureGeometry.faces;
+    const faceCount = hasStructGeom ? data.structureGeometry.faces.length : 0;
+    console.log('calculateArchLayout: structureGeometry available:', !!data.structureGeometry, 'faces:', faceCount);
+    
+    if (hasStructGeom && faceCount > 0) {
+        // Use the new RoofFace objects from StructureGeometry
+        wallFaces = data.structureGeometry.faces;
+        console.log('Using NEW RoofFace system, face[0] slideAxis:', wallFaces[0]?.slideAxis);
+    } else {
+        // Fallback to old method for backwards compatibility
+        wallFaces = calculateArchWallFaces(data);
+        console.log('Using OLD calculateArchWallFaces fallback');
+    }
     
     if (wallFaces.length === 0) return panels;
     
-    const { panelLength, panelWidth, panelThickness, paddingX, paddingY, archWallFaces, archPanelOffset, archPanelSlide, archPanelSeparation, gridRows, gridCols } = config;
-    
-    // Simplified positioning controls
-    const panelLift = archPanelOffset ?? 2;           // Distance above roof surface
-    const panelSlide = archPanelSlide ?? 0;           // Slide along slope direction
-    const abSeparation = archPanelSeparation ?? 0.75; // A/B face lateral offset
-    
-    // Use gridRows and gridCols for panel count (user-configurable)
-    const userRows = gridRows || 2;
-    const userCols = gridCols || 2;
+    // Create PanelPlacer with configuration
+    const placer = new PanelPlacer({
+        panelWidth: config.panelWidth,
+        panelLength: config.panelLength,
+        panelThickness: config.panelThickness,
+        paddingX: config.paddingX,
+        paddingY: config.paddingY,
+        gridRows: config.gridRows,
+        gridCols: config.gridCols,
+        archPanelOffset: config.archPanelOffset,
+        archPanelSlide: config.archPanelSlide,
+        archPanelSeparation: config.archPanelSeparation
+    });
     
     // Match enabled faces to actual faces found
-    // The archWallFaces array has 2 entries per module (for 2 roof faces each)
     const numFaces = state.modules * 2;
-    let enabledFaces = archWallFaces;
+    let enabledFaces = config.archWallFaces;
     if (!enabledFaces || enabledFaces.length !== numFaces) {
         enabledFaces = new Array(numFaces).fill(true);
     }
     
-    wallFaces.forEach((face) => {
-        // Check if this face is enabled using faceIndex
+    // Place panels on each enabled face
+    console.log(`calculateArchLayout: Processing ${wallFaces.length} faces, slide=${placer.slide}`);
+    wallFaces.forEach((face, i) => {
         const faceIdx = face.faceIndex;
-        if (faceIdx < enabledFaces.length && !enabledFaces[faceIdx]) return;
-        
-        const { corners, center, normal, widthAxis, heightAxis } = face;
-        
-        // Determine if this is an A or B face (alternating pattern)
-        // A faces are even indices (0, 2, 4...), B faces are odd (1, 3, 5...)
-        const isAFace = (faceIdx % 2) === 0;
-        
-        // Use pre-calculated axes from face
-        let wAxis = widthAxis;
-        let hAxis = heightAxis;
-        let nAxis = normal;
-        
-        if (!wAxis || !hAxis) {
-            // Fallback: calculate from corners
-            const tl = corners[0], tr = corners[1], br = corners[2], bl = corners[3];
-            wAxis = vNorm(vSub(tr, tl));
-            hAxis = vNorm(vSub(bl, tl)); // Slope direction: top to bottom
+        if (faceIdx !== undefined && faceIdx < enabledFaces.length && !enabledFaces[faceIdx]) {
+            return;
         }
         
-        // Project axes to be perpendicular to normal while preserving their original direction
-        // This keeps hAxis aligned with the actual slope direction
-        hAxis = vNorm(vSub(hAxis, vScale(nAxis, vDot(hAxis, nAxis))));
-        wAxis = vNorm(vCross(hAxis, nAxis));
-        
-        // Use user-specified rows and columns
-        const cols = userCols;
-        const rows = userRows;
-        
-        // Calculate A/B separation offset (mirrored for A vs B faces along height axis)
-        const abOffset = isAFace ? abSeparation : -abSeparation;
-        
-        // Calculate panel position:
-        // 1. Start at face center
-        // 2. Apply slide offset along width axis (slope direction)
-        // 3. Apply A/B separation along height axis
-        // 4. Apply lift offset perpendicular to roof surface (normal axis)
-        let panelBaseCenter = {...center};
-        panelBaseCenter = vAdd(panelBaseCenter, vScale(wAxis, panelSlide));
-        panelBaseCenter = vAdd(panelBaseCenter, vScale(hAxis, abOffset));
-        const offsetCenter = vAdd(panelBaseCenter, vScale(nAxis, panelLift + panelThickness / 2));
-        
-        // Create panels in a grid on this face
-        for (let row = 0; row < rows; row++) {
-            for (let col = 0; col < cols; col++) {
-                // Calculate local position relative to face center
-                const localX = (col - (cols - 1) / 2) * (panelWidth + paddingX);
-                const localY = (row - (rows - 1) / 2) * (panelLength + paddingY);
-                
-                // Transform to world position
-                const panelCenter = vAdd(
-                    vAdd(offsetCenter, vScale(wAxis, localX)),
-                    vScale(hAxis, localY)
-                );
-                
-                // Create panel with proper orientation
-                const panel = new Panel3D(panelCenter, panelWidth, panelLength, panelThickness, 0, nAxis);
-                
-                // Override the panel's axes to match the face orientation
-                panel.axisX = wAxis;
-                panel.axisZ = hAxis;
-                panel.axisY = nAxis;
-                
-                // Recalculate corners based on orthogonal axes
-                const hw = panelWidth / 2;
-                const hl = panelLength / 2;
-                const ht = panelThickness / 2;
-                
-                panel.corners = [];
-                const offsets = [
-                    {x: -hw, z: -hl}, {x: hw, z: -hl},
-                    {x: hw, z: hl}, {x: -hw, z: hl}
-                ];
-                
-                // Bottom corners (backside of panel - facing the structure)
-                offsets.forEach(o => {
-                    let p = vAdd(panelCenter, vScale(panel.axisX, o.x));
-                    p = vAdd(p, vScale(panel.axisZ, o.z));
-                    p = vAdd(p, vScale(panel.axisY, -ht));
-                    panel.corners.push(p);
-                });
-                
-                // Top corners (solar cell side - facing outward/skyward)
-                offsets.forEach(o => {
-                    let p = vAdd(panelCenter, vScale(panel.axisX, o.x));
-                    p = vAdd(p, vScale(panel.axisZ, o.z));
-                    p = vAdd(p, vScale(panel.axisY, ht));
-                    panel.corners.push(p);
-                });
-                
-                // Update faces with correct normals
-                // axisY points outward (sun-facing), so top face normal = axisY
-                panel.faces = [
-                    { idx: [0, 3, 2, 1], norm: vScale(panel.axisY, -1) },  // Bottom (back, facing structure)
-                    { idx: [4, 5, 6, 7], norm: panel.axisY },              // Top (solar surface, facing sky)
-                    { idx: [0, 1, 5, 4], norm: vScale(panel.axisZ, -1) },  // Front edge
-                    { idx: [3, 7, 6, 2], norm: panel.axisZ },              // Back edge
-                    { idx: [0, 4, 7, 3], norm: vScale(panel.axisX, -1) },  // Left edge
-                    { idx: [1, 2, 6, 5], norm: panel.axisX }               // Right edge
-                ];
-                
-                // Recalculate grid lines for solar cell pattern
-                panel.gridLines = panel.calculateGridLines();
-                
-                panels.push(panel);
-            }
+        // Log slide axis for debugging
+        if (i < 2) {
+            console.log(`  Face ${i} (isA=${face.isAFace}): slideAxis=${JSON.stringify(face.slideAxis)}`);
         }
+        
+        // Use PanelPlacer for consistent panel placement
+        const facePanels = placer.placeOnFace(face);
+        panels.push(...facePanels);
     });
     
     return panels;
 }
 
 /**
- * Generates radial support beams for solar panel array
+ * Generates support beams from the outer upper vertical pivot points
+ * Support beams extend outward from the pivot, aligned with the vertical upright axis
  * @param {Object} canopy - Canopy area information
  * @param {Object} config - Solar panel configuration
  * @returns {Beam3D[]} Array of support beams
@@ -4650,70 +6586,62 @@ function calculateArchLayout(canopy, config, data) {
 function generateSupportBeams(canopy, config) {
     const beams = [];
     
-    if (!canopy || !canopy.center || !canopy.maxRadius) return beams;
+    if (!canopy || !canopy.center) return beams;
     
     // Support beam dimensions (smaller than main beams)
     const beamWidth = 1.5;
     const beamThickness = 1.5;
-    const supportColor = {r: 100, g: 100, b: 100}; // Gray for steel/aluminum
+    const supportColor = {r: 90, g: 90, b: 95}; // Gray for steel/aluminum
     
-    // Number of radial supports based on module count
+    // Get configuration values
+    const beamLength = config.supportBeamLength || 96;  // 8 feet default
+    const foldAngle = degToRad(config.supportBeamFoldAngle || 0);  // 0 = horizontal
+    const rotationOffset = degToRad(config.supportBeamRotation || 0);
+    const offsetH = config.supportBeamOffsetH !== undefined ? config.supportBeamOffsetH : -120;  // Horizontal offset from pivot
+    const offsetV = config.supportBeamOffsetV || 0;  // Vertical offset from pivot
+    
+    // Number of supports based on module count
     const numSupports = state.modules;
     const angleStep = (2 * Math.PI) / numSupports;
     
-    // User-adjustable rotation offset (in radians)
-    const rotationOffset = degToRad(config.supportBeamRotation || 0);
-    
     // Default offset: align with vertical uprights (half module offset from center pivots)
-    // Vertical uprights are located at the edges between modules, not at the centers
     const verticalAlignOffset = angleStep / 2;
     
-    // Calculate lift amount for support beams to match panel lift
-    const liftAmount = config.panelLift || 0;
-    const supportY = canopy.topHeight + 1 + liftAmount; // Just above the ring, plus lift
+    // Find the outer upper pivot positions from the structure
+    const outerRadius = canopy.maxRadius || 100;
+    const pivotHeight = canopy.topHeight || 50;
     
-    // Create radial beams from center to outer ring
+    // Create support beams radiating from each pivot point
     for (let i = 0; i < numSupports; i++) {
-        // Align with vertical uprights by default, then apply user rotation
-        const angle = i * angleStep + verticalAlignOffset + rotationOffset;
+        // Calculate angle for this support (aligned with vertical uprights)
+        const baseAngle = i * angleStep + verticalAlignOffset + rotationOffset;
         
-        // Start at center (with small offset for hub)
-        const hubRadius = 6; // 6 inch hub
-        const startX = canopy.center.x + hubRadius * Math.cos(angle);
-        const startZ = canopy.center.z + hubRadius * Math.sin(angle);
+        // Pivot point position (outer upper pivot)
+        // Apply horizontal offset radially outward
+        const pivotX = canopy.center.x + (outerRadius + offsetH) * Math.cos(baseAngle);
+        const pivotY = pivotHeight + offsetV;
+        const pivotZ = canopy.center.z + (outerRadius + offsetH) * Math.sin(baseAngle);
         
-        // End at outer ring
-        const endRadius = canopy.maxRadius * 0.95;
-        const endX = canopy.center.x + endRadius * Math.cos(angle);
-        const endZ = canopy.center.z + endRadius * Math.sin(angle);
+        // Calculate beam direction based on fold angle
+        // Fold angle: 0 = horizontal outward, positive = tilting down, negative = tilting up
+        const outwardDirX = Math.cos(baseAngle);
+        const outwardDirZ = Math.sin(baseAngle);
         
-        const start = { x: startX, y: supportY, z: startZ };
-        const end = { x: endX, y: supportY, z: endZ };
+        // Apply fold angle - beam tilts in the vertical plane containing the radial direction
+        const horizontalComponent = Math.cos(foldAngle);
+        const verticalComponent = -Math.sin(foldAngle);  // Negative so positive fold tilts down
+        
+        // End point of support beam
+        const endX = pivotX + beamLength * outwardDirX * horizontalComponent;
+        const endY = pivotY + beamLength * verticalComponent;
+        const endZ = pivotZ + beamLength * outwardDirZ * horizontalComponent;
+        
+        const start = { x: pivotX, y: pivotY, z: pivotZ };
+        const end = { x: endX, y: endY, z: endZ };
         
         beams.push(new Beam3D(start, end, beamWidth, beamThickness, supportColor, {
             moduleIndex: -1,
             stackType: 'solar-support',
-            stackId: i
-        }));
-    }
-    
-    // Add circular ring support at mid-radius
-    const midRadius = canopy.maxRadius * 0.6;
-    for (let i = 0; i < numSupports; i++) {
-        const angle1 = i * angleStep + verticalAlignOffset + rotationOffset;
-        const angle2 = (i + 1) * angleStep + verticalAlignOffset + rotationOffset;
-        
-        const x1 = canopy.center.x + midRadius * Math.cos(angle1);
-        const z1 = canopy.center.z + midRadius * Math.sin(angle1);
-        const x2 = canopy.center.x + midRadius * Math.cos(angle2);
-        const z2 = canopy.center.z + midRadius * Math.sin(angle2);
-        
-        const start = { x: x1, y: supportY, z: z1 };
-        const end = { x: x2, y: supportY, z: z2 };
-        
-        beams.push(new Beam3D(start, end, beamWidth, beamThickness, supportColor, {
-            moduleIndex: -1,
-            stackType: 'solar-support-ring',
             stackId: i
         }));
     }
@@ -4745,6 +6673,23 @@ function calculateSolarPanels(data) {
     const isVertical = state.orientation === 'vertical';
     
     if (isVertical) {
+        // In arch mode with scissor uprights (not fixed beams), hide panels if structure is too compressed
+        // This prevents confusing panel rendering when the vertical spacing is smaller than the panel array
+        if (!state.useFixedBeams) {
+            // Calculate the minimum panel array height (number of rows * panel length + spacing)
+            const panelArrayHeight = config.gridRows * config.panelLength + (config.gridRows - 1) * config.paddingY;
+            
+            // Get the current ring spacing from the structure height
+            // In arch mode, maxHeight represents the vertical distance between rings after transformation
+            // We use a rough estimate based on data.maxHeight
+            const ringSpacing = data.maxHeight || 0;
+            
+            // If the ring spacing is less than the panel array height, don't show panels
+            if (ringSpacing < panelArrayHeight * 0.8) { // 80% threshold to account for panel placement offsets
+                return { panels: [], supportBeams: [], canopy: canopy };
+            }
+        }
+        
         // Arch mode uses wall face-based layout
         panels = calculateArchLayout(canopy, config, data);
     } else {
@@ -4851,13 +6796,6 @@ function render() {
         
         updateHUD(data);
 
-        const w = canvas.width = canvas.clientWidth;
-        const h = canvas.height = canvas.clientHeight;
-        // Reset canvas state for clean rendering
-        ctx.globalAlpha = 1.0;
-        ctx.fillStyle = '#15202b';
-        ctx.fillRect(0, 0, w, h);
-
         // Calculate structure center from bounding box of all beams
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
@@ -4890,37 +6828,78 @@ function render() {
             mainViewCenter = currentCenter;
         }
 
-        // Main perspective view (full canvas) - uses fixed center during animation
-        drawGrid3D(ctx, '3d', w / 2, h / 2, w, mainViewCenter);
-        drawScene(ctx, data, '3d', w / 2, h / 2, w, h, null, mainViewCenter);
-
-        // Render top view on separate canvas
-        const topCanvas = document.getElementById('canvas-top');
-        if (topCanvas) {
-            const topCtx = topCanvas.getContext('2d');
-            const tw = topCanvas.width = topCanvas.clientWidth;
-            const th = topCanvas.height = topCanvas.clientHeight;
-            topCtx.fillStyle = '#192734';
-            topCtx.fillRect(0, 0, tw, th);
-            const topView = calculateViewCenterAndZoom(data, 'top', tw, th);
-            drawScene(topCtx, data, 'top', topView.x, topView.y, tw, th, topView.scale);
+        // Try Three.js WebGL rendering, with 2D canvas fallback
+        const threeJsSuccess = renderThreeJS(data, mainViewCenter);
+        
+        if (!threeJsSuccess) {
+            // Fallback to 2D canvas rendering
+            const viewport = document.getElementById('viewport');
+            const w = viewport.clientWidth;
+            const h = viewport.clientHeight;
+            
+            // Hide WebGL canvas and show 2D canvas
+            const webglCanvas = document.getElementById('canvas-webgl');
+            if (webglCanvas) webglCanvas.style.display = 'none';
+            
+            // Resize main canvas
+            if (canvas.width !== w || canvas.height !== h) {
+                canvas.width = w;
+                canvas.height = h;
+            }
+            canvas.style.display = 'block';
+            canvas.style.zIndex = '1';
+            
+            // Clear and draw
+            ctx.fillStyle = '#15202b';
+            ctx.fillRect(0, 0, w, h);
+            
+            // Draw 2D scene
+            drawGrid3D(ctx, w / 2, h / 2, mainViewCenter);
+            drawScene(ctx, data, '3d', w / 2, h / 2, w, h, null, mainViewCenter);
+            
+            // Also draw top and side views using 2D fallback
+            const topCanvas = document.getElementById('canvas-top');
+            const topWebGL = document.getElementById('canvas-top-webgl');
+            const sideCanvas = document.getElementById('canvas-side');
+            const sideWebGL = document.getElementById('canvas-side-webgl');
+            
+            // Hide WebGL canvases, show 2D canvases
+            if (topWebGL) topWebGL.style.display = 'none';
+            if (sideWebGL) sideWebGL.style.display = 'none';
+            
+            if (topCanvas) {
+                topCanvas.style.display = 'block';
+                topCanvas.style.zIndex = '1';
+                const topCtx = topCanvas.getContext('2d');
+                const tw = topCanvas.parentElement.clientWidth;
+                const th = topCanvas.parentElement.clientHeight;
+                topCanvas.width = tw;
+                topCanvas.height = th;
+                topCtx.fillStyle = '#192734';
+                topCtx.fillRect(0, 0, tw, th);
+                drawScene(topCtx, data, 'top', tw / 2, th / 2, tw, th, null, currentCenter);
+            }
+            
+            if (sideCanvas) {
+                sideCanvas.style.display = 'block';
+                sideCanvas.style.zIndex = '1';
+                const sideCtx = sideCanvas.getContext('2d');
+                const sw = sideCanvas.parentElement.clientWidth;
+                const sh = sideCanvas.parentElement.clientHeight;
+                sideCanvas.width = sw;
+                sideCanvas.height = sh;
+                sideCtx.fillStyle = '#192734';
+                sideCtx.fillRect(0, 0, sw, sh);
+                drawScene(sideCtx, data, 'side', sw / 2, sh / 2, sw, sh, null, currentCenter);
+            }
         }
 
-        // Render side view on separate canvas
-        const sideCanvas = document.getElementById('canvas-side');
-        if (sideCanvas) {
-            const sideCtx = sideCanvas.getContext('2d');
-            const sw = sideCanvas.width = sideCanvas.clientWidth;
-            const sh = sideCanvas.height = sideCanvas.clientHeight;
-            sideCtx.fillStyle = '#192734';
-            sideCtx.fillRect(0, 0, sw, sh);
-            const sideView = calculateViewCenterAndZoom(data, 'side', sw, sh);
-            drawScene(sideCtx, data, 'side', sideView.x, sideView.y, sw, sh, sideView.scale);
-        }
-
-        // Draw live measurements if in measure mode
+        // Draw live measurements if in measure mode (2D overlay)
         if (state.measureMode) {
-            drawMeasurements(ctx, data);
+            // Create a 2D overlay canvas for measurements
+            const w = canvas.clientWidth;
+            const h = canvas.clientHeight;
+            drawMeasurementsOverlay(data, mainViewCenter, w, h);
         }
     } catch (error) {
         console.error('Render error:', error);
@@ -5126,7 +7105,9 @@ function calculateViewCenterAndZoom(data, view, vw, vh) {
 }
 
 /**
- * Draws the 3D scene in a specific viewport
+ * [LEGACY - Kept for fallback/debugging]
+ * Draws the 3D scene in a specific viewport using 2D canvas
+ * Now replaced by Three.js WebGL rendering via renderThreeJS()
  * @param {CanvasRenderingContext2D} c - Canvas context
  * @param {{beams: Beam3D[], brackets: Bracket3D[], bolts: Array}} data - Geometry data
  * @param {string} view - View type: '3d', 'top', or 'side'
@@ -5962,7 +7943,9 @@ function drawScene(c, data, view, cx, cy, vw, vh, customScale = null, structureC
 }
 
 /**
- * Draws the 3D grid in the perspective viewport
+ * [LEGACY - Kept for fallback/debugging]
+ * Draws the 3D grid in the perspective viewport using 2D canvas
+ * Now replaced by Three.js GridHelper via createGridMesh()
  * @param {CanvasRenderingContext2D} c - Canvas context
  * @param {string} view - View type
  * @param {number} cx - Center X
@@ -6935,7 +8918,7 @@ const CONFIG_KEYS = [
     'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
     'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
     'costHBeam', 'costVBeam', 'costBolt', 'costBracket', 'costSolarPanel', 'orientation', 'archCapUprights',
-    'archFlipVertical', 'archRotation', 'arrayCount'
+    'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams'
 ];
 
 /** Solar panel configuration keys (saved separately as nested object) */
@@ -6944,10 +8927,156 @@ const SOLAR_PANEL_KEYS = [
     'ratedWatts', 'voc', 'vmp', 'isc', 'imp', 'layoutMode',
     'paddingX', 'paddingY', 'gridRows', 'gridCols', 'gridRotation', 'radialCount', 'radialOffset',
     'radialRotation', 'radialLateralOffset', 'pinwheelAngle', 'spiralTurns', 'spiralPanels', 'spiralSpacing',
-    'showSupportBeams', 'supportBeamRotation', 'panelLift',
+    'showSupportBeams', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
+    'supportBeamOffsetH', 'supportBeamOffsetV', 'panelLift',
     'archPanelOffset', 'archPanelSlide', 'archPanelSeparation',
     'archWallFaces'
 ];
+
+/**
+ * Applies a V30 (new structured) configuration
+ * @param {Object} config - V30 configuration object
+ */
+function applyV30Config(config) {
+    // Structure parameters
+    if (config.structure) {
+        const s = config.structure;
+        if (s.modules !== undefined) state.modules = s.modules;
+        if (s.beamLengths) {
+            if (s.beamLengths.horizontal !== undefined) state.hLengthFt = s.beamLengths.horizontal;
+            if (s.beamLengths.vertical !== undefined) state.vLengthFt = s.beamLengths.vertical;
+        }
+        if (s.pivotPercent !== undefined) state.pivotPct = s.pivotPercent;
+        if (s.stackCounts) {
+            if (s.stackCounts.horizontal !== undefined) state.hStackCount = s.stackCounts.horizontal;
+            if (s.stackCounts.vertical !== undefined) state.vStackCount = s.stackCounts.vertical;
+        }
+        if (s.beamDimensions) {
+            if (s.beamDimensions.horizontalWidth !== undefined) state.hBeamW = s.beamDimensions.horizontalWidth;
+            if (s.beamDimensions.horizontalThickness !== undefined) state.hBeamT = s.beamDimensions.horizontalThickness;
+            if (s.beamDimensions.verticalWidth !== undefined) state.vBeamW = s.beamDimensions.verticalWidth;
+            if (s.beamDimensions.verticalThickness !== undefined) state.vBeamT = s.beamDimensions.verticalThickness;
+        }
+        if (s.offsets) {
+            if (s.offsets.top !== undefined) state.offsetTopIn = s.offsets.top;
+            if (s.offsets.bottom !== undefined) state.offsetBotIn = s.offsets.bottom;
+            if (s.offsets.vertEnd !== undefined) state.vertEndOffset = s.offsets.vertEnd;
+            if (s.offsets.bracket !== undefined) state.bracketOffset = s.offsets.bracket;
+            if (s.offsets.stackGap !== undefined) state.stackGap = s.offsets.stackGap;
+        }
+        if (s.hobermanAngle !== undefined) state.hobermanAng = s.hobermanAngle;
+        if (s.pivotAngle !== undefined) state.pivotAng = s.pivotAngle;
+        if (s.vStackReverse !== undefined) state.vStackReverse = s.vStackReverse;
+    }
+    
+    // Mode configuration
+    if (config.mode) {
+        const m = config.mode;
+        if (m.type !== undefined) state.orientation = m.type === 'arch' ? 'vertical' : 'horizontal';
+        if (m.flipVertical !== undefined) state.archFlipVertical = m.flipVertical;
+        if (m.rotation !== undefined) state.archRotation = m.rotation;
+        if (m.useFixedBeams !== undefined) state.useFixedBeams = m.useFixedBeams;
+        if (m.capUprights !== undefined) state.archCapUprights = m.capUprights;
+        if (m.arrayCount !== undefined) state.arrayCount = m.arrayCount;
+    }
+    
+    // Solar panel configuration
+    if (config.panels) {
+        const p = config.panels;
+        const sp = state.solarPanels;
+        
+        if (p.enabled !== undefined) sp.enabled = p.enabled;
+        
+        if (p.size) {
+            if (p.size.width !== undefined) sp.panelWidth = p.size.width;
+            if (p.size.length !== undefined) sp.panelLength = p.size.length;
+            if (p.size.thickness !== undefined) sp.panelThickness = p.size.thickness;
+        }
+        
+        if (p.electrical) {
+            if (p.electrical.ratedWatts !== undefined) sp.ratedWatts = p.electrical.ratedWatts;
+            if (p.electrical.voc !== undefined) sp.voc = p.electrical.voc;
+            if (p.electrical.vmp !== undefined) sp.vmp = p.electrical.vmp;
+            if (p.electrical.isc !== undefined) sp.isc = p.electrical.isc;
+            if (p.electrical.imp !== undefined) sp.imp = p.electrical.imp;
+        }
+        
+        if (p.layout) {
+            if (p.layout.mode !== undefined) sp.layoutMode = p.layout.mode;
+            if (p.layout.paddingX !== undefined) sp.paddingX = p.layout.paddingX;
+            if (p.layout.paddingY !== undefined) sp.paddingY = p.layout.paddingY;
+        }
+        
+        if (p.grid) {
+            if (p.grid.rows !== undefined) sp.gridRows = p.grid.rows;
+            if (p.grid.cols !== undefined) sp.gridCols = p.grid.cols;
+            if (p.grid.rotation !== undefined) sp.gridRotation = p.grid.rotation;
+        }
+        
+        if (p.positioning) {
+            if (p.positioning.lift !== undefined) sp.archPanelOffset = p.positioning.lift;
+            if (p.positioning.slide !== undefined) sp.archPanelSlide = p.positioning.slide;
+            if (p.positioning.separation !== undefined) sp.archPanelSeparation = p.positioning.separation;
+        }
+        
+        if (p.radial) {
+            if (p.radial.count !== undefined) sp.radialCount = p.radial.count;
+            if (p.radial.offset !== undefined) sp.radialOffset = p.radial.offset;
+            if (p.radial.rotation !== undefined) sp.radialRotation = p.radial.rotation;
+            if (p.radial.lateralOffset !== undefined) sp.radialLateralOffset = p.radial.lateralOffset;
+            if (p.radial.pinwheelAngle !== undefined) sp.pinwheelAngle = p.radial.pinwheelAngle;
+        }
+        
+        if (p.spiral) {
+            if (p.spiral.turns !== undefined) sp.spiralTurns = p.spiral.turns;
+            if (p.spiral.panels !== undefined) sp.spiralPanels = p.spiral.panels;
+            if (p.spiral.spacing !== undefined) sp.spiralSpacing = p.spiral.spacing;
+        }
+        
+        if (p.support) {
+            if (p.support.show !== undefined) sp.showSupportBeams = p.support.show;
+            if (p.support.rotation !== undefined) sp.supportBeamRotation = p.support.rotation;
+            if (p.support.length !== undefined) sp.supportBeamLength = p.support.length;
+            if (p.support.foldAngle !== undefined) sp.supportBeamFoldAngle = p.support.foldAngle;
+            if (p.support.offsetH !== undefined) sp.supportBeamOffsetH = p.support.offsetH;
+            if (p.support.offsetV !== undefined) sp.supportBeamOffsetV = p.support.offsetV;
+            if (p.support.panelLift !== undefined) sp.panelLift = p.support.panelLift;
+        }
+        
+        if (p.enabledFaces !== undefined) sp.archWallFaces = p.enabledFaces;
+    }
+    
+    // Costs
+    if (config.costs) {
+        const c = config.costs;
+        if (c.hBeam !== undefined) state.costHBeam = c.hBeam;
+        if (c.vBeam !== undefined) state.costVBeam = c.vBeam;
+        if (c.bolt !== undefined) state.costBolt = c.bolt;
+        if (c.bracket !== undefined) state.costBracket = c.bracket;
+        if (c.solarPanel !== undefined) state.costSolarPanel = c.solarPanel;
+    }
+}
+
+/**
+ * Applies a legacy (v29 and earlier) configuration
+ * @param {Object} config - Legacy configuration object
+ */
+function applyLegacyConfig(config) {
+    CONFIG_KEYS.forEach(key => {
+        if (config.hasOwnProperty(key) && config[key] !== undefined) {
+            state[key] = config[key];
+        }
+    });
+    
+    // Load solar panel configuration
+    if (config.hasOwnProperty('solarPanels') && config.solarPanels) {
+        SOLAR_PANEL_KEYS.forEach(key => {
+            if (config.solarPanels.hasOwnProperty(key) && config.solarPanels[key] !== undefined) {
+                state.solarPanels[key] = config.solarPanels[key];
+            }
+        });
+    }
+}
 
 /**
  * Creates a snapshot of current configuration
@@ -6955,27 +9084,170 @@ const SOLAR_PANEL_KEYS = [
  * @returns {Object} Configuration object
  */
 function getConfigSnapshot(includeMetadata = false) {
-    const config = {};
-    
-    CONFIG_KEYS.forEach(key => {
-        config[key] = state[key];
-    });
-    
-    // Fold angle is stored in radians but saved in degrees
-    config.foldAngle = radToDeg(state.foldAngle);
-    
-    // Save animation stop angle
-    config.animationStopAngle = state.animation.stopAngle;
-    
-    // Save solar panel configuration
-    config.solarPanels = {};
-    SOLAR_PANEL_KEYS.forEach(key => {
-        config.solarPanels[key] = state.solarPanels[key];
-    });
+    // V30 Config Format: Cleaner structure with grouped properties
+    const config = {
+        // Structure parameters
+        structure: {
+            modules: state.modules,
+            beamLengths: {
+                horizontal: state.hLengthFt,
+                vertical: state.vLengthFt
+            },
+            pivotPercent: state.pivotPct,
+            stackCounts: {
+                horizontal: state.hStackCount,
+                vertical: state.vStackCount
+            },
+            beamDimensions: {
+                horizontalWidth: state.hBeamW,
+                horizontalThickness: state.hBeamT,
+                verticalWidth: state.vBeamW,
+                verticalThickness: state.vBeamT
+            },
+            offsets: {
+                top: state.offsetTopIn,
+                bottom: state.offsetBotIn,
+                vertEnd: state.vertEndOffset,
+                bracket: state.bracketOffset,
+                stackGap: state.stackGap
+            },
+            hobermanAngle: state.hobermanAng,
+            pivotAngle: state.pivotAng,
+            vStackReverse: state.vStackReverse
+        },
+        
+        // Mode configuration
+        mode: {
+            type: state.orientation === 'vertical' ? 'arch' : 'cylinder',
+            flipVertical: state.archFlipVertical,
+            rotation: state.archRotation,
+            useFixedBeams: state.useFixedBeams,
+            capUprights: state.archCapUprights,
+            arrayCount: state.arrayCount
+        },
+        
+        // Fold angle in degrees
+        foldAngle: radToDeg(state.foldAngle),
+        animationStopAngle: state.animation.stopAngle,
+        
+        // Solar panel configuration
+        panels: {
+            enabled: state.solarPanels.enabled,
+            size: {
+                width: state.solarPanels.panelWidth,
+                length: state.solarPanels.panelLength,
+                thickness: state.solarPanels.panelThickness
+            },
+            electrical: {
+                ratedWatts: state.solarPanels.ratedWatts,
+                voc: state.solarPanels.voc,
+                vmp: state.solarPanels.vmp,
+                isc: state.solarPanels.isc,
+                imp: state.solarPanels.imp
+            },
+            layout: {
+                mode: state.solarPanels.layoutMode,
+                paddingX: state.solarPanels.paddingX,
+                paddingY: state.solarPanels.paddingY
+            },
+            grid: {
+                rows: state.solarPanels.gridRows,
+                cols: state.solarPanels.gridCols,
+                rotation: state.solarPanels.gridRotation
+            },
+            positioning: {
+                lift: state.solarPanels.archPanelOffset,
+                slide: state.solarPanels.archPanelSlide,
+                separation: state.solarPanels.archPanelSeparation
+            },
+            radial: {
+                count: state.solarPanels.radialCount,
+                offset: state.solarPanels.radialOffset,
+                rotation: state.solarPanels.radialRotation,
+                lateralOffset: state.solarPanels.radialLateralOffset,
+                pinwheelAngle: state.solarPanels.pinwheelAngle
+            },
+            spiral: {
+                turns: state.solarPanels.spiralTurns,
+                panels: state.solarPanels.spiralPanels,
+                spacing: state.solarPanels.spiralSpacing
+            },
+            support: {
+                show: state.solarPanels.showSupportBeams,
+                rotation: state.solarPanels.supportBeamRotation,
+                length: state.solarPanels.supportBeamLength,
+                foldAngle: state.solarPanels.supportBeamFoldAngle,
+                offsetH: state.solarPanels.supportBeamOffsetH,
+                offsetV: state.solarPanels.supportBeamOffsetV,
+                panelLift: state.solarPanels.panelLift
+            },
+            enabledFaces: state.solarPanels.archWallFaces
+        },
+        
+        // Costs (optional)
+        costs: {
+            hBeam: state.costHBeam,
+            vBeam: state.costVBeam,
+            bolt: state.costBolt,
+            bracket: state.costBracket,
+            solarPanel: state.costSolarPanel
+        }
+    };
     
     if (includeMetadata) {
-        config.version = 'v29';
+        config.version = 'v30';
         config.timestamp = new Date().toISOString();
+        
+        // Include 3D geometry snapshot for debugging panel/beam positions
+        try {
+            const data = solveLinkage(state.foldAngle);
+            if (state.solarPanels.enabled) {
+                const solarData = calculateSolarPanels(data);
+                data.panels = solarData.panels;
+            }
+            
+            // Extract essential geometry data for debugging
+            config.geometrySnapshot = {
+                // Key config parameters for debugging
+                debugConfig: {
+                    foldAngle: state.foldAngle ? +radToDeg(state.foldAngle).toFixed(1) : null,
+                    archPanelSlide: state.solarPanels.archPanelSlide,
+                    archPanelSeparation: state.solarPanels.archPanelSeparation,
+                    archPanelOffset: state.solarPanels.archPanelOffset,
+                    useFixedBeams: state.useFixedBeams,
+                    archCapUprights: state.archCapUprights
+                },
+                // Horizontal beam positions (first and last module for reference)
+                horizontalBeams: data.beams
+                    .filter(b => b.stackType && b.stackType.startsWith('horizontal'))
+                    .slice(0, 4)  // First 4 horizontal beams
+                    .map(b => ({
+                        type: b.stackType,
+                        center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
+                        axisZ: b.axisZ ? {x: +b.axisZ.x.toFixed(3), y: +b.axisZ.y.toFixed(3), z: +b.axisZ.z.toFixed(3)} : null
+                    })),
+                // Panel positions and orientations
+                panels: data.panels ? data.panels.slice(0, 8).map((p, i) => ({
+                    index: i,
+                    center: {x: +p.center.x.toFixed(2), y: +p.center.y.toFixed(2), z: +p.center.z.toFixed(2)},
+                    normal: p.axisY ? {x: +p.axisY.x.toFixed(3), y: +p.axisY.y.toFixed(3), z: +p.axisY.z.toFixed(3)} : null,
+                    axisX: p.axisX ? {x: +p.axisX.x.toFixed(3), y: +p.axisX.y.toFixed(3), z: +p.axisX.z.toFixed(3)} : null
+                })) : [],
+                // Structure bounds
+                maxRadius: +data.maxRad.toFixed(2),
+                maxHeight: +data.maxHeight.toFixed(2),
+                // Fixed beam info if enabled
+                fixedBeams: state.useFixedBeams ? data.beams
+                    .filter(b => b.stackType === 'fixed-beam' || b.stackType === 'fixed-beam-cap')
+                    .map(b => ({
+                        type: b.stackType,
+                        center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
+                        length: b.corners ? +vMag(vSub(b.corners[0], b.corners[4])).toFixed(2) : 0
+                    })) : null
+            };
+        } catch (e) {
+            config.geometrySnapshot = { error: e.message };
+        }
     }
     
     return config;
@@ -6983,17 +9255,23 @@ function getConfigSnapshot(includeMetadata = false) {
 
 /**
  * Applies a configuration to the current state
+ * Supports both v29 (legacy) and v30 (new) config formats
  * @param {Object} config - Configuration object to apply
  * @param {boolean} updateUI - Whether to update UI elements after applying
  */
 function applyConfig(config, updateUI = true) {
     if (!config) return;
     
-    CONFIG_KEYS.forEach(key => {
-        if (config.hasOwnProperty(key) && config[key] !== undefined) {
-            state[key] = config[key];
-        }
-    });
+    // Detect config version
+    const isV30 = config.version === 'v30' || config.structure !== undefined;
+    
+    if (isV30) {
+        // V30 Format: New structured config
+        applyV30Config(config);
+    } else {
+        // V29 or earlier: Legacy flat config
+        applyLegacyConfig(config);
+    }
     
     // Handle fold angle conversion from degrees to radians
     if (config.hasOwnProperty('foldAngle')) {
@@ -7007,15 +9285,6 @@ function applyConfig(config, updateUI = true) {
         // Default to closed angle
         const closedAngle = getOptimalClosedAngleForAnimation();
         state.animation.stopAngle = radToDeg(closedAngle);
-    }
-    
-    // Load solar panel configuration
-    if (config.hasOwnProperty('solarPanels') && config.solarPanels) {
-        SOLAR_PANEL_KEYS.forEach(key => {
-            if (config.solarPanels.hasOwnProperty(key) && config.solarPanels[key] !== undefined) {
-                state.solarPanels[key] = config.solarPanels[key];
-            }
-        });
     }
     
     // Invalidate geometry cache
@@ -7034,6 +9303,10 @@ function applyConfig(config, updateUI = true) {
         if (capUprightsChk) capUprightsChk.checked = state.archCapUprights || false;
         const capUprightsRow = document.getElementById('cap-upright-row');
         if (capUprightsRow) capUprightsRow.style.display = state.orientation === 'vertical' ? 'flex' : 'none';
+        
+        // Sync fixed beams checkbox
+        const fixedBeamsChk = document.getElementById('chk-fixed-beams');
+        if (fixedBeamsChk) fixedBeamsChk.checked = state.useFixedBeams || false;
         // Sync arch orientation controls
         const isVertical = state.orientation === 'vertical';
         const archOrientGroup = document.getElementById('arch-orientation-group');
@@ -7064,8 +9337,7 @@ function applyConfig(config, updateUI = true) {
         const sp = state.solarPanels;
         const chkSolarPanels = document.getElementById('chk-solar-panels');
         if (chkSolarPanels) chkSolarPanels.checked = sp.enabled;
-        const solarControls = document.getElementById('solar-panel-controls');
-        if (solarControls) solarControls.style.display = sp.enabled ? 'block' : 'none';
+        // Solar panel controls are always visible now
         
         // Panel dimensions
         const slPanelLength = document.getElementById('sl-panel-length');
@@ -7174,10 +9446,30 @@ function applyConfig(config, updateUI = true) {
         const supportBeamControls = document.getElementById('support-beam-controls');
         if (supportBeamControls) supportBeamControls.style.display = sp.showSupportBeams ? 'block' : 'none';
         
+        const slSupportLength = document.getElementById('sl-support-length');
+        const nbSupportLength = document.getElementById('nb-support-length');
+        if (slSupportLength) slSupportLength.value = Math.min(240, sp.supportBeamLength || 96);
+        if (nbSupportLength) nbSupportLength.value = sp.supportBeamLength || 96;
+        
+        const slSupportFold = document.getElementById('sl-support-fold');
+        const nbSupportFold = document.getElementById('nb-support-fold');
+        if (slSupportFold) slSupportFold.value = sp.supportBeamFoldAngle || 0;
+        if (nbSupportFold) nbSupportFold.value = sp.supportBeamFoldAngle || 0;
+        
         const slSupportRotation = document.getElementById('sl-support-rotation');
         const nbSupportRotation = document.getElementById('nb-support-rotation');
-        if (slSupportRotation) slSupportRotation.value = sp.supportBeamRotation || 0;
+        if (slSupportRotation) slSupportRotation.value = Math.max(-45, Math.min(45, sp.supportBeamRotation || 0));
         if (nbSupportRotation) nbSupportRotation.value = sp.supportBeamRotation || 0;
+        
+        const slSupportOffsetH = document.getElementById('sl-support-offset-h');
+        const nbSupportOffsetH = document.getElementById('nb-support-offset-h');
+        if (slSupportOffsetH) slSupportOffsetH.value = Math.max(-120, Math.min(120, sp.supportBeamOffsetH || -120));
+        if (nbSupportOffsetH) nbSupportOffsetH.value = sp.supportBeamOffsetH || -120;
+        
+        const slSupportOffsetV = document.getElementById('sl-support-offset-v');
+        const nbSupportOffsetV = document.getElementById('nb-support-offset-v');
+        if (slSupportOffsetV) slSupportOffsetV.value = sp.supportBeamOffsetV || 0;
+        if (nbSupportOffsetV) nbSupportOffsetV.value = sp.supportBeamOffsetV || 0;
         
         // Panel lift
         const slPanelLift = document.getElementById('sl-panel-lift');
@@ -7193,13 +9485,13 @@ function applyConfig(config, updateUI = true) {
         
         const slArchPanelSlide = document.getElementById('sl-arch-panel-offset-y');
         const nbArchPanelSlide = document.getElementById('nb-arch-panel-offset-y');
-        if (slArchPanelSlide) slArchPanelSlide.value = sp.archPanelSlide ?? 0;
-        if (nbArchPanelSlide) nbArchPanelSlide.value = sp.archPanelSlide ?? 0;
+        if (slArchPanelSlide) slArchPanelSlide.value = sp.archPanelSlide ?? 0.5;
+        if (nbArchPanelSlide) nbArchPanelSlide.value = sp.archPanelSlide ?? 0.5;
         
         const slArchPanelSep = document.getElementById('sl-arch-panel-sep');
         const nbArchPanelSep = document.getElementById('nb-arch-panel-sep');
-        if (slArchPanelSep) slArchPanelSep.value = sp.archPanelSeparation ?? 0.75;
-        if (nbArchPanelSep) nbArchPanelSep.value = sp.archPanelSeparation ?? 0.75;
+        if (slArchPanelSep) slArchPanelSep.value = sp.archPanelSeparation ?? 0;
+        if (nbArchPanelSep) nbArchPanelSep.value = sp.archPanelSeparation ?? 0;
         
         requestRender();
     }
@@ -7799,6 +10091,165 @@ function drawMeasurements(ctx, data) {
     ctx.setLineDash([]);
 }
 
+/**
+ * Draws measurements as a 2D overlay on top of the WebGL canvas
+ * Uses a hidden 2D canvas overlay positioned over the WebGL canvas
+ */
+function drawMeasurementsOverlay(data, structureCenter, w, h) {
+    // Get or create the measurement overlay canvas
+    let overlayCanvas = document.getElementById('measurement-overlay');
+    if (!overlayCanvas) {
+        overlayCanvas = document.createElement('canvas');
+        overlayCanvas.id = 'measurement-overlay';
+        overlayCanvas.style.position = 'absolute';
+        overlayCanvas.style.top = '0';
+        overlayCanvas.style.left = '0';
+        overlayCanvas.style.pointerEvents = 'none';
+        overlayCanvas.style.zIndex = '10';
+        canvas.parentElement.style.position = 'relative';
+        canvas.parentElement.appendChild(overlayCanvas);
+    }
+    
+    // Match canvas size
+    overlayCanvas.width = w;
+    overlayCanvas.height = h;
+    overlayCanvas.style.width = w + 'px';
+    overlayCanvas.style.height = h + 'px';
+    
+    const overlayCtx = overlayCanvas.getContext('2d');
+    overlayCtx.clearRect(0, 0, w, h);
+    
+    // Use the existing drawMeasurements function but with the overlay context
+    // We need to temporarily swap the ctx reference
+    const originalCtx = ctx;
+    const originalCanvas = canvas;
+    
+    // Create a temporary canvas reference that matches the overlay
+    const tempCanvas = {
+        width: w,
+        height: h,
+        clientWidth: w,
+        clientHeight: h
+    };
+    
+    // Draw measurements using the projection logic
+    const measurements = calculateMeasurements(data);
+    
+    // Update sidebar display
+    const innerEl = document.getElementById('meas-inner-dia');
+    const outerEl = document.getElementById('meas-outer-dia');
+    const heightEl = document.getElementById('meas-height');
+    const spanEl = document.getElementById('meas-span');
+    
+    if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
+    if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    if (heightEl) heightEl.textContent = `${formatNumber(measurements.height / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.height, 1)}")`;
+    if (spanEl) spanEl.textContent = `${formatNumber(measurements.span / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.span, 1)}")`;
+    
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Project function that matches Three.js camera
+    const project = (v) => {
+        const cam = state.cam;
+        
+        // Offset by structure center
+        let x = (v.x || 0) - sc.x;
+        let y = (v.y || 0) - sc.y;
+        let z = (v.z || 0) - sc.z;
+        
+        // Rotate around Y axis (yaw)
+        let x1 = x * Math.cos(-cam.yaw) - z * Math.sin(-cam.yaw);
+        let z1 = x * Math.sin(-cam.yaw) + z * Math.cos(-cam.yaw);
+        x1 -= cam.panX * 0.5;
+        
+        // Rotate around X axis (pitch)
+        let y2 = y * Math.cos(cam.pitch) - z1 * Math.sin(cam.pitch);
+        let z2 = y * Math.sin(cam.pitch) + z1 * Math.cos(cam.pitch);
+        y2 += cam.panY * 0.5;
+        
+        // Perspective projection - match Three.js FOV
+        let depth = z2 + cam.dist;
+        if (depth < 1) depth = 1;
+        const fov = 45 * Math.PI / 180;
+        const scale = (h / 2) / Math.tan(fov / 2) / depth;
+        
+        return { 
+            x: w / 2 + x1 * scale, 
+            y: h / 2 - y2 * scale, 
+            depth 
+        };
+    };
+    
+    // Draw measurement line helper
+    const drawMeasurementLine = (point1, point2, label, color, offset = 0) => {
+        if (!point1 || !point2) return;
+        
+        const p1 = project(point1);
+        const p2 = project(point2);
+        
+        overlayCtx.strokeStyle = color;
+        overlayCtx.lineWidth = 2;
+        overlayCtx.setLineDash([]);
+        overlayCtx.beginPath();
+        overlayCtx.moveTo(p1.x, p1.y);
+        overlayCtx.lineTo(p2.x, p2.y);
+        overlayCtx.stroke();
+        
+        const markerSize = 6;
+        overlayCtx.fillStyle = color;
+        overlayCtx.beginPath();
+        overlayCtx.arc(p1.x, p1.y, markerSize, 0, Math.PI * 2);
+        overlayCtx.fill();
+        overlayCtx.beginPath();
+        overlayCtx.arc(p2.x, p2.y, markerSize, 0, Math.PI * 2);
+        overlayCtx.fill();
+        
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2 + offset;
+        
+        overlayCtx.font = 'bold 12px Arial';
+        const textWidth = overlayCtx.measureText(label).width;
+        overlayCtx.fillStyle = 'rgba(21, 32, 43, 0.9)';
+        overlayCtx.fillRect(midX - textWidth / 2 - 6, midY - 14, textWidth + 12, 20);
+        
+        overlayCtx.strokeStyle = color;
+        overlayCtx.lineWidth = 1;
+        overlayCtx.strokeRect(midX - textWidth / 2 - 6, midY - 14, textWidth + 12, 20);
+        
+        overlayCtx.fillStyle = color;
+        overlayCtx.textAlign = 'center';
+        overlayCtx.textBaseline = 'middle';
+        overlayCtx.fillText(label, midX, midY - 4);
+        overlayCtx.textAlign = 'left';
+        overlayCtx.textBaseline = 'alphabetic';
+    };
+    
+    // Draw measurements
+    if (measurements.innerPoints) {
+        const label = `Inner: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
+    }
+    
+    if (measurements.outerPoints) {
+        const label = `Outer: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
+    }
+    
+    if (measurements.height > 0 && measurements.spanPoints && measurements.heightPoints) {
+        const heightPoint1 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[0].y, z: 0};
+        const heightPoint2 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[1].y, z: 0};
+        const label = `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(heightPoint1, heightPoint2, label, '#2ecc71', 0);
+    }
+    
+    if (measurements.span > 0 && measurements.spanPoints) {
+        const spanPoint1 = {x: measurements.spanPoints[0].x, y: measurements.spanPoints[0].y - 10, z: 0};
+        const spanPoint2 = {x: measurements.spanPoints[1].x, y: measurements.spanPoints[0].y - 10, z: 0};
+        const label = `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
+        drawMeasurementLine(spanPoint1, spanPoint2, label, '#9b59b6', 0);
+    }
+}
+
 // ============================================================================
 // UNDO/REDO SYSTEM
 // ============================================================================
@@ -7983,7 +10434,7 @@ function updateState(key, val) {
         const geometryKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
                               'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
                               'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
-                              'archCapUprights', 'archFlipVertical', 'archRotation', 'arrayCount'];
+                              'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount'];
         if (geometryKeys.includes(key)) {
             invalidateGeometryCache();
             
@@ -8088,10 +10539,15 @@ function isFormElement(el) {
     return false;
 }
 
-// Only start drag when clicking directly on the canvas element
-canvas.addEventListener('mousedown', e => {
+// Only start drag when clicking in the viewport area
+// Use viewport container instead of canvas to avoid issues with canvas stacking
+const viewportElement = document.getElementById('viewport');
+viewportElement.addEventListener('mousedown', e => {
     // Don't interfere with form elements or sidebar
-    if (e.target !== canvas || isFormElement(e.target)) return;
+    if (isFormElement(e.target)) return;
+    
+    // Only handle clicks on the viewport or its canvases
+    if (!viewportElement.contains(e.target)) return;
     
     e.preventDefault(); // Prevent text selection during drag
     
@@ -8165,12 +10621,19 @@ document.addEventListener('mousemove', e => {
     drag.y = e.clientY;
     requestRender();
 });
-canvas.onwheel = e => {
+// Attach wheel event to viewport
+viewportElement.onwheel = e => {
     e.preventDefault();
     // Main canvas is now only the 3D view
     state.cam.dist += e.deltaY * (state.cam.dist / 1000);
     if (state.cam.dist < MIN_CAM_DIST) state.cam.dist = MIN_CAM_DIST;
     requestRender();
+};
+
+// Prevent context menu on right-click in viewport
+viewportElement.oncontextmenu = e => {
+    e.preventDefault();
+    return false;
 };
 
 // Keyboard shortcuts
@@ -8501,6 +10964,21 @@ document.getElementById('chk-bolts').onchange = e => {
     state.showBolts = e.target.checked;
     requestRender();
 };
+
+// Sun position controls (topbar)
+document.getElementById('sl-sun-azimuth-top').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.sunAzimuth = val;
+    updateSunPosition();
+    requestRender();
+};
+document.getElementById('sl-sun-elevation-top').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.sunElevation = val;
+    updateSunPosition();
+    requestRender();
+};
+
 document.getElementById('sel-orientation').onchange = e => {
     state.orientation = e.target.value;
     const isVertical = e.target.value === 'vertical';
@@ -8514,6 +10992,17 @@ document.getElementById('sel-orientation').onchange = e => {
 };
 document.getElementById('chk-cap-uprights').onchange = e => {
     state.archCapUprights = e.target.checked;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+document.getElementById('chk-fixed-beams').onchange = e => {
+    state.useFixedBeams = e.target.checked;
+    // Reset fixed beam length and height when toggling to recalculate at current angle
+    if (state.useFixedBeams) {
+        state.fixedBeamLength = null; // Will be calculated on next render
+        state.fixedBeamHeight = null; // Will be calculated on next render
+    }
     invalidateGeometryCache();
     requestRender();
 };
@@ -8577,7 +11066,7 @@ document.getElementById('chk-measure').onchange = e => {
 // === SOLAR PANEL EVENT HANDLERS ===
 document.getElementById('chk-solar-panels').onchange = e => {
     state.solarPanels.enabled = e.target.checked;
-    document.getElementById('solar-panel-controls').style.display = state.solarPanels.enabled ? 'block' : 'none';
+    // Solar panel controls are always visible now
     
     // When enabling solar panels in cylinder/horizontal mode, snap to closed angle for proper alignment
     // In arch/vertical mode, panels can work at any fold angle since they're on wall faces
@@ -8586,8 +11075,8 @@ document.getElementById('chk-solar-panels').onchange = e => {
         state.foldAngle = closedAngle;
         // Sync the fold angle UI
         const foldAngleDeg = radToDeg(closedAngle);
-        const slFoldAngle = document.getElementById('sl-foldAngle');
-        const nbFoldAngle = document.getElementById('nb-foldAngle');
+        const slFoldAngle = document.getElementById('sl-fold');
+        const nbFoldAngle = document.getElementById('nb-fold');
         if (slFoldAngle) slFoldAngle.value = foldAngleDeg;
         if (nbFoldAngle) nbFoldAngle.value = foldAngleDeg.toFixed(1);
         showToast('Structure snapped to closed position for solar panel alignment', 'info');
@@ -8976,9 +11465,9 @@ document.getElementById('sl-arch-panel-sep').oninput = e => {
 };
 document.getElementById('nb-arch-panel-sep').onchange = e => {
     let val = parseFloat(e.target.value) || 0.75;
-    val = Math.max(-4, Math.min(4, val));
+    val = Math.max(-96, Math.min(96, val));
     state.solarPanels.archPanelSeparation = val;
-    document.getElementById('sl-arch-panel-sep').value = Math.max(-2, Math.min(2, val));
+    document.getElementById('sl-arch-panel-sep').value = Math.max(-48, Math.min(48, val));
     e.target.value = val;
     requestRender();
 };
@@ -8988,6 +11477,42 @@ document.getElementById('nb-arch-panel-sep').onchange = e => {
 document.getElementById('chk-support-beams').onchange = e => {
     state.solarPanels.showSupportBeams = e.target.checked;
     document.getElementById('support-beam-controls').style.display = e.target.checked ? 'block' : 'none';
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Support beam length controls
+document.getElementById('sl-support-length').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.supportBeamLength = val;
+    document.getElementById('nb-support-length').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-support-length').onchange = e => {
+    let val = parseFloat(e.target.value) || 96;
+    val = Math.max(12, Math.min(360, val));
+    state.solarPanels.supportBeamLength = val;
+    document.getElementById('sl-support-length').value = Math.max(24, Math.min(240, val));
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Support beam fold angle controls
+document.getElementById('sl-support-fold').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.supportBeamFoldAngle = val;
+    document.getElementById('nb-support-fold').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-support-fold').onchange = e => {
+    let val = parseFloat(e.target.value) || 0;
+    val = Math.max(-90, Math.min(90, val));
+    state.solarPanels.supportBeamFoldAngle = val;
+    document.getElementById('sl-support-fold').value = val;
+    e.target.value = val;
     invalidateGeometryCache();
     requestRender();
 };
@@ -9002,9 +11527,47 @@ document.getElementById('sl-support-rotation').oninput = e => {
 };
 document.getElementById('nb-support-rotation').onchange = e => {
     let val = parseFloat(e.target.value) || 0;
-    val = Math.max(-90, Math.min(90, val));
+    val = Math.max(-180, Math.min(180, val));
     state.solarPanels.supportBeamRotation = val;
     document.getElementById('sl-support-rotation').value = Math.max(-45, Math.min(45, val));
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Support beam horizontal offset controls
+document.getElementById('sl-support-offset-h').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.supportBeamOffsetH = val;
+    document.getElementById('nb-support-offset-h').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-support-offset-h').onchange = e => {
+    let val = parseFloat(e.target.value) || -120;
+    state.solarPanels.supportBeamOffsetH = val;
+    // Clamp slider to its range, but allow number input to go beyond
+    const sliderVal = Math.max(-120, Math.min(120, val));
+    document.getElementById('sl-support-offset-h').value = sliderVal;
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Support beam vertical offset controls
+document.getElementById('sl-support-offset-v').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.supportBeamOffsetV = val;
+    document.getElementById('nb-support-offset-v').value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-support-offset-v').onchange = e => {
+    let val = parseFloat(e.target.value) || 0;
+    state.solarPanels.supportBeamOffsetV = val;
+    // Clamp slider to its range, but allow number input to go beyond
+    const sliderVal = Math.max(-120, Math.min(120, val));
+    document.getElementById('sl-support-offset-v').value = sliderVal;
     e.target.value = val;
     invalidateGeometryCache();
     requestRender();
@@ -9029,15 +11592,23 @@ document.getElementById('btn-fit').onclick = () => {
     requestRender();
 };
 
-// Topbar button event listeners
-document.getElementById('btn-fit-top').onclick = () => {
-    state.cam = { yaw: 0.4, pitch: -0.3, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 };
-    requestRender();
+// Topbar animation controls
+document.getElementById('chk-anim-pingpong-top').onchange = e => {
+    state.animation.pingPong = e.target.checked;
+    // Sync with sidebar checkbox if it exists
+    const sidebarChk = document.getElementById('chk-anim-pingpong');
+    if (sidebarChk) sidebarChk.checked = e.target.checked;
 };
-document.getElementById('btn-measure-top').onclick = () => {
-    state.measureMode = !state.measureMode;
-    document.getElementById('btn-measure-top').classList.toggle('active', state.measureMode);
-    requestRender();
+document.getElementById('nb-anim-stop-top').onchange = e => {
+    let val = parseFloat(e.target.value) || 135;
+    val = Math.max(0, Math.min(180, val));
+    state.animation.stopAngle = val;
+    e.target.value = val;
+    // Sync with sidebar inputs if they exist
+    const sidebarSlider = document.getElementById('sl-anim-stop');
+    const sidebarNumber = document.getElementById('nb-anim-stop');
+    if (sidebarSlider) sidebarSlider.value = val;
+    if (sidebarNumber) sidebarNumber.value = val;
 };
 
 // Topbar Save/Export buttons
@@ -9172,6 +11743,15 @@ updatePresetSelect();
 
 // Save initial state to history
 saveStateToHistory();
+
+// Log Three.js availability and do initial render
+if (typeof THREE !== 'undefined') {
+    console.log('Three.js loaded successfully:', THREE.REVISION);
+    // Initialize Three.js immediately
+    initThreeJS();
+} else {
+    console.error('Three.js failed to load - using 2D fallback');
+}
 
 // Initial render
 requestRender();
