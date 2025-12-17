@@ -299,12 +299,13 @@
         }
         .group-content {
             transition: max-height var(--transition-med), opacity var(--transition-fast);
-            overflow: hidden;
+            overflow: visible;
         }
         .group.collapsed .group-content {
             max-height: 0;
             opacity: 0;
             margin: 0;
+            overflow: hidden;
         }
         
         /* Input feedback styles */
@@ -682,6 +683,7 @@
         }
         #sidebar.collapsed ~ #viewport ~ #right-panel {
             /* Right panel stays visible when sidebar collapses */
+            right: 0;
         }
         
         #sidebar-toggle { 
@@ -1107,6 +1109,131 @@
                 display: none;
             }
         }
+
+        /* Solar Panel Accordion Styles */
+        .panel-accordion {
+            margin: 8px 0;
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            overflow: visible; /* allow dropdowns to extend */
+            background: var(--bg-sidebar);
+        }
+        .panel-accordion-header {
+            display: flex;
+            align-items: center;
+            padding: 10px 12px;
+            background: var(--bg-elevated);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            user-select: none;
+            transition: background-color var(--transition-fast);
+        }
+        .panel-accordion-header:hover {
+            background: var(--bg-input);
+        }
+        .panel-accordion-header::before {
+            content: '▼';
+            font-size: 0.65rem;
+            margin-right: 8px;
+            transition: transform 0.2s ease;
+            color: var(--text-muted);
+        }
+        .panel-accordion.collapsed .panel-accordion-header::before {
+            transform: rotate(-90deg);
+        }
+        .panel-accordion-body {
+            padding: 12px;
+            display: block;
+            border-top: 1px solid var(--border-light);
+        }
+        .panel-accordion.collapsed .panel-accordion-body {
+            display: none;
+        }
+        .panel-accordion .section-label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            margin: 10px 0 6px 0;
+        }
+        .panel-accordion .section-label:first-child {
+            margin-top: 0;
+        }
+        .mini-input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+        }
+        .mini-input {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.75rem;
+        }
+        .mini-input span:first-child {
+            color: var(--text-muted);
+            min-width: 28px;
+        }
+        .mini-input input {
+            width: 55px;
+            padding: 4px 6px;
+            font-size: 0.75rem;
+            background: var(--bg-input);
+            color: var(--text-primary);
+            border: 1px solid var(--border-light);
+            border-radius: 3px;
+        }
+        .mini-input span:last-child {
+            color: var(--text-muted);
+            font-size: 0.65rem;
+        }
+        
+        /* Roof Section Face Toggle Buttons */
+        .face-toggle-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(36px, 1fr));
+            gap: 3px;
+            margin-top: 6px;
+        }
+        .face-toggle-btn {
+            padding: 4px 6px;
+            font-size: 0.65rem;
+            font-weight: 500;
+            border: 1px solid var(--border-light);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+        .face-toggle-btn.active {
+            background: var(--clr-primary);
+            color: var(--bg-body);
+            border-color: var(--clr-primary);
+        }
+        .face-toggle-btn:not(.active) {
+            background: var(--bg-input);
+            color: var(--text-muted);
+        }
+        .face-toggle-btn:hover {
+            opacity: 0.85;
+        }
+        .face-quick-btn {
+            padding: 2px 6px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            background: var(--bg-input);
+            color: var(--text-muted);
+            border: 1px solid var(--border-light);
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .face-quick-btn:hover {
+            background: var(--clr-primary);
+            color: var(--bg-body);
+            border-color: var(--clr-primary);
+        }
     </style>
     <!-- Three.js for WebGL rendering - UMD build works with file:// protocol -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1141,10 +1268,12 @@
         </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn" id="btn-save-top" title="Save Configuration">💾</button>
-        <button class="topbar-btn" id="btn-load-top" title="Load Configuration">📂</button>
+        <button class="topbar-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)">💾</button>
+        <button class="topbar-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)">📂</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-export-json-top" title="Export as JSON">{ }</button>
+        <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)">⬇️</button>
+        <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)">⬆️</button>
+        <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋</button>
     </div>
 </div>
@@ -1432,320 +1561,406 @@
                 </label>
                 
                 <div id="solar-panel-controls" style="margin-top:12px;">
-                    <!-- Panel Dimensions -->
-                    <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:8px;">Panel Dimensions</div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-panel-length" min="12" max="120" step="0.1" value="65">
-                            <input type="number" id="nb-panel-length" min="12" max="120" step="0.1" value="65">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-panel-width" min="12" max="80" step="0.1" value="39">
-                            <input type="number" id="nb-panel-width" min="12" max="80" step="0.1" value="39">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-panel-thick" min="0.5" max="4" step="0.1" value="1.5">
-                            <input type="number" id="nb-panel-thick" min="0.5" max="4" step="0.1" value="1.5">
-                        </div>
-                    </div>
-                    
-                    <!-- Electrical Specs (Optional) -->
-                    <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:12px 0 8px 0;">Electrical Specs (Optional)</div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Rated Power</span><span style="font-size:0.75rem; color:#8899a6;">W</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-panel-watts" min="100" max="800" step="10" value="400">
-                            <input type="number" id="nb-panel-watts" min="50" max="1000" step="10" value="400">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div class="ctrl-row" style="padding: 4px 0;">
-                            <span style="font-size:0.7rem; color:var(--text-muted);">VOC</span>
-                            <input type="number" id="nb-panel-voc" min="0" max="100" step="0.1" value="49.5" style="width:60px; padding:4px; font-size:0.75rem;">
-                            <span style="font-size:0.65rem; color:#666;">V</span>
-                        </div>
-                        <div class="ctrl-row" style="padding: 4px 0;">
-                            <span style="font-size:0.7rem; color:var(--text-muted);">VMP</span>
-                            <input type="number" id="nb-panel-vmp" min="0" max="100" step="0.1" value="41.5" style="width:60px; padding:4px; font-size:0.75rem;">
-                            <span style="font-size:0.65rem; color:#666;">V</span>
-                        </div>
-                        <div class="ctrl-row" style="padding: 4px 0;">
-                            <span style="font-size:0.7rem; color:var(--text-muted);">ISC</span>
-                            <input type="number" id="nb-panel-isc" min="0" max="30" step="0.01" value="10.2" style="width:60px; padding:4px; font-size:0.75rem;">
-                            <span style="font-size:0.65rem; color:#666;">A</span>
-                        </div>
-                        <div class="ctrl-row" style="padding: 4px 0;">
-                            <span style="font-size:0.7rem; color:var(--text-muted);">IMP</span>
-                            <input type="number" id="nb-panel-imp" min="0" max="30" step="0.01" value="9.65" style="width:60px; padding:4px; font-size:0.75rem;">
-                            <span style="font-size:0.65rem; color:#666;">A</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Layout Mode -->
-                    <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:12px 0 8px 0;">Layout Mode</div>
-                    <div class="ctrl-row">
-                        <select id="sel-panel-layout" style="flex:1; padding:6px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px;">
-                            <option value="rectangular">Rectangular Grid</option>
-                            <option value="radial">Radial / Pinwheel</option>
-                            <option value="spiral">Spiral</option>
-                        </select>
-                    </div>
-                    
                     <!-- Panel Location Options (Cylinder mode only) -->
-                    <div id="cylinder-panel-options" style="display:none; margin:8px 0;">
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Panel Locations</div>
-                        <div class="ctrl-row" style="margin-bottom:4px;">
+                    <div id="cylinder-panel-options" style="display:none; margin-bottom:12px; padding:10px; background:var(--bg-elevated); border-radius:6px;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px;">Panel Locations</div>
+                        <div style="display:flex; gap:16px;">
                             <label class="chk-label" style="margin:0;">
-                                <input type="checkbox" id="chk-top-panels" checked> Top Surface Panels
+                                <input type="checkbox" id="chk-top-panels" checked> Top Surface
+                            </label>
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-side-wall-panels"> Side Walls
                             </label>
                         </div>
-                        <div class="ctrl-row">
-                            <label class="chk-label" style="margin:0;">
-                                <input type="checkbox" id="chk-side-wall-panels"> Side Wall Panels
-                            </label>
-                        </div>
                     </div>
-                    
-                    <!-- Top Surface Panel Grid Controls (Cylinder mode only) -->
-                    <div id="top-panel-grid-controls" style="display:none;">
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Top Panel Grid</div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Rows</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-top-panel-rows" min="1" max="10" step="1" value="2">
-                                <input type="number" id="nb-top-panel-rows" min="1" max="10" step="1" value="2">
-                            </div>
+
+                    <!-- ========== TOP PANELS ACCORDION ========== -->
+                    <div class="panel-accordion" id="top-panels-accordion">
+                        <div class="panel-accordion-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            Top Panels
                         </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Columns</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-top-panel-cols" min="1" max="10" step="1" value="2">
-                                <input type="number" id="nb-top-panel-cols" min="1" max="10" step="1" value="2">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Side/Arch Panel Grid Controls (Arch mode or side wall panels) -->
-                    <div id="side-panel-grid-controls" style="display:none;">
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin-bottom:6px;">Side Panel Grid</div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Rows</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-grid-rows" min="1" max="10" step="1" value="2">
-                                <input type="number" id="nb-grid-rows" min="1" max="10" step="1" value="2">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Columns</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-grid-cols" min="1" max="10" step="1" value="2">
-                                <input type="number" id="nb-grid-cols" min="1" max="10" step="1" value="2">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Rectangular Mode Controls (Rotation only, shown for top panels in cylinder mode) -->
-                    <div id="rect-mode-controls">
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-grid-rotation" min="-180" max="180" step="1" value="0">
-                                <input type="number" id="nb-grid-rotation" min="-180" max="180" step="1" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Radial/Pinwheel Mode Controls -->
-                    <div id="radial-mode-controls" style="display:none;">
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Panel Count</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-radial-count" min="3" max="24" step="1" value="8">
-                                <input type="number" id="nb-radial-count" min="3" max="24" step="1" value="8">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Center Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-radial-offset" min="0" max="200" step="1" value="0">
-                                <input type="number" id="nb-radial-offset" min="0" max="200" step="1" value="0">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-radial-rotation" min="-180" max="180" step="1" value="0">
-                                <input type="number" id="nb-radial-rotation" min="-180" max="180" step="1" value="0">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Lateral Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-radial-lateral" min="-100" max="100" step="1" value="0">
-                                <input type="number" id="nb-radial-lateral" min="-100" max="100" step="1" value="0">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Pinwheel Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-pinwheel-angle" min="-45" max="45" step="1" value="0">
-                                <input type="number" id="nb-pinwheel-angle" min="-45" max="45" step="1" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Spiral Mode Controls -->
-                    <div id="spiral-mode-controls" style="display:none;">
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Spiral Turns</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-spiral-turns" min="1" max="5" step="0.5" value="2">
-                                <input type="number" id="nb-spiral-turns" min="1" max="5" step="0.5" value="2">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Panel Count</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-spiral-panels" min="4" max="36" step="1" value="12">
-                                <input type="number" id="nb-spiral-panels" min="4" max="36" step="1" value="12">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Spacing</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-spiral-spacing" min="0.8" max="2" step="0.1" value="1.2">
-                                <input type="number" id="nb-spiral-spacing" min="0.8" max="2" step="0.1" value="1.2">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Padding -->
-                    <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:12px 0 8px 0;">Panel Spacing</div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>X Padding</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-padding-x" min="0" max="12" step="0.5" value="2">
-                            <input type="number" id="nb-padding-x" min="0" max="12" step="0.5" value="2">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Y Padding</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-padding-y" min="0" max="12" step="0.5" value="2">
-                            <input type="number" id="nb-padding-y" min="0" max="12" step="0.5" value="2">
-                        </div>
-                    </div>
-                    
-                    <!-- Panel Lift (Cylinder mode only) -->
-                    <div class="ctrl-row" id="panel-lift-row">
-                        <div class="ctrl-head"><span>Array Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-panel-lift" min="0" max="48" step="0.5" value="0">
-                            <input type="number" id="nb-panel-lift" min="0" max="96" step="0.5" value="0">
-                        </div>
-                    </div>
-                    
-                    <!-- Arch Mode Roof Panel Selection (Vertical mode only) -->
-                    <div id="arch-wall-controls" style="display:none;">
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:12px 0 8px 0;">Roof Sections</div>
-                        <div style="font-size:0.75rem; color:#8899a6; margin-bottom:8px;">
-                            Toggle roof sections (2 per module, following the zig-zag pattern).
-                        </div>
-                        <div id="wall-face-buttons" style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:8px;">
-                            <!-- Wall face toggle buttons will be dynamically generated -->
-                        </div>
-                        <div style="display:flex; gap:8px; margin-bottom:8px;">
-                            <button id="btn-wall-all" style="flex:1; padding:4px 8px; font-size:0.75rem; background:var(--accent); color:var(--bg); border:none; border-radius:4px; cursor:pointer;">All</button>
-                            <button id="btn-wall-none" style="flex:1; padding:4px 8px; font-size:0.75rem; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer;">None</button>
-                            <button id="btn-wall-outer" style="flex:1; padding:4px 8px; font-size:0.75rem; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer;">Odd</button>
-                            <button id="btn-wall-inner" style="flex:1; padding:4px 8px; font-size:0.75rem; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer;">Even</button>
-                        </div>
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--text-muted); margin:12px 0 8px 0;">Panel Position</div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-arch-panel-offset" min="0" max="12" step="0.25" value="2">
-                                <input type="number" id="nb-arch-panel-offset" min="0" max="24" step="0.25" value="2">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Slide</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-arch-panel-offset-y" min="-48" max="48" step="0.5" value="0.5">
-                                <input type="number" id="nb-arch-panel-offset-y" min="-96" max="96" step="0.5" value="0.5">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>A/B Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-arch-panel-sep" min="-48" max="48" step="0.1" value="0">
-                                <input type="number" id="nb-arch-panel-sep" min="-96" max="96" step="0.1" value="0">
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Support Beams Section -->
-                    <div style="margin-top:12px; padding-top:12px; border-top:1px solid var(--border-light);">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-                            <span style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent);">Support Beams</span>
-                            <label class="chk-label" style="margin:0;">
-                                <input type="checkbox" id="chk-support-beams"> Enable
-                            </label>
-                        </div>
-                        <div id="support-beam-controls" style="display:none;">
+                        <div class="panel-accordion-body">
+                            <!-- Dimensions -->
+                            <div class="section-label">Dimensions</div>
                             <div class="ctrl-row">
                                 <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
-                                    <input type="range" id="sl-support-length" min="24" max="240" step="1" value="96">
-                                    <input type="number" id="nb-support-length" min="12" max="360" step="1" value="96">
+                                    <input type="range" id="sl-panel-length-top" min="12" max="120" step="0.1" value="65">
+                                    <input type="number" id="nb-panel-length-top" min="12" max="120" step="0.1" value="65">
                                 </div>
                             </div>
                             <div class="ctrl-row">
-                                <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
-                                    <input type="range" id="sl-support-fold" min="-90" max="90" step="1" value="0">
-                                    <input type="number" id="nb-support-fold" min="-90" max="90" step="1" value="0">
+                                    <input type="range" id="sl-panel-width-top" min="12" max="80" step="0.1" value="39">
+                                    <input type="number" id="nb-panel-width-top" min="12" max="80" step="0.1" value="39">
                                 </div>
                             </div>
                             <div class="ctrl-row">
-                                <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
-                                    <input type="range" id="sl-support-rotation" min="-45" max="45" step="1" value="0">
-                                    <input type="number" id="nb-support-rotation" min="-180" max="180" step="1" value="0">
+                                    <input type="range" id="sl-panel-thick-top" min="0.5" max="4" step="0.1" value="1.5">
+                                    <input type="number" id="nb-panel-thick-top" min="0.5" max="4" step="0.1" value="1.5">
                                 </div>
                             </div>
+                            
+                            <!-- Electrical -->
+                            <div class="section-label">Electrical</div>
                             <div class="ctrl-row">
-                                <div class="ctrl-head"><span>H Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="ctrl-head"><span>Power</span><span style="font-size:0.75rem; color:#8899a6;">W</span></div>
                                 <div class="input-wrap">
-                                    <input type="range" id="sl-support-offset-h" min="-120" max="120" step="0.5" value="-120">
-                                    <input type="number" id="nb-support-offset-h" step="0.5" value="-120">
+                                    <input type="range" id="sl-panel-watts-top" min="100" max="800" step="10" value="400">
+                                    <input type="number" id="nb-panel-watts-top" min="50" max="1000" step="10" value="400">
                                 </div>
                             </div>
+                            <div class="mini-input-grid">
+                                <div class="mini-input"><span>VOC</span><input type="number" id="nb-panel-voc-top" min="0" max="100" step="0.1" value="49.5"><span>V</span></div>
+                                <div class="mini-input"><span>VMP</span><input type="number" id="nb-panel-vmp-top" min="0" max="100" step="0.1" value="41.5"><span>V</span></div>
+                                <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-top" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
+                                <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-top" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
+                            </div>
+                            
+                            <!-- Layout Mode -->
+                            <div class="section-label">Layout</div>
+                            <div class="ctrl-row" style="position:relative; z-index:1000; isolation:isolate;">
+                                <select id="sel-panel-layout" style="flex:1; padding:6px 10px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer; -webkit-appearance:menulist; appearance:menulist;">
+                                    <option value="rectangular">Rectangular Grid</option>
+                                    <option value="radial">Radial / Pinwheel</option>
+                                    <option value="spiral">Spiral</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Rectangular Mode Controls -->
+                            <div id="rect-mode-controls">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-grid-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-grid-rotation" min="-180" max="180" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Radial/Pinwheel Mode Controls -->
+                            <div id="radial-mode-controls" style="display:none;">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Count</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-count" min="3" max="24" step="1" value="8">
+                                        <input type="number" id="nb-radial-count" min="3" max="24" step="1" value="8">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-offset" min="0" max="200" step="1" value="0">
+                                        <input type="number" id="nb-radial-offset" min="0" max="200" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-radial-rotation" min="-180" max="180" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-lateral" min="-100" max="100" step="1" value="0">
+                                        <input type="number" id="nb-radial-lateral" min="-100" max="100" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-pinwheel-angle" min="-45" max="45" step="1" value="0">
+                                        <input type="number" id="nb-pinwheel-angle" min="-45" max="45" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Spiral Mode Controls (Multi-Panel Arms) -->
+                            <div id="spiral-mode-controls" style="display:none;">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Panels / Arm</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-count" min="2" max="8" step="1" value="2">
+                                        <input type="number" id="nb-spiral-arm-count" min="2" max="8" step="1" value="2">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row" style="justify-content:space-between; align-items:center;">
+                                    <label class="chk-label" style="margin:0;">
+                                        <input type="checkbox" id="chk-spiral-secondary" checked> Enable extra panels
+                                    </label>
+                                </div>
+                                <div class="section-label">Secondary Panel Offsets</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Radial Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-radial" min="-200" max="200" step="0.5" value="24">
+                                        <input type="number" id="nb-spiral-secondary-radial" step="0.5" value="24">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-lateral" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-secondary-lateral" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="section-label">Secondary Panel Angles</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel Δ</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-pinwheel" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-secondary-pinwheel" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation Δ</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-secondary-rotation" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="section-label">Extra Panels (3+)</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Radial Step</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-radial-step" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-arm-radial-step" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral Step</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-lateral-step" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-arm-lateral-step" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel Step</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-pinwheel-step" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-arm-pinwheel-step" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation Step</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-rotation-step" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-arm-rotation-step" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Grid & Spacing -->
+                            <div class="section-label">Grid</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Rows</span>
+                                    <input type="number" id="nb-top-panel-rows" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Columns</span>
+                                    <input type="number" id="nb-top-panel-cols" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <div class="section-label">Spacing</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">X Pad (in)</span>
+                                    <input type="number" id="nb-padding-x-top" step="0.5" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Y Pad (in)</span>
+                                    <input type="number" id="nb-padding-y-top" step="0.5" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Lift -->
+                            <div class="section-label">Position</div>
                             <div class="ctrl-row">
-                                <div class="ctrl-head"><span>V Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="ctrl-head"><span>Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
-                                    <input type="range" id="sl-support-offset-v" min="-120" max="120" step="0.5" value="0">
-                                    <input type="number" id="nb-support-offset-v" step="0.5" value="0">
+                                    <input type="range" id="sl-panel-lift" min="0" max="48" step="0.5" value="0">
+                                    <input type="number" id="nb-panel-lift" min="0" max="96" step="0.5" value="0">
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <!-- Statistics Display -->
+
+                    <!-- ========== SIDE/ARCH PANELS ACCORDION ========== -->
+                    <div class="panel-accordion" id="side-panels-accordion">
+                        <div class="panel-accordion-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            Side / Arch Panels
+                        </div>
+                        <div class="panel-accordion-body">
+                            <!-- Dimensions -->
+                            <div class="section-label">Dimensions</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-length-side" min="12" max="120" step="0.1" value="65">
+                                    <input type="number" id="nb-panel-length-side" min="12" max="120" step="0.1" value="65">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-width-side" min="12" max="80" step="0.1" value="39">
+                                    <input type="number" id="nb-panel-width-side" min="12" max="80" step="0.1" value="39">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-thick-side" min="0.5" max="4" step="0.1" value="1.5">
+                                    <input type="number" id="nb-panel-thick-side" min="0.5" max="4" step="0.1" value="1.5">
+                                </div>
+                            </div>
+                            
+                            <!-- Electrical -->
+                            <div class="section-label">Electrical</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Power</span><span style="font-size:0.75rem; color:#8899a6;">W</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-watts-side" min="100" max="800" step="10" value="400">
+                                    <input type="number" id="nb-panel-watts-side" min="50" max="1000" step="10" value="400">
+                                </div>
+                            </div>
+                            <div class="mini-input-grid">
+                                <div class="mini-input"><span>VOC</span><input type="number" id="nb-panel-voc-side" min="0" max="100" step="0.1" value="49.5"><span>V</span></div>
+                                <div class="mini-input"><span>VMP</span><input type="number" id="nb-panel-vmp-side" min="0" max="100" step="0.1" value="41.5"><span>V</span></div>
+                                <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-side" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
+                                <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-side" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
+                            </div>
+                            
+                            <!-- Grid -->
+                            <div class="section-label">Grid</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Rows</span>
+                                    <input type="number" id="nb-grid-rows" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Columns</span>
+                                    <input type="number" id="nb-grid-cols" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Spacing -->
+                            <div class="section-label">Spacing</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">X Pad (in)</span>
+                                    <input type="number" id="nb-padding-x-side" step="0.5" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Y Pad (in)</span>
+                                    <input type="number" id="nb-padding-y-side" step="0.5" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Position Controls -->
+                            <div class="section-label">Position</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-offset" min="0" max="12" step="0.25" value="2">
+                                    <input type="number" id="nb-arch-panel-offset" min="0" max="24" step="0.25" value="2">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Slide</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-offset-y" min="-48" max="48" step="0.5" value="0.5">
+                                    <input type="number" id="nb-arch-panel-offset-y" min="-96" max="96" step="0.5" value="0.5">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>A/B Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-sep" min="-48" max="48" step="0.1" value="0">
+                                    <input type="number" id="nb-arch-panel-sep" min="-96" max="96" step="0.1" value="0">
+                                </div>
+                            </div>
+                            
+                            <!-- Roof Sections (Arch mode only) -->
+                            <div id="arch-wall-controls">
+                                <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Roof Sections</span>
+                                    <div style="display:flex; gap:3px;">
+                                        <button id="btn-wall-all" class="face-quick-btn" title="Select All">✓</button>
+                                        <button id="btn-wall-none" class="face-quick-btn" title="Select None">✗</button>
+                                        <button id="btn-wall-outer" class="face-quick-btn" title="Odd faces (A)">A</button>
+                                        <button id="btn-wall-inner" class="face-quick-btn" title="Even faces (B)">B</button>
+                                    </div>
+                                </div>
+                                <div id="wall-face-buttons" class="face-toggle-grid">
+                                    <!-- Wall face toggle buttons will be dynamically generated -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Display (always visible) -->
                     <div id="solar-stats" style="margin-top:12px; padding:10px; background:rgba(0,210,211,0.1); border-radius:4px; font-size:0.85rem;">
-                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:6px;">Panel Statistics</div>
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:6px;">Statistics</div>
                         <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
                             <span style="color:#8899a6;">Panels:</span><span id="stat-panel-count">0</span>
                             <span style="color:#8899a6;">Panel Area:</span><span id="stat-panel-area">0 sq ft</span>
                             <span style="color:#8899a6;">Canopy Area:</span><span id="stat-canopy-area">0 sq ft</span>
                             <span style="color:#8899a6;">Coverage:</span><span id="stat-coverage">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Support Beams - Separate collapsible group -->
+        <div class="ctrl-group collapsed">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Support Beams</div>
+            <div class="group-content">
+                <label class="chk-label">
+                    <input type="checkbox" id="chk-support-beams"> Enable Support Beams
+                </label>
+                <div id="support-beam-controls" style="display:none; margin-top:12px;">
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-length" min="24" max="240" step="1" value="96">
+                            <input type="number" id="nb-support-length" min="12" max="360" step="1" value="96">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-fold" min="-90" max="90" step="1" value="0">
+                            <input type="number" id="nb-support-fold" min="-90" max="90" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-rotation" min="-45" max="45" step="1" value="0">
+                            <input type="number" id="nb-support-rotation" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-offset-h" min="-120" max="120" step="0.5" value="-120">
+                            <input type="number" id="nb-support-offset-h" step="0.5" value="-120">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-offset-v" min="-120" max="120" step="0.5" value="0">
+                            <input type="number" id="nb-support-offset-v" step="0.5" value="0">
                         </div>
                     </div>
                 </div>
@@ -3102,35 +3317,65 @@ const state = {
     // Solar panel configuration
     solarPanels: {
         enabled: false,
-        panelLength: 65,      // inches (standard ~5.4ft panel)
-        panelWidth: 39,       // inches (standard ~3.25ft panel)
-        panelThickness: 1.5,  // inches
-        // Electrical specs (optional)
-        ratedWatts: 400,      // Wmp - Maximum power (watts)
-        voc: 49.5,            // Open circuit voltage (V)
-        vmp: 41.5,            // Voltage at max power (V)
-        isc: 10.2,            // Short circuit current (A)
-        imp: 9.65,            // Current at max power (A)
+        
+        // Top surface panel configuration (cylinder mode - rectangular/radial/spiral layouts)
+        topPanels: {
+            enabled: true,           // Enable top surface panels
+            panelLength: 65,         // inches
+            panelWidth: 39,          // inches
+            panelThickness: 1.5,     // inches
+            ratedWatts: 400,         // Wmp - Maximum power (watts)
+            voc: 49.5,               // Open circuit voltage (V)
+            vmp: 41.5,               // Voltage at max power (V)
+            isc: 10.2,               // Short circuit current (A)
+            imp: 9.65,               // Current at max power (A)
+            paddingX: 2,             // inches between panels (X direction)
+            paddingY: 2,             // inches between panels (Y direction)
+            gridRows: 2,             // rows for top panels
+            gridCols: 2,             // columns for top panels
+            panelLift: 0             // inches above closed structure
+        },
+        
+        // Side/Arch panel configuration (arch mode or cylinder side walls)
+        sidePanels: {
+            enabled: false,          // Enable side wall panels in cylinder mode
+            panelLength: 65,         // inches
+            panelWidth: 39,          // inches
+            panelThickness: 1.5,     // inches
+            ratedWatts: 400,         // Wmp - Maximum power (watts)
+            voc: 49.5,               // Open circuit voltage (V)
+            vmp: 41.5,               // Voltage at max power (V)
+            isc: 10.2,               // Short circuit current (A)
+            imp: 9.65,               // Current at max power (A)
+            paddingX: 2,             // inches between panels (X direction)
+            paddingY: 2,             // inches between panels (Y direction)
+            gridRows: 2,             // rows for side/arch panels
+            gridCols: 2              // columns for side/arch panels
+        },
+        
+        // Layout mode for top surface panels (cylinder mode)
         layoutMode: 'rectangular',  // 'rectangular', 'radial', 'spiral'
-        paddingX: 2,          // inches between panels (X direction)
-        paddingY: 2,          // inches between panels (Y direction)
-        // Rectangular mode (and arch/side wall panel grid)
-        gridRows: 2,          // rows for arch/side wall panels
-        gridCols: 2,          // columns for arch/side wall panels
-        gridRotation: 0,      // rotation angle in degrees for rectangular grid
-        // Top surface panel grid (cylinder mode only)
-        topPanelRows: 2,      // rows for top surface panels in cylinder mode
-        topPanelCols: 2,      // columns for top surface panels in cylinder mode
-        // Radial/Pinwheel mode
+        gridRotation: 0,      // rotation angle in degrees for rectangular grid (top panels)
+        
+        // Radial/Pinwheel mode (top panels)
         radialCount: 8,       // number of panels in ring
         radialOffset: 0,      // offset from center (inches)
         radialRotation: 0,    // rotation of entire pattern (degrees)
         radialLateralOffset: 0, // lateral offset perpendicular to radial (inches)
         pinwheelAngle: 0,     // rotation angle per panel (degrees)
-        // Spiral mode
-        spiralTurns: 2,       // number of spiral turns
-        spiralPanels: 12,     // total panels in spiral
-        spiralSpacing: 1.2,   // spacing multiplier
+        
+        // Spiral mode (top panels) - multi-panel radial arms
+        spiralArmCount: 2,                        // number of panels per arm (>=2)
+        spiralSecondaryEnabled: true,             // enable additional panels beyond primary
+        spiralSecondaryRadialOffset: 24,          // base radial offset for panel #2 (inches)
+        spiralSecondaryLateralOffset: 0,          // base lateral offset for panel #2 (inches)
+        spiralSecondaryPinwheel: 0,               // base pinwheel delta for panel #2 (deg)
+        spiralSecondaryRotation: 0,               // base rotation delta for panel #2 (deg)
+        spiralArmRadialStep: 0,                   // radial increment per extra panel (panel #3+)
+        spiralArmLateralStep: 0,                  // lateral increment per extra panel (panel #3+)
+        spiralArmPinwheelStep: 0,                 // pinwheel increment per extra panel (deg)
+        spiralArmRotationStep: 0,                 // rotation increment per extra panel (deg)
+        
         // Support beams
         showSupportBeams: false,
         supportBeamRotation: 0,   // degrees, 0 = aligned with vertical uprights
@@ -3138,17 +3383,15 @@ const state = {
         supportBeamFoldAngle: 0,  // degrees from vertical (0 = horizontal, 90 = pointing down)
         supportBeamOffsetH: -120,    // horizontal offset from pivot (inches)
         supportBeamOffsetV: 0,    // vertical offset from pivot (inches)
-        // Panel lift (cylinder mode)
-        panelLift: 0,  // inches above closed structure
+        
         // Arch mode wall faces - array of booleans for each wall face (2 per module)
         // null means "all enabled" (default), otherwise array like [true, false, true, ...]
         archWallFaces: null,
+        
         // Arch mode panel positioning controls
         archPanelOffset: 2,       // inches - lift panels above roof surface
-        archPanelSlide: 0.5,      // inches - A/B mirrored slide along tilt angle (front-back, perpendicular to width axis, in face plane)
-        archPanelSeparation: 0,   // inches - additional offset along slope (0 = properly aligned, built-in offset of 4.6 applied internally)
-        sideWallPanels: false,    // Enable side wall panels in cylinder mode (uses arch layout system)
-        topPanels: true           // Enable top surface panels in cylinder mode (rectangular/radial/spiral layouts)
+        archPanelSlide: 0.5,      // inches - A/B mirrored slide along tilt angle
+        archPanelSeparation: 0    // inches - additional offset along slope
     },
     
     history: [],
@@ -6312,78 +6555,78 @@ function calculateArchWallFaces(data) {
 }
 
 /**
+ * Gets the active panel config based on current mode
+ * @returns {Object} Active panel config (topPanels or sidePanels)
+ */
+function getActivePanelConfig() {
+    const isArchMode = state.orientation === 'vertical';
+    if (isArchMode) {
+        return state.solarPanels.sidePanels;
+    } else {
+        // Cylinder mode: prefer topPanels if enabled, otherwise sidePanels
+        if (state.solarPanels.topPanels.enabled) {
+            return state.solarPanels.topPanels;
+        } else {
+            return state.solarPanels.sidePanels;
+        }
+    }
+}
+
+/**
  * Updates the UI for wall face selection buttons in arch mode
  */
 function updateArchWallFacesUI() {
+    // Get accordion elements
+    const topPanelsAccordion = document.getElementById('top-panels-accordion');
+    const sidePanelsAccordion = document.getElementById('side-panels-accordion');
+    const cylinderPanelOptions = document.getElementById('cylinder-panel-options');
     const archControls = document.getElementById('arch-wall-controls');
-    const panelLiftRow = document.getElementById('panel-lift-row');
-    const layoutRow = document.querySelector('#sel-panel-layout')?.closest('.ctrl-row');
+    
+    // Layout mode controls (inside top panels accordion)
     const rectControls = document.getElementById('rect-mode-controls');
     const radialControls = document.getElementById('radial-mode-controls');
     const spiralControls = document.getElementById('spiral-mode-controls');
-    const cylinderPanelOptions = document.getElementById('cylinder-panel-options');
-    const topPanelGridControls = document.getElementById('top-panel-grid-controls');
-    const sidePanelGridControls = document.getElementById('side-panel-grid-controls');
     
     const isArchMode = state.orientation === 'vertical';
     const solarEnabled = state.solarPanels.enabled;
-    const sideWallEnabled = !isArchMode && state.solarPanels.sideWallPanels;
-    const topPanelsEnabled = !isArchMode && state.solarPanels.topPanels;
-    const showArchControls = isArchMode || sideWallEnabled;
+    const sideWallEnabled = !isArchMode && state.solarPanels.sidePanels.enabled;
+    const topPanelsEnabled = !isArchMode && state.solarPanels.topPanels.enabled;
+    const showSideControls = isArchMode || sideWallEnabled;
     
-    // Show/hide cylinder panel options (cylinder mode only)
+    // Show/hide cylinder panel location options (cylinder mode only, when solar enabled)
     if (cylinderPanelOptions) {
         cylinderPanelOptions.style.display = (!isArchMode && solarEnabled) ? 'block' : 'none';
     }
     
-    // Show/hide arch-specific controls (arch mode or side wall panels enabled in cylinder mode)
+    // Top Panels Accordion - Hide in Arch mode, show in Cylinder mode
+    if (topPanelsAccordion) {
+        topPanelsAccordion.style.display = (!isArchMode && solarEnabled) ? 'block' : 'none';
+    }
+    
+    // Side/Arch Panels Accordion - Show in Arch mode, OR in Cylinder mode when side walls enabled
+    if (sidePanelsAccordion) {
+        sidePanelsAccordion.style.display = (showSideControls && solarEnabled) ? 'block' : 'none';
+    }
+    
+    // Roof sections controls (visible for arch mode and cylinder side walls)
     if (archControls) {
-        archControls.style.display = (showArchControls && solarEnabled) ? 'block' : 'none';
+        archControls.style.display = (showSideControls && solarEnabled) ? 'block' : 'none';
     }
     
-    // Show cylinder-mode-only controls when top panels are enabled (not in arch mode, not side wall only)
-    const showCylinderTopControls = !isArchMode && topPanelsEnabled && solarEnabled;
-    
-    // Panel lift control (cylinder mode top panels only)
-    if (panelLiftRow) {
-        panelLiftRow.style.display = showCylinderTopControls ? 'flex' : 'none';
-    }
-    
-    // Layout mode selector (cylinder mode top panels only)
-    if (layoutRow) {
-        layoutRow.style.display = showCylinderTopControls ? 'flex' : 'none';
-    }
-    
-    // Top panel grid controls (cylinder mode with top panels enabled)
-    if (topPanelGridControls) {
-        topPanelGridControls.style.display = showCylinderTopControls ? 'block' : 'none';
-    }
-    
-    // Side panel grid controls (arch mode OR cylinder mode with side walls enabled)
-    if (sidePanelGridControls) {
-        sidePanelGridControls.style.display = (showArchControls && solarEnabled) ? 'block' : 'none';
-    }
-    
-    // Rectangular mode controls (rotation only, for top panels in rectangular layout)
+    // Layout mode controls (inside top panels accordion)
+    const layoutMode = state.solarPanels.layoutMode;
     if (rectControls) {
-        const showRect = showCylinderTopControls && state.solarPanels.layoutMode === 'rectangular';
-        rectControls.style.display = showRect ? 'block' : 'none';
+        rectControls.style.display = layoutMode === 'rectangular' ? 'block' : 'none';
     }
-    
-    // Radial controls (for top panels in radial layout)
     if (radialControls) {
-        const showRadial = showCylinderTopControls && state.solarPanels.layoutMode === 'radial';
-        radialControls.style.display = showRadial ? 'block' : 'none';
+        radialControls.style.display = layoutMode === 'radial' ? 'block' : 'none';
     }
-    
-    // Spiral controls (for top panels in spiral layout)
     if (spiralControls) {
-        const showSpiral = showCylinderTopControls && state.solarPanels.layoutMode === 'spiral';
-        spiralControls.style.display = showSpiral ? 'block' : 'none';
+        spiralControls.style.display = layoutMode === 'spiral' ? 'block' : 'none';
     }
     
-    // Generate wall face buttons if in arch mode or side wall mode
-    if (showArchControls && solarEnabled) {
+    // Generate wall face buttons if showing side/arch controls
+    if (showSideControls && solarEnabled) {
         generateWallFaceButtons();
     }
 }
@@ -6406,35 +6649,23 @@ function generateWallFaceButtons() {
     
     container.innerHTML = '';
     
-    // Add a note about roof faces
-    const note = document.createElement('div');
-    note.style.cssText = 'width:100%; font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;';
-    note.textContent = 'Toggle which roof face sections have panels (2 per module)';
-    container.appendChild(note);
-    
-    const btnContainer = document.createElement('div');
-    btnContainer.style.cssText = 'display:flex; flex-wrap:wrap; gap:4px;';
-    
     for (let i = 0; i < numFaces; i++) {
-        // Label faces as M1a, M1b, M2a, M2b, etc.
+        // Label faces as 1A, 1B, 2A, 2B, etc.
         const moduleNum = Math.floor(i / 2) + 1;
-        const faceLabel = (i % 2 === 0) ? 'a' : 'b';
+        const faceLabel = (i % 2 === 0) ? 'A' : 'B';
         
         const btn = document.createElement('button');
         btn.textContent = `${moduleNum}${faceLabel}`;
-        btn.title = `Module ${moduleNum} roof face ${faceLabel.toUpperCase()}`;
-        btn.style.cssText = `min-width:32px; height:24px; font-size:0.65rem; border:1px solid var(--border); border-radius:3px; cursor:pointer; ${state.solarPanels.archWallFaces[i] ? 'background:var(--accent); color:var(--bg);' : 'background:var(--bg-input); color:var(--text);'}`;
+        btn.title = `Module ${moduleNum} face ${faceLabel}`;
+        btn.className = 'face-toggle-btn' + (state.solarPanels.archWallFaces[i] ? ' active' : '');
         btn.onclick = () => {
             state.solarPanels.archWallFaces[i] = !state.solarPanels.archWallFaces[i];
-            btn.style.background = state.solarPanels.archWallFaces[i] ? 'var(--accent)' : 'var(--bg-input)';
-            btn.style.color = state.solarPanels.archWallFaces[i] ? 'var(--bg)' : 'var(--text)';
+            btn.classList.toggle('active', state.solarPanels.archWallFaces[i]);
             requestRender();
         };
         
-        btnContainer.appendChild(btn);
+        container.appendChild(btn);
     }
-    
-    container.appendChild(btnContainer);
 }
 
 /**
@@ -6550,39 +6781,78 @@ function calculateRadialLayout(canopy, config) {
  */
 function calculateSpiralLayout(canopy, config) {
     const panels = [];
-    
     if (!canopy || !canopy.center) return panels;
     
-    const { panelLength, panelWidth, panelThickness, spiralTurns, spiralPanels, spiralSpacing, panelLift } = config;
+    const {
+        panelLength,
+        panelWidth,
+        panelThickness,
+        panelLift,
+        radialCount,
+        radialOffset,
+        radialRotation,
+        radialLateralOffset,
+        pinwheelAngle,
+        spiralSecondaryEnabled,
+        spiralSecondaryRadialOffset,
+        spiralSecondaryLateralOffset,
+        spiralSecondaryPinwheel,
+        spiralSecondaryRotation,
+        spiralArmCount,
+        spiralArmRadialStep,
+        spiralArmLateralStep,
+        spiralArmPinwheelStep,
+        spiralArmRotationStep
+    } = config;
     
-    // Panel height is slightly above top surface, plus any lift
     const liftAmount = panelLift || 0;
     const panelY = canopy.topHeight + panelThickness / 2 + 0.5 + liftAmount;
     
-    // Calculate spiral parameters
-    // Archimedean spiral: r = a + b*theta
-    const maxRadius = canopy.maxRadius || 100;
-    const totalAngle = spiralTurns * 2 * Math.PI;
-    const a = panelLength * spiralSpacing; // Starting radius
-    const b = (maxRadius - a) / totalAngle; // Growth rate
+    const count = Math.max(1, radialCount || 1);
+    const angleStep = (2 * Math.PI) / count;
+    const patternRot = degToRad(radialRotation || 0);
+    const pinwheelRad = degToRad(pinwheelAngle || 0);
+    const defaultRadius = canopy.maxRadius ? canopy.maxRadius * 0.6 : 50;
+    const primaryRadius = radialOffset > 0 ? radialOffset : defaultRadius;
+    const primaryLateral = radialLateralOffset || 0;
     
-    for (let i = 0; i < spiralPanels; i++) {
-        // Distribute panels evenly along the spiral
-        const t = i / (spiralPanels - 1 || 1); // 0 to 1
-        const theta = t * totalAngle;
-        const radius = a + b * theta;
+    const secEnabled = spiralSecondaryEnabled !== false;
+    const secRadial = spiralSecondaryRadialOffset || 0;
+    const secLateral = spiralSecondaryLateralOffset || 0;
+    const secPinwheelRad = degToRad(spiralSecondaryPinwheel || 0);
+    const secRotationRad = degToRad(spiralSecondaryRotation || 0);
+    const armCount = Math.max(2, spiralArmCount || 2);
+    const radialStep = spiralArmRadialStep || 0;
+    const lateralStep = spiralArmLateralStep || 0;
+    const pinwheelStep = degToRad(spiralArmPinwheelStep || 0);
+    const rotationStep = degToRad(spiralArmRotationStep || 0);
+    
+    for (let i = 0; i < count; i++) {
+        const baseAngle = i * angleStep + patternRot;
+        const radialDir = { x: Math.cos(baseAngle), z: Math.sin(baseAngle) };
+        const lateralDir = { x: -radialDir.z, z: radialDir.x }; // perpendicular in XZ
         
-        // Panel center position
-        const x = canopy.center.x + radius * Math.cos(theta);
-        const z = canopy.center.z + radius * Math.sin(theta);
+        // Primary panel center
+        const px = canopy.center.x + radialDir.x * primaryRadius + lateralDir.x * primaryLateral;
+        const pz = canopy.center.z + radialDir.z * primaryRadius + lateralDir.z * primaryLateral;
+        const primaryCenter = { x: px, y: panelY, z: pz };
+        const primaryRotation = baseAngle + pinwheelRad + Math.PI / 2;
+        panels.push(new Panel3D(primaryCenter, panelWidth, panelLength, panelThickness, primaryRotation));
         
-        const center = { x, y: panelY, z };
-        
-        // Panel rotation follows the spiral tangent direction
-        // Tangent angle is perpendicular to radial direction at that point
-        const rotation = theta + Math.PI / 2;
-        
-        panels.push(new Panel3D(center, panelWidth, panelLength, panelThickness, rotation));
+        if (secEnabled) {
+            for (let j = 1; j < armCount; j++) {
+                const rOffset = secRadial + (j - 1) * radialStep;
+                const lOffset = secLateral + (j - 1) * lateralStep;
+                const pinwheelJ = secPinwheelRad + (j - 1) * pinwheelStep;
+                const rotJ = secRotationRad + (j - 1) * rotationStep;
+                
+                const sx = px + radialDir.x * rOffset + lateralDir.x * lOffset;
+                const sz = pz + radialDir.z * rOffset + lateralDir.z * lOffset;
+                const secondaryCenter = { x: sx, y: panelY, z: sz };
+                const secondaryRotation = baseAngle + pinwheelRad + pinwheelJ + Math.PI / 2 + rotJ;
+                panels.push(new Panel3D(secondaryCenter, panelWidth, panelLength, panelThickness, secondaryRotation));
+            }
+        }
     }
     
     return panels;
@@ -6766,37 +7036,69 @@ function calculateSolarPanels(data) {
     const isVertical = state.orientation === 'vertical';
     
     if (isVertical) {
+        // Arch mode uses side panel configuration
+        const sideConfig = config.sidePanels;
+        
         // In arch mode with scissor uprights (not fixed beams), hide panels if structure is too compressed
-        // This prevents confusing panel rendering when the vertical spacing is smaller than the panel array
         if (!state.useFixedBeams) {
-            // Calculate the minimum panel array height (number of rows * panel length + spacing)
-            const panelArrayHeight = config.gridRows * config.panelLength + (config.gridRows - 1) * config.paddingY;
-            
-            // Get the current ring spacing from the structure height
-            // In arch mode, maxHeight represents the vertical distance between rings after transformation
-            // We use a rough estimate based on data.maxHeight
+            const panelArrayHeight = sideConfig.gridRows * sideConfig.panelLength + (sideConfig.gridRows - 1) * sideConfig.paddingY;
             const ringSpacing = data.maxHeight || 0;
             
-            // If the ring spacing is less than the panel array height, don't show panels
-            if (ringSpacing < panelArrayHeight * 0.8) { // 80% threshold to account for panel placement offsets
+            if (ringSpacing < panelArrayHeight * 0.8) {
                 return { panels: [], supportBeams: [], canopy: canopy };
             }
         }
         
-        // Arch mode uses wall face-based layout
-        panels = calculateArchLayout(canopy, config, data);
+        // Create config object for arch layout
+        const archConfig = {
+            panelLength: sideConfig.panelLength,
+            panelWidth: sideConfig.panelWidth,
+            panelThickness: sideConfig.panelThickness,
+            paddingX: sideConfig.paddingX,
+            paddingY: sideConfig.paddingY,
+            gridRows: sideConfig.gridRows,
+            gridCols: sideConfig.gridCols,
+            archPanelOffset: config.archPanelOffset,
+            archPanelSlide: config.archPanelSlide,
+            archPanelSeparation: config.archPanelSeparation,
+            archWallFaces: config.archWallFaces
+        };
+        
+        panels = calculateArchLayout(canopy, archConfig, data);
     } else {
         // Horizontal/Cylinder mode - can have both top and side panels independently
-        const showTopPanels = config.topPanels !== false;  // Default to true
-        const showSideWallPanels = config.sideWallPanels === true;
+        const showTopPanels = config.topPanels.enabled;
+        const showSideWallPanels = config.sidePanels.enabled;
         
         // Collect top surface panels if enabled
         if (showTopPanels) {
-            // Create config for top panels using topPanelRows/Cols
+            const topCfg = config.topPanels;
             const topConfig = {
-                ...config,
-                gridRows: config.topPanelRows || 2,
-                gridCols: config.topPanelCols || 2
+                panelLength: topCfg.panelLength,
+                panelWidth: topCfg.panelWidth,
+                panelThickness: topCfg.panelThickness,
+                paddingX: topCfg.paddingX,
+                paddingY: topCfg.paddingY,
+                gridRows: topCfg.gridRows,
+                gridCols: topCfg.gridCols,
+                gridRotation: config.gridRotation,
+                radialCount: config.radialCount,
+                radialOffset: config.radialOffset,
+                radialRotation: config.radialRotation,
+                radialLateralOffset: config.radialLateralOffset,
+                pinwheelAngle: config.pinwheelAngle,
+                spiralArmCount: config.spiralArmCount,
+                spiralSecondaryEnabled: config.spiralSecondaryEnabled,
+                spiralSecondaryRadialOffset: config.spiralSecondaryRadialOffset,
+                spiralSecondaryLateralOffset: config.spiralSecondaryLateralOffset,
+                spiralSecondaryPinwheel: config.spiralSecondaryPinwheel,
+                spiralSecondaryRotation: config.spiralSecondaryRotation,
+                spiralArmRadialStep: config.spiralArmRadialStep,
+                spiralArmLateralStep: config.spiralArmLateralStep,
+                spiralArmPinwheelStep: config.spiralArmPinwheelStep,
+                spiralArmRotationStep: config.spiralArmRotationStep,
+                panelLift: topCfg.panelLift,
+                layoutMode: config.layoutMode
             };
             
             let topPanels = [];
@@ -6816,9 +7118,24 @@ function calculateSolarPanels(data) {
             panels.push(...topPanels);
         }
         
-        // Collect side wall panels if enabled (uses gridRows/gridCols from config)
+        // Collect side wall panels if enabled
         if (showSideWallPanels) {
-            const sidePanels = calculateArchLayout(canopy, config, data);
+            const sideCfg = config.sidePanels;
+            const sideConfig = {
+                panelLength: sideCfg.panelLength,
+                panelWidth: sideCfg.panelWidth,
+                panelThickness: sideCfg.panelThickness,
+                paddingX: sideCfg.paddingX,
+                paddingY: sideCfg.paddingY,
+                gridRows: sideCfg.gridRows,
+                gridCols: sideCfg.gridCols,
+                archPanelOffset: config.archPanelOffset,
+                archPanelSlide: config.archPanelSlide,
+                archPanelSeparation: config.archPanelSeparation,
+                archWallFaces: config.archWallFaces
+            };
+            
+            const sidePanels = calculateArchLayout(canopy, sideConfig, data);
             panels.push(...sidePanels);
         }
     }
@@ -7011,9 +7328,19 @@ function render() {
         // Draw live measurements if in measure mode (2D overlay)
         if (state.measureMode) {
             // Create a 2D overlay canvas for measurements
-            const w = canvas.clientWidth;
-            const h = canvas.clientHeight;
-            drawMeasurementsOverlay(data, mainViewCenter, w, h);
+            // Use viewport dimensions since the 2D canvas may be hidden
+            const viewport = document.getElementById('viewport');
+            const w = viewport.clientWidth;
+            const h = viewport.clientHeight;
+            if (w > 0 && h > 0) {
+                drawMeasurementsOverlay(data, mainViewCenter, w, h);
+            }
+        } else {
+            // Remove measurement overlay when not in measure mode
+            const overlay = document.getElementById('measurement-overlay');
+            if (overlay) {
+                overlay.remove();
+            }
         }
     } catch (error) {
         console.error('Render error:', error);
@@ -8431,6 +8758,55 @@ function exportToJSON() {
     showToast('Configuration exported', 'info');
 }
 
+/**
+ * Imports configuration from a JSON file
+ * Opens a file picker dialog and loads the selected JSON file
+ */
+function importFromJSON() {
+    // Create a hidden file input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    
+    input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = event => {
+            try {
+                const config = JSON.parse(event.target.result);
+                
+                // Validate it's a linkage config
+                if (!config || typeof config !== 'object') {
+                    throw new Error('Invalid configuration format');
+                }
+                
+                // Apply the configuration
+                applyConfig(config);
+                saveStateToHistory();
+                
+                // Save to localStorage so it persists
+                localStorage.setItem('linkageLab_config', JSON.stringify(config));
+                
+                showToast(`Configuration loaded from ${file.name}`, 'info');
+            } catch (err) {
+                console.error('Error loading JSON config:', err);
+                showToast('Error loading configuration: ' + err.message, 'error');
+            }
+        };
+        
+        reader.onerror = () => {
+            showToast('Error reading file', 'error');
+        };
+        
+        reader.readAsText(file);
+    };
+    
+    // Trigger file picker
+    input.click();
+}
+
 
 /**
  * Shows the build guide as an HTML modal popup
@@ -9040,7 +9416,9 @@ const SOLAR_PANEL_KEYS = [
     'enabled', 'panelLength', 'panelWidth', 'panelThickness',
     'ratedWatts', 'voc', 'vmp', 'isc', 'imp', 'layoutMode',
     'paddingX', 'paddingY', 'gridRows', 'gridCols', 'gridRotation', 'radialCount', 'radialOffset',
-    'radialRotation', 'radialLateralOffset', 'pinwheelAngle', 'spiralTurns', 'spiralPanels', 'spiralSpacing',
+    'radialRotation', 'radialLateralOffset', 'pinwheelAngle',
+    'spiralArmCount', 'spiralSecondaryEnabled', 'spiralSecondaryRadialOffset', 'spiralSecondaryLateralOffset', 'spiralSecondaryPinwheel', 'spiralSecondaryRotation',
+    'spiralArmRadialStep', 'spiralArmLateralStep', 'spiralArmPinwheelStep', 'spiralArmRotationStep',
     'showSupportBeams', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
     'supportBeamOffsetH', 'supportBeamOffsetV', 'panelLift',
     'archPanelOffset', 'archPanelSlide', 'archPanelSeparation',
@@ -9101,35 +9479,62 @@ function applyV30Config(config) {
         
         if (p.enabled !== undefined) sp.enabled = p.enabled;
         
-        if (p.size) {
-            if (p.size.width !== undefined) sp.panelWidth = p.size.width;
-            if (p.size.length !== undefined) sp.panelLength = p.size.length;
-            if (p.size.thickness !== undefined) sp.panelThickness = p.size.thickness;
+        // Load top panels configuration
+        if (p.topPanels) {
+            const tp = p.topPanels;
+            if (tp.enabled !== undefined) sp.topPanels.enabled = tp.enabled;
+            if (tp.size) {
+                if (tp.size.width !== undefined) sp.topPanels.panelWidth = tp.size.width;
+                if (tp.size.length !== undefined) sp.topPanels.panelLength = tp.size.length;
+                if (tp.size.thickness !== undefined) sp.topPanels.panelThickness = tp.size.thickness;
+            }
+            if (tp.electrical) {
+                if (tp.electrical.ratedWatts !== undefined) sp.topPanels.ratedWatts = tp.electrical.ratedWatts;
+                if (tp.electrical.voc !== undefined) sp.topPanels.voc = tp.electrical.voc;
+                if (tp.electrical.vmp !== undefined) sp.topPanels.vmp = tp.electrical.vmp;
+                if (tp.electrical.isc !== undefined) sp.topPanels.isc = tp.electrical.isc;
+                if (tp.electrical.imp !== undefined) sp.topPanels.imp = tp.electrical.imp;
+            }
+            if (tp.padding) {
+                if (tp.padding.x !== undefined) sp.topPanels.paddingX = tp.padding.x;
+                if (tp.padding.y !== undefined) sp.topPanels.paddingY = tp.padding.y;
+            }
+            if (tp.grid) {
+                if (tp.grid.rows !== undefined) sp.topPanels.gridRows = tp.grid.rows;
+                if (tp.grid.cols !== undefined) sp.topPanels.gridCols = tp.grid.cols;
+            }
+            if (tp.lift !== undefined) sp.topPanels.panelLift = tp.lift;
         }
         
-        if (p.electrical) {
-            if (p.electrical.ratedWatts !== undefined) sp.ratedWatts = p.electrical.ratedWatts;
-            if (p.electrical.voc !== undefined) sp.voc = p.electrical.voc;
-            if (p.electrical.vmp !== undefined) sp.vmp = p.electrical.vmp;
-            if (p.electrical.isc !== undefined) sp.isc = p.electrical.isc;
-            if (p.electrical.imp !== undefined) sp.imp = p.electrical.imp;
+        // Load side panels configuration
+        if (p.sidePanels) {
+            const sidep = p.sidePanels;
+            if (sidep.enabled !== undefined) sp.sidePanels.enabled = sidep.enabled;
+            if (sidep.size) {
+                if (sidep.size.width !== undefined) sp.sidePanels.panelWidth = sidep.size.width;
+                if (sidep.size.length !== undefined) sp.sidePanels.panelLength = sidep.size.length;
+                if (sidep.size.thickness !== undefined) sp.sidePanels.panelThickness = sidep.size.thickness;
+            }
+            if (sidep.electrical) {
+                if (sidep.electrical.ratedWatts !== undefined) sp.sidePanels.ratedWatts = sidep.electrical.ratedWatts;
+                if (sidep.electrical.voc !== undefined) sp.sidePanels.voc = sidep.electrical.voc;
+                if (sidep.electrical.vmp !== undefined) sp.sidePanels.vmp = sidep.electrical.vmp;
+                if (sidep.electrical.isc !== undefined) sp.sidePanels.isc = sidep.electrical.isc;
+                if (sidep.electrical.imp !== undefined) sp.sidePanels.imp = sidep.electrical.imp;
+            }
+            if (sidep.padding) {
+                if (sidep.padding.x !== undefined) sp.sidePanels.paddingX = sidep.padding.x;
+                if (sidep.padding.y !== undefined) sp.sidePanels.paddingY = sidep.padding.y;
+            }
+            if (sidep.grid) {
+                if (sidep.grid.rows !== undefined) sp.sidePanels.gridRows = sidep.grid.rows;
+                if (sidep.grid.cols !== undefined) sp.sidePanels.gridCols = sidep.grid.cols;
+            }
         }
         
-        if (p.layout) {
-            if (p.layout.mode !== undefined) sp.layoutMode = p.layout.mode;
-            if (p.layout.paddingX !== undefined) sp.paddingX = p.layout.paddingX;
-            if (p.layout.paddingY !== undefined) sp.paddingY = p.layout.paddingY;
-            if (p.layout.sideWallPanels !== undefined) sp.sideWallPanels = p.layout.sideWallPanels;
-            if (p.layout.topPanels !== undefined) sp.topPanels = p.layout.topPanels;
-        }
-        
-        if (p.grid) {
-            if (p.grid.rows !== undefined) sp.gridRows = p.grid.rows;
-            if (p.grid.cols !== undefined) sp.gridCols = p.grid.cols;
-            if (p.grid.rotation !== undefined) sp.gridRotation = p.grid.rotation;
-            if (p.grid.topRows !== undefined) sp.topPanelRows = p.grid.topRows;
-            if (p.grid.topCols !== undefined) sp.topPanelCols = p.grid.topCols;
-        }
+        // Layout mode (for top panels)
+        if (p.layoutMode !== undefined) sp.layoutMode = p.layoutMode;
+        if (p.gridRotation !== undefined) sp.gridRotation = p.gridRotation;
         
         if (p.positioning) {
             if (p.positioning.lift !== undefined) sp.archPanelOffset = p.positioning.lift;
@@ -9146,9 +9551,16 @@ function applyV30Config(config) {
         }
         
         if (p.spiral) {
-            if (p.spiral.turns !== undefined) sp.spiralTurns = p.spiral.turns;
-            if (p.spiral.panels !== undefined) sp.spiralPanels = p.spiral.panels;
-            if (p.spiral.spacing !== undefined) sp.spiralSpacing = p.spiral.spacing;
+            if (p.spiral.armCount !== undefined) sp.spiralArmCount = p.spiral.armCount;
+            if (p.spiral.secondaryEnabled !== undefined) sp.spiralSecondaryEnabled = p.spiral.secondaryEnabled;
+            if (p.spiral.secondaryRadialOffset !== undefined) sp.spiralSecondaryRadialOffset = p.spiral.secondaryRadialOffset;
+            if (p.spiral.secondaryLateralOffset !== undefined) sp.spiralSecondaryLateralOffset = p.spiral.secondaryLateralOffset;
+            if (p.spiral.secondaryPinwheel !== undefined) sp.spiralSecondaryPinwheel = p.spiral.secondaryPinwheel;
+            if (p.spiral.secondaryRotation !== undefined) sp.spiralSecondaryRotation = p.spiral.secondaryRotation;
+            if (p.spiral.armRadialStep !== undefined) sp.spiralArmRadialStep = p.spiral.armRadialStep;
+            if (p.spiral.armLateralStep !== undefined) sp.spiralArmLateralStep = p.spiral.armLateralStep;
+            if (p.spiral.armPinwheelStep !== undefined) sp.spiralArmPinwheelStep = p.spiral.armPinwheelStep;
+            if (p.spiral.armRotationStep !== undefined) sp.spiralArmRotationStep = p.spiral.armRotationStep;
         }
         
         if (p.support) {
@@ -9158,7 +9570,6 @@ function applyV30Config(config) {
             if (p.support.foldAngle !== undefined) sp.supportBeamFoldAngle = p.support.foldAngle;
             if (p.support.offsetH !== undefined) sp.supportBeamOffsetH = p.support.offsetH;
             if (p.support.offsetV !== undefined) sp.supportBeamOffsetV = p.support.offsetV;
-            if (p.support.panelLift !== undefined) sp.panelLift = p.support.panelLift;
         }
         
         if (p.enabledFaces !== undefined) sp.archWallFaces = p.enabledFaces;
@@ -9251,32 +9662,55 @@ function getConfigSnapshot(includeMetadata = false) {
         // Solar panel configuration
         panels: {
             enabled: state.solarPanels.enabled,
-            size: {
-                width: state.solarPanels.panelWidth,
-                length: state.solarPanels.panelLength,
-                thickness: state.solarPanels.panelThickness
+            topPanels: {
+                enabled: state.solarPanels.topPanels.enabled,
+                size: {
+                    width: state.solarPanels.topPanels.panelWidth,
+                    length: state.solarPanels.topPanels.panelLength,
+                    thickness: state.solarPanels.topPanels.panelThickness
+                },
+                electrical: {
+                    ratedWatts: state.solarPanels.topPanels.ratedWatts,
+                    voc: state.solarPanels.topPanels.voc,
+                    vmp: state.solarPanels.topPanels.vmp,
+                    isc: state.solarPanels.topPanels.isc,
+                    imp: state.solarPanels.topPanels.imp
+                },
+                padding: {
+                    x: state.solarPanels.topPanels.paddingX,
+                    y: state.solarPanels.topPanels.paddingY
+                },
+                grid: {
+                    rows: state.solarPanels.topPanels.gridRows,
+                    cols: state.solarPanels.topPanels.gridCols
+                },
+                lift: state.solarPanels.topPanels.panelLift
             },
-            electrical: {
-                ratedWatts: state.solarPanels.ratedWatts,
-                voc: state.solarPanels.voc,
-                vmp: state.solarPanels.vmp,
-                isc: state.solarPanels.isc,
-                imp: state.solarPanels.imp
+            sidePanels: {
+                enabled: state.solarPanels.sidePanels.enabled,
+                size: {
+                    width: state.solarPanels.sidePanels.panelWidth,
+                    length: state.solarPanels.sidePanels.panelLength,
+                    thickness: state.solarPanels.sidePanels.panelThickness
+                },
+                electrical: {
+                    ratedWatts: state.solarPanels.sidePanels.ratedWatts,
+                    voc: state.solarPanels.sidePanels.voc,
+                    vmp: state.solarPanels.sidePanels.vmp,
+                    isc: state.solarPanels.sidePanels.isc,
+                    imp: state.solarPanels.sidePanels.imp
+                },
+                padding: {
+                    x: state.solarPanels.sidePanels.paddingX,
+                    y: state.solarPanels.sidePanels.paddingY
+                },
+                grid: {
+                    rows: state.solarPanels.sidePanels.gridRows,
+                    cols: state.solarPanels.sidePanels.gridCols
+                }
             },
-            layout: {
-                mode: state.solarPanels.layoutMode,
-                paddingX: state.solarPanels.paddingX,
-                paddingY: state.solarPanels.paddingY,
-                sideWallPanels: state.solarPanels.sideWallPanels,
-                topPanels: state.solarPanels.topPanels
-            },
-            grid: {
-                rows: state.solarPanels.gridRows,
-                cols: state.solarPanels.gridCols,
-                rotation: state.solarPanels.gridRotation,
-                topRows: state.solarPanels.topPanelRows,
-                topCols: state.solarPanels.topPanelCols
-            },
+            layoutMode: state.solarPanels.layoutMode,
+            gridRotation: state.solarPanels.gridRotation,
             positioning: {
                 lift: state.solarPanels.archPanelOffset,
                 slide: state.solarPanels.archPanelSlide,
@@ -9290,9 +9724,16 @@ function getConfigSnapshot(includeMetadata = false) {
                 pinwheelAngle: state.solarPanels.pinwheelAngle
             },
             spiral: {
-                turns: state.solarPanels.spiralTurns,
-                panels: state.solarPanels.spiralPanels,
-                spacing: state.solarPanels.spiralSpacing
+                armCount: state.solarPanels.spiralArmCount,
+                secondaryEnabled: state.solarPanels.spiralSecondaryEnabled,
+                secondaryRadialOffset: state.solarPanels.spiralSecondaryRadialOffset,
+                secondaryLateralOffset: state.solarPanels.spiralSecondaryLateralOffset,
+                secondaryPinwheel: state.solarPanels.spiralSecondaryPinwheel,
+                secondaryRotation: state.solarPanels.spiralSecondaryRotation,
+                armRadialStep: state.solarPanels.spiralArmRadialStep,
+                armLateralStep: state.solarPanels.spiralArmLateralStep,
+                armPinwheelStep: state.solarPanels.spiralArmPinwheelStep,
+                armRotationStep: state.solarPanels.spiralArmRotationStep
             },
             support: {
                 show: state.solarPanels.showSupportBeams,
@@ -9300,8 +9741,7 @@ function getConfigSnapshot(includeMetadata = false) {
                 length: state.solarPanels.supportBeamLength,
                 foldAngle: state.solarPanels.supportBeamFoldAngle,
                 offsetH: state.solarPanels.supportBeamOffsetH,
-                offsetV: state.solarPanels.supportBeamOffsetV,
-                panelLift: state.solarPanels.panelLift
+                offsetV: state.solarPanels.supportBeamOffsetV
             },
             enabledFaces: state.solarPanels.archWallFaces
         },
@@ -9461,36 +9901,71 @@ function applyConfig(config, updateUI = true) {
         if (chkSolarPanels) chkSolarPanels.checked = sp.enabled;
         // Solar panel controls are always visible now
         
-        // Panel dimensions
-        const slPanelLength = document.getElementById('sl-panel-length');
-        const nbPanelLength = document.getElementById('nb-panel-length');
-        if (slPanelLength) slPanelLength.value = sp.panelLength;
-        if (nbPanelLength) nbPanelLength.value = sp.panelLength;
+        // ===== TOP PANEL CONTROLS =====
+        const topCfg = sp.topPanels;
+        // Dimensions
+        const slPanelLengthTop = document.getElementById('sl-panel-length-top');
+        const nbPanelLengthTop = document.getElementById('nb-panel-length-top');
+        if (slPanelLengthTop) slPanelLengthTop.value = topCfg.panelLength;
+        if (nbPanelLengthTop) nbPanelLengthTop.value = topCfg.panelLength;
         
-        const slPanelWidth = document.getElementById('sl-panel-width');
-        const nbPanelWidth = document.getElementById('nb-panel-width');
-        if (slPanelWidth) slPanelWidth.value = sp.panelWidth;
-        if (nbPanelWidth) nbPanelWidth.value = sp.panelWidth;
+        const slPanelWidthTop = document.getElementById('sl-panel-width-top');
+        const nbPanelWidthTop = document.getElementById('nb-panel-width-top');
+        if (slPanelWidthTop) slPanelWidthTop.value = topCfg.panelWidth;
+        if (nbPanelWidthTop) nbPanelWidthTop.value = topCfg.panelWidth;
         
-        const slPanelThick = document.getElementById('sl-panel-thick');
-        const nbPanelThick = document.getElementById('nb-panel-thick');
-        if (slPanelThick) slPanelThick.value = sp.panelThickness;
-        if (nbPanelThick) nbPanelThick.value = sp.panelThickness;
+        const slPanelThickTop = document.getElementById('sl-panel-thick-top');
+        const nbPanelThickTop = document.getElementById('nb-panel-thick-top');
+        if (slPanelThickTop) slPanelThickTop.value = topCfg.panelThickness;
+        if (nbPanelThickTop) nbPanelThickTop.value = topCfg.panelThickness;
         
-        // Electrical specs
-        const slPanelWatts = document.getElementById('sl-panel-watts');
-        const nbPanelWatts = document.getElementById('nb-panel-watts');
-        if (slPanelWatts) slPanelWatts.value = Math.min(800, sp.ratedWatts || 400);
-        if (nbPanelWatts) nbPanelWatts.value = sp.ratedWatts || 400;
+        // Electrical
+        const slPanelWattsTop = document.getElementById('sl-panel-watts-top');
+        const nbPanelWattsTop = document.getElementById('nb-panel-watts-top');
+        if (slPanelWattsTop) slPanelWattsTop.value = Math.min(800, topCfg.ratedWatts || 400);
+        if (nbPanelWattsTop) nbPanelWattsTop.value = topCfg.ratedWatts || 400;
         
-        const nbVoc = document.getElementById('nb-panel-voc');
-        const nbVmp = document.getElementById('nb-panel-vmp');
-        const nbIsc = document.getElementById('nb-panel-isc');
-        const nbImp = document.getElementById('nb-panel-imp');
-        if (nbVoc) nbVoc.value = sp.voc || 49.5;
-        if (nbVmp) nbVmp.value = sp.vmp || 41.5;
-        if (nbIsc) nbIsc.value = sp.isc || 10.2;
-        if (nbImp) nbImp.value = sp.imp || 9.65;
+        const nbVocTop = document.getElementById('nb-panel-voc-top');
+        const nbVmpTop = document.getElementById('nb-panel-vmp-top');
+        const nbIscTop = document.getElementById('nb-panel-isc-top');
+        const nbImpTop = document.getElementById('nb-panel-imp-top');
+        if (nbVocTop) nbVocTop.value = topCfg.voc || 49.5;
+        if (nbVmpTop) nbVmpTop.value = topCfg.vmp || 41.5;
+        if (nbIscTop) nbIscTop.value = topCfg.isc || 10.2;
+        if (nbImpTop) nbImpTop.value = topCfg.imp || 9.65;
+        
+        // ===== SIDE PANEL CONTROLS =====
+        const sideCfg = sp.sidePanels;
+        // Dimensions
+        const slPanelLengthSide = document.getElementById('sl-panel-length-side');
+        const nbPanelLengthSide = document.getElementById('nb-panel-length-side');
+        if (slPanelLengthSide) slPanelLengthSide.value = sideCfg.panelLength;
+        if (nbPanelLengthSide) nbPanelLengthSide.value = sideCfg.panelLength;
+        
+        const slPanelWidthSide = document.getElementById('sl-panel-width-side');
+        const nbPanelWidthSide = document.getElementById('nb-panel-width-side');
+        if (slPanelWidthSide) slPanelWidthSide.value = sideCfg.panelWidth;
+        if (nbPanelWidthSide) nbPanelWidthSide.value = sideCfg.panelWidth;
+        
+        const slPanelThickSide = document.getElementById('sl-panel-thick-side');
+        const nbPanelThickSide = document.getElementById('nb-panel-thick-side');
+        if (slPanelThickSide) slPanelThickSide.value = sideCfg.panelThickness;
+        if (nbPanelThickSide) nbPanelThickSide.value = sideCfg.panelThickness;
+        
+        // Electrical
+        const slPanelWattsSide = document.getElementById('sl-panel-watts-side');
+        const nbPanelWattsSide = document.getElementById('nb-panel-watts-side');
+        if (slPanelWattsSide) slPanelWattsSide.value = Math.min(800, sideCfg.ratedWatts || 400);
+        if (nbPanelWattsSide) nbPanelWattsSide.value = sideCfg.ratedWatts || 400;
+        
+        const nbVocSide = document.getElementById('nb-panel-voc-side');
+        const nbVmpSide = document.getElementById('nb-panel-vmp-side');
+        const nbIscSide = document.getElementById('nb-panel-isc-side');
+        const nbImpSide = document.getElementById('nb-panel-imp-side');
+        if (nbVocSide) nbVocSide.value = sideCfg.voc || 49.5;
+        if (nbVmpSide) nbVmpSide.value = sideCfg.vmp || 41.5;
+        if (nbIscSide) nbIscSide.value = sideCfg.isc || 10.2;
+        if (nbImpSide) nbImpSide.value = sideCfg.imp || 9.65;
         
         // Layout mode
         const selPanelLayout = document.getElementById('sel-panel-layout');
@@ -9504,29 +9979,21 @@ function applyConfig(config, updateUI = true) {
         
         // Cylinder mode panel options
         const chkSideWallPanels = document.getElementById('chk-side-wall-panels');
-        if (chkSideWallPanels) chkSideWallPanels.checked = sp.sideWallPanels || false;
+        if (chkSideWallPanels) chkSideWallPanels.checked = sp.sidePanels.enabled || false;
         const chkTopPanels = document.getElementById('chk-top-panels');
-        if (chkTopPanels) chkTopPanels.checked = sp.topPanels !== false;  // Default to true
+        if (chkTopPanels) chkTopPanels.checked = sp.topPanels.enabled !== false;  // Default to true
         
-        // Side/Arch panel grid (rectangular mode)
-        const slGridRows = document.getElementById('sl-grid-rows');
+        // Side/Arch panel grid
         const nbGridRows = document.getElementById('nb-grid-rows');
-        if (slGridRows) slGridRows.value = sp.gridRows;
-        if (nbGridRows) nbGridRows.value = sp.gridRows;
-        const slGridCols = document.getElementById('sl-grid-cols');
+        if (nbGridRows) nbGridRows.value = sp.sidePanels.gridRows;
         const nbGridCols = document.getElementById('nb-grid-cols');
-        if (slGridCols) slGridCols.value = sp.gridCols;
-        if (nbGridCols) nbGridCols.value = sp.gridCols;
+        if (nbGridCols) nbGridCols.value = sp.sidePanels.gridCols;
         
         // Top panel grid (cylinder mode)
-        const slTopPanelRows = document.getElementById('sl-top-panel-rows');
         const nbTopPanelRows = document.getElementById('nb-top-panel-rows');
-        if (slTopPanelRows) slTopPanelRows.value = sp.topPanelRows || 2;
-        if (nbTopPanelRows) nbTopPanelRows.value = sp.topPanelRows || 2;
-        const slTopPanelCols = document.getElementById('sl-top-panel-cols');
+        if (nbTopPanelRows) nbTopPanelRows.value = sp.topPanels.gridRows || 2;
         const nbTopPanelCols = document.getElementById('nb-top-panel-cols');
-        if (slTopPanelCols) slTopPanelCols.value = sp.topPanelCols || 2;
-        if (nbTopPanelCols) nbTopPanelCols.value = sp.topPanelCols || 2;
+        if (nbTopPanelCols) nbTopPanelCols.value = sp.topPanels.gridCols || 2;
         
         const slGridRotation = document.getElementById('sl-grid-rotation');
         const nbGridRotation = document.getElementById('nb-grid-rotation');
@@ -9555,29 +10022,57 @@ function applyConfig(config, updateUI = true) {
         if (slPinwheelAngle) slPinwheelAngle.value = sp.pinwheelAngle;
         if (nbPinwheelAngle) nbPinwheelAngle.value = sp.pinwheelAngle;
         
-        // Spiral mode
-        const slSpiralTurns = document.getElementById('sl-spiral-turns');
-        const nbSpiralTurns = document.getElementById('nb-spiral-turns');
-        if (slSpiralTurns) slSpiralTurns.value = sp.spiralTurns;
-        if (nbSpiralTurns) nbSpiralTurns.value = sp.spiralTurns;
-        const slSpiralPanels = document.getElementById('sl-spiral-panels');
-        const nbSpiralPanels = document.getElementById('nb-spiral-panels');
-        if (slSpiralPanels) slSpiralPanels.value = sp.spiralPanels;
-        if (nbSpiralPanels) nbSpiralPanels.value = sp.spiralPanels;
-        const slSpiralSpacing = document.getElementById('sl-spiral-spacing');
-        const nbSpiralSpacing = document.getElementById('nb-spiral-spacing');
-        if (slSpiralSpacing) slSpiralSpacing.value = sp.spiralSpacing;
-        if (nbSpiralSpacing) nbSpiralSpacing.value = sp.spiralSpacing;
+        // Spiral (dual-panel arms)
+        const slSpiralArmCount = document.getElementById('sl-spiral-arm-count');
+        const nbSpiralArmCount = document.getElementById('nb-spiral-arm-count');
+        if (slSpiralArmCount) slSpiralArmCount.value = sp.spiralArmCount ?? 2;
+        if (nbSpiralArmCount) nbSpiralArmCount.value = sp.spiralArmCount ?? 2;
+        const chkSpiralSecondary = document.getElementById('chk-spiral-secondary');
+        if (chkSpiralSecondary) chkSpiralSecondary.checked = sp.spiralSecondaryEnabled !== false;
+        const slSpiralRadial = document.getElementById('sl-spiral-secondary-radial');
+        const nbSpiralRadial = document.getElementById('nb-spiral-secondary-radial');
+        if (slSpiralRadial) slSpiralRadial.value = sp.spiralSecondaryRadialOffset ?? 24;
+        if (nbSpiralRadial) nbSpiralRadial.value = sp.spiralSecondaryRadialOffset ?? 24;
+        const slSpiralLateral = document.getElementById('sl-spiral-secondary-lateral');
+        const nbSpiralLateral = document.getElementById('nb-spiral-secondary-lateral');
+        if (slSpiralLateral) slSpiralLateral.value = sp.spiralSecondaryLateralOffset ?? 0;
+        if (nbSpiralLateral) nbSpiralLateral.value = sp.spiralSecondaryLateralOffset ?? 0;
+        const slSpiralPinwheel = document.getElementById('sl-spiral-secondary-pinwheel');
+        const nbSpiralPinwheel = document.getElementById('nb-spiral-secondary-pinwheel');
+        if (slSpiralPinwheel) slSpiralPinwheel.value = sp.spiralSecondaryPinwheel ?? 0;
+        if (nbSpiralPinwheel) nbSpiralPinwheel.value = sp.spiralSecondaryPinwheel ?? 0;
+        const slSpiralRotation = document.getElementById('sl-spiral-secondary-rotation');
+        const nbSpiralRotation = document.getElementById('nb-spiral-secondary-rotation');
+        if (slSpiralRotation) slSpiralRotation.value = sp.spiralSecondaryRotation ?? 0;
+        if (nbSpiralRotation) nbSpiralRotation.value = sp.spiralSecondaryRotation ?? 0;
+        const slSpiralRadialStep = document.getElementById('sl-spiral-arm-radial-step');
+        const nbSpiralRadialStep = document.getElementById('nb-spiral-arm-radial-step');
+        if (slSpiralRadialStep) slSpiralRadialStep.value = sp.spiralArmRadialStep ?? 0;
+        if (nbSpiralRadialStep) nbSpiralRadialStep.value = sp.spiralArmRadialStep ?? 0;
+        const slSpiralLateralStep = document.getElementById('sl-spiral-arm-lateral-step');
+        const nbSpiralLateralStep = document.getElementById('nb-spiral-arm-lateral-step');
+        if (slSpiralLateralStep) slSpiralLateralStep.value = sp.spiralArmLateralStep ?? 0;
+        if (nbSpiralLateralStep) nbSpiralLateralStep.value = sp.spiralArmLateralStep ?? 0;
+        const slSpiralPinwheelStep = document.getElementById('sl-spiral-arm-pinwheel-step');
+        const nbSpiralPinwheelStep = document.getElementById('nb-spiral-arm-pinwheel-step');
+        if (slSpiralPinwheelStep) slSpiralPinwheelStep.value = sp.spiralArmPinwheelStep ?? 0;
+        if (nbSpiralPinwheelStep) nbSpiralPinwheelStep.value = sp.spiralArmPinwheelStep ?? 0;
+        const slSpiralRotationStep = document.getElementById('sl-spiral-arm-rotation-step');
+        const nbSpiralRotationStep = document.getElementById('nb-spiral-arm-rotation-step');
+        if (slSpiralRotationStep) slSpiralRotationStep.value = sp.spiralArmRotationStep ?? 0;
+        if (nbSpiralRotationStep) nbSpiralRotationStep.value = sp.spiralArmRotationStep ?? 0;
         
-        // Padding
-        const slPaddingX = document.getElementById('sl-padding-x');
-        const nbPaddingX = document.getElementById('nb-padding-x');
-        if (slPaddingX) slPaddingX.value = sp.paddingX;
-        if (nbPaddingX) nbPaddingX.value = sp.paddingX;
-        const slPaddingY = document.getElementById('sl-padding-y');
-        const nbPaddingY = document.getElementById('nb-padding-y');
-        if (slPaddingY) slPaddingY.value = sp.paddingY;
-        if (nbPaddingY) nbPaddingY.value = sp.paddingY;
+        // Top panel padding
+        const nbPaddingXTop = document.getElementById('nb-padding-x-top');
+        const nbPaddingYTop = document.getElementById('nb-padding-y-top');
+        if (nbPaddingXTop) nbPaddingXTop.value = (topCfg.paddingX ?? 2);
+        if (nbPaddingYTop) nbPaddingYTop.value = (topCfg.paddingY ?? 2);
+        
+        // Side panel padding
+        const nbPaddingXSide = document.getElementById('nb-padding-x-side');
+        const nbPaddingYSide = document.getElementById('nb-padding-y-side');
+        if (nbPaddingXSide) nbPaddingXSide.value = (sideCfg.paddingX ?? 2);
+        if (nbPaddingYSide) nbPaddingYSide.value = (sideCfg.paddingY ?? 2);
         
         // Support beams
         const chkSupportBeams = document.getElementById('chk-support-beams');
@@ -9610,11 +10105,11 @@ function applyConfig(config, updateUI = true) {
         if (slSupportOffsetV) slSupportOffsetV.value = sp.supportBeamOffsetV || 0;
         if (nbSupportOffsetV) nbSupportOffsetV.value = sp.supportBeamOffsetV || 0;
         
-        // Panel lift
+        // Panel lift (top panels)
         const slPanelLift = document.getElementById('sl-panel-lift');
         const nbPanelLift = document.getElementById('nb-panel-lift');
-        if (slPanelLift) slPanelLift.value = Math.min(48, sp.panelLift || 0);
-        if (nbPanelLift) nbPanelLift.value = sp.panelLift || 0;
+        if (slPanelLift) slPanelLift.value = Math.min(48, topCfg.panelLift || 0);
+        if (nbPanelLift) nbPanelLift.value = topCfg.panelLift || 0;
         
         // Arch mode panel positioning (simplified: Lift and Slide)
         const slArchPanelOffset = document.getElementById('sl-arch-panel-offset');
@@ -10240,7 +10735,8 @@ function drawMeasurements(ctx, data) {
 function drawMeasurementsOverlay(data, structureCenter, w, h) {
     // Get or create the measurement overlay canvas
     let overlayCanvas = document.getElementById('measurement-overlay');
-    if (!overlayCanvas) {
+    const viewport = document.getElementById('viewport');
+    if (!overlayCanvas && viewport) {
         overlayCanvas = document.createElement('canvas');
         overlayCanvas.id = 'measurement-overlay';
         overlayCanvas.style.position = 'absolute';
@@ -10248,9 +10744,10 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
         overlayCanvas.style.left = '0';
         overlayCanvas.style.pointerEvents = 'none';
         overlayCanvas.style.zIndex = '10';
-        canvas.parentElement.style.position = 'relative';
-        canvas.parentElement.appendChild(overlayCanvas);
+        viewport.appendChild(overlayCanvas);
     }
+    
+    if (!overlayCanvas) return;
     
     // Match canvas size
     overlayCanvas.width = w;
@@ -10483,21 +10980,28 @@ const debouncedSaveHistory = debounce(() => {
         return;
     }
     
-    const stateCopy = JSON.parse(JSON.stringify(state));
-    // Remove non-serializable properties
-    delete stateCopy.light;
-    delete stateCopy.cam;
-    delete stateCopy.view;
-    delete stateCopy.animation;
-    delete stateCopy.measurePoints;
-    delete stateCopy.collisions;
-    
-    state.history = state.history.slice(0, state.historyIndex + 1);
-    state.history.push(stateCopy);
-    if (state.history.length > MAX_HISTORY_SIZE) {
-        state.history.shift();
-    } else {
-        state.historyIndex++;
+    try {
+        // Create a shallow copy first, excluding problematic properties
+        const stateToSerialize = {};
+        for (const key of Object.keys(state)) {
+            // Skip non-serializable and large properties
+            if (['light', 'cam', 'view', 'animation', 'measurePoints', 'collisions', 'history', 'historyIndex'].includes(key)) {
+                continue;
+            }
+            stateToSerialize[key] = state[key];
+        }
+        
+        const stateCopy = JSON.parse(JSON.stringify(stateToSerialize));
+        
+        state.history = state.history.slice(0, state.historyIndex + 1);
+        state.history.push(stateCopy);
+        if (state.history.length > MAX_HISTORY_SIZE) {
+            state.history.shift();
+        } else {
+            state.historyIndex++;
+        }
+    } catch (e) {
+        console.warn('Failed to save state to history:', e.message);
     }
 }, 2000); // Debounce history saves by 2 seconds to avoid lag during dragging
 
@@ -10846,6 +11350,12 @@ document.addEventListener('keydown', e => {
             if (e.ctrlKey || e.metaKey) {
                 e.preventDefault();
                 exportToJSON();
+            }
+            break;
+        case 'i':
+            if (e.ctrlKey || e.metaKey) {
+                e.preventDefault();
+                importFromJSON();
             }
             break;
         case 'z':
@@ -11231,90 +11741,190 @@ document.getElementById('chk-solar-panels').onchange = e => {
     requestRender();
 };
 
-// Panel dimensions
-document.getElementById('sl-panel-length').oninput = e => {
+// ========== TOP PANEL DIMENSION CONTROLS ==========
+document.getElementById('sl-panel-length-top').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.solarPanels.panelLength = val;
-    document.getElementById('nb-panel-length').value = val;
+    state.solarPanels.topPanels.panelLength = val;
+    document.getElementById('nb-panel-length-top').value = val;
     requestRender();
 };
-document.getElementById('nb-panel-length').onchange = e => {
+document.getElementById('nb-panel-length-top').onchange = e => {
     let val = parseFloat(e.target.value) || 65;
     val = Math.max(12, Math.min(120, val));
-    state.solarPanels.panelLength = val;
-    document.getElementById('sl-panel-length').value = val;
+    state.solarPanels.topPanels.panelLength = val;
+    document.getElementById('sl-panel-length-top').value = val;
     e.target.value = val;
     requestRender();
 };
-document.getElementById('sl-panel-width').oninput = e => {
+document.getElementById('sl-panel-width-top').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.solarPanels.panelWidth = val;
-    document.getElementById('nb-panel-width').value = val;
+    state.solarPanels.topPanels.panelWidth = val;
+    document.getElementById('nb-panel-width-top').value = val;
     requestRender();
 };
-document.getElementById('nb-panel-width').onchange = e => {
+document.getElementById('nb-panel-width-top').onchange = e => {
     let val = parseFloat(e.target.value) || 39;
     val = Math.max(12, Math.min(80, val));
-    state.solarPanels.panelWidth = val;
-    document.getElementById('sl-panel-width').value = val;
+    state.solarPanels.topPanels.panelWidth = val;
+    document.getElementById('sl-panel-width-top').value = val;
     e.target.value = val;
     requestRender();
 };
-document.getElementById('sl-panel-thick').oninput = e => {
+document.getElementById('sl-panel-thick-top').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.solarPanels.panelThickness = val;
-    document.getElementById('nb-panel-thick').value = val;
+    state.solarPanels.topPanels.panelThickness = val;
+    document.getElementById('nb-panel-thick-top').value = val;
     requestRender();
 };
-document.getElementById('nb-panel-thick').onchange = e => {
+document.getElementById('nb-panel-thick-top').onchange = e => {
     let val = parseFloat(e.target.value) || 1.5;
     val = Math.max(0.5, Math.min(4, val));
-    state.solarPanels.panelThickness = val;
-    document.getElementById('sl-panel-thick').value = val;
+    state.solarPanels.topPanels.panelThickness = val;
+    document.getElementById('sl-panel-thick-top').value = val;
     e.target.value = val;
     requestRender();
 };
 
-// Electrical specs controls
-document.getElementById('sl-panel-watts').oninput = e => {
+// ========== SIDE PANEL DIMENSION CONTROLS ==========
+document.getElementById('sl-panel-length-side').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.solarPanels.ratedWatts = val;
-    document.getElementById('nb-panel-watts').value = val;
+    state.solarPanels.sidePanels.panelLength = val;
+    document.getElementById('nb-panel-length-side').value = val;
+    requestRender();
 };
-document.getElementById('nb-panel-watts').onchange = e => {
+document.getElementById('nb-panel-length-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 65;
+    val = Math.max(12, Math.min(120, val));
+    state.solarPanels.sidePanels.panelLength = val;
+    document.getElementById('sl-panel-length-side').value = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-panel-width-side').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.sidePanels.panelWidth = val;
+    document.getElementById('nb-panel-width-side').value = val;
+    requestRender();
+};
+document.getElementById('nb-panel-width-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 39;
+    val = Math.max(12, Math.min(80, val));
+    state.solarPanels.sidePanels.panelWidth = val;
+    document.getElementById('sl-panel-width-side').value = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-panel-thick-side').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.sidePanels.panelThickness = val;
+    document.getElementById('nb-panel-thick-side').value = val;
+    requestRender();
+};
+document.getElementById('nb-panel-thick-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 1.5;
+    val = Math.max(0.5, Math.min(4, val));
+    state.solarPanels.sidePanels.panelThickness = val;
+    document.getElementById('sl-panel-thick-side').value = val;
+    e.target.value = val;
+    requestRender();
+};
+
+// ========== TOP PANEL ELECTRICAL CONTROLS ==========
+document.getElementById('sl-panel-watts-top').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.topPanels.ratedWatts = val;
+    document.getElementById('nb-panel-watts-top').value = val;
+};
+document.getElementById('nb-panel-watts-top').onchange = e => {
     let val = parseFloat(e.target.value) || 400;
     val = Math.max(50, Math.min(1000, val));
-    state.solarPanels.ratedWatts = val;
-    document.getElementById('sl-panel-watts').value = Math.min(800, val);
+    state.solarPanels.topPanels.ratedWatts = val;
+    document.getElementById('sl-panel-watts-top').value = Math.min(800, val);
     e.target.value = val;
 };
-document.getElementById('nb-panel-voc').onchange = e => {
+document.getElementById('nb-panel-voc-top').onchange = e => {
     let val = parseFloat(e.target.value) || 49.5;
     val = Math.max(0, Math.min(100, val));
-    state.solarPanels.voc = val;
+    state.solarPanels.topPanels.voc = val;
     e.target.value = val;
 };
-document.getElementById('nb-panel-vmp').onchange = e => {
+document.getElementById('nb-panel-vmp-top').onchange = e => {
     let val = parseFloat(e.target.value) || 41.5;
     val = Math.max(0, Math.min(100, val));
-    state.solarPanels.vmp = val;
+    state.solarPanels.topPanels.vmp = val;
     e.target.value = val;
 };
-document.getElementById('nb-panel-isc').onchange = e => {
+document.getElementById('nb-panel-isc-top').onchange = e => {
     let val = parseFloat(e.target.value) || 10.2;
     val = Math.max(0, Math.min(30, val));
-    state.solarPanels.isc = val;
+    state.solarPanels.topPanels.isc = val;
     e.target.value = val;
 };
-document.getElementById('nb-panel-imp').onchange = e => {
+document.getElementById('nb-panel-imp-top').onchange = e => {
     let val = parseFloat(e.target.value) || 9.65;
     val = Math.max(0, Math.min(30, val));
-    state.solarPanels.imp = val;
+    state.solarPanels.topPanels.imp = val;
+    e.target.value = val;
+};
+
+// ========== SIDE PANEL ELECTRICAL CONTROLS ==========
+document.getElementById('sl-panel-watts-side').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.sidePanels.ratedWatts = val;
+    document.getElementById('nb-panel-watts-side').value = val;
+};
+document.getElementById('nb-panel-watts-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 400;
+    val = Math.max(50, Math.min(1000, val));
+    state.solarPanels.sidePanels.ratedWatts = val;
+    document.getElementById('sl-panel-watts-side').value = Math.min(800, val);
+    e.target.value = val;
+};
+document.getElementById('nb-panel-voc-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 49.5;
+    val = Math.max(0, Math.min(100, val));
+    state.solarPanels.sidePanels.voc = val;
+    e.target.value = val;
+};
+document.getElementById('nb-panel-vmp-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 41.5;
+    val = Math.max(0, Math.min(100, val));
+    state.solarPanels.sidePanels.vmp = val;
+    e.target.value = val;
+};
+document.getElementById('nb-panel-isc-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 10.2;
+    val = Math.max(0, Math.min(30, val));
+    state.solarPanels.sidePanels.isc = val;
+    e.target.value = val;
+};
+document.getElementById('nb-panel-imp-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 9.65;
+    val = Math.max(0, Math.min(30, val));
+    state.solarPanels.sidePanels.imp = val;
     e.target.value = val;
 };
 
 // Layout mode dropdown
-document.getElementById('sel-panel-layout').onchange = e => {
+const layoutDropdown = document.getElementById('sel-panel-layout');
+// Prevent event bubbling that might interfere with dropdown selection
+['mousedown', 'mouseup', 'click', 'focus', 'pointerdown', 'wheel'].forEach(eventType => {
+    layoutDropdown.addEventListener(eventType, e => e.stopPropagation());
+});
+// Also prevent scroll events on the parent container while dropdown is focused
+layoutDropdown.addEventListener('focus', () => {
+    const controlsDiv = document.getElementById('controls');
+    if (controlsDiv) {
+        controlsDiv.style.overflowY = 'hidden';
+    }
+});
+layoutDropdown.addEventListener('blur', () => {
+    const controlsDiv = document.getElementById('controls');
+    if (controlsDiv) {
+        controlsDiv.style.overflowY = 'auto';
+    }
+});
+layoutDropdown.onchange = e => {
     state.solarPanels.layoutMode = e.target.value;
     // Show/hide mode-specific controls
     document.getElementById('rect-mode-controls').style.display = e.target.value === 'rectangular' ? 'block' : 'none';
@@ -11325,74 +11935,46 @@ document.getElementById('sel-panel-layout').onchange = e => {
 
 // Side wall panels checkbox (cylinder mode)
 document.getElementById('chk-side-wall-panels').onchange = e => {
-    state.solarPanels.sideWallPanels = e.target.checked;
+    state.solarPanels.sidePanels.enabled = e.target.checked;
     updateArchWallFacesUI();
     requestRender();
 };
 
 // Top surface panels checkbox (cylinder mode)
 document.getElementById('chk-top-panels').onchange = e => {
-    state.solarPanels.topPanels = e.target.checked;
+    state.solarPanels.topPanels.enabled = e.target.checked;
     updateArchWallFacesUI();
     requestRender();
 };
 
-// Rectangular mode controls
-document.getElementById('sl-grid-rows').oninput = e => {
-    const val = parseInt(e.target.value);
-    state.solarPanels.gridRows = val;
-    document.getElementById('nb-grid-rows').value = val;
-    requestRender();
-};
+// Side panel grid controls (arch mode or cylinder side walls)
 document.getElementById('nb-grid-rows').onchange = e => {
     let val = parseInt(e.target.value) || 2;
     val = Math.max(1, Math.min(10, val));
-    state.solarPanels.gridRows = val;
-    document.getElementById('sl-grid-rows').value = val;
+    state.solarPanels.sidePanels.gridRows = val;
     e.target.value = val;
-    requestRender();
-};
-document.getElementById('sl-grid-cols').oninput = e => {
-    const val = parseInt(e.target.value);
-    state.solarPanels.gridCols = val;
-    document.getElementById('nb-grid-cols').value = val;
     requestRender();
 };
 document.getElementById('nb-grid-cols').onchange = e => {
     let val = parseInt(e.target.value) || 2;
     val = Math.max(1, Math.min(10, val));
-    state.solarPanels.gridCols = val;
-    document.getElementById('sl-grid-cols').value = val;
+    state.solarPanels.sidePanels.gridCols = val;
     e.target.value = val;
     requestRender();
 };
 
 // Top panel grid controls (cylinder mode)
-document.getElementById('sl-top-panel-rows').oninput = e => {
-    const val = parseInt(e.target.value);
-    state.solarPanels.topPanelRows = val;
-    document.getElementById('nb-top-panel-rows').value = val;
-    requestRender();
-};
 document.getElementById('nb-top-panel-rows').onchange = e => {
     let val = parseInt(e.target.value) || 2;
     val = Math.max(1, Math.min(10, val));
-    state.solarPanels.topPanelRows = val;
-    document.getElementById('sl-top-panel-rows').value = val;
+    state.solarPanels.topPanels.gridRows = val;
     e.target.value = val;
-    requestRender();
-};
-document.getElementById('sl-top-panel-cols').oninput = e => {
-    const val = parseInt(e.target.value);
-    state.solarPanels.topPanelCols = val;
-    document.getElementById('nb-top-panel-cols').value = val;
     requestRender();
 };
 document.getElementById('nb-top-panel-cols').onchange = e => {
     let val = parseInt(e.target.value) || 2;
     val = Math.max(1, Math.min(10, val));
-    state.solarPanels.topPanelCols = val;
-    document.getElementById('sl-top-panel-cols').value = val;
+    state.solarPanels.topPanels.gridCols = val;
     e.target.value = val;
     requestRender();
 };
@@ -11484,91 +12066,172 @@ document.getElementById('nb-pinwheel-angle').onchange = e => {
     requestRender();
 };
 
-// Spiral mode controls
-document.getElementById('sl-spiral-turns').oninput = e => {
-    const val = parseFloat(e.target.value);
-    state.solarPanels.spiralTurns = val;
-    document.getElementById('nb-spiral-turns').value = val;
-    requestRender();
-};
-document.getElementById('nb-spiral-turns').onchange = e => {
-    let val = parseFloat(e.target.value) || 2;
-    val = Math.max(1, Math.min(5, val));
-    state.solarPanels.spiralTurns = val;
-    document.getElementById('sl-spiral-turns').value = val;
-    e.target.value = val;
-    requestRender();
-};
-document.getElementById('sl-spiral-panels').oninput = e => {
+// Spiral (multi-panel arms) controls
+document.getElementById('sl-spiral-arm-count').oninput = e => {
     const val = parseInt(e.target.value);
-    state.solarPanels.spiralPanels = val;
-    document.getElementById('nb-spiral-panels').value = val;
+    state.solarPanels.spiralArmCount = val;
+    document.getElementById('nb-spiral-arm-count').value = val;
     requestRender();
 };
-document.getElementById('nb-spiral-panels').onchange = e => {
-    let val = parseInt(e.target.value) || 12;
-    val = Math.max(4, Math.min(36, val));
-    state.solarPanels.spiralPanels = val;
-    document.getElementById('sl-spiral-panels').value = val;
+document.getElementById('nb-spiral-arm-count').onchange = e => {
+    let val = parseInt(e.target.value);
+    if (isNaN(val)) val = 2;
+    state.solarPanels.spiralArmCount = val;
     e.target.value = val;
     requestRender();
 };
-document.getElementById('sl-spiral-spacing').oninput = e => {
-    const val = parseFloat(e.target.value);
-    state.solarPanels.spiralSpacing = val;
-    document.getElementById('nb-spiral-spacing').value = val;
+document.getElementById('chk-spiral-secondary').onchange = e => {
+    state.solarPanels.spiralSecondaryEnabled = e.target.checked;
     requestRender();
 };
-document.getElementById('nb-spiral-spacing').onchange = e => {
-    let val = parseFloat(e.target.value) || 1.2;
-    val = Math.max(0.8, Math.min(2, val));
-    state.solarPanels.spiralSpacing = val;
-    document.getElementById('sl-spiral-spacing').value = val;
+document.getElementById('sl-spiral-secondary-radial').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralSecondaryRadialOffset = val;
+    document.getElementById('nb-spiral-secondary-radial').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-secondary-radial').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 24;
+    state.solarPanels.spiralSecondaryRadialOffset = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-secondary-lateral').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralSecondaryLateralOffset = val;
+    document.getElementById('nb-spiral-secondary-lateral').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-secondary-lateral').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralSecondaryLateralOffset = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-secondary-pinwheel').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralSecondaryPinwheel = val;
+    document.getElementById('nb-spiral-secondary-pinwheel').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-secondary-pinwheel').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralSecondaryPinwheel = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-secondary-rotation').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralSecondaryRotation = val;
+    document.getElementById('nb-spiral-secondary-rotation').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-secondary-rotation').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralSecondaryRotation = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-arm-radial-step').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralArmRadialStep = val;
+    document.getElementById('nb-spiral-arm-radial-step').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-arm-radial-step').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralArmRadialStep = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-arm-lateral-step').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralArmLateralStep = val;
+    document.getElementById('nb-spiral-arm-lateral-step').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-arm-lateral-step').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralArmLateralStep = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-arm-pinwheel-step').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralArmPinwheelStep = val;
+    document.getElementById('nb-spiral-arm-pinwheel-step').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-arm-pinwheel-step').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralArmPinwheelStep = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('sl-spiral-arm-rotation-step').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.spiralArmRotationStep = val;
+    document.getElementById('nb-spiral-arm-rotation-step').value = val;
+    requestRender();
+};
+document.getElementById('nb-spiral-arm-rotation-step').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
+    state.solarPanels.spiralArmRotationStep = val;
     e.target.value = val;
     requestRender();
 };
 
-// Padding controls
-document.getElementById('sl-padding-x').oninput = e => {
-    const val = parseFloat(e.target.value);
-    state.solarPanels.paddingX = val;
-    document.getElementById('nb-padding-x').value = val;
-    requestRender();
-};
-document.getElementById('nb-padding-x').onchange = e => {
-    let val = parseFloat(e.target.value) || 2;
-    val = Math.max(0, Math.min(12, val));
-    state.solarPanels.paddingX = val;
-    document.getElementById('sl-padding-x').value = val;
+// ========== TOP PANEL PADDING CONTROLS ==========
+document.getElementById('nb-padding-x-top').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 2;
+    state.solarPanels.topPanels.paddingX = val;
     e.target.value = val;
     requestRender();
 };
-document.getElementById('sl-padding-y').oninput = e => {
-    const val = parseFloat(e.target.value);
-    state.solarPanels.paddingY = val;
-    document.getElementById('nb-padding-y').value = val;
-    requestRender();
-};
-document.getElementById('nb-padding-y').onchange = e => {
-    let val = parseFloat(e.target.value) || 2;
-    val = Math.max(0, Math.min(12, val));
-    state.solarPanels.paddingY = val;
-    document.getElementById('sl-padding-y').value = val;
+document.getElementById('nb-padding-y-top').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 2;
+    state.solarPanels.topPanels.paddingY = val;
     e.target.value = val;
     requestRender();
 };
 
-// Panel lift controls
+// ========== SIDE PANEL PADDING CONTROLS ==========
+document.getElementById('nb-padding-x-side').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 2;
+    state.solarPanels.sidePanels.paddingX = val;
+    e.target.value = val;
+    requestRender();
+};
+document.getElementById('nb-padding-y-side').onchange = e => {
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 2;
+    state.solarPanels.sidePanels.paddingY = val;
+    e.target.value = val;
+    requestRender();
+};
+
+// Panel lift controls (top panels only)
 document.getElementById('sl-panel-lift').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.solarPanels.panelLift = val;
+    state.solarPanels.topPanels.panelLift = val;
     document.getElementById('nb-panel-lift').value = val;
     requestRender();
 };
 document.getElementById('nb-panel-lift').onchange = e => {
     let val = parseFloat(e.target.value) || 0;
     val = Math.max(0, Math.min(96, val));
-    state.solarPanels.panelLift = val;
+    state.solarPanels.topPanels.panelLift = val;
     document.getElementById('sl-panel-lift').value = Math.min(48, val);
     e.target.value = val;
     requestRender();
@@ -11619,10 +12282,10 @@ document.getElementById('sl-arch-panel-offset').oninput = e => {
     requestRender();
 };
 document.getElementById('nb-arch-panel-offset').onchange = e => {
-    let val = parseFloat(e.target.value) || 2;
-    val = Math.max(0, Math.min(24, val));
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 2;
     state.solarPanels.archPanelOffset = val;
-    document.getElementById('sl-arch-panel-offset').value = Math.min(12, val);
+    document.getElementById('sl-arch-panel-offset').value = val;
     e.target.value = val;
     requestRender();
 };
@@ -11635,10 +12298,10 @@ document.getElementById('sl-arch-panel-offset-y').oninput = e => {
     requestRender();
 };
 document.getElementById('nb-arch-panel-offset-y').onchange = e => {
-    let val = parseFloat(e.target.value) || 0;
-    val = Math.max(-96, Math.min(96, val));
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
     state.solarPanels.archPanelSlide = val;
-    document.getElementById('sl-arch-panel-offset-y').value = Math.max(-48, Math.min(48, val));
+    document.getElementById('sl-arch-panel-offset-y').value = val;
     e.target.value = val;
     requestRender();
 };
@@ -11651,10 +12314,10 @@ document.getElementById('sl-arch-panel-sep').oninput = e => {
     requestRender();
 };
 document.getElementById('nb-arch-panel-sep').onchange = e => {
-    let val = parseFloat(e.target.value) || 0.75;
-    val = Math.max(-96, Math.min(96, val));
+    let val = parseFloat(e.target.value);
+    if (isNaN(val)) val = 0;
     state.solarPanels.archPanelSeparation = val;
-    document.getElementById('sl-arch-panel-sep').value = Math.max(-48, Math.min(48, val));
+    document.getElementById('sl-arch-panel-sep').value = val;
     e.target.value = val;
     requestRender();
 };
@@ -11802,6 +12465,7 @@ document.getElementById('nb-anim-stop-top').onchange = e => {
 document.getElementById('btn-save-top').onclick = saveConfig;
 document.getElementById('btn-load-top').onclick = loadConfig;
 document.getElementById('btn-export-json-top').onclick = exportToJSON;
+document.getElementById('btn-import-json-top').onclick = importFromJSON;
 document.getElementById('btn-build-guide-top').onclick = showBuildGuide;
 
 // Preset buttons
@@ -11909,11 +12573,35 @@ const saved = localStorage.getItem('linkageLab_config');
 if (saved) {
     try {
         const config = JSON.parse(saved);
-        applyConfig(config);
+        // Validate config before applying - check for obviously bad values
+        if (config && typeof config === 'object') {
+            applyConfig(config);
+        } else {
+            console.warn('Invalid config format, skipping load');
+            localStorage.removeItem('linkageLab_config');
+        }
     } catch (e) {
         console.error('Error loading saved config:', e);
+        // Clear corrupted config
+        localStorage.removeItem('linkageLab_config');
     }
 }
+
+// Emergency localStorage clear: Press Ctrl+Shift+Delete while focused on page
+document.addEventListener('keydown', e => {
+    if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
+        if (confirm('Clear all LinkageLab saved data? This will reset to defaults.')) {
+            // Clear all linkageLab keys
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('linkageLab')) {
+                    localStorage.removeItem(key);
+                }
+            });
+            showToast('Saved data cleared. Refreshing...', 'info');
+            setTimeout(() => location.reload(), 1000);
+        }
+    }
+});
 
 // Initialize animation stop angle to closed angle if not set
 if (state.animation.stopAngle === null || state.animation.stopAngle === undefined) {
