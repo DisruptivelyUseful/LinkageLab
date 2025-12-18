@@ -1,0 +1,20 @@
+{
+  "files.watcherExclude": {
+    "**/solar_simulator.html": true,
+    "**/*.min.js": true,
+    "**/*.bundle.js": true
+  },
+  "files.exclude": {
+    "**/solar_simulator.html": true
+  },
+  "search.exclude": {
+    "**/solar_simulator.html": true,
+    "**/*.min.js": true
+  },
+  "typescript.tsserver.maxTsServerMemory": 2048,
+  "files.maxMemoryForLargeFilesMB": 4096,
+  "editor.maxTokenizationLineLength": 20000,
+  "files.associations": {
+    "*.html": "html"
+  }
+}
