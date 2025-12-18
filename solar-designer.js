@@ -15,18 +15,102 @@ const SolarDesigner = (function() {
     // - CONTAINER_PRESETS, RESOURCE_TYPES, AWG_RATINGS
     // - SYSTEM_REVIEW_SETTINGS
     
-    // All constants are now loaded from js/core/constants.js
-    // Systems are loaded from separate modules (js/solar/*.js)
+    // ============================================
+    // WIRE SYSTEM - Wire gauge calculation
+    // ============================================
     
-    // Create WireSystem (no dependencies needed)
-    const WireSystem = createWireSystem();
+    const WireSystem = {
+        // Wire gauge ratings based on amperage
+        AWG_RATINGS: {
+            // AWG: { maxAmps@120V, ohmsPerFoot, cost per foot }
+            14: { amps: 15, ohms: 0.00253, cost: 0.50 },
+            12: { amps: 20, ohms: 0.00159, cost: 0.75 },
+            10: { amps: 30, ohms: 0.00100, cost: 1.20 },
+            8: { amps: 40, ohms: 0.000628, cost: 2.00 },
+            6: { amps: 55, ohms: 0.000395, cost: 3.50 },
+            4: { amps: 70, ohms: 0.000249, cost: 5.00 },
+            2: { amps: 95, ohms: 0.000157, cost: 7.50 },
+            1: { amps: 110, ohms: 0.000124, cost: 10.00 },
+            '1/0': { amps: 125, ohms: 0.000098, cost: 12.50 },
+            '2/0': { amps: 145, ohms: 0.000078, cost: 15.00 }
+        },
+        
+        // Calculate required wire gauge for a connection
+        calculateGauge(connection, allItems) {
+            const sourceItem = allItems.find(i => 
+                Object.values(i.handles).some(h => h.connectedTo.some(c => c.connectionId === connection.id))
+            );
+            const targetItem = allItems.find(i => 
+                Object.values(i.handles).some(h => h.connectedTo.some(c => c.connectionId === connection.id))
+            );
+            
+            if (!sourceItem || !targetItem) return null;
+            
+            // Calculate distance (approximate, in feet - each unit = 10 feet)
+            const dx = (sourceItem.x - targetItem.x);
+            const dy = (sourceItem.y - targetItem.y);
+            const distance = Math.sqrt(dx * dx + dy * dy) / 10;
+            
+            // Estimate current based on components
+            let estimatedAmps = 0;
+            
+            if (targetItem.type === 'acload') {
+                estimatedAmps = targetItem.specs.watts / (targetItem.specs.voltage || 120);
+            } else if (sourceItem.type === 'panel') {
+                estimatedAmps = sourceItem.specs.imp || (sourceItem.specs.wmp / sourceItem.specs.vmp);
+            } else if (sourceItem.type === 'battery') {
+                estimatedAmps = 50;
+            } else if (sourceItem.type === 'controller') {
+                if (targetItem.type === 'acload' || targetItem.type === 'acbreaker') {
+                    estimatedAmps = (sourceItem.specs.maxACOutputW || 1000) / 120;
+                } else {
+                    estimatedAmps = sourceItem.specs.maxIsc || 30;
+                }
+            } else {
+                estimatedAmps = 20;
+            }
+            
+            // Add 25% safety margin
+            estimatedAmps *= 1.25;
+            
+            // Find smallest gauge that can handle the current
+            let recommendedGauge = null;
+            for (const [gauge, rating] of Object.entries(this.AWG_RATINGS)) {
+                if (rating.amps >= estimatedAmps) {
+                    recommendedGauge = gauge;
+                    break;
+                }
+            }
+            
+            if (!recommendedGauge) {
+                recommendedGauge = '2/0';
+            }
+            
+            return {
+                gauge: recommendedGauge,
+                distance: Math.ceil(distance),
+                estimatedAmps: estimatedAmps.toFixed(1),
+                rating: this.AWG_RATINGS[recommendedGauge]
+            };
+        }
+    };
     
-    // ResourceSystem will be created after LiveView is defined (see below)
+    // ============================================
+    // SYSTEM REVIEW - Analysis & Optimization
+    // ============================================
+    
+    const SystemReview = {
+        settings: {
+            electricityRate: 0.12,
+            solarIncentive: 0.26,
+            avgDailySunHours: 5.5,
+            systemLifeYears: 25,
+            degradationRate: 0.005
+        }
+    };
+    
+    // ResourceSystem placeholder (can be extended later)
     let ResourceSystem = null;
-    
-    // SystemReview and BOMSystem are now loaded from separate modules (js/solar/*.js)
-    // They will be created after Automations is defined (see below)
-    let SystemReview = null;
     let BOMSystem = null;
     
     // ============================================
@@ -170,8 +254,99 @@ const SolarDesigner = (function() {
                     return { totalWatts: 0, totalAmps: 0, loads: [], voltage: 120 };
                 }
                 
-                const circuitVoltage = 120; // AC breakers are 120V
+                const circuitVoltage = breaker.specs?.voltage || 120; // Get voltage from breaker specs
                 const loads = this.findAllLoadsOnCircuit(breaker.handles?.loadOut, circuitVoltage);
+                
+                let totalWatts = 0;
+                loads.forEach(load => {
+                    totalWatts += load.watts;
+                });
+                
+                const totalAmps = circuitVoltage > 0 ? totalWatts / circuitVoltage : 0;
+                
+                return {
+                    totalWatts: totalWatts,
+                    totalAmps: totalAmps,
+                    loads: loads,
+                    voltage: circuitVoltage
+                };
+            },
+            
+            // Calculate DC circuit info for a DC breaker
+            calculateDCCircuit(breaker) {
+                if (!breaker || !LiveView.BreakerManager.isBreakerClosed(breaker)) {
+                    return { totalWatts: 0, totalAmps: 0, voltage: 48 };
+                }
+                
+                // DC circuits typically run at battery voltage
+                const circuitVoltage = breaker.specs?.maxVoltage || 48;
+                
+                // Calculate power flow through DC breaker based on connected PV or battery
+                let totalWatts = 0;
+                
+                // Check if connected to PV (solar) side
+                if (breaker.handles?.linePositive?.connectedTo?.length > 0) {
+                    // Trace to find connected panels
+                    breaker.handles.linePositive.connectedTo.forEach(conn => {
+                        const connObj = connections.find(c => c.id === conn.connectionId);
+                        if (connObj) {
+                            const sourceItem = allItems.find(i => i.id === connObj.sourceItemId);
+                            const targetItem = allItems.find(i => i.id === connObj.targetItemId);
+                            
+                            // Check for panels
+                            const panel = sourceItem?.type === 'panel' ? sourceItem : 
+                                         targetItem?.type === 'panel' ? targetItem : null;
+                            if (panel) {
+                                totalWatts += (panel.specs.wmp || 0) * (Simulation.solarIrradiance || 1);
+                            }
+                            
+                            // Check for combiners
+                            const combiner = sourceItem?.type === 'solarcombiner' ? sourceItem :
+                                            targetItem?.type === 'solarcombiner' ? targetItem : null;
+                            if (combiner) {
+                                // Sum all connected panel wattage through combiner
+                                for (let i = 0; i < (combiner.specs?.inputs || 0); i++) {
+                                    const inputHandle = combiner.handles?.[`input${i}Positive`];
+                                    if (inputHandle?.connectedTo) {
+                                        inputHandle.connectedTo.forEach(inputConn => {
+                                            const inputConnObj = connections.find(c => c.id === inputConn.connectionId);
+                                            if (inputConnObj) {
+                                                const inputPanel = allItems.find(i => 
+                                                    (i.id === inputConnObj.sourceItemId || i.id === inputConnObj.targetItemId) &&
+                                                    i.type === 'panel'
+                                                );
+                                                if (inputPanel) {
+                                                    totalWatts += (inputPanel.specs.wmp || 0) * (Simulation.solarIrradiance || 1);
+                                                }
+                                            }
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                const totalAmps = circuitVoltage > 0 ? totalWatts / circuitVoltage : 0;
+                
+                return {
+                    totalWatts: totalWatts,
+                    totalAmps: totalAmps,
+                    voltage: circuitVoltage
+                };
+            },
+            
+            // Calculate breaker panel or spider box circuit info
+            calculateBreakerPanelCircuit(panel, circuitHandle) {
+                if (!panel || !circuitHandle) {
+                    return { totalWatts: 0, totalAmps: 0, loads: [], voltage: 120 };
+                }
+                
+                // Get circuit voltage from handle or panel specs
+                const circuitVoltage = circuitHandle.voltage || 120;
+                
+                // Find all loads connected to this circuit
+                const loads = this.findAllLoadsOnCircuit(circuitHandle, circuitVoltage);
                 
                 let totalWatts = 0;
                 loads.forEach(load => {
@@ -190,7 +365,12 @@ const SolarDesigner = (function() {
         },
         
         BreakerManager: {
-            // Check if a breaker is closed and not tripped
+            // Helper function to get breaker state from LiveView.state
+            getBreakerState(breakerId) {
+                return LiveView.state.breakerStates[breakerId] || null;
+            },
+            
+            // Check if a regular AC/DC breaker is closed and not tripped
             isBreakerClosed(breaker) {
                 if (!breaker) return false;
                 const breakerState = LiveView.state.breakerStates[breaker.id];
@@ -198,72 +378,498 @@ const SolarDesigner = (function() {
                 return breaker.isClosed === true && !(breakerState && breakerState.wasTripped);
             },
             
+            // Check if a breaker panel circuit is closed and not tripped
+            isBreakerPanelCircuitClosed(panel, circuitIndex) {
+                if (!panel) return false;
+                // Check main breaker first
+                if (panel.mainBreakerOn === false) return false;
+                // Check circuit breaker state
+                const circuitOn = panel.breakerStates && panel.breakerStates[circuitIndex] !== false;
+                if (!circuitOn) return false;
+                // Check if tripped in live view state
+                const breakerId = `${panel.id}-circuit-${circuitIndex + 1}`;
+                const breakerState = LiveView.state.breakerStates[breakerId];
+                return !(breakerState && breakerState.wasTripped);
+            },
+            
+            // Check if a spider box circuit is closed and not tripped
+            isSpiderBoxCircuitClosed(spiderbox, circuitIndex) {
+                if (!spiderbox || !spiderbox.handles) return false;
+                // Check main breaker first
+                if (spiderbox.mainBreakerOn === false) return false;
+                const handleKey = `circuit${circuitIndex + 1}`;
+                const circuitHandle = spiderbox.handles[handleKey];
+                if (!circuitHandle) return false;
+                // Check if circuit breaker is closed
+                const circuitOn = circuitHandle.isClosed !== false;
+                if (!circuitOn) return false;
+                // Check if tripped in live view state
+                const breakerId = `${spiderbox.id}-circuit-${circuitIndex + 1}`;
+                const breakerState = LiveView.state.breakerStates[breakerId];
+                return !(breakerState && breakerState.wasTripped);
+            },
+            
+            // Check if a solar combiner input breaker is closed
+            isSolarCombinerInputClosed(combiner, inputIndex) {
+                if (!combiner) return false;
+                // Check combiner breaker state array
+                if (combiner.breakerStates && combiner.breakerStates[inputIndex] === false) {
+                    return false;
+                }
+                // Check if tripped in live view state
+                const breakerId = `${combiner.id}-input-${inputIndex}`;
+                const breakerState = LiveView.state.breakerStates[breakerId];
+                return !(breakerState && breakerState.wasTripped);
+            },
+            
             // Check all breakers for overload and trip them
+            // Uses 3-phase approach: collect → calculate → apply (to avoid state race conditions)
             checkTripping() {
                 if (!LiveView.state.active) return;
                 
-                let anyTrips = false;
-                
-                // Check AC breakers
-                const acBreakers = allItems.filter(i => i.type === 'acbreaker' && this.isBreakerClosed(i));
+                // PHASE 1: Collect all breakers/circuits that need checking (before any state changes)
+                const acBreakersToCheck = [];
+                const acBreakers = allItems.filter(i => i.type === 'acbreaker');
                 
                 acBreakers.forEach(breaker => {
+                    if (this.isBreakerClosed(breaker)) {
+                        acBreakersToCheck.push(breaker);
+                    }
+                });
+                
+                const dcBreakersToCheck = [];
+                const dcBreakers = allItems.filter(i => i.type === 'dcbreaker');
+                
+                dcBreakers.forEach(breaker => {
+                    if (this.isBreakerClosed(breaker)) {
+                        dcBreakersToCheck.push(breaker);
+                    }
+                });
+                
+                const breakerPanels = allItems.filter(i => i.type === 'breakerpanel');
+                const panelCircuitsToCheck = [];
+                
+                breakerPanels.forEach(panel => {
+                    if (panel.mainBreakerOn === false) return;
+                    if (!panel.breakerStates) panel.breakerStates = Array(8).fill(true);
+                    
+                    for (let i = 0; i < 8; i++) {
+                        const handleKey = `circuit${i + 1}`;
+                        const circuitHandle = panel.handles?.[handleKey];
+                        if (!circuitHandle) continue;
+                        
+                        if (this.isBreakerPanelCircuitClosed(panel, i)) {
+                            panelCircuitsToCheck.push({
+                                panel: panel,
+                                index: i,
+                                handle: circuitHandle,
+                                breakerId: `${panel.id}-circuit-${i + 1}`
+                            });
+                        }
+                    }
+                });
+                
+                const spiderBoxes = allItems.filter(i => i.type === 'spiderbox');
+                const spiderBoxCircuitsToCheck = [];
+                
+                spiderBoxes.forEach(spiderbox => {
+                    if (!spiderbox.handles || !spiderbox.specs?.circuits) return;
+                    if (spiderbox.mainBreakerOn === false) return;
+                    
+                    for (let i = 0; i < spiderbox.specs.circuits.length; i++) {
+                        const handleKey = `circuit${i + 1}`;
+                        const circuitHandle = spiderbox.handles[handleKey];
+                        if (!circuitHandle) continue;
+                        
+                        if (this.isSpiderBoxCircuitClosed(spiderbox, i)) {
+                            spiderBoxCircuitsToCheck.push({
+                                spiderbox: spiderbox,
+                                index: i,
+                                handle: circuitHandle,
+                                breakerId: `${spiderbox.id}-circuit-${i + 1}`
+                            });
+                        }
+                    }
+                });
+                
+                // PHASE 2: Calculate all circuit info (before any state changes)
+                const acBreakerResults = [];
+                acBreakersToCheck.forEach(breaker => {
                     const circuitInfo = LiveView.PowerFlow.calculateACCircuit(breaker);
                     const breakerRating = breaker.specs.rating || 20;
                     
                     if (circuitInfo.totalAmps > breakerRating) {
-                        // Trip the breaker
-                        breaker.isClosed = false;
-                        if (!LiveView.state.breakerStates[breaker.id]) {
-                            LiveView.state.breakerStates[breaker.id] = { isClosed: false, wasTripped: true };
-                        } else {
-                            LiveView.state.breakerStates[breaker.id].isClosed = false;
-                            LiveView.state.breakerStates[breaker.id].wasTripped = true;
-                        }
-                        
-                        // Add visual failure state
-                        const breakerGroup = itemsGroup.select(`[data-id="${breaker.id}"]`);
-                        if (!breakerGroup.empty()) {
-                            breakerGroup.classed('failure-breaker-tripped', true);
-                        }
-                        
-                        // Turn off all loads on this circuit
-                        circuitInfo.loads.forEach(load => {
-                            LiveView.state.loadStates[load.id] = false;
+                        acBreakerResults.push({
+                            breaker: breaker,
+                            circuitInfo: circuitInfo,
+                            breakerRating: breakerRating
                         });
-                        
-                        anyTrips = true;
-                        
-                        // Show incident report
-                        showIncidentReport(INCIDENT_TEMPLATES.breakerTripped(breakerRating, circuitInfo.totalAmps, null));
-                        
-                        console.log(`Breaker ${breaker.id} tripped: ${circuitInfo.totalAmps.toFixed(1)}A on ${breakerRating}A breaker`);
                     }
+                });
+                
+                const dcBreakerResults = [];
+                dcBreakersToCheck.forEach(breaker => {
+                    const circuitInfo = LiveView.PowerFlow.calculateDCCircuit(breaker);
+                    const breakerRating = breaker.specs.rating || 30;
+                    
+                    if (circuitInfo.totalAmps > breakerRating) {
+                        dcBreakerResults.push({
+                            breaker: breaker,
+                            circuitInfo: circuitInfo,
+                            breakerRating: breakerRating
+                        });
+                    }
+                });
+                
+                const panelCircuitResults = [];
+                panelCircuitsToCheck.forEach(({ panel, index, handle, breakerId }) => {
+                    const circuitInfo = LiveView.PowerFlow.calculateBreakerPanelCircuit(panel, handle);
+                    const breakerRating = handle.maxAmps || 20;
+                    
+                    if (circuitInfo.totalAmps > breakerRating) {
+                        panelCircuitResults.push({
+                            panel: panel,
+                            index: index,
+                            handle: handle,
+                            breakerId: breakerId,
+                            circuitInfo: circuitInfo,
+                            breakerRating: breakerRating
+                        });
+                    }
+                });
+                
+                const spiderBoxCircuitResults = [];
+                spiderBoxCircuitsToCheck.forEach(({ spiderbox, index, handle, breakerId }) => {
+                    const circuitInfo = LiveView.PowerFlow.calculateBreakerPanelCircuit(spiderbox, handle);
+                    const breakerRating = handle.maxAmps || spiderbox.specs?.circuits?.[index]?.amps || 20;
+                    
+                    if (circuitInfo.totalAmps > breakerRating) {
+                        spiderBoxCircuitResults.push({
+                            spiderbox: spiderbox,
+                            index: index,
+                            handle: handle,
+                            breakerId: breakerId,
+                            circuitInfo: circuitInfo,
+                            breakerRating: breakerRating
+                        });
+                    }
+                });
+                
+                // PHASE 3: Apply state changes (all calculations done, now apply trips)
+                let anyTrips = false;
+                
+                // Trip AC breakers
+                acBreakerResults.forEach(({ breaker, circuitInfo, breakerRating }) => {
+                    anyTrips = true;
+                    breaker.isClosed = false;
+                    if (!LiveView.state.breakerStates[breaker.id]) {
+                        LiveView.state.breakerStates[breaker.id] = { isClosed: false, wasTripped: true };
+                    } else {
+                        LiveView.state.breakerStates[breaker.id].isClosed = false;
+                        LiveView.state.breakerStates[breaker.id].wasTripped = true;
+                    }
+                    
+                    // Add visual failure state and effects
+                    const breakerGroup = itemsGroup?.select(`[data-id="${breaker.id}"]`);
+                    if (breakerGroup && !breakerGroup.empty()) {
+                        breakerGroup.classed('failure-breaker-tripped', true);
+                    }
+                    
+                    // Trigger spark effect at breaker location
+                    if (typeof FailureEffects !== 'undefined') {
+                        const cx = breaker.x + breaker.width / 2;
+                        const cy = breaker.y + breaker.height / 2;
+                        FailureEffects.createSparks(cx, cy, 6);
+                    }
+                    
+                    // Show incident report
+                    if (typeof showIncidentReport === 'function' && typeof INCIDENT_TEMPLATES !== 'undefined') {
+                        showIncidentReport(INCIDENT_TEMPLATES.breakerTripped(breakerRating, circuitInfo.totalAmps, null));
+                    }
+                    
+                    // Turn off all loads on this circuit
+                    circuitInfo.loads.forEach(load => {
+                        LiveView.state.loadStates[load.id] = false;
+                    });
+                    
+                    console.log(`AC Breaker ${breaker.id} tripped: ${circuitInfo.totalAmps.toFixed(1)}A on ${breakerRating}A breaker`);
+                });
+                
+                // Trip DC breakers
+                dcBreakerResults.forEach(({ breaker, circuitInfo, breakerRating }) => {
+                    anyTrips = true;
+                    breaker.isClosed = false;
+                    if (!LiveView.state.breakerStates[breaker.id]) {
+                        LiveView.state.breakerStates[breaker.id] = { isClosed: false, wasTripped: true };
+                    } else {
+                        LiveView.state.breakerStates[breaker.id].isClosed = false;
+                        LiveView.state.breakerStates[breaker.id].wasTripped = true;
+                    }
+                    
+                    // Add visual failure state and effects
+                    const breakerGroup = itemsGroup?.select(`[data-id="${breaker.id}"]`);
+                    if (breakerGroup && !breakerGroup.empty()) {
+                        breakerGroup.classed('failure-breaker-tripped', true);
+                    }
+                    
+                    // Trigger spark effect at DC breaker location
+                    if (typeof FailureEffects !== 'undefined') {
+                        const cx = breaker.x + breaker.width / 2;
+                        const cy = breaker.y + breaker.height / 2;
+                        FailureEffects.createSparks(cx, cy, 6);
+                    }
+                    
+                    // Show incident report
+                    if (typeof showIncidentReport === 'function' && typeof INCIDENT_TEMPLATES !== 'undefined') {
+                        showIncidentReport(INCIDENT_TEMPLATES.breakerTripped(breakerRating, circuitInfo.totalAmps, 'DC Circuit'));
+                    }
+                    
+                    console.log(`DC Breaker ${breaker.id} tripped: ${circuitInfo.totalAmps.toFixed(1)}A on ${breakerRating}A breaker`);
+                });
+                
+                // Trip breaker panel circuits
+                panelCircuitResults.forEach(({ panel, index, handle, breakerId, circuitInfo, breakerRating }) => {
+                    anyTrips = true;
+                    panel.breakerStates[index] = false;
+                    
+                    if (!LiveView.state.breakerStates[breakerId]) {
+                        LiveView.state.breakerStates[breakerId] = { isClosed: false, wasTripped: true };
+                    } else {
+                        LiveView.state.breakerStates[breakerId].isClosed = false;
+                        LiveView.state.breakerStates[breakerId].wasTripped = true;
+                    }
+                    
+                    // Add visual failure state and effects
+                    const panelGroup = itemsGroup?.select(`[data-id="${panel.id}"]`);
+                    if (panelGroup && !panelGroup.empty()) {
+                        panelGroup.classed('failure-breaker-tripped', true);
+                    }
+                    
+                    // Trigger spark effect at panel circuit breaker location
+                    if (typeof FailureEffects !== 'undefined') {
+                        // Calculate approximate position of the circuit breaker within panel
+                        const cx = panel.x + (handle.x || panel.width / 2);
+                        const cy = panel.y + (handle.y || panel.height / 2);
+                        FailureEffects.createSparks(cx, cy, 4);
+                    }
+                    
+                    // Show incident report
+                    const circuitName = handle.circuitName || `Circuit ${index + 1}`;
+                    if (typeof showIncidentReport === 'function' && typeof INCIDENT_TEMPLATES !== 'undefined') {
+                        showIncidentReport(INCIDENT_TEMPLATES.breakerTripped(breakerRating, circuitInfo.totalAmps, circuitName));
+                    }
+                    
+                    // Turn off all loads on this circuit
+                    circuitInfo.loads.forEach(load => {
+                        LiveView.state.loadStates[load.id] = false;
+                    });
+                    
+                    console.log(`Panel circuit ${circuitName} tripped: ${circuitInfo.totalAmps.toFixed(1)}A on ${breakerRating}A breaker`);
+                });
+                
+                // Trip spider box circuits
+                spiderBoxCircuitResults.forEach(({ spiderbox, index, handle, breakerId, circuitInfo, breakerRating }) => {
+                    anyTrips = true;
+                    handle.isClosed = false;
+                    
+                    if (!LiveView.state.breakerStates[breakerId]) {
+                        LiveView.state.breakerStates[breakerId] = { isClosed: false, wasTripped: true };
+                    } else {
+                        LiveView.state.breakerStates[breakerId].isClosed = false;
+                        LiveView.state.breakerStates[breakerId].wasTripped = true;
+                    }
+                    
+                    // Add visual failure state and effects
+                    const spiderBoxGroup = itemsGroup?.select(`[data-id="${spiderbox.id}"]`);
+                    if (spiderBoxGroup && !spiderBoxGroup.empty()) {
+                        spiderBoxGroup.classed('failure-breaker-tripped', true);
+                    }
+                    
+                    // Trigger spark effect at spider box circuit location
+                    if (typeof FailureEffects !== 'undefined') {
+                        const cx = spiderbox.x + (handle.x || spiderbox.width / 2);
+                        const cy = spiderbox.y + (handle.y || spiderbox.height / 2);
+                        FailureEffects.createSparks(cx, cy, 4);
+                    }
+                    
+                    // Show incident report
+                    const circuitName = handle.circuitName || `Circuit ${index + 1}`;
+                    if (typeof showIncidentReport === 'function' && typeof INCIDENT_TEMPLATES !== 'undefined') {
+                        showIncidentReport(INCIDENT_TEMPLATES.breakerTripped(breakerRating, circuitInfo.totalAmps, `Spider Box ${circuitName}`));
+                    }
+                    
+                    // Turn off all loads on this circuit
+                    circuitInfo.loads.forEach(load => {
+                        LiveView.state.loadStates[load.id] = false;
+                    });
+                    
+                    console.log(`Spider box circuit ${circuitName} tripped: ${circuitInfo.totalAmps.toFixed(1)}A on ${breakerRating}A breaker`);
                 });
                 
                 // Schedule update if any breakers tripped
                 if (anyTrips) {
-                    // Immediately recalculate power flow to clear isLive for tripped circuits
+                    // Invalidate cache and recalculate power flow
+                    invalidatePowerFlowCache();
                     calculatePowerFlow();
                     render();
                 }
             },
             
-            // Turn off all loads connected to a breaker (uses PowerFlow.findAllLoadsOnCircuit)
+            // Turn off all loads connected to a breaker
             turnOffCircuitLoads(breaker) {
                 const loads = LiveView.PowerFlow.findAllLoadsOnCircuit(breaker.handles?.loadOut);
                 loads.forEach(load => {
                     LiveView.state.loadStates[load.id] = false;
                 });
+            },
+            
+            // Reset a tripped breaker (manual reset)
+            resetBreaker(breakerId) {
+                const breakerState = LiveView.state.breakerStates[breakerId];
+                if (breakerState) {
+                    breakerState.wasTripped = false;
+                    breakerState.isClosed = true;
+                }
+                
+                // Find and update the breaker item itself
+                const breaker = allItems.find(i => i.id === breakerId);
+                if (breaker) {
+                    breaker.isClosed = true;
+                    
+                    // Remove visual failure state
+                    const breakerGroup = itemsGroup?.select(`[data-id="${breakerId}"]`);
+                    if (breakerGroup && !breakerGroup.empty()) {
+                        breakerGroup.classed('failure-breaker-tripped', false);
+                    }
+                }
+                
+                // Recalculate power flow
+                invalidatePowerFlowCache();
+                calculatePowerFlow();
+                render();
+            },
+            
+            // Reset all tripped breakers
+            resetAllBreakers() {
+                // Reset all breaker states
+                Object.keys(LiveView.state.breakerStates).forEach(breakerId => {
+                    this.resetBreaker(breakerId);
+                });
+                
+                // Also reset panel and spider box circuits
+                allItems.filter(i => i.type === 'breakerpanel').forEach(panel => {
+                    if (panel.breakerStates) {
+                        panel.breakerStates = panel.breakerStates.map(() => true);
+                    }
+                    const panelGroup = itemsGroup?.select(`[data-id="${panel.id}"]`);
+                    if (panelGroup && !panelGroup.empty()) {
+                        panelGroup.classed('failure-breaker-tripped', false);
+                    }
+                });
+                
+                allItems.filter(i => i.type === 'spiderbox').forEach(spiderbox => {
+                    if (spiderbox.handles) {
+                        Object.keys(spiderbox.handles).forEach(key => {
+                            if (key.startsWith('circuit')) {
+                                spiderbox.handles[key].isClosed = true;
+                            }
+                        });
+                    }
+                    const spiderBoxGroup = itemsGroup?.select(`[data-id="${spiderbox.id}"]`);
+                    if (spiderBoxGroup && !spiderBoxGroup.empty()) {
+                        spiderBoxGroup.classed('failure-breaker-tripped', false);
+                    }
+                });
+                
+                // Recalculate power flow
+                invalidatePowerFlowCache();
+                calculatePowerFlow();
+                render();
             }
         }
     };
     
-    // Create ResourceSystem now that LiveView is defined
-    ResourceSystem = createResourceSystem(
-        () => allItems,  // getAllItems function
-        () => LiveView   // getLiveView function
-    );
+    // ResourceSystem - Resource production tracking
+    ResourceSystem = {
+        containerLevels: {},
+        
+        initContainer(containerId, capacity) {
+            if (this.containerLevels[containerId] === undefined) {
+                this.containerLevels[containerId] = 0;
+            }
+        },
+        
+        getContainerLevel(containerId, capacity) {
+            const level = this.containerLevels[containerId] || 0;
+            return Math.min(1, level / capacity);
+        },
+        
+        addToContainer(containerId, amount, capacity) {
+            if (this.containerLevels[containerId] === undefined) {
+                this.containerLevels[containerId] = 0;
+            }
+            this.containerLevels[containerId] = Math.min(capacity, this.containerLevels[containerId] + amount);
+            return this.containerLevels[containerId];
+        },
+        
+        removeFromContainer(containerId, amount) {
+            if (this.containerLevels[containerId] === undefined) return 0;
+            const removed = Math.min(this.containerLevels[containerId], amount);
+            this.containerLevels[containerId] -= removed;
+            return removed;
+        },
+        
+        processProduction(deltaHours) {
+            if (!LiveView.state.active) return;
+            
+            const producers = allItems.filter(i => i.type === 'producer' && LiveView.state.loadStates[i.id]);
+            
+            producers.forEach(producer => {
+                const recipe = producer.specs.recipe;
+                if (!recipe || recipe.isStorage) return;
+                
+                const productionAmount = recipe.rate * deltaHours;
+                
+                if (recipe.input) {
+                    const inputContainer = this.findConnectedContainer(producer, recipe.input);
+                    if (!inputContainer) return;
+                    
+                    const inputNeeded = productionAmount * 2;
+                    const consumed = this.removeFromContainer(inputContainer.id, inputNeeded);
+                    if (consumed < inputNeeded * 0.5) return;
+                }
+                
+                const outputContainer = this.findConnectedContainer(producer, recipe.output);
+                if (outputContainer) {
+                    this.addToContainer(outputContainer.id, productionAmount, outputContainer.specs.capacity);
+                } else if (producer.specs.tankSize) {
+                    producer.internalStorage = Math.min(
+                        producer.specs.tankSize,
+                        (producer.internalStorage || 0) + productionAmount
+                    );
+                }
+            });
+        },
+        
+        findConnectedContainer(producer, resourceType) {
+            const containers = allItems.filter(i => i.type === 'container' && i.specs.resource === resourceType);
+            return containers[0] || null;
+        },
+        
+        exportState() {
+            return { containerLevels: { ...this.containerLevels } };
+        },
+        
+        importState(data) {
+            if (data && data.containerLevels) {
+                this.containerLevels = { ...data.containerLevels };
+            }
+        },
+        
+        clearAll() {
+            this.containerLevels = {};
+        }
+    };
     
     // ============================================
     // PHASE 3: TIME-BASED SIMULATION
@@ -513,27 +1119,35 @@ const SolarDesigner = (function() {
             this.possibleSolarInput += possibleWatts * (deltaMinutes / 60); // Convert to Wh
             
             // Battery float/derating logic: if battery at 100% and loads insufficient, derate solar
+            // This models realistic "float" behavior when battery is fully charged
             const maxBatterySOC = this.getAverageSOC();
-            const isBatteryFull = maxBatterySOC >= 0.999; // 99.9% or higher
+            const isBatteryFull = maxBatterySOC >= 0.999; // 99.9% or higher (essentially 100%)
             
             if (isBatteryFull && solarWatts > loadWatts) {
-                // Derate solar output to match load demand (float behavior)
+                // Derate solar output to match load demand only (float behavior)
+                // When battery is full, excess solar is wasted/curtailed
                 const originalSolarWatts = solarWatts;
-                solarWatts = Math.min(solarWatts, loadWatts);
+                solarWatts = loadWatts; // Match load exactly, no excess charging
                 
                 // Track derated power for statistics
                 const deratedWatts = originalSolarWatts - solarWatts;
                 if (!this.deratedPower) this.deratedPower = 0;
                 this.deratedPower += deratedWatts * (deltaMinutes / 60); // Convert to Wh
-                
-                // Update currentSolarWatts to reflect derating
-                this.currentSolarWatts = solarWatts;
             }
             
-            // Track actual solar input (what's actually used: battery charging + load consumption)
-            // Only count when solar is available
+            // Update currentSolarWatts to reflect any derating
+            this.currentSolarWatts = solarWatts;
+            
+            // Net power (positive = excess going to battery, negative = deficit from battery)
+            // After derating, if battery is full, netWatts should be 0 or negative
+            const netWatts = solarWatts - loadWatts;
+            this.currentBatteryFlow = netWatts;
+            
+            // Track actual solar input (what's actually used: load consumption + battery charging)
+            // Only count when solar is available and being used
             if (solarWatts > 0) {
-                const actualWatts = Math.min(solarWatts, loadWatts + Math.max(0, netWatts));
+                // Actual = load consumption + battery charging (if any)
+                const actualWatts = loadWatts + Math.max(0, netWatts);
                 this.actualSolarInput += actualWatts * (deltaMinutes / 60); // Convert to Wh
             }
             
@@ -543,10 +1157,6 @@ const SolarDesigner = (function() {
             } else {
                 this.efficiencyScore = 0;
             }
-            
-            // Net power (positive = excess, negative = deficit)
-            const netWatts = solarWatts - loadWatts;
-            this.currentBatteryFlow = netWatts;
             
             // Update battery states
             const totalCapacityWh = this.getTotalBatteryCapacityWh();
@@ -615,40 +1225,51 @@ const SolarDesigner = (function() {
         updateTimeDisplay() {
             const timeEls = [
                 document.getElementById('sim-time-display'),
-                document.getElementById('sim-time-display-top')
+                document.getElementById('sim-time-display-top'),
+                document.getElementById('topbar-sim-time')
             ];
             const formattedTime = this.formatTime();
             timeEls.forEach(el => {
                 if (el) el.textContent = formattedTime;
             });
             
-            // Update daylight slider and time display
-            const daylightSlider = document.getElementById('sl-daylight');
-            const daylightTimeDisplay = document.getElementById('daylight-time-display');
-            if (daylightSlider) {
-                const hours = this.time / 60;
-                const sunrise = 5.5;
-                const sunset = 19.5;
-                const dayLength = sunset - sunrise;
-                
-                if (hours >= sunrise && hours <= sunset) {
-                    const daylightPercent = ((hours - sunrise) / dayLength) * 100;
-                    daylightSlider.value = daylightPercent;
-                } else if (hours < sunrise) {
-                    daylightSlider.value = 0;
-                } else {
-                    daylightSlider.value = 100;
-                }
+            // Update daylight sliders and time displays (sidebar and topbar)
+            const daylightSliders = [
+                document.getElementById('sl-daylight'),
+                document.getElementById('sl-daylight-top')
+            ];
+            const daylightTimeDisplays = [
+                document.getElementById('daylight-time-display'),
+                document.getElementById('daylight-time-display-top')
+            ];
+            
+            const hours = this.time / 60;
+            const sunrise = 5.5;
+            const sunset = 19.5;
+            const dayLength = sunset - sunrise;
+            let daylightPercent = 50;
+            
+            if (hours >= sunrise && hours <= sunset) {
+                daylightPercent = ((hours - sunrise) / dayLength) * 100;
+            } else if (hours < sunrise) {
+                daylightPercent = 0;
+            } else {
+                daylightPercent = 100;
             }
             
-            if (daylightTimeDisplay) {
-                const hours = this.time / 60;
-                const h = Math.floor(hours);
-                const m = Math.floor((hours - h) * 60);
-                const ampm = h >= 12 ? 'PM' : 'AM';
-                const displayHours = h % 12 || 12;
-                daylightTimeDisplay.textContent = `${displayHours}:${m.toString().padStart(2, '0')} ${ampm}`;
-            }
+            daylightSliders.forEach(slider => {
+                if (slider) slider.value = daylightPercent;
+            });
+            
+            const h = Math.floor(hours);
+            const m = Math.floor((hours - h) * 60);
+            const ampm = h >= 12 ? 'PM' : 'AM';
+            const displayHours = h % 12 || 12;
+            const timeText = `${displayHours}:${m.toString().padStart(2, '0')} ${ampm}`;
+            
+            daylightTimeDisplays.forEach(display => {
+                if (display) display.textContent = timeText;
+            });
             
             // Update sun position indicator
             const sunEl = document.getElementById('sim-sun-indicator');
@@ -668,9 +1289,9 @@ const SolarDesigner = (function() {
             const socEl = document.getElementById('sim-battery-soc');
             const irradianceEl = document.getElementById('sim-irradiance');
             
-            // Live stats panel elements
-            const liveSolarEl = document.getElementById('live-solar-output');
-            const liveLoadEl = document.getElementById('live-load-draw');
+            // Live stats panel elements (topbar panel)
+            const liveSolarEl = document.getElementById('live-solar-output') || document.getElementById('live-solar-watts');
+            const liveLoadEl = document.getElementById('live-load-draw') || document.getElementById('live-load-watts');
             const liveBatteryEl = document.getElementById('live-battery-flow');
             const liveIrradianceEl = document.getElementById('live-irradiance');
             const liveSocEl = document.getElementById('live-battery-soc');
@@ -738,25 +1359,43 @@ const SolarDesigner = (function() {
             if (liveBatteryEl) {
                 if (flow > 0) {
                     liveBatteryEl.textContent = `+${flow} W`;
+                    liveBatteryEl.className = 'live-stat-value charging';
                 } else if (flow < 0) {
-                    liveBatteryEl.textContent = `${flow} W`;
+                    liveBatteryEl.textContent = `${Math.abs(flow)} W`;
+                    liveBatteryEl.className = 'live-stat-value discharging';
                 } else {
-                    liveBatteryEl.textContent = '0 W';
+                    liveBatteryEl.textContent = 'Idle';
+                    liveBatteryEl.className = 'live-stat-value';
                 }
             }
             if (liveSocEl) {
-                liveSocEl.textContent = `${soc}% SOC`;
+                liveSocEl.textContent = `${soc}%`;
+                if (soc < 20) {
+                    liveSocEl.className = 'live-stat-value discharging';
+                } else if (soc >= 80) {
+                    liveSocEl.className = 'live-stat-value charging';
+                } else {
+                    liveSocEl.className = 'live-stat-value';
+                }
             }
             
-            // Update efficiency score display
+            // Update efficiency score display (possible vs actual solar)
             const efficiencyEl = document.getElementById('live-efficiency-score');
             if (efficiencyEl) {
                 const efficiency = this.possibleSolarInput > 0 
                     ? (this.actualSolarInput / this.possibleSolarInput * 100).toFixed(1)
                     : '0.0';
-                efficiencyEl.textContent = `${efficiency}% efficiency`;
-                efficiencyEl.style.color = parseFloat(efficiency) >= 80 ? '#5cb85c' : 
-                                          parseFloat(efficiency) >= 60 ? '#f0ad4e' : '#d9534f';
+                efficiencyEl.textContent = `${efficiency}%`;
+                // Color code: green >= 80%, yellow >= 60%, red < 60%
+                const effValue = parseFloat(efficiency);
+                if (effValue >= 80) {
+                    efficiencyEl.className = 'live-stat-value charging';
+                } else if (effValue >= 60) {
+                    efficiencyEl.className = 'live-stat-value';
+                    efficiencyEl.style.color = '#f0ad4e';
+                } else {
+                    efficiencyEl.className = 'live-stat-value discharging';
+                }
             }
             
             // Update possible vs actual solar display
@@ -1370,19 +2009,134 @@ const SolarDesigner = (function() {
         }
     };
     
-    // Create BOMSystem and SystemReview now that all dependencies are available
-    BOMSystem = createBOMSystem(
-        () => allItems,
-        () => connections,
-        () => WireSystem
-    );
-    
-    SystemReview = createSystemReview(
-        () => allItems,
-        () => connections,
-        () => BOMSystem,
-        () => Automations
-    );
+    // BOMSystem - Bill of Materials generation
+    BOMSystem = {
+        generateBOM() {
+            const bom = {
+                panels: [], batteries: [], controllers: [], distribution: [],
+                loads: [], producers: [], containers: [], wiring: [], totalCost: 0
+            };
+            
+            allItems.forEach(item => {
+                let bomItem = {
+                    name: item.specs.name || item.type,
+                    quantity: 1,
+                    unitCost: item.specs.cost || 0,
+                    totalCost: item.specs.cost || 0,
+                    specs: {}
+                };
+                
+                if (item.type === 'panel') {
+                    bomItem.specs = { power: `${item.specs.wmp}W`, voltage: `${item.specs.vmp}V`, current: `${item.specs.imp}A` };
+                    bom.panels.push(bomItem);
+                } else if (item.type === 'battery' || item.type === 'smartbattery') {
+                    bomItem.specs = { voltage: `${item.specs.voltage}V`, capacity: item.type === 'battery' ? `${item.specs.ah}Ah` : `${item.specs.kWh}kWh` };
+                    bom.batteries.push(bomItem);
+                } else if (item.type === 'controller') {
+                    bomItem.specs = { type: item.subtype || 'MPPT', maxPV: `${item.specs.maxWmp}W`, maxVoc: `${item.specs.maxVoc}V` };
+                    bom.controllers.push(bomItem);
+                } else if (['breakerpanel', 'spiderbox', 'solarcombiner', 'doublevoltagehub', 'acbreaker', 'dcbreaker', 'combiner', 'acoutlet'].includes(item.type)) {
+                    if (item.type === 'acbreaker' || item.type === 'dcbreaker') {
+                        bomItem.specs = { rating: `${item.specs.rating}A` };
+                    }
+                    bom.distribution.push(bomItem);
+                } else if (item.type === 'acload') {
+                    bomItem.specs = { power: `${item.specs.watts}W`, voltage: `${item.specs.voltage}V` };
+                    bom.loads.push(bomItem);
+                } else if (item.type === 'producer') {
+                    bomItem.specs = { power: `${item.specs.watts}W`, output: item.specs.recipe.output };
+                    bom.producers.push(bomItem);
+                } else if (item.type === 'container') {
+                    bomItem.specs = { capacity: `${item.specs.capacity} ${item.specs.unit}`, resource: item.specs.resource };
+                    bom.containers.push(bomItem);
+                }
+            });
+            
+            // Calculate wiring
+            const wiringCosts = {};
+            connections.forEach(conn => {
+                const wireInfo = WireSystem.calculateGauge(conn, allItems);
+                if (wireInfo) {
+                    const key = `${wireInfo.gauge} AWG`;
+                    if (!wiringCosts[key]) {
+                        wiringCosts[key] = { gauge: wireInfo.gauge, totalFeet: 0, unitCost: wireInfo.rating.cost, connections: 0 };
+                    }
+                    wiringCosts[key].totalFeet += wireInfo.distance;
+                    wiringCosts[key].connections++;
+                }
+            });
+            
+            Object.values(wiringCosts).forEach(wire => {
+                bom.wiring.push({
+                    name: `${wire.gauge} AWG Wire`,
+                    quantity: Math.ceil(wire.totalFeet),
+                    unitCost: wire.unitCost,
+                    totalCost: Math.ceil(wire.totalFeet) * wire.unitCost,
+                    specs: { unit: 'feet', connections: wire.connections }
+                });
+            });
+            
+            // Consolidate duplicates
+            const consolidate = (items) => {
+                const consolidated = {};
+                items.forEach(item => {
+                    const key = item.name;
+                    if (consolidated[key]) {
+                        consolidated[key].quantity++;
+                        consolidated[key].totalCost += item.unitCost;
+                    } else {
+                        consolidated[key] = { ...item };
+                    }
+                });
+                return Object.values(consolidated);
+            };
+            
+            bom.panels = consolidate(bom.panels);
+            bom.batteries = consolidate(bom.batteries);
+            bom.controllers = consolidate(bom.controllers);
+            bom.distribution = consolidate(bom.distribution);
+            bom.loads = consolidate(bom.loads);
+            bom.producers = consolidate(bom.producers);
+            bom.containers = consolidate(bom.containers);
+            
+            // Total cost
+            [bom.panels, bom.batteries, bom.controllers, bom.distribution, bom.loads, bom.producers, bom.containers, bom.wiring]
+                .forEach(cat => cat.forEach(item => bom.totalCost += item.totalCost || 0));
+            
+            return bom;
+        },
+        
+        exportBOMText(bom) {
+            let text = '=== BILL OF MATERIALS ===\n\n';
+            
+            const addSection = (title, items) => {
+                if (items.length === 0) return;
+                text += `${title}:\n`;
+                items.forEach(item => {
+                    text += `  ${item.quantity}× ${item.name} @ $${item.unitCost.toFixed(2)} = $${item.totalCost.toFixed(2)}\n`;
+                    if (item.specs && Object.keys(item.specs).length > 0) {
+                        const specsStr = Object.entries(item.specs).map(([k,v]) => `${k}: ${v}`).join(', ');
+                        text += `      (${specsStr})\n`;
+                    }
+                });
+                text += '\n';
+            };
+            
+            addSection('SOLAR PANELS', bom.panels);
+            addSection('BATTERIES & STORAGE', bom.batteries);
+            addSection('CONTROLLERS & INVERTERS', bom.controllers);
+            addSection('DISTRIBUTION & BREAKERS', bom.distribution);
+            addSection('WIRING', bom.wiring);
+            addSection('LOADS & APPLIANCES', bom.loads);
+            addSection('PRODUCERS', bom.producers);
+            addSection('RESOURCE CONTAINERS', bom.containers);
+            
+            text += `TOTAL COST: $${bom.totalCost.toFixed(2)}\n`;
+            text += `\nGenerated: ${new Date().toLocaleString()}\n`;
+            
+            return text;
+        }
+    };
     
     // ============================================
     // D3 SETUP
@@ -1404,6 +2158,69 @@ const SolarDesigner = (function() {
             });
         
         svg.call(zoomBehavior);
+        
+        // Add drag-and-drop handlers for library items
+        const svgNode = svg.node();
+        if (svgNode) {
+            svgNode.ondragover = (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'copy';
+            };
+            
+            svgNode.ondrop = (e) => {
+                e.preventDefault();
+                
+                try {
+                    const data = JSON.parse(e.dataTransfer.getData('application/json'));
+                    if (!data || !data.type || !data.preset) return;
+                    
+                    // Get drop position in canvas coordinates
+                    const transform = d3.zoomTransform(svgNode);
+                    const rect = svgNode.getBoundingClientRect();
+                    const x = transform.invertX(e.clientX - rect.left);
+                    const y = transform.invertY(e.clientY - rect.top);
+                    
+                    // Check if dropping on an existing component of the same type
+                    const overlappingItem = allItems.find(item => {
+                        if (item.type !== data.type) return false;
+                        const dx = x - item.x;
+                        const dy = y - item.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+                        const tolerance = Math.max(item.width, item.height) * 0.5;
+                        return distance < tolerance;
+                    });
+                    
+                    if (overlappingItem) {
+                        // Replace existing component
+                        replaceComponent(overlappingItem, data.type, data.preset);
+                        selectItem(overlappingItem);
+                        render();
+                        showToast(`Replaced ${overlappingItem.type} with ${data.preset.name}`, 'success');
+                    } else {
+                        // Create new component at drop position
+                        let newItem;
+                        if (data.type === 'panel') {
+                            newItem = createPanel(x, y, data.preset);
+                        } else if (data.type === 'battery') {
+                            newItem = createBattery(x, y, data.preset);
+                        } else if (data.type === 'smartbattery') {
+                            newItem = createSmartBattery(x, y, data.preset);
+                        } else if (data.type === 'controller') {
+                            newItem = createController(x, y, data.preset);
+                        }
+                        
+                        if (newItem) {
+                            allItems.push(newItem);
+                            selectItem(newItem);
+                            render();
+                            showToast(`Added ${data.preset.name}`, 'info');
+                        }
+                    }
+                } catch (err) {
+                    console.error('Error handling drop:', err);
+                }
+            };
+        }
         
         // Add SVG filters for glow effects and shadows
         const defs = svg.append("defs");
@@ -1455,6 +2272,18 @@ const SolarDesigner = (function() {
         const redMerge = redGlow.append("feMerge");
         redMerge.append("feMergeNode");
         redMerge.append("feMergeNode").attr("in", "SourceGraphic");
+        
+        // Subtle green glow for batteries in live mode (idle state)
+        const greenGlowSubtle = defs.append("filter")
+            .attr("id", "solar-green-glow-subtle")
+            .attr("x", "-100%").attr("y", "-100%")
+            .attr("width", "300%").attr("height", "300%");
+        greenGlowSubtle.append("feGaussianBlur").attr("in", "SourceGraphic").attr("stdDeviation", "2").attr("result", "blur");
+        greenGlowSubtle.append("feColorMatrix").attr("in", "blur").attr("type", "matrix")
+            .attr("values", "0 0.5 0 0 0  0 0.7 0 0 0  0 0.3 0 0 0  0 0 0 0.8 0");
+        const greenSubtleMerge = greenGlowSubtle.append("feMerge");
+        greenSubtleMerge.append("feMergeNode");
+        greenSubtleMerge.append("feMergeNode").attr("in", "SourceGraphic");
         
         // Soft shadow for depth
         const shadow = defs.append("filter")
@@ -1550,14 +2379,19 @@ const SolarDesigner = (function() {
             pvNegative: { id: `${id}-pv-neg`, polarity: 'pv-negative', x: controllerWidthPx * 0.65, y: -5, connectedTo: [] }
         };
         
+        // Battery terminals (if not all-in-one)
         if (!isAllInOne) {
             handles.batteryPositive = { id: `${id}-batt-pos`, polarity: 'positive', x: controllerWidthPx * 0.35, y: controllerHeightPx + 5, connectedTo: [] };
             handles.batteryNegative = { id: `${id}-batt-neg`, polarity: 'negative', x: controllerWidthPx * 0.65, y: controllerHeightPx + 5, connectedTo: [] };
         }
         
+        // AC output (for hybrid inverters and all-in-one units)
+        // Positioned at middle bottom, between battery + and - ports when they exist
         if (isHybrid) {
-            // AC output positioned at middle bottom, between battery ports
-            handles.acOutput = { id: `${id}-ac-out`, polarity: 'ac', x: controllerWidthPx / 2, y: controllerHeightPx + 5, connectedTo: [] };
+            // Calculate middle position: between batteryPositive (0.35) and batteryNegative (0.65)
+            // Middle = (0.35 + 0.65) / 2 = 0.5, which is controllerWidthPx / 2
+            const acOutputX = controllerWidthPx / 2; // Middle between battery terminals
+            handles.acOutput = { id: `${id}-ac-out`, polarity: 'ac', x: acOutputX, y: controllerHeightPx + 5, connectedTo: [] };
         }
         
         return {
@@ -1859,6 +2693,26 @@ const SolarDesigner = (function() {
     }
     
     // ============================================
+    // HELPER FUNCTION ALIASES
+    // ============================================
+    
+    // Generic breaker creator (routes to AC or DC based on type)
+    function createBreaker(x, y, preset, type = 'dc') {
+        const rating = preset.rating || 20;
+        return type === 'ac' ? createACBreaker(x, y, rating) : createDCBreaker(x, y, rating);
+    }
+    
+    // Alias for createACLoad
+    function createLoad(x, y, preset) {
+        return createACLoad(x, y, preset);
+    }
+    
+    // Alias for createSolarCombinerBox
+    function createSolarCombiner(x, y, options) {
+        return createSolarCombinerBox(x, y, options?.inputs || 4);
+    }
+    
+    // ============================================
     // CONNECTION HANDLING
     // ============================================
     
@@ -2107,22 +2961,52 @@ const SolarDesigner = (function() {
         return 0;
     }
     
-    // Calculate animation duration based on power (60W = 2s, 2000W = 0.3s)
+    // Calculate animation duration based on power (60W = 1.2s slow, 2000W = 0.3s fast)
+    // Animation speed scales with power: higher power = faster animation (lower duration)
     function getAnimationDuration(powerWatts) {
-        if (powerWatts <= 0) return 2.0; // Default slow
+        if (powerWatts <= 0) return 1.2; // Default slow for no power
         
         // Clamp power range
         const minPower = 60;
         const maxPower = 2000;
         const clampedPower = Math.max(minPower, Math.min(maxPower, powerWatts));
         
-        // Linear interpolation: 60W -> 2s, 2000W -> 0.3s
-        const minDuration = 2.0;
-        const maxDuration = 0.3;
+        // Linear interpolation: 60W -> 1.2s (slow), 2000W -> 0.3s (fast)
+        const minDuration = 1.2; // Slow animation for low power
+        const maxDuration = 0.3; // Fast animation for high power
         const ratio = (clampedPower - minPower) / (maxPower - minPower);
         const duration = minDuration + (maxDuration - minDuration) * (1 - ratio); // Inverted: higher power = lower duration
         
         return duration;
+    }
+    
+    // Get wire ampacity (current carrying capacity) based on AWG gauge
+    // Uses AWG_RATINGS constant if available, otherwise uses common defaults
+    function getWireAmpacity(wireGauge) {
+        // Check for AWG_RATINGS constant from constants.js
+        if (typeof AWG_RATINGS !== 'undefined' && AWG_RATINGS[wireGauge]) {
+            return AWG_RATINGS[wireGauge].ampacity || AWG_RATINGS[wireGauge].amps || 0;
+        }
+        
+        // Fallback: Common AWG ampacity ratings (for copper, 60°C insulation)
+        const defaultAmpacity = {
+            18: 7,    // 18 AWG - 7A
+            16: 10,   // 16 AWG - 10A
+            14: 15,   // 14 AWG - 15A (typical household circuit)
+            12: 20,   // 12 AWG - 20A (common outlet circuit)
+            10: 30,   // 10 AWG - 30A (dryer, water heater)
+            8: 40,    // 8 AWG - 40A (range, large appliance)
+            6: 55,    // 6 AWG - 55A (subpanel, EV charger)
+            4: 70,    // 4 AWG - 70A (large subpanel)
+            2: 95,    // 2 AWG - 95A (main service)
+            1: 110,   // 1 AWG - 110A
+            '1/0': 125, // 1/0 AWG - 125A
+            '2/0': 145, // 2/0 AWG - 145A
+            '3/0': 165, // 3/0 AWG - 165A
+            '4/0': 195  // 4/0 AWG - 195A (large service entrance)
+        };
+        
+        return defaultAmpacity[wireGauge] || 20; // Default to 20A (12 AWG equivalent)
     }
     
     // Helper to determine wire flow direction relative to breaker panel
@@ -2131,26 +3015,53 @@ const SolarDesigner = (function() {
         const targetItem = allItems.find(i => i.id === conn.targetItemId);
         if (!sourceItem || !targetItem) return 'right'; // Default
         
-        // Find breaker panel in the circuit
+        // Find breaker panel in the circuit by tracing through connections
         let breakerPanel = null;
+        
+        // Direct check
         if (sourceItem.type === 'breakerpanel') {
             breakerPanel = sourceItem;
         } else if (targetItem.type === 'breakerpanel') {
             breakerPanel = targetItem;
         } else {
-            // Check if connection is from a breaker panel circuit
-            const sourceHandle = sourceItem.handles[conn.sourceHandleKey];
-            if (sourceHandle && sourceHandle.connectedTo) {
-                // Trace back to find breaker panel
-                for (const handleConn of sourceHandle.connectedTo) {
-                    const connObj = connections.find(c => c.id === handleConn.connectionId);
-                    if (connObj) {
-                        const panelItem = allItems.find(i => i.id === connObj.sourceItemId && i.type === 'breakerpanel');
-                        if (panelItem) {
-                            breakerPanel = panelItem;
-                            break;
+            // Trace through circuit to find breaker panel
+            const visited = new Set();
+            const queue = [{ item: sourceItem, handleKey: conn.sourceHandleKey }, { item: targetItem, handleKey: conn.targetHandleKey }];
+            
+            while (queue.length > 0 && !breakerPanel) {
+                const { item, handleKey } = queue.shift();
+                if (!item || visited.has(item.id)) continue;
+                visited.add(item.id);
+                
+                // Check if this is a breaker panel
+                if (item.type === 'breakerpanel') {
+                    breakerPanel = item;
+                    break;
+                }
+                
+                // Check if this is a spider box (also has circuits)
+                if (item.type === 'spiderbox') {
+                    breakerPanel = item; // Use spider box as reference too
+                    break;
+                }
+                
+                // Trace through all connections from this item
+                if (item.handles) {
+                    Object.values(item.handles).forEach(handle => {
+                        if (handle.connectedTo) {
+                            handle.connectedTo.forEach(handleConn => {
+                                const connObj = connections.find(c => c.id === handleConn.connectionId);
+                                if (connObj) {
+                                    const nextItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                    const nextItem = allItems.find(i => i.id === nextItemId);
+                                    if (nextItem && !visited.has(nextItem.id)) {
+                                        const nextHandleKey = connObj.sourceItemId === item.id ? connObj.targetHandleKey : connObj.sourceHandleKey;
+                                        queue.push({ item: nextItem, handleKey: nextHandleKey });
+                                    }
+                                }
+                            });
                         }
-                    }
+                    });
                 }
             }
         }
@@ -2160,10 +3071,12 @@ const SolarDesigner = (function() {
         // Calculate midpoint of wire
         const sourceHandle = sourceItem.handles[conn.sourceHandleKey];
         const targetHandle = targetItem.handles[conn.targetHandleKey];
+        if (!sourceHandle || !targetHandle) return 'right';
+        
         const wireMidX = (sourceItem.x + sourceHandle.x + targetItem.x + targetHandle.x) / 2;
         const panelCenterX = breakerPanel.x + breakerPanel.width / 2;
         
-        // Determine direction: wires on right side flow right, left side flow left
+        // Determine direction: wires on right side of breaker panel flow right (outward), left side flow left (outward)
         return wireMidX > panelCenterX ? 'right' : 'left';
     }
     
@@ -2174,6 +3087,7 @@ const SolarDesigner = (function() {
         
         const wireEnter = wireSelection.enter()
             .append("path")
+            .attr("data-connection-id", d => d.id)
             .attr("class", d => {
                 const sourceItem = allItems.find(i => i.id === d.sourceItemId);
                 const sourceHandle = sourceItem?.handles[d.sourceHandleKey];
@@ -2182,13 +3096,19 @@ const SolarDesigner = (function() {
                 let wireClass = "wire";
                 if (polarity === 'ac' || polarity === 'load') wireClass += " ac";
                 else if (polarity === 'positive' || polarity === 'pv-positive') wireClass += " dc-positive";
-                else wireClass += " dc-negative";
+                else if (polarity === 'negative' || polarity === 'pv-negative') wireClass += " dc-negative";
+                else if (polarity === 'resource' || polarity === 'input' || polarity === 'output') wireClass += " resource";
+                else wireClass += " dc-negative"; // Default fallback
                 
                 if (selectedConnection && selectedConnection.id === d.id) wireClass += " selected";
                 
-                // Power flow animation
-                if (LiveView.state.active && LiveView.state.powerFlow[d.id]?.isLive) {
-                    wireClass += " power-flowing";
+                // Initial power flow state (will be updated on merge)
+                const powerFlow = LiveView.state.powerFlow[d.id];
+                if (LiveView.state.active && powerFlow?.isLive) {
+                    wireClass += " wire-live power-flowing";
+                    
+                    if (powerFlow.isPV) wireClass += " pv-live";
+                    if (powerFlow.isBattery) wireClass += " battery-live";
                 }
                 
                 return wireClass;
@@ -2227,7 +3147,13 @@ const SolarDesigner = (function() {
                 let wireClass = "wire";
                 if (polarity === 'ac' || polarity === 'load') wireClass += " ac";
                 else if (polarity === 'positive' || polarity === 'pv-positive') wireClass += " dc-positive";
-                else wireClass += " dc-negative";
+                else if (polarity === 'negative' || polarity === 'pv-negative') wireClass += " dc-negative";
+                else if (polarity === 'resource' || polarity === 'input' || polarity === 'output') wireClass += " resource";
+                else wireClass += " dc-negative"; // Default fallback
+                
+                // Add polarity-specific classes for battery connections
+                if (polarity === 'positive') wireClass += " positive";
+                if (polarity === 'negative') wireClass += " negative";
                 
                 if (selectedConnection && selectedConnection.id === d.id) wireClass += " selected";
                 
@@ -2238,6 +3164,10 @@ const SolarDesigner = (function() {
                 }
                 
                 // Wire visual states: live (glow) vs flowing (glow + animation)
+                // Rules:
+                // - Not live: no glow, no animation
+                // - Live but no flow: glow only (wire-live class)
+                // - Live and flowing: glow + animation (wire-live + wire-flowing classes)
                 const powerFlow = LiveView.state.powerFlow[d.id];
                 if (LiveView.state.active && powerFlow) {
                     if (powerFlow.isLive) {
@@ -2249,19 +3179,63 @@ const SolarDesigner = (function() {
                         }
                         
                         // For PV wires: animate based on direction and charging state
-                        if (powerFlow.isPV && powerFlow.isLive) {
-                            // Only animate when actively charging
+                        if (powerFlow.isPV) {
+                            wireClass += " pv-live"; // PV-specific glow
+                            
+                            // Only animate when actively charging (hasActiveFlow = true)
                             if (powerFlow.hasActiveFlow) {
                                 if (powerFlow.direction === 'controller-to-pv') {
-                                    // Positive wire: controller → panels
-                                    wireClass += " pv-flowing";
-                                } else if (powerFlow.direction === 'pv-to-controller') {
-                                    // Negative wire: panels → controller (electron flow, reverse)
+                                    // Negative wire: controller → panels (electron flow direction)
                                     wireClass += " pv-flowing-reverse";
+                                } else if (powerFlow.direction === 'pv-to-controller') {
+                                    // Positive wire: panels → controller (conventional current)
+                                    wireClass += " pv-flowing";
                                 }
                             }
-                            // Always glow when solar output > 0 (even if not charging)
-                            wireClass += " wire-live";
+                        }
+                        
+                        // For battery wires: animate based on charge/discharge state
+                        if (powerFlow.isBattery) {
+                            wireClass += " battery-live"; // Battery-specific glow
+                            
+                            if (powerFlow.hasActiveFlow) {
+                                if (powerFlow.direction === 'charging') {
+                                    wireClass += " battery-charging";
+                                } else if (powerFlow.direction === 'discharging') {
+                                    wireClass += " battery-discharging";
+                                }
+                            }
+                        }
+                        
+                        // For resource flow (pipes, conveyors, etc.)
+                        if (powerFlow.isResource) {
+                            if (powerFlow.direction === 'consuming') {
+                                wireClass += " resource-consuming";
+                            } else if (powerFlow.direction === 'producing') {
+                                wireClass += " resource-producing";
+                            }
+                        }
+                        
+                        // High power indication for wires carrying significant current
+                        // Typically above 30A or 3600W at 120V
+                        if (powerFlow.watts > 3600 || powerFlow.amps > 30) {
+                            wireClass += " high-power";
+                        }
+                        
+                        // Wire thermal/overload warning states
+                        // Check wire ampacity against current
+                        const wireGauge = d.wireGauge || 12; // Default 12 AWG
+                        const wireAmpacity = getWireAmpacity(wireGauge);
+                        if (wireAmpacity > 0 && powerFlow.amps > 0) {
+                            const loadPercent = (powerFlow.amps / wireAmpacity) * 100;
+                            
+                            if (loadPercent > 100) {
+                                // Critical overload - wire is exceeding its rating
+                                wireClass += " critical-heat overloaded";
+                            } else if (loadPercent > 80) {
+                                // Warning - approaching limit
+                                wireClass += " overheating";
+                            }
                         }
                     }
                 }
@@ -2272,7 +3246,9 @@ const SolarDesigner = (function() {
                 // Calculate animation speed based on power flow
                 if (!LiveView.state.active) return "0.6s";
                 
-                const powerWatts = calculateWirePower(d);
+                // Use pre-calculated watts from powerFlow state if available
+                const powerFlow = LiveView.state.powerFlow[d.id];
+                const powerWatts = powerFlow?.watts || calculateWirePower(d);
                 const duration = getAnimationDuration(powerWatts);
                 return `${duration}s`;
             });
@@ -2286,6 +3262,7 @@ const SolarDesigner = (function() {
         const itemEnter = itemSelection.enter()
             .append("g")
             .attr("class", "item-group")
+            .attr("data-id", d => d.id)
             .call(d3.drag()
                 .on("start", itemDragStart)
                 .on("drag", itemDragMove)
@@ -2497,17 +3474,19 @@ const SolarDesigner = (function() {
         const soc = Simulation.batterySOC[d.id] !== undefined ? Simulation.batterySOC[d.id] : 0.8;
         const socPercent = Math.round(soc * 100);
         
-        // Apply glow based on charge/discharge state
+        // Apply glow based on charge/discharge state and SOC
+        // Battery should glow green (stronger when charging) and show SOC progress bar
         if (LiveView.state.active) {
             const batteryFlow = Simulation.currentBatteryFlow;
             if (batteryFlow > 50) {
-                // Charging - green glow
+                // Charging - strong green glow
                 g.attr("filter", "url(#solar-green-glow)");
             } else if (batteryFlow < -50) {
-                // Discharging - red glow
+                // Discharging - amber/red glow
                 g.attr("filter", "url(#solar-red-glow)");
             } else {
-                g.attr("filter", "url(#solar-shadow)");
+                // Idle but in live mode - subtle green glow to indicate battery presence
+                g.attr("filter", "url(#solar-green-glow-subtle)");
             }
         } else {
             g.attr("filter", "url(#solar-shadow)");
@@ -3670,6 +4649,94 @@ const SolarDesigner = (function() {
             render();
             updateStats();
             showToast(`Moved ${selectedPanels.length} panels`, 'success');
+            isDragging = false;
+            return;
+        }
+        
+        // Check for drag-to-replace: if dragging over an existing component of the same type
+        const transform = d3.zoomTransform(svg.node());
+        const [mouseX, mouseY] = transform.invert([event.sourceEvent.offsetX, event.sourceEvent.offsetY]);
+        
+        // Find if there's another component of the same type at this position
+        const overlappingItem = allItems.find(item => {
+            if (item.id === d.id) return false; // Don't check self
+            if (item.type !== d.type) return false; // Must be same type
+            
+            // Check if mouse is within item bounds (with some tolerance)
+            const tolerance = Math.max(item.width, item.height) * 0.5;
+            const dx = mouseX - item.x;
+            const dy = mouseY - item.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            
+            return distance < tolerance;
+        });
+        
+        // If dragging from library (d has preset data), replace the overlapping item
+        if (overlappingItem && d._replacementPreset) {
+            const preset = d._replacementPreset;
+            let presetType = 'panel';
+            if (preset.wmp !== undefined) presetType = 'panel';
+            else if (preset.voltage !== undefined || preset.ah !== undefined) presetType = 'battery';
+            else if (preset.maxVoc !== undefined || preset.maxWmp !== undefined) presetType = 'controller';
+            
+            if (overlappingItem.type === presetType) {
+                replaceComponent(overlappingItem, presetType, preset);
+                // Remove the temporary dragged item
+                const index = allItems.findIndex(i => i.id === d.id);
+                if (index >= 0) {
+                    allItems.splice(index, 1);
+                }
+                selectItem(overlappingItem);
+                render();
+                showToast(`Replaced ${overlappingItem.type} with ${preset.name}`, 'success');
+                isDragging = false;
+                return;
+            }
+        }
+        
+        // If dragging existing item onto another same-type item, replace it
+        if (overlappingItem && d.type === overlappingItem.type && d.id !== overlappingItem.id) {
+            // Check if user wants to replace (could add confirmation dialog here)
+            // For now, we'll use a simple heuristic: if items are very close, replace
+            const dx = d.x - overlappingItem.x;
+            const dy = d.y - overlappingItem.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const threshold = Math.max(overlappingItem.width, overlappingItem.height) * 0.3;
+            
+            if (distance < threshold) {
+                // Get preset for current item (if it matches a preset)
+                let currentPreset = null;
+                if (d.type === 'panel') {
+                    currentPreset = PANEL_PRESETS.find(p => 
+                        Math.abs(p.wmp - (d.specs.wmp || 0)) < 1 &&
+                        Math.abs(p.vmp - (d.specs.vmp || 0)) < 1
+                    );
+                } else if (d.type === 'battery') {
+                    currentPreset = BATTERY_PRESETS.find(p => 
+                        Math.abs(p.voltage - (d.specs.voltage || 0)) < 1 &&
+                        Math.abs(p.ah - (d.specs.ah || 0)) < 1
+                    );
+                } else if (d.type === 'controller') {
+                    currentPreset = CONTROLLER_PRESETS.find(p => 
+                        Math.abs(p.maxVoc - (d.specs.maxVoc || 0)) < 10 &&
+                        Math.abs(p.maxWmp - (d.specs.maxWmp || 0)) < 100
+                    );
+                }
+                
+                if (currentPreset) {
+                    replaceComponent(overlappingItem, d.type, currentPreset);
+                    // Remove the dragged item
+                    const index = allItems.findIndex(i => i.id === d.id);
+                    if (index >= 0) {
+                        allItems.splice(index, 1);
+                    }
+                    selectItem(overlappingItem);
+                    render();
+                    showToast(`Replaced ${overlappingItem.type}`, 'success');
+                    isDragging = false;
+                    return;
+                }
+            }
         }
         
         isDragging = false;
@@ -3835,38 +4902,47 @@ const SolarDesigner = (function() {
             }
         });
         
-        document.getElementById('stat-array-watts').textContent = `${totalArrayWatts} W`;
-        document.getElementById('stat-battery-kwh').textContent = `${totalBatteryKwh.toFixed(2)} kWh`;
-        document.getElementById('stat-ac-output').textContent = `${totalACOutput} W`;
+        const arrayWattsEl = document.getElementById('stat-array-watts');
+        const batteryKwhEl = document.getElementById('stat-battery-kwh');
+        const acOutputEl = document.getElementById('stat-ac-output');
+        if (arrayWattsEl) arrayWattsEl.textContent = `${totalArrayWatts} W`;
+        if (batteryKwhEl) batteryKwhEl.textContent = `${totalBatteryKwh.toFixed(2)} kWh`;
+        if (acOutputEl) acOutputEl.textContent = `${totalACOutput} W`;
         
         // Show active load in live mode
         const loadEl = document.getElementById('stat-total-load');
-        if (LiveView.state.active && activeLoad > 0) {
-            loadEl.textContent = `${activeLoad} / ${totalLoad} W`;
-            loadEl.classList.toggle('danger', activeLoad > totalACOutput);
-        } else {
-            loadEl.textContent = `${totalLoad} W`;
-            loadEl.classList.remove('danger');
+        if (loadEl) {
+            if (LiveView.state.active && activeLoad > 0) {
+                loadEl.textContent = `${activeLoad} / ${totalLoad} W`;
+                loadEl.classList.toggle('danger', activeLoad > totalACOutput);
+            } else {
+                loadEl.textContent = `${totalLoad} W`;
+                loadEl.classList.remove('danger');
+            }
         }
         
         // Load ratio
         const ratioEl = document.getElementById('stat-load-ratio');
-        if (totalACOutput > 0) {
-            const ratio = (totalLoad / totalACOutput * 100).toFixed(0);
-            ratioEl.textContent = `${ratio}%`;
-            ratioEl.classList.remove('success', 'danger');
-            if (totalLoad > totalACOutput) {
-                ratioEl.classList.add('danger');
-            } else if (totalLoad < totalACOutput * 0.8) {
-                ratioEl.classList.add('success');
+        if (ratioEl) {
+            if (totalACOutput > 0) {
+                const ratio = (totalLoad / totalACOutput * 100).toFixed(0);
+                ratioEl.textContent = `${ratio}%`;
+                ratioEl.classList.remove('success', 'danger');
+                if (totalLoad > totalACOutput) {
+                    ratioEl.classList.add('danger');
+                } else if (totalLoad < totalACOutput * 0.8) {
+                    ratioEl.classList.add('success');
+                }
+            } else {
+                ratioEl.textContent = '—';
+                ratioEl.classList.remove('success', 'danger');
             }
-        } else {
-            ratioEl.textContent = '—';
-            ratioEl.classList.remove('success', 'danger');
         }
         
-        document.getElementById('stat-component-count').textContent = allItems.length;
-        document.getElementById('stat-connection-count').textContent = connections.length;
+        const componentCountEl = document.getElementById('stat-component-count');
+        const connectionCountEl = document.getElementById('stat-connection-count');
+        if (componentCountEl) componentCountEl.textContent = allItems.length;
+        if (connectionCountEl) connectionCountEl.textContent = connections.length;
         
         // Calculate total cost
         let totalCost = 0;
@@ -3897,6 +4973,29 @@ const SolarDesigner = (function() {
     
     function updatePropertiesPanel() {
         const panel = document.getElementById('solar-properties-panel');
+        const inspectorEmpty = document.getElementById('inspectorEmpty');
+        
+        // Show/hide empty state and properties panel
+        if (!selectedItem && !selectedConnection) {
+            if (panel) {
+                panel.classList.add('hidden');
+                panel.classList.remove('visible');
+            }
+            if (inspectorEmpty) inspectorEmpty.style.display = 'block';
+            return;
+        }
+        
+        // Show properties panel and hide empty state
+        if (panel) {
+            panel.classList.remove('hidden');
+            panel.classList.add('visible');
+        }
+        if (inspectorEmpty) inspectorEmpty.style.display = 'none';
+        
+        // Switch to inspector tab when item is selected
+        if (selectedItem || selectedConnection) {
+            switchRightPanelTab('inspector');
+        }
         
         // Handle wire/connection selection
         if (selectedConnection && !selectedItem) {
@@ -3926,11 +5025,8 @@ const SolarDesigner = (function() {
         }
         
         if (!selectedItem) {
-            panel.classList.remove('visible');
             return;
         }
-        
-        panel.classList.add('visible');
         const item = selectedItem;
         const itemId = item.id; // Capture for closures
         
@@ -4024,14 +5120,15 @@ const SolarDesigner = (function() {
                 <div class="prop-section-title" style="margin-top:12px;">Panel Array Tools</div>
                 <div class="prop-row">
                     <span class="prop-label">Grid Padding</span>
-                    <input type="range" class="prop-input" id="prop-panel-padding" value="${panelGridPadding}" min="0" max="50" style="width:80px;">
+                    <input type="range" class="prop-input" id="prop-panel-padding" value="${panelGridPadding}" min="0" max="100" step="5" style="width:80px;">
                     <span id="prop-panel-padding-val">${panelGridPadding}px</span>
                 </div>
                 <div class="prop-row">
                     <button class="prop-btn" id="prop-snap-grid-btn" style="width:100%; padding:6px; margin-top:4px;">⊞ Snap All Panels to Grid</button>
                 </div>
-                <div class="prop-row">
-                    <button class="prop-btn" id="prop-select-all-panels-btn" style="width:100%; padding:6px; margin-top:4px;">☑ Select All Panels</button>
+                <div class="prop-row" style="display:flex; gap:4px; margin-top:4px;">
+                    <button class="prop-btn" id="prop-select-all-panels-btn" style="flex:1; padding:6px;">☑ All</button>
+                    <button class="prop-btn" id="prop-select-connected-btn" style="flex:1; padding:6px;">🔗 Connected</button>
                 </div>
             `;
         } else if (item.type === 'battery') {
@@ -4417,6 +5514,13 @@ const SolarDesigner = (function() {
                     selectAllPanels();
                 };
             }
+            
+            const selectConnectedBtn = document.getElementById('prop-select-connected-btn');
+            if (selectConnectedBtn) {
+                selectConnectedBtn.onclick = () => {
+                    selectConnectedPanels(getItem());
+                };
+            }
         }
         
         // Battery properties
@@ -4729,10 +5833,60 @@ const SolarDesigner = (function() {
         render();
     }
     
+    // Power flow cache for performance optimization
+    let _powerFlowCache = null;
+    let _powerFlowCacheKey = null;
+    
     function calculatePowerFlow() {
+        // Phase 2: Power flow calculation with caching
+        // Ensure solar output is calculated first
+        if (LiveView.state.active) {
+            Simulation.calculateSolarOutput();
+        }
+        
+        // Only recalculate if load states or power values have changed
+        const currentSolarOutput = Simulation.currentSolarWatts || 0;
+        const currentLoadWatts = Simulation.currentLoadWatts || 0;
+        const batteryFlow = Simulation.currentBatteryFlow || 0;
+        
+        // Create cache key from current state - include active load count for accuracy
+        const activeLoadCount = Object.values(LiveView.state.loadStates).filter(v => v).length;
+        const cacheKey = `${currentSolarOutput.toFixed(0)}_${currentLoadWatts.toFixed(0)}_${batteryFlow.toFixed(0)}_${activeLoadCount}_${LiveView.state.active}`;
+        
+        // Check if we can use cached result
+        if (_powerFlowCache && _powerFlowCacheKey === cacheKey) {
+            LiveView.state.powerFlow = _powerFlowCache;
+            return;
+        }
+        
+        // Clear and recalculate
         LiveView.state.powerFlow = {};
         
-        if (!LiveView.state.active) return;
+        if (!LiveView.state.active) {
+            _powerFlowCache = {};
+            _powerFlowCacheKey = cacheKey;
+            return;
+        }
+        
+        // Calculate total AC load power for wattage tracking
+        let totalACWatts = 0;
+        allItems.filter(i => i.type === 'acload').forEach(load => {
+            if (LiveView.state.loadStates[load.id]) {
+                totalACWatts += load.specs.watts || 0;
+            }
+        });
+        
+        // Helper to mark a connection as live with power details
+        const markConnectionLive = (connId, watts, voltage = 120, direction = 'power', options = {}) => {
+            LiveView.state.powerFlow[connId] = {
+                watts: watts,
+                amps: voltage > 0 ? watts / voltage : 0,
+                voltage: voltage,
+                direction: direction,
+                isLive: true,
+                ...options
+            };
+        };
         
         // Mark connections from controllers as live if they have connected panels/batteries
         const controllers = allItems.filter(i => i.type === 'controller');
@@ -4760,10 +5914,17 @@ const SolarDesigner = (function() {
                 }
             });
             
-            // Mark AC output connections as live
+            // Mark AC output connections as live with wattage
             if ((hasPanels || hasBatteries) && controller.handles.acOutput) {
+                const acVoltage = 120; // Standard AC voltage
                 controller.handles.acOutput.connectedTo.forEach(conn => {
-                    LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
+                    LiveView.state.powerFlow[conn.connectionId] = { 
+                        isLive: true, 
+                        watts: totalACWatts,
+                        amps: totalACWatts / acVoltage,
+                        voltage: acVoltage,
+                        hasActiveFlow: totalACWatts > 0
+                    };
                 });
             }
             
@@ -4772,38 +5933,416 @@ const SolarDesigner = (function() {
                 const solarOutput = Simulation.currentSolarWatts || 0;
                 const isCharging = Simulation.currentBatteryFlow > 0; // Battery is charging
                 
+                // Check if there are any active AC loads on this controller
+                let hasActiveACLoad = false;
+                if (controller.handles.acOutput) {
+                    // Check if AC output has active loads downstream
+                    controller.handles.acOutput.connectedTo.forEach(acConn => {
+                        const acConnObj = connections.find(c => c.id === acConn.connectionId);
+                        if (acConnObj) {
+                            // Trace to find loads
+                            const targetItem = allItems.find(i => i.id === acConnObj.targetItemId);
+                            if (targetItem && targetItem.type === 'acload' && LiveView.state.loadStates[targetItem.id]) {
+                                hasActiveACLoad = true;
+                            } else if (targetItem && targetItem.type === 'acoutlet') {
+                                // Check outlet loads
+                                if (targetItem.handles.load) {
+                                    targetItem.handles.load.connectedTo.forEach(loadConn => {
+                                        const loadConnObj = connections.find(c => c.id === loadConn.connectionId);
+                                        if (loadConnObj) {
+                                            const loadItem = allItems.find(i => i.id === loadConnObj.targetItemId && i.type === 'acload');
+                                            if (loadItem && LiveView.state.loadStates[loadItem.id]) {
+                                                hasActiveACLoad = true;
+                                            }
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Animate only when: solar > 0 AND (battery charging OR active AC load)
+                // If solar available but no load and not charging: glow only, no animation
+                const shouldAnimate = solarOutput > 0 && (isCharging || hasActiveACLoad);
+                
+                // Calculate PV voltage for this controller
+                let pvVoltage = controller.specs.mppVoltageMin || controller.specs.maxVoc || 150;
+                const pvAmps = solarOutput > 0 ? solarOutput / pvVoltage : 0;
+                const pvWattsPerConnection = solarOutput / Math.max(1, controller.handles.pvPositive.connectedTo.length);
+                
+                // Positive wire: conventional current flows from panels to controller
                 controller.handles.pvPositive.connectedTo.forEach(conn => {
                     LiveView.state.powerFlow[conn.connectionId] = { 
                         isLive: solarOutput > 0, 
-                        watts: 0,
+                        watts: pvWattsPerConnection,
+                        amps: pvAmps / Math.max(1, controller.handles.pvPositive.connectedTo.length),
+                        voltage: pvVoltage,
                         isPV: true,
-                        direction: 'pv-to-controller' // Positive: panels to controller
+                        direction: 'pv-to-controller', // Positive: panels → controller (conventional current)
+                        hasActiveFlow: shouldAnimate // Animate when charging or load active
                     };
                 });
                 
-                // Mark negative PV wires (reverse direction)
+                // Negative wire: electron flow is opposite (controller to panels)
                 if (controller.handles.pvNegative) {
+                    const negConnCount = controller.handles.pvNegative.connectedTo.length;
                     controller.handles.pvNegative.connectedTo.forEach(conn => {
                         LiveView.state.powerFlow[conn.connectionId] = { 
                             isLive: solarOutput > 0, 
-                            watts: 0,
+                            watts: pvWattsPerConnection,
+                            amps: pvAmps / Math.max(1, negConnCount),
+                            voltage: pvVoltage,
                             isPV: true,
-                            direction: 'controller-to-pv', // Negative: controller to panels
-                            hasActiveFlow: solarOutput > 0 && isCharging // Only animate when charging
+                            direction: 'controller-to-pv', // Negative: controller → panels (electron flow, opposite)
+                            hasActiveFlow: shouldAnimate // Animate when charging or load active
                         };
                     });
                 }
+                
+                // Trace DC connections through combiners and DC breakers to panels
+                // This marks all PV wire connections in the DC path
+                const tracePVConnections = (item, handle, direction, visited = new Set()) => {
+                    if (!handle?.connectedTo) return;
+                    
+                    handle.connectedTo.forEach(conn => {
+                        const connObj = connections.find(c => c.id === conn.connectionId);
+                        if (!connObj || visited.has(connObj.id)) return;
+                        visited.add(connObj.id);
+                        
+                        // Mark this connection if not already marked
+                        if (!LiveView.state.powerFlow[connObj.id]) {
+                            LiveView.state.powerFlow[connObj.id] = {
+                                watts: solarOutput,
+                                amps: pvAmps,
+                                voltage: pvVoltage,
+                                direction: direction,
+                                isPV: true,
+                                isLive: solarOutput > 0,
+                                hasActiveFlow: shouldAnimate
+                            };
+                        }
+                        
+                        // Find connected item
+                        const connectedItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                        const connectedItem = allItems.find(i => i.id === connectedItemId);
+                        if (!connectedItem) return;
+                        
+                        // Handle different component types
+                        if (connectedItem.type === 'solarcombiner') {
+                            // Solar combiner with per-string breakers
+                            // Trace through each input that has its breaker closed
+                            for (let i = 0; i < (connectedItem.specs?.inputs || 0); i++) {
+                                // Check if this input's breaker is closed
+                                if (!LiveView.BreakerManager.isSolarCombinerInputClosed(connectedItem, i)) continue;
+                                
+                                const inputPosHandle = connectedItem.handles?.[`input${i}Positive`];
+                                const inputNegHandle = connectedItem.handles?.[`input${i}Negative`];
+                                
+                                if (inputPosHandle && direction === 'pv-to-controller') {
+                                    tracePVConnections(connectedItem, inputPosHandle, direction, visited);
+                                }
+                                if (inputNegHandle && direction === 'controller-to-pv') {
+                                    tracePVConnections(connectedItem, inputNegHandle, direction, visited);
+                                }
+                            }
+                        } else if (connectedItem.type === 'combiner') {
+                            // Regular combiner (no breakers)
+                            // Trace through all inputs
+                            Object.entries(connectedItem.handles || {}).forEach(([key, h]) => {
+                                if (key.startsWith('input') && key.includes('Positive') && direction === 'pv-to-controller') {
+                                    tracePVConnections(connectedItem, h, direction, visited);
+                                } else if (key.startsWith('input') && key.includes('Negative') && direction === 'controller-to-pv') {
+                                    tracePVConnections(connectedItem, h, direction, visited);
+                                }
+                            });
+                        } else if (connectedItem.type === 'dcbreaker') {
+                            // DC breaker - only pass through if closed
+                            if (LiveView.BreakerManager.isBreakerClosed(connectedItem)) {
+                                // Find the other side of the breaker
+                                const linePos = connectedItem.handles?.linePositive;
+                                const lineNeg = connectedItem.handles?.lineNegative;
+                                const loadPos = connectedItem.handles?.loadPositive;
+                                const loadNeg = connectedItem.handles?.loadNegative;
+                                
+                                // Determine which side we came from and trace the other
+                                if (direction === 'pv-to-controller') {
+                                    if (linePos?.connectedTo?.some(c => c.connectionId === connObj.id)) {
+                                        tracePVConnections(connectedItem, loadPos, direction, visited);
+                                    } else if (loadPos?.connectedTo?.some(c => c.connectionId === connObj.id)) {
+                                        tracePVConnections(connectedItem, linePos, direction, visited);
+                                    }
+                                } else {
+                                    if (lineNeg?.connectedTo?.some(c => c.connectionId === connObj.id)) {
+                                        tracePVConnections(connectedItem, loadNeg, direction, visited);
+                                    } else if (loadNeg?.connectedTo?.some(c => c.connectionId === connObj.id)) {
+                                        tracePVConnections(connectedItem, lineNeg, direction, visited);
+                                    }
+                                }
+                            }
+                        } else if (connectedItem.type === 'panel') {
+                            // Mark panel terminal connections
+                            Object.values(connectedItem.handles || {}).forEach(h => {
+                                h.connectedTo?.forEach(panelConn => {
+                                    const panelConnObj = connections.find(c => c.id === panelConn.connectionId);
+                                    if (panelConnObj && !LiveView.state.powerFlow[panelConnObj.id]) {
+                                        LiveView.state.powerFlow[panelConnObj.id] = {
+                                            watts: connectedItem.specs?.wmp || 0,
+                                            amps: (connectedItem.specs?.wmp || 0) / pvVoltage,
+                                            voltage: pvVoltage,
+                                            direction: h.polarity === 'positive' ? 'pv-to-controller' : 'controller-to-pv',
+                                            isPV: true,
+                                            isLive: solarOutput > 0,
+                                            hasActiveFlow: shouldAnimate
+                                        };
+                                    }
+                                });
+                            });
+                        }
+                    });
+                };
+                
+                // Trace from controller PV handles through all DC connections
+                if (controller.handles.pvPositive) {
+                    tracePVConnections(controller, controller.handles.pvPositive, 'pv-to-controller');
+                }
+                if (controller.handles.pvNegative) {
+                    tracePVConnections(controller, controller.handles.pvNegative, 'controller-to-pv');
+                }
+                
+                // Also check for multiple MPPT inputs
+                for (let mppt = 1; mppt <= (controller.specs?.mpptCount || 1); mppt++) {
+                    const mpptPosHandle = controller.handles?.[`pvPositive${mppt}`];
+                    const mpptNegHandle = controller.handles?.[`pvNegative${mppt}`];
+                    
+                    if (mpptPosHandle) {
+                        tracePVConnections(controller, mpptPosHandle, 'pv-to-controller');
+                    }
+                    if (mpptNegHandle) {
+                        tracePVConnections(controller, mpptNegHandle, 'controller-to-pv');
+                    }
+                }
+            }
+            
+            // Mark battery wire connections with charging/discharging state
+            // Battery wires animate when either charging (PV > 0) or discharging (AC load > 0)
+            const isCharging = Simulation.currentBatteryFlow > 0;
+            const isDischarging = totalACWatts > 0 && Simulation.currentBatteryFlow < 0;
+            const batteryActive = isCharging || isDischarging;
+            
+            if (batteryActive && (hasBatteries || controller.specs.internalBatteryKWh > 0)) {
+                // Get battery voltage (default 48V for most systems)
+                let batteryVoltage = 48;
+                const connectedBatteries = allItems.filter(i => 
+                    i.type === 'battery' && 
+                    i.handles?.positive?.connectedTo.some(c => {
+                        const conn = connections.find(cn => cn.id === c.connectionId);
+                        return conn && (conn.sourceItemId === controller.id || conn.targetItemId === controller.id);
+                    })
+                );
+                if (connectedBatteries.length > 0) {
+                    batteryVoltage = connectedBatteries[0].specs.voltage || 48;
+                } else if (controller.specs.supportedVoltages?.length > 0) {
+                    batteryVoltage = controller.specs.supportedVoltages[0];
+                }
+                
+                // Calculate battery power flow
+                const batteryWatts = Math.abs(Simulation.currentBatteryFlow);
+                const batteryAmps = batteryWatts / batteryVoltage;
+                const batteryDirection = isCharging ? 'charging' : 'discharging';
+                
+                // Mark controller battery terminal connections
+                if (controller.handles.batteryPositive) {
+                    controller.handles.batteryPositive.connectedTo.forEach(conn => {
+                        LiveView.state.powerFlow[conn.connectionId] = {
+                            watts: batteryWatts,
+                            amps: batteryAmps,
+                            voltage: batteryVoltage,
+                            direction: batteryDirection,
+                            isBattery: true,
+                            isCharging: isCharging,
+                            isLive: true,
+                            hasActiveFlow: batteryActive
+                        };
+                    });
+                }
+                
+                if (controller.handles.batteryNegative) {
+                    controller.handles.batteryNegative.connectedTo.forEach(conn => {
+                        LiveView.state.powerFlow[conn.connectionId] = {
+                            watts: batteryWatts,
+                            amps: batteryAmps,
+                            voltage: batteryVoltage,
+                            direction: batteryDirection,
+                            isBattery: true,
+                            isCharging: isCharging,
+                            isLive: true,
+                            hasActiveFlow: batteryActive
+                        };
+                    });
+                }
+                
+                // Trace battery connections through DC breakers and combiners
+                const traceBatteryConnections = (item, handle, visited = new Set()) => {
+                    if (!handle?.connectedTo) return;
+                    
+                    handle.connectedTo.forEach(conn => {
+                        const connObj = connections.find(c => c.id === conn.connectionId);
+                        if (!connObj || visited.has(connObj.id)) return;
+                        visited.add(connObj.id);
+                        
+                        // Mark this connection if not already marked
+                        if (!LiveView.state.powerFlow[connObj.id]) {
+                            LiveView.state.powerFlow[connObj.id] = {
+                                watts: batteryWatts,
+                                amps: batteryAmps,
+                                voltage: batteryVoltage,
+                                direction: batteryDirection,
+                                isBattery: true,
+                                isCharging: isCharging,
+                                isLive: true,
+                                hasActiveFlow: batteryActive
+                            };
+                        }
+                        
+                        // Find connected item
+                        const connectedItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                        const connectedItem = allItems.find(i => i.id === connectedItemId);
+                        if (!connectedItem) return;
+                        
+                        // Handle DC breakers
+                        if (connectedItem.type === 'dcbreaker') {
+                            if (LiveView.BreakerManager.isBreakerClosed(connectedItem)) {
+                                // Trace through both sides
+                                const linePos = connectedItem.handles?.linePositive;
+                                const lineNeg = connectedItem.handles?.lineNegative;
+                                const loadPos = connectedItem.handles?.loadPositive;
+                                const loadNeg = connectedItem.handles?.loadNegative;
+                                
+                                // Trace from line to load and vice versa
+                                if (linePos) traceBatteryConnections(connectedItem, linePos, visited);
+                                if (lineNeg) traceBatteryConnections(connectedItem, lineNeg, visited);
+                                if (loadPos) traceBatteryConnections(connectedItem, loadPos, visited);
+                                if (loadNeg) traceBatteryConnections(connectedItem, loadNeg, visited);
+                            }
+                        }
+                        // Handle batteries
+                        else if (connectedItem.type === 'battery' || connectedItem.type === 'smartbattery') {
+                            // Mark battery terminal connections
+                            if (connectedItem.handles?.positive) {
+                                traceBatteryConnections(connectedItem, connectedItem.handles.positive, visited);
+                            }
+                            if (connectedItem.handles?.negative) {
+                                traceBatteryConnections(connectedItem, connectedItem.handles.negative, visited);
+                            }
+                        }
+                    });
+                };
+                
+                // Trace from controller battery terminals
+                if (controller.handles.batteryPositive) {
+                    traceBatteryConnections(controller, controller.handles.batteryPositive);
+                }
+                if (controller.handles.batteryNegative) {
+                    traceBatteryConnections(controller, controller.handles.batteryNegative);
+                }
+                
+                // Also mark battery terminal connections directly (for batteries not going through controller)
+                allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery').forEach(battery => {
+                    if (battery.handles?.positive?.connectedTo) {
+                        battery.handles.positive.connectedTo.forEach(conn => {
+                            if (!LiveView.state.powerFlow[conn.connectionId]) {
+                                LiveView.state.powerFlow[conn.connectionId] = {
+                                    watts: batteryWatts,
+                                    amps: batteryAmps,
+                                    voltage: battery.specs.voltage || batteryVoltage,
+                                    direction: batteryDirection,
+                                    isBattery: true,
+                                    isCharging: isCharging,
+                                    isLive: true,
+                                    hasActiveFlow: batteryActive
+                                };
+                            }
+                        });
+                    }
+                    if (battery.handles?.negative?.connectedTo) {
+                        battery.handles.negative.connectedTo.forEach(conn => {
+                            if (!LiveView.state.powerFlow[conn.connectionId]) {
+                                LiveView.state.powerFlow[conn.connectionId] = {
+                                    watts: batteryWatts,
+                                    amps: batteryAmps,
+                                    voltage: battery.specs.voltage || batteryVoltage,
+                                    direction: batteryDirection,
+                                    isBattery: true,
+                                    isCharging: isCharging,
+                                    isLive: true,
+                                    hasActiveFlow: batteryActive
+                                };
+                            }
+                        });
+                    }
+                });
             }
         });
         
-        // Mark breaker outputs as live if input is live and breaker is closed
-        allItems.filter(i => i.type === 'acbreaker').forEach(breaker => {
-            if (!breaker.isClosed) return;
+        // Mark DC breaker outputs as live if input is live and breaker is closed
+        allItems.filter(i => i.type === 'dcbreaker').forEach(breaker => {
+            if (!LiveView.BreakerManager.isBreakerClosed(breaker)) return;
             
-            const inputConn = breaker.handles.lineIn?.connectedTo[0];
+            // Check if line side has power
+            const linePosConn = breaker.handles?.linePositive?.connectedTo?.[0];
+            const lineNegConn = breaker.handles?.lineNegative?.connectedTo?.[0];
+            const hasLinePower = (linePosConn && LiveView.state.powerFlow[linePosConn.connectionId]?.isLive) ||
+                                (lineNegConn && LiveView.state.powerFlow[lineNegConn.connectionId]?.isLive);
+            
+            if (hasLinePower) {
+                // Mark load side connections
+                breaker.handles?.loadPositive?.connectedTo.forEach(conn => {
+                    if (!LiveView.state.powerFlow[conn.connectionId]) {
+                        const linePower = LiveView.state.powerFlow[linePosConn?.connectionId] || {};
+                        LiveView.state.powerFlow[conn.connectionId] = { 
+                            isLive: true, 
+                            watts: linePower.watts || 0,
+                            amps: linePower.amps || 0,
+                            voltage: linePower.voltage || 48,
+                            isPV: linePower.isPV,
+                            isBattery: linePower.isBattery,
+                            direction: linePower.direction
+                        };
+                    }
+                });
+                breaker.handles?.loadNegative?.connectedTo.forEach(conn => {
+                    if (!LiveView.state.powerFlow[conn.connectionId]) {
+                        const linePower = LiveView.state.powerFlow[lineNegConn?.connectionId] || {};
+                        LiveView.state.powerFlow[conn.connectionId] = { 
+                            isLive: true, 
+                            watts: linePower.watts || 0,
+                            amps: linePower.amps || 0,
+                            voltage: linePower.voltage || 48,
+                            isPV: linePower.isPV,
+                            isBattery: linePower.isBattery,
+                            direction: linePower.direction
+                        };
+                    }
+                });
+            }
+        });
+        
+        // Mark AC breaker outputs as live if input is live and breaker is closed
+        allItems.filter(i => i.type === 'acbreaker').forEach(breaker => {
+            if (!LiveView.BreakerManager.isBreakerClosed(breaker)) return;
+            
+            const inputConn = breaker.handles?.lineIn?.connectedTo?.[0];
             if (inputConn && LiveView.state.powerFlow[inputConn.connectionId]?.isLive) {
-                breaker.handles.loadOut?.connectedTo.forEach(conn => {
-                    LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
+                const inputPower = LiveView.state.powerFlow[inputConn.connectionId];
+                breaker.handles?.loadOut?.connectedTo.forEach(conn => {
+                    LiveView.state.powerFlow[conn.connectionId] = { 
+                        isLive: true, 
+                        watts: inputPower.watts || totalACWatts,
+                        amps: inputPower.amps || (totalACWatts / 120),
+                        voltage: inputPower.voltage || 120,
+                        hasActiveFlow: inputPower.hasActiveFlow || totalACWatts > 0
+                    };
                 });
             }
         });
@@ -5029,20 +6568,59 @@ const SolarDesigner = (function() {
         });
         
         // Mark Solar Combiner outputs as live if any input has power
+        // Also calculate combined wattage from all live inputs
         allItems.filter(i => i.type === 'solarcombiner').forEach(combiner => {
+            let totalInputWatts = 0;
+            let totalInputAmps = 0;
+            let inputVoltage = 0;
             let hasLiveInput = false;
-            for (let j = 0; j < combiner.specs.inputs; j++) {
-                if (combiner.breakerStates && !combiner.breakerStates[j]) continue;
-                const inputConn = combiner.handles[`input${j}Positive`]?.connectedTo[0];
-                if (inputConn && LiveView.state.powerFlow[inputConn.connectionId]?.isLive) {
-                    hasLiveInput = true;
-                    break;
+            
+            for (let j = 0; j < (combiner.specs?.inputs || 0); j++) {
+                // Use BreakerManager to check if this input's breaker is closed
+                if (!LiveView.BreakerManager.isSolarCombinerInputClosed(combiner, j)) continue;
+                
+                const inputPosConn = combiner.handles?.[`input${j}Positive`]?.connectedTo?.[0];
+                if (inputPosConn) {
+                    const inputPower = LiveView.state.powerFlow[inputPosConn.connectionId];
+                    if (inputPower?.isLive) {
+                        hasLiveInput = true;
+                        totalInputWatts += inputPower.watts || 0;
+                        totalInputAmps += inputPower.amps || 0;
+                        if (!inputVoltage && inputPower.voltage) {
+                            inputVoltage = inputPower.voltage;
+                        }
+                    }
                 }
             }
             
             if (hasLiveInput) {
-                combiner.handles.outputPositive?.connectedTo.forEach(conn => {
-                    LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
+                const solarOutput = Simulation.currentSolarWatts || 0;
+                const shouldAnimate = solarOutput > 0 && (Simulation.currentBatteryFlow > 0 || totalACWatts > 0);
+                
+                // Mark positive output
+                combiner.handles?.outputPositive?.connectedTo.forEach(conn => {
+                    LiveView.state.powerFlow[conn.connectionId] = { 
+                        isLive: true, 
+                        watts: totalInputWatts,
+                        amps: totalInputAmps,
+                        voltage: inputVoltage || 48,
+                        isPV: true,
+                        direction: 'pv-to-controller',
+                        hasActiveFlow: shouldAnimate
+                    };
+                });
+                
+                // Mark negative output
+                combiner.handles?.outputNegative?.connectedTo.forEach(conn => {
+                    LiveView.state.powerFlow[conn.connectionId] = { 
+                        isLive: true, 
+                        watts: totalInputWatts,
+                        amps: totalInputAmps,
+                        voltage: inputVoltage || 48,
+                        isPV: true,
+                        direction: 'controller-to-pv',
+                        hasActiveFlow: shouldAnimate
+                    };
                 });
             }
         });
@@ -5118,6 +6696,16 @@ const SolarDesigner = (function() {
         
         // Check for breaker tripping after power flow is calculated
         LiveView.BreakerManager.checkTripping();
+        
+        // Save power flow result to cache for performance optimization
+        _powerFlowCache = { ...LiveView.state.powerFlow };
+        _powerFlowCacheKey = cacheKey;
+    }
+    
+    // Invalidate power flow cache (call when state changes significantly)
+    function invalidatePowerFlowCache() {
+        _powerFlowCache = null;
+        _powerFlowCacheKey = null;
     }
     
     // ============================================
@@ -5386,6 +6974,8 @@ const SolarDesigner = (function() {
         populatePresetSelects();
         setupEventListeners();
         setupTooltips();
+        populateRightSidebarLibraries();
+        setupRightSidebarListeners();
         
         isInitialized = true;
         
@@ -5710,6 +7300,43 @@ const SolarDesigner = (function() {
             };
         });
         
+        // Daylight slider (topbar) - replaces azimuth/elevation in solar mode
+        const daylightSliders = [
+            document.getElementById('sl-daylight'),
+            document.getElementById('sl-daylight-top')
+        ];
+        
+        daylightSliders.forEach(slider => {
+            if (slider) {
+                slider.oninput = (e) => {
+                    const daylightPercent = parseFloat(e.target.value);
+                    const sunPos = Simulation.calculateSunPositionFromDaylight(daylightPercent);
+                    
+                    // Update simulation time to match daylight slider
+                    Simulation.setTime(Math.round(sunPos.hours * 60));
+                    
+                    // Update time display
+                    Simulation.updateTimeDisplay();
+                    
+                    // Update daylight time display
+                    const timeDisplays = [
+                        document.getElementById('daylight-time-display'),
+                        document.getElementById('daylight-time-display-top')
+                    ];
+                    const formattedTime = Simulation.formatTime();
+                    timeDisplays.forEach(display => {
+                        if (display) display.textContent = formattedTime;
+                    });
+                    
+                    // Update background and render
+                    Simulation.updateBackgroundColor();
+                    Simulation.calculateSolarOutput();
+                    Simulation.updateSimulationStats();
+                    render();
+                };
+            }
+        });
+        
         // Speed controls
         const speeds = [15, 30, 60, 120, 240, 480, 960]; // minutes per real second
         let currentSpeedIndex = 2; // Start at 60 (1h/s)
@@ -5733,6 +7360,22 @@ const SolarDesigner = (function() {
                     Simulation.setSpeed(speeds[currentSpeedIndex]);
                 }
             };
+        });
+        
+        // Speed select dropdowns (topbar)
+        const speedSelects = [
+            document.getElementById('sim-speed-select'),
+            document.getElementById('sim-speed-select-top')
+        ];
+        
+        speedSelects.forEach(select => {
+            if (select) {
+                select.onchange = (e) => {
+                    const multiplier = parseInt(e.target.value);
+                    // Speed is in minutes per real second: 60 = 1 hour per second
+                    Simulation.setSpeed(60 * multiplier);
+                };
+            }
         });
         
         // ============================================
@@ -7068,6 +8711,540 @@ const SolarDesigner = (function() {
         return panel;
     }
     
+    /**
+     * Import a panel array from linkage mode with grid positioning
+     * @param {Array} linkagePanels - Array of panel data from linkage mode
+     * @param {Object} panelSpecs - Panel specifications
+     * @param {Object} options - Import options (padding, startX, startY, columns)
+     * @returns {Array} Created panel objects
+     */
+    function importPanelArray(linkagePanels, panelSpecs, options = {}) {
+        const {
+            padding = 20,           // Gap between panels
+            startX = 100,           // Starting X position
+            startY = 100,           // Starting Y position
+            columns = 0,            // 0 = auto-calculate based on count
+            preserveLinkageLayout = false  // Try to preserve 3D layout
+        } = options;
+        
+        const count = linkagePanels.length;
+        if (count === 0) return [];
+        
+        // Calculate panel dimensions
+        const scale = 120 / 1000; // 120px per meter
+        const panelWidthPx = Math.max(80, Math.min(200, (panelSpecs.width || 1150) * scale));
+        const panelHeightPx = Math.max(60, Math.min(150, (panelSpecs.height || 770) * scale));
+        
+        // Auto-calculate columns for roughly square layout
+        const cols = columns > 0 ? columns : Math.ceil(Math.sqrt(count));
+        const rows = Math.ceil(count / cols);
+        
+        const createdPanels = [];
+        
+        if (preserveLinkageLayout && linkagePanels[0]?.center) {
+            // Use linkage 3D positions projected to 2D
+            const scalePos = 140 / 39; // pixels per inch
+            
+            // Find bounding box
+            let minX = Infinity, maxX = -Infinity;
+            let minZ = Infinity, maxZ = -Infinity;
+            
+            linkagePanels.forEach(p => {
+                if (p.center) {
+                    minX = Math.min(minX, p.center.x);
+                    maxX = Math.max(maxX, p.center.x);
+                    minZ = Math.min(minZ, p.center.z);
+                    maxZ = Math.max(maxZ, p.center.z);
+                }
+            });
+            
+            const centerX = (minX + maxX) / 2;
+            const centerZ = (minZ + maxZ) / 2;
+            
+            linkagePanels.forEach((lp, i) => {
+                if (!lp.center) return;
+                
+                // Project to 2D (top-down view using X and Z)
+                const x = startX + (lp.center.x - centerX) * scalePos;
+                const y = startY + (lp.center.z - centerZ) * scalePos;
+                
+                const panel = addPanelFromLinkage(x, y, {
+                    ...panelSpecs,
+                    width: (lp.width || panelSpecs.width / 25.4) * 25.4,
+                    height: (lp.length || panelSpecs.height / 25.4) * 25.4
+                });
+                panel.linkageIndex = i;
+                createdPanels.push(panel);
+            });
+        } else {
+            // Grid layout
+            for (let i = 0; i < count; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                
+                const x = startX + col * (panelWidthPx + padding);
+                const y = startY + row * (panelHeightPx + padding);
+                
+                const panel = addPanelFromLinkage(x, y, panelSpecs);
+                panel.linkageIndex = i;
+                createdPanels.push(panel);
+            }
+        }
+        
+        return createdPanels;
+    }
+    
+    /**
+     * Add a controller from linkage mode, sized for the panel array
+     * @param {number} totalWatts - Total array wattage
+     * @param {Object} options - Position options
+     * @returns {Object} Created controller
+     */
+    function addControllerFromLinkage(totalWatts, options = {}) {
+        const { x = 400, y = 300 } = options;
+        
+        // Find a suitable controller preset based on wattage
+        let controllerPreset = CONTROLLER_PRESETS[0]; // Default
+        
+        for (const preset of CONTROLLER_PRESETS) {
+            if (preset.type === 'hybrid_inverter' || preset.type === 'all_in_one') {
+                if (preset.maxPVInput >= totalWatts) {
+                    controllerPreset = preset;
+                    break;
+                }
+            }
+        }
+        
+        // If no suitable preset found, use the largest available
+        if (controllerPreset.maxPVInput < totalWatts) {
+            const hybrid = CONTROLLER_PRESETS.filter(p => 
+                p.type === 'hybrid_inverter' || p.type === 'all_in_one'
+            ).sort((a, b) => b.maxPVInput - a.maxPVInput);
+            if (hybrid.length > 0) {
+                controllerPreset = hybrid[0];
+            }
+        }
+        
+        const controller = createController(x, y, controllerPreset);
+        allItems.push(controller);
+        return controller;
+    }
+    
+    /**
+     * Add a battery from linkage mode
+     * @param {number} recommendedKwh - Recommended storage capacity
+     * @param {Object} options - Position options
+     * @returns {Object} Created battery
+     */
+    function addBatteryFromLinkage(recommendedKwh, options = {}) {
+        const { x = 400, y = 450 } = options;
+        
+        // Find a suitable battery preset
+        let batteryPreset = BATTERY_PRESETS[0];
+        
+        for (const preset of BATTERY_PRESETS) {
+            const kWh = (preset.voltage * preset.ah) / 1000;
+            if (kWh >= recommendedKwh * 0.8) { // Allow 20% smaller
+                batteryPreset = preset;
+                break;
+            }
+        }
+        
+        const battery = createBattery(x, y, batteryPreset);
+        allItems.push(battery);
+        return battery;
+    }
+    
+    /**
+     * Import complete system from linkage mode
+     * Creates panels in grid, adds appropriate controller and battery
+     * @param {Object} linkageData - Data from linkage mode
+     * @returns {Object} Created items { panels, controller, battery }
+     */
+    function importSystemFromLinkage(linkageData) {
+        const { panels: linkagePanels, panelSpecs, gridRows, gridCols, preserveLayout } = linkageData;
+        
+        if (!linkagePanels || linkagePanels.length === 0) {
+            console.warn('No panels to import from linkage');
+            return null;
+        }
+        
+        // Clear existing items if importing fresh
+        // allItems.length = 0; // Uncomment to clear existing
+        
+        // Calculate total array specs
+        const totalWatts = linkagePanels.length * (panelSpecs.wmp || 400);
+        const recommendedKwh = totalWatts * 4 / 1000; // 4 hours of storage
+        
+        // Calculate grid layout
+        const columns = gridCols || Math.ceil(Math.sqrt(linkagePanels.length));
+        
+        // Scale panel dimensions
+        const scale = 120 / 1000;
+        const panelWidthPx = Math.max(80, Math.min(200, (panelSpecs.width || 1150) * scale));
+        const panelHeightPx = Math.max(60, Math.min(150, (panelSpecs.height || 770) * scale));
+        
+        // Calculate positions
+        const padding = 20;
+        const arrayWidth = columns * (panelWidthPx + padding);
+        const startX = 100;
+        const startY = 100;
+        
+        // Create panels
+        const panels = importPanelArray(linkagePanels, panelSpecs, {
+            padding,
+            startX,
+            startY,
+            columns,
+            preserveLinkageLayout: preserveLayout
+        });
+        
+        // Position controller to the right of panels
+        const controllerX = startX + arrayWidth + 80;
+        const controllerY = startY + 50;
+        const controller = addControllerFromLinkage(totalWatts, { x: controllerX, y: controllerY });
+        
+        // Position battery below controller
+        const batteryX = controllerX;
+        const batteryY = controllerY + 200;
+        const battery = addBatteryFromLinkage(recommendedKwh, { x: batteryX, y: batteryY });
+        
+        render();
+        updateStats();
+        
+        return { panels, controller, battery, totalWatts, recommendedKwh };
+    }
+    
+    /**
+     * Rearrange all panels into a neat grid
+     * @param {Object} options - Grid options
+     */
+    function arrangePanelsInGrid(options = {}) {
+        const {
+            padding = 20,
+            startX = 100,
+            startY = 100,
+            columns = 0
+        } = options;
+        
+        const panels = allItems.filter(i => i.type === 'panel');
+        if (panels.length === 0) return;
+        
+        // Get average panel dimensions
+        let avgWidth = 0, avgHeight = 0;
+        panels.forEach(p => {
+            avgWidth += p.width;
+            avgHeight += p.height;
+        });
+        avgWidth /= panels.length;
+        avgHeight /= panels.length;
+        
+        // Calculate columns
+        const cols = columns > 0 ? columns : Math.ceil(Math.sqrt(panels.length));
+        
+        // Reposition each panel
+        panels.forEach((panel, i) => {
+            const col = i % cols;
+            const row = Math.floor(i / cols);
+            
+            panel.x = startX + col * (avgWidth + padding);
+            panel.y = startY + row * (avgHeight + padding);
+        });
+        
+        render();
+        showToast(`Arranged ${panels.length} panels in ${cols} columns`, 'success');
+    }
+    
+    // ============================================
+    // FAILURE EFFECT ANIMATIONS (Phase 6)
+    // ============================================
+    
+    /**
+     * FailureEffects - Visual effects for component failures
+     * Provides spark, smoke, arc flash, and explosion effects
+     */
+    const FailureEffects = {
+        /**
+         * Create spark effect at a point
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         * @param {number} count - Number of sparks (default 5)
+         */
+        createSparks: function(x, y, count = 5) {
+            if (!zoomGroup) return;
+            
+            for (let i = 0; i < count; i++) {
+                const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+                const distance = 15 + Math.random() * 25;
+                
+                const spark = zoomGroup.append("circle")
+                    .attr("class", "spark-effect")
+                    .attr("cx", x)
+                    .attr("cy", y)
+                    .attr("r", 2 + Math.random() * 3)
+                    .attr("fill", Math.random() > 0.5 ? "#ffff00" : "#ffffff")
+                    .style("pointer-events", "none");
+                
+                spark.transition()
+                    .duration(150 + Math.random() * 100)
+                    .attr("cx", x + Math.cos(angle) * distance)
+                    .attr("cy", y + Math.sin(angle) * distance)
+                    .attr("r", 0)
+                    .style("opacity", 0)
+                    .remove();
+            }
+        },
+        
+        /**
+         * Create smoke effect rising from a point
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         * @param {number} count - Number of smoke particles (default 8)
+         */
+        createSmoke: function(x, y, count = 8) {
+            if (!zoomGroup) return;
+            
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const smoke = zoomGroup.append("circle")
+                        .attr("class", "smoke-particle")
+                        .attr("cx", x + (Math.random() - 0.5) * 20)
+                        .attr("cy", y)
+                        .attr("r", 3 + Math.random() * 4)
+                        .attr("fill", "#555")
+                        .style("opacity", 0.6)
+                        .style("pointer-events", "none");
+                    
+                    smoke.transition()
+                        .duration(1500 + Math.random() * 1000)
+                        .attr("cy", y - 40 - Math.random() * 30)
+                        .attr("cx", x + (Math.random() - 0.5) * 40)
+                        .attr("r", 8 + Math.random() * 8)
+                        .style("opacity", 0)
+                        .remove();
+                }, i * 100);
+            }
+        },
+        
+        /**
+         * Create arc flash effect (bright flash + sparks)
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         */
+        createArcFlash: function(x, y) {
+            if (!zoomGroup) return;
+            
+            // Screen flash overlay
+            const flash = d3.select("svg").append("rect")
+                .attr("class", "arc-flash")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("fill", "#ffffff")
+                .style("opacity", 0.8)
+                .style("pointer-events", "none");
+            
+            flash.transition()
+                .duration(150)
+                .style("opacity", 0)
+                .remove();
+            
+            // Local arc glow
+            const arc = zoomGroup.append("circle")
+                .attr("cx", x)
+                .attr("cy", y)
+                .attr("r", 5)
+                .attr("fill", "#ffffff")
+                .style("filter", "blur(5px)")
+                .style("pointer-events", "none");
+            
+            arc.transition()
+                .duration(100)
+                .attr("r", 40)
+                .style("opacity", 0)
+                .remove();
+            
+            // Multiple sparks
+            this.createSparks(x, y, 12);
+        },
+        
+        /**
+         * Create explosion effect (flash + shake + sparks + smoke)
+         * @param {number} x - X coordinate
+         * @param {number} y - Y coordinate
+         * @param {string} itemId - Optional item ID to apply shake class
+         */
+        createExplosion: function(x, y, itemId = null) {
+            if (!zoomGroup) return;
+            
+            // PHASE 1: Initial flash (immediate)
+            const flash = zoomGroup.append("circle")
+                .attr("cx", x)
+                .attr("cy", y)
+                .attr("r", 10)
+                .attr("fill", "#ffaa00")
+                .style("filter", "blur(8px)")
+                .style("pointer-events", "none");
+            
+            flash.transition()
+                .duration(100)
+                .attr("r", 50)
+                .attr("fill", "#ffffff")
+                .style("opacity", 0.9)
+                .transition()
+                .duration(200)
+                .attr("r", 80)
+                .style("opacity", 0)
+                .remove();
+            
+            // PHASE 2: Sparks (50ms delay)
+            setTimeout(() => {
+                this.createSparks(x, y, 15);
+                
+                // Secondary sparks after a short delay
+                setTimeout(() => this.createSparks(x - 10, y + 5, 8), 100);
+                setTimeout(() => this.createSparks(x + 10, y - 5, 8), 150);
+            }, 50);
+            
+            // PHASE 3: Smoke rising (300ms delay)
+            setTimeout(() => {
+                this.createSmoke(x, y, 12);
+                
+                // More smoke with staggered timing
+                setTimeout(() => this.createSmoke(x - 10, y + 5, 6), 200);
+                setTimeout(() => this.createSmoke(x + 10, y + 5, 6), 400);
+            }, 300);
+            
+            // Apply shake class to item if provided
+            if (itemId && itemsGroup) {
+                const itemGroup = itemsGroup.select(`[data-id="${itemId}"]`);
+                if (!itemGroup.empty()) {
+                    itemGroup.classed('failure-exploded', true);
+                    
+                    // Remove class after animation
+                    setTimeout(() => {
+                        itemGroup.classed('failure-exploded', false);
+                    }, 600);
+                }
+            }
+        },
+        
+        /**
+         * Create wire burn effect
+         * @param {string} connectionId - The connection ID
+         * @param {number} x - X coordinate (midpoint of wire)
+         * @param {number} y - Y coordinate (midpoint of wire)
+         */
+        createWireBurn: function(connectionId, x, y) {
+            // Add burned class to wire
+            if (wiresGroup) {
+                const wire = wiresGroup.select(`[data-connection-id="${connectionId}"]`);
+                if (!wire.empty()) {
+                    wire.classed('failure-burned', true);
+                }
+            }
+            
+            // Create sparks at burn point
+            this.createSparks(x, y, 8);
+            
+            // Small smoke effect
+            setTimeout(() => {
+                this.createSmoke(x, y, 5);
+            }, 100);
+        },
+        
+        /**
+         * Set wire heating visual state
+         * @param {string} connectionId - The connection ID
+         * @param {string} level - 'normal', 'heating', or 'critical'
+         */
+        setWireHeat: function(connectionId, level) {
+            if (!wiresGroup) return;
+            
+            const wire = wiresGroup.select(`[data-connection-id="${connectionId}"]`);
+            if (wire.empty()) return;
+            
+            wire.classed('wire-heating', level === 'heating');
+            wire.classed('wire-critical', level === 'critical');
+            wire.classed('failure-burned', false); // Clear burn state when setting heat
+        },
+        
+        /**
+         * Trigger breaker trip effect
+         * @param {Object} item - The breaker/panel item
+         * @param {number} circuitIndex - Optional circuit index for panels
+         */
+        triggerBreakerTrip: function(item, circuitIndex = null) {
+            if (!item || !itemsGroup) return;
+            
+            const cx = item.x + item.width / 2;
+            const cy = item.y + item.height / 2;
+            
+            // Small spark effect at breaker
+            this.createSparks(cx, cy, 5);
+            
+            // Add visual failure class
+            const itemGroup = itemsGroup.select(`[data-id="${item.id}"]`);
+            if (!itemGroup.empty()) {
+                itemGroup.classed('failure-breaker-tripped', true);
+            }
+        },
+        
+        /**
+         * Trigger overload warning effect
+         * @param {Object} item - The overloaded item
+         */
+        triggerOverloadWarning: function(item) {
+            if (!item || !itemsGroup) return;
+            
+            const cx = item.x + item.width / 2;
+            const cy = item.y + item.height / 2;
+            
+            // Add overload pulse class
+            const itemGroup = itemsGroup.select(`[data-id="${item.id}"]`);
+            if (!itemGroup.empty()) {
+                itemGroup.classed('failure-overloaded', true);
+            }
+            
+            // Small smoke wisps for severe overload
+            this.createSmoke(cx, cy, 3);
+        },
+        
+        /**
+         * Clear all failure states from an item
+         * @param {string} itemId - The item ID
+         */
+        clearFailureState: function(itemId) {
+            if (!itemsGroup) return;
+            
+            const itemGroup = itemsGroup.select(`[data-id="${itemId}"]`);
+            if (!itemGroup.empty()) {
+                itemGroup
+                    .classed('failure-exploded', false)
+                    .classed('failure-breaker-tripped', false)
+                    .classed('failure-overloaded', false);
+            }
+        },
+        
+        /**
+         * Clear wire failure states
+         * @param {string} connectionId - The connection ID
+         */
+        clearWireFailure: function(connectionId) {
+            if (!wiresGroup) return;
+            
+            const wire = wiresGroup.select(`[data-connection-id="${connectionId}"]`);
+            if (!wire.empty()) {
+                wire
+                    .classed('wire-heating', false)
+                    .classed('wire-critical', false)
+                    .classed('failure-burned', false);
+            }
+        }
+    };
+    
+    // Expose FailureEffects globally for external access
+    window.FailureEffects = FailureEffects;
+    
     // ============================================
     // INCIDENT REPORT SYSTEM
     // ============================================
@@ -7252,7 +9429,7 @@ const SolarDesigner = (function() {
     }
     
     // Panel array management functions
-    function snapAllPanelsToGrid() {
+    function snapAllPanelsToGrid(forceCols = 0) {
         const panels = allItems.filter(i => i.type === 'panel');
         if (panels.length === 0) {
             showToast('No panels to snap to grid', 'info');
@@ -7260,7 +9437,7 @@ const SolarDesigner = (function() {
         }
         
         // Calculate grid dimensions based on panel sizes
-        // Use average panel dimensions
+        // Use average panel dimensions for consistent spacing
         let avgWidth = 0;
         let avgHeight = 0;
         panels.forEach(p => {
@@ -7270,12 +9447,12 @@ const SolarDesigner = (function() {
         avgWidth = avgWidth / panels.length;
         avgHeight = avgHeight / panels.length;
         
-        // Calculate grid size (try to make it roughly square)
+        // Calculate grid size - use forced columns or auto-calculate
         const totalPanels = panels.length;
-        const cols = Math.ceil(Math.sqrt(totalPanels));
+        const cols = forceCols > 0 ? Math.min(forceCols, totalPanels) : Math.ceil(Math.sqrt(totalPanels));
         const rows = Math.ceil(totalPanels / cols);
         
-        // Calculate total grid dimensions
+        // Calculate total grid dimensions with padding
         const gridWidth = cols * avgWidth + (cols - 1) * panelGridPadding;
         const gridHeight = rows * avgHeight + (rows - 1) * panelGridPadding;
         
@@ -7283,7 +9460,7 @@ const SolarDesigner = (function() {
         const startX = -gridWidth / 2;
         const startY = -gridHeight / 2 - 150; // Place above center
         
-        // Snap panels to grid positions
+        // Snap panels to grid positions, ensuring no overlaps
         panels.forEach((panel, index) => {
             const col = index % cols;
             const row = Math.floor(index / cols);
@@ -7296,9 +9473,33 @@ const SolarDesigner = (function() {
             panel.y = newY;
         });
         
+        // Check for any remaining overlaps and adjust if needed
+        let overlapCount = 0;
+        for (let i = 0; i < panels.length; i++) {
+            for (let j = i + 1; j < panels.length; j++) {
+                const p1 = panels[i];
+                const p2 = panels[j];
+                const dx = Math.abs(p1.x - p2.x);
+                const dy = Math.abs(p1.y - p2.y);
+                const minDistX = (p1.width + p2.width) / 2 + panelGridPadding;
+                const minDistY = (p1.height + p2.height) / 2 + panelGridPadding;
+                
+                if (dx < minDistX && dy < minDistY) {
+                    // Overlap detected - shift panel slightly
+                    overlapCount++;
+                    p2.x += minDistX - dx + 5;
+                    p2.y += minDistY - dy + 5;
+                }
+            }
+        }
+        
         render();
         updateStats();
-        showToast(`Snapped ${panels.length} panels to ${cols}×${rows} grid`, 'success');
+        if (overlapCount > 0) {
+            showToast(`Snapped ${panels.length} panels to grid (resolved ${overlapCount} overlaps)`, 'success');
+        } else {
+            showToast(`Snapped ${panels.length} panels to ${cols}×${rows} grid`, 'success');
+        }
     }
     
     function selectAllPanels() {
@@ -7319,6 +9520,71 @@ const SolarDesigner = (function() {
         showToast(`Selected ${panels.length} panels`, 'success');
     }
     
+    /**
+     * Select all panels connected to the same string/controller as the currently selected panel
+     * Traces through combiners and wires to find all connected panels
+     */
+    function selectConnectedPanels(startPanel = null) {
+        const start = startPanel || selectedItem;
+        if (!start || start.type !== 'panel') {
+            showToast('Select a panel first', 'info');
+            return;
+        }
+        
+        const connectedPanels = new Set([start.id]);
+        const visited = new Set();
+        const queue = [start];
+        
+        // Trace through connections to find all connected panels
+        while (queue.length > 0) {
+            const item = queue.shift();
+            if (visited.has(item.id)) continue;
+            visited.add(item.id);
+            
+            // Check all handles for connections
+            if (item.handles) {
+                Object.values(item.handles).forEach(handle => {
+                    if (handle.connectedTo) {
+                        handle.connectedTo.forEach(conn => {
+                            const connObj = connections.find(c => c.id === conn.connectionId);
+                            if (!connObj) return;
+                            
+                            // Find the other end of this connection
+                            const otherItemId = connObj.sourceItemId === item.id 
+                                ? connObj.targetItemId 
+                                : connObj.sourceItemId;
+                            const otherItem = allItems.find(i => i.id === otherItemId);
+                            
+                            if (otherItem && !visited.has(otherItem.id)) {
+                                if (otherItem.type === 'panel') {
+                                    connectedPanels.add(otherItem.id);
+                                }
+                                // Continue tracing through combiners, DC breakers, etc.
+                                if (['combiner', 'solarcombiner', 'dcbreaker'].includes(otherItem.type)) {
+                                    queue.push(otherItem);
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        }
+        
+        // Select all found panels
+        selectedPanels = allItems.filter(i => connectedPanels.has(i.id));
+        
+        if (selectedPanels.length <= 1) {
+            showToast('No connected panels found - panel may not be wired', 'info');
+        } else {
+            render();
+            updatePropertiesPanelForArray();
+            showToast(`Selected ${selectedPanels.length} connected panels`, 'success');
+        }
+    }
+    
+    // Grid configuration state
+    let panelGridColumns = 0; // 0 = auto
+    
     function updatePropertiesPanelForArray() {
         if (selectedPanels.length === 0) return;
         
@@ -7329,36 +9595,68 @@ const SolarDesigner = (function() {
         document.getElementById('prop-icon').textContent = '☀️';
         document.getElementById('prop-name').textContent = `Panel Array (${selectedPanels.length} panels)`;
         
+        // Calculate suggested columns
+        const autoColumns = Math.ceil(Math.sqrt(selectedPanels.length));
+        const currentColumns = panelGridColumns > 0 ? panelGridColumns : autoColumns;
+        
+        const totalWatts = selectedPanels.reduce((sum, p) => sum + (p.specs.wmp || 0), 0);
+        const avgVmp = selectedPanels.reduce((sum, p) => sum + (p.specs.vmp || 0), 0) / selectedPanels.length;
+        
         const html = `
             <div class="prop-section-title">Array Tools</div>
             <div class="prop-row">
-                <span class="prop-label">Grid Padding</span>
-                <input type="range" class="prop-input" id="prop-array-padding" value="${panelGridPadding}" min="0" max="50" style="width:80px;">
+                <span class="prop-label">Columns</span>
+                <input type="number" class="prop-input" id="prop-array-cols" value="${currentColumns}" min="1" max="${selectedPanels.length}" style="width:60px;">
+                <span style="color:var(--text-muted); font-size:11px; margin-left:4px;">(auto: ${autoColumns})</span>
+            </div>
+            <div class="prop-row">
+                <span class="prop-label">Padding</span>
+                <input type="range" class="prop-input" id="prop-array-padding" value="${panelGridPadding}" min="0" max="100" step="5" style="width:80px;">
                 <span id="prop-array-padding-val">${panelGridPadding}px</span>
             </div>
-            <div class="prop-row">
-                <button class="prop-btn" id="prop-array-snap-btn" style="width:100%; padding:6px; margin-top:4px;">⊞ Snap to Grid</button>
+            <div class="prop-row" style="display:flex; gap:4px; margin-top:4px;">
+                <button class="prop-btn" id="prop-array-snap-btn" style="flex:1; padding:6px;">⊞ Snap to Grid</button>
+                <button class="prop-btn" id="prop-array-arrange-btn" style="flex:1; padding:6px;">↔ Auto Arrange</button>
+            </div>
+            <div class="prop-row" style="display:flex; gap:4px; margin-top:4px;">
+                <button class="prop-btn" id="prop-array-move-btn" style="flex:1; padding:6px;">⇄ Move Array</button>
+                <button class="prop-btn" id="prop-array-select-all-btn" style="flex:1; padding:6px;">☑ Select All</button>
             </div>
             <div class="prop-row">
-                <button class="prop-btn" id="prop-array-move-btn" style="width:100%; padding:6px; margin-top:4px;">⇄ Move Array</button>
+                <button class="prop-btn" id="prop-array-deselect-btn" style="width:100%; padding:6px; margin-top:4px; background:rgba(200,50,50,0.2);">✕ Deselect All</button>
             </div>
+            <div class="prop-section-title" style="margin-top:10px;">Array Stats</div>
             <div class="prop-row">
-                <button class="prop-btn" id="prop-array-deselect-btn" style="width:100%; padding:6px; margin-top:4px;">✕ Deselect All</button>
-            </div>
-            <div class="prop-row" style="margin-top:6px; padding-top:6px; border-top:1px solid var(--border-light);">
                 <span class="prop-label">Total Power</span>
-                <span class="prop-value">${selectedPanels.reduce((sum, p) => sum + (p.specs.wmp || 0), 0)} W</span>
+                <span class="prop-value">${totalWatts} W (${(totalWatts/1000).toFixed(2)} kW)</span>
+            </div>
+            <div class="prop-row">
+                <span class="prop-label">Avg Vmp</span>
+                <span class="prop-value">${avgVmp.toFixed(1)} V</span>
+            </div>
+            <div class="prop-row">
+                <span class="prop-label">Grid Layout</span>
+                <span class="prop-value">${currentColumns} × ${Math.ceil(selectedPanels.length / currentColumns)} panels</span>
             </div>
         `;
         
         document.getElementById('prop-content').innerHTML = html;
         
         // Bind handlers
+        const colsInput = document.getElementById('prop-array-cols');
         const paddingSlider = document.getElementById('prop-array-padding');
         const paddingVal = document.getElementById('prop-array-padding-val');
         const snapBtn = document.getElementById('prop-array-snap-btn');
+        const arrangeBtn = document.getElementById('prop-array-arrange-btn');
         const moveBtn = document.getElementById('prop-array-move-btn');
+        const selectAllBtn = document.getElementById('prop-array-select-all-btn');
         const deselectBtn = document.getElementById('prop-array-deselect-btn');
+        
+        if (colsInput) {
+            colsInput.onchange = (e) => {
+                panelGridColumns = parseInt(e.target.value) || 0;
+            };
+        }
         
         if (paddingSlider) {
             paddingSlider.oninput = (e) => {
@@ -7369,13 +9667,28 @@ const SolarDesigner = (function() {
         
         if (snapBtn) {
             snapBtn.onclick = () => {
-                snapSelectedPanelsToGrid();
+                snapSelectedPanelsToGrid(panelGridColumns);
+            };
+        }
+        
+        if (arrangeBtn) {
+            arrangeBtn.onclick = () => {
+                arrangePanelsInGrid({
+                    padding: panelGridPadding,
+                    columns: panelGridColumns
+                });
             };
         }
         
         if (moveBtn) {
             moveBtn.onclick = () => {
                 enableArrayMoveMode();
+            };
+        }
+        
+        if (selectAllBtn) {
+            selectAllBtn.onclick = () => {
+                selectAllPanels();
             };
         }
         
@@ -7389,9 +9702,9 @@ const SolarDesigner = (function() {
         }
     }
     
-    function snapSelectedPanelsToGrid() {
+    function snapSelectedPanelsToGrid(forceCols = 0) {
         if (selectedPanels.length === 0) {
-            snapAllPanelsToGrid();
+            snapAllPanelsToGrid(forceCols);
             return;
         }
         
@@ -7406,7 +9719,8 @@ const SolarDesigner = (function() {
         avgHeight = avgHeight / selectedPanels.length;
         
         const totalPanels = selectedPanels.length;
-        const cols = Math.ceil(Math.sqrt(totalPanels));
+        // Use forced columns or auto-calculate
+        const cols = forceCols > 0 ? Math.min(forceCols, totalPanels) : Math.ceil(Math.sqrt(totalPanels));
         const rows = Math.ceil(totalPanels / cols);
         
         const gridWidth = cols * avgWidth + (cols - 1) * panelGridPadding;
@@ -7433,6 +9747,7 @@ const SolarDesigner = (function() {
         });
         
         render();
+        showToast(`Arranged ${totalPanels} panels in ${cols}×${rows} grid`, 'success');
         updateStats();
         showToast(`Snapped ${selectedPanels.length} panels to grid`, 'success');
     }
@@ -7545,6 +9860,397 @@ const SolarDesigner = (function() {
         })
     };
     
+    // ============================================
+    // RIGHT SIDEBAR TAB MANAGEMENT
+    // ============================================
+    
+    let currentRightPanelTab = 'library'; // 'library' or 'inspector'
+    
+    function switchRightPanelTab(tabName, options = {}) {
+        if (currentRightPanelTab === tabName && !options.force) return;
+        
+        currentRightPanelTab = tabName;
+        
+        // Update tab buttons
+        document.querySelectorAll('#solar-right-sidebar .panel-tab').forEach(tab => {
+            tab.classList.remove('active');
+        });
+        
+        const libraryContent = document.getElementById('componentLibraryTab');
+        const inspectorContent = document.getElementById('inspectorTabContent');
+        
+        if (tabName === 'library') {
+            document.getElementById('libraryTab').classList.add('active');
+            if (libraryContent) libraryContent.classList.add('active');
+            if (inspectorContent) inspectorContent.classList.remove('active');
+            
+            // Focus search input when switching to library
+            if (options.focusSearch) {
+                setTimeout(() => {
+                    const searchInput = document.getElementById('librarySearchInput');
+                    if (searchInput) searchInput.focus();
+                }, 100);
+            }
+        } else {
+            document.getElementById('inspectorTab').classList.add('active');
+            if (inspectorContent) inspectorContent.classList.add('active');
+            if (libraryContent) libraryContent.classList.remove('active');
+        }
+        
+        updateRightSidebarToggle();
+    }
+    
+    function updateRightSidebarToggle() {
+        const sidebar = document.getElementById('solar-right-sidebar');
+        const toggle = document.getElementById('solar-right-sidebar-toggle');
+        if (sidebar && toggle) {
+            toggle.innerHTML = sidebar.classList.contains('closed') ? '◀' : '▶';
+        }
+    }
+    
+    function toggleLibraryCategory(headerElement) {
+        const isExpanded = headerElement.classList.contains('expanded');
+        const contentElement = headerElement.nextElementSibling;
+        
+        if (isExpanded) {
+            headerElement.classList.remove('expanded');
+            contentElement.classList.remove('expanded');
+        } else {
+            headerElement.classList.add('expanded');
+            contentElement.classList.add('expanded');
+        }
+    }
+    
+    function filterLibraryComponents(searchText) {
+        const searchLower = searchText.toLowerCase().trim();
+        const items = document.querySelectorAll('#componentLibraryTab .library-item');
+        
+        items.forEach(item => {
+            const itemText = item.textContent.toLowerCase();
+            const matches = searchLower === '' || itemText.includes(searchLower);
+            item.classList.toggle('hidden', !matches);
+        });
+        
+        // Expand categories that have visible items
+        document.querySelectorAll('.library-category').forEach(cat => {
+            const header = cat.querySelector('.library-category-header');
+            const content = cat.querySelector('.library-category-content');
+            const visibleItems = content.querySelectorAll('.library-item:not(.hidden)');
+            
+            if (searchLower !== '' && visibleItems.length > 0) {
+                header.classList.add('expanded');
+                content.classList.add('expanded');
+            }
+        });
+    }
+    
+    function clearLibrarySearch() {
+        const searchInput = document.getElementById('librarySearchInput');
+        if (searchInput) {
+            searchInput.value = '';
+            filterLibraryComponents('');
+        }
+    }
+    
+    function showLibraryTab() {
+        if (currentRightPanelTab !== 'library') {
+            switchRightPanelTab('library');
+        }
+    }
+    
+    function showInspectorTab() {
+        if (currentRightPanelTab !== 'inspector') {
+            switchRightPanelTab('inspector');
+        }
+    }
+    
+    function populateRightSidebarLibraries() {
+        // Panel library
+        const panelLibrary = document.getElementById('panelLibrary');
+        if (panelLibrary) {
+            panelLibrary.innerHTML = '';
+            PANEL_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">☀️</span><span class="library-item-name">${preset.name}</span>`;
+                btn.setAttribute('data-preset-type', 'panel');
+                btn.setAttribute('data-preset-data', JSON.stringify(preset));
+                btn.onclick = () => {
+                    const item = createPanel(getRandomPosition().x, getRandomPosition().y, preset);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                // Make draggable for drag-to-replace
+                btn.draggable = true;
+                btn.ondragstart = (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'panel', preset }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                };
+                panelLibrary.appendChild(btn);
+            });
+        }
+        
+        // Battery library
+        const batteryLibrary = document.getElementById('batteryLibrary');
+        if (batteryLibrary) {
+            batteryLibrary.innerHTML = '';
+            BATTERY_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                const icon = preset.smartBattery ? '🔋+' : '🔋';
+                btn.innerHTML = `<span class="library-item-icon">${icon}</span><span class="library-item-name">${preset.name}</span>`;
+                btn.setAttribute('data-preset-type', preset.smartBattery ? 'smartbattery' : 'battery');
+                btn.setAttribute('data-preset-data', JSON.stringify(preset));
+                btn.onclick = () => {
+                    if (preset.smartBattery) {
+                        const item = createSmartBattery(getRandomPosition().x, getRandomPosition().y, preset);
+                        allItems.push(item);
+                        selectItem(item);
+                    } else {
+                        const item = createBattery(getRandomPosition().x, getRandomPosition().y, preset);
+                        allItems.push(item);
+                        selectItem(item);
+                    }
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                // Make draggable for drag-to-replace
+                btn.draggable = true;
+                btn.ondragstart = (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({ 
+                        type: preset.smartBattery ? 'smartbattery' : 'battery', 
+                        preset 
+                    }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                };
+                batteryLibrary.appendChild(btn);
+            });
+        }
+        
+        // Controller library
+        const controllerLibrary = document.getElementById('controllerLibrary');
+        if (controllerLibrary) {
+            controllerLibrary.innerHTML = '';
+            CONTROLLER_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                let icon = '⚡';
+                if (preset.type === 'all_in_one') icon = '📦';
+                else if (preset.type === 'hybrid_inverter') icon = '🔄';
+                btn.innerHTML = `<span class="library-item-icon">${icon}</span><span class="library-item-name">${preset.name}</span>`;
+                btn.setAttribute('data-preset-type', 'controller');
+                btn.setAttribute('data-preset-data', JSON.stringify(preset));
+                btn.onclick = () => {
+                    const item = createController(getRandomPosition().x, getRandomPosition().y, preset);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                // Make draggable for drag-to-replace
+                btn.draggable = true;
+                btn.ondragstart = (e) => {
+                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'controller', preset }));
+                    e.dataTransfer.effectAllowed = 'copy';
+                };
+                controllerLibrary.appendChild(btn);
+            });
+        }
+        
+        // Breaker library (DC Breakers)
+        const breakerLibrary = document.getElementById('breakerLibrary');
+        if (breakerLibrary) {
+            breakerLibrary.innerHTML = '';
+            BREAKER_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">🔌</span><span class="library-item-name">${preset.name}</span>`;
+                btn.onclick = () => {
+                    const item = createBreaker(getRandomPosition().x, getRandomPosition().y, preset, 'dc');
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                breakerLibrary.appendChild(btn);
+            });
+        }
+        
+        // AC Breaker library
+        const acBreakerLibrary = document.getElementById('acBreakerLibrary');
+        if (acBreakerLibrary) {
+            acBreakerLibrary.innerHTML = '';
+            [10, 15, 20, 30, 40, 50].forEach(rating => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">⚡</span><span class="library-item-name">AC Breaker ${rating}A</span>`;
+                btn.onclick = () => {
+                    const item = createBreaker(getRandomPosition().x, getRandomPosition().y, { name: `AC Breaker ${rating}A`, rating }, 'ac');
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added AC Breaker ${rating}A`, 'info');
+                };
+                acBreakerLibrary.appendChild(btn);
+            });
+        }
+        
+        // AC Outlet library
+        const acOutletLibrary = document.getElementById('acOutletLibrary');
+        if (acOutletLibrary) {
+            acOutletLibrary.innerHTML = '';
+            [
+                { name: '120V Duplex Outlet', voltage: 120 },
+                { name: '240V Outlet', voltage: 240 }
+            ].forEach(outlet => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">🔌</span><span class="library-item-name">${outlet.name}</span>`;
+                btn.onclick = () => {
+                    const item = createACOutlet(getRandomPosition().x, getRandomPosition().y, outlet);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${outlet.name}`, 'info');
+                };
+                acOutletLibrary.appendChild(btn);
+            });
+        }
+        
+        // Appliance library
+        const applianceLibrary = document.getElementById('applianceLibrary');
+        if (applianceLibrary) {
+            applianceLibrary.innerHTML = '';
+            APPLIANCE_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">${preset.icon || '⚙️'}</span><span class="library-item-name">${preset.name}</span>`;
+                btn.onclick = () => {
+                    const item = createLoad(getRandomPosition().x, getRandomPosition().y, preset);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                applianceLibrary.appendChild(btn);
+            });
+        }
+        
+        // Processing equipment library
+        const processingLibrary = document.getElementById('processingLibrary');
+        if (processingLibrary) {
+            processingLibrary.innerHTML = '';
+            PRODUCER_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">${preset.icon || '🏭'}</span><span class="library-item-name">${preset.name}</span>`;
+                btn.onclick = () => {
+                    const item = createProducer(getRandomPosition().x, getRandomPosition().y, preset);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                processingLibrary.appendChild(btn);
+            });
+        }
+        
+        // Resource container library
+        const resourceContainerLibrary = document.getElementById('resourceContainerLibrary');
+        if (resourceContainerLibrary) {
+            resourceContainerLibrary.innerHTML = '';
+            CONTAINER_PRESETS.forEach((preset, i) => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">${preset.icon || '📦'}</span><span class="library-item-name">${preset.name}</span>`;
+                btn.onclick = () => {
+                    const item = createContainer(getRandomPosition().x, getRandomPosition().y, preset);
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${preset.name}`, 'info');
+                };
+                resourceContainerLibrary.appendChild(btn);
+            });
+        }
+        
+        // Combiner library (add breaker panels, spider boxes, etc.)
+        const combinerLibrary = document.getElementById('combinerLibrary');
+        if (combinerLibrary) {
+            combinerLibrary.innerHTML = '';
+            const combiners = [
+                { name: 'Breaker Panel (8-circuit)', type: 'breakerpanel', icon: '📋' },
+                { name: 'Spider Box (6-circuit)', type: 'spiderbox', icon: '🕷️' },
+                { name: 'Solar Combiner (4-string)', type: 'solarcombiner', icon: '🔗' },
+                { name: 'DC Combiner Box', type: 'combiner', icon: '📥' }
+            ];
+            combiners.forEach(combo => {
+                const btn = document.createElement('button');
+                btn.className = 'library-item';
+                btn.innerHTML = `<span class="library-item-icon">${combo.icon}</span><span class="library-item-name">${combo.name}</span>`;
+                btn.onclick = () => {
+                    let item;
+                    if (combo.type === 'breakerpanel') {
+                        item = createBreakerPanel(getRandomPosition().x, getRandomPosition().y);
+                    } else if (combo.type === 'spiderbox') {
+                        item = createSpiderBox(getRandomPosition().x, getRandomPosition().y);
+                    } else if (combo.type === 'solarcombiner') {
+                        item = createSolarCombiner(getRandomPosition().x, getRandomPosition().y, { inputs: 4 });
+                    } else if (combo.type === 'combiner') {
+                        item = createCombiner(getRandomPosition().x, getRandomPosition().y, { inputs: 4 });
+                    }
+                    if (item) {
+                        allItems.push(item);
+                        selectItem(item);
+                        render();
+                        showToast(`Added ${combo.name}`, 'info');
+                    }
+                };
+                combinerLibrary.appendChild(btn);
+            });
+        }
+    }
+    
+    function setupRightSidebarListeners() {
+        const toggle = document.getElementById('solar-right-sidebar-toggle');
+        if (toggle) {
+            toggle.addEventListener('click', () => {
+                const sidebar = document.getElementById('solar-right-sidebar');
+                if (sidebar) {
+                    sidebar.classList.toggle('closed');
+                    updateRightSidebarToggle();
+                }
+            });
+        }
+        
+        // Quick action buttons
+        const duplicateBtn = document.getElementById('quickActionDuplicate');
+        if (duplicateBtn) {
+            duplicateBtn.onclick = () => {
+                if (selectedItem) {
+                    duplicateSelectedItem();
+                }
+            };
+        }
+        
+        const deleteBtn = document.getElementById('quickActionDelete');
+        if (deleteBtn) {
+            deleteBtn.onclick = () => {
+                if (selectedItem) {
+                    deleteItem(selectedItem);
+                }
+            };
+        }
+    }
+    
+    // Expose functions globally for onclick handlers
+    window.switchRightPanelTab = switchRightPanelTab;
+    window.toggleLibraryCategory = toggleLibraryCategory;
+    window.filterLibraryComponents = filterLibraryComponents;
+    window.clearLibrarySearch = clearLibrarySearch;
+    
     // Public API
     return {
         init,
@@ -7555,7 +10261,14 @@ const SolarDesigner = (function() {
         getItems: () => allItems,
         getConnections: () => connections,
         isInitialized: () => isInitialized,
+        // Linkage import functions
         addPanelFromLinkage,
+        importPanelArray,
+        addControllerFromLinkage,
+        addBatteryFromLinkage,
+        importSystemFromLinkage,
+        arrangePanelsInGrid,
+        // Stats and modes
         updateStats,
         stopLiveMode,  // Expose for cleanup on mode switch
         showWelcome: showWelcomeDialog,
@@ -7563,6 +10276,37 @@ const SolarDesigner = (function() {
         showShortcuts: showKeyboardShortcuts,
         setLinkageConfig,  // Update linkage config after init
         getLinkageConfig,  // Get current linkage config
-        Simulation  // Expose Simulation object for daylight slider
+        Simulation,  // Expose Simulation object for daylight slider
+        switchRightPanelTab,
+        showLibraryTab,
+        showInspectorTab,
+        populateRightSidebarLibraries,
+        setupRightSidebarListeners,
+        // Debug helper
+        debug: () => {
+            console.log('=== SolarDesigner Debug ===');
+            console.log('LiveView.state.active:', LiveView.state.active);
+            console.log('Items:', allItems.length, allItems.map(i => i.type));
+            console.log('Connections:', connections.length);
+            console.log('PowerFlow entries:', Object.keys(LiveView.state.powerFlow).length);
+            console.log('PowerFlow:', LiveView.state.powerFlow);
+            console.log('Solar output:', Simulation.currentSolarWatts);
+            console.log('Battery flow:', Simulation.currentBatteryFlow);
+            
+            // Check wire elements
+            const wires = document.querySelectorAll('.wire');
+            console.log('Wire elements:', wires.length);
+            if (wires.length > 0) {
+                console.log('First wire classes:', wires[0].getAttribute('class'));
+            }
+            return { active: LiveView.state.active, items: allItems.length, connections: connections.length, powerFlow: LiveView.state.powerFlow };
+        },
+        startLiveMode  // Expose for manual testing
     };
 })();
+
+// Ensure SolarDesigner is available globally
+if (typeof window !== 'undefined') {
+    window.SolarDesigner = SolarDesigner;
+    console.log('✅ solar-designer.js loaded - SolarDesigner version with new features is ready');
+}
