@@ -1183,6 +1183,12 @@
             animation: flow-forward 0.6s linear infinite;
             filter: drop-shadow(0 0 4px currentColor);
         }
+        /* AC power flow - reverse direction (when wire drawn from load to source) */
+        .wire.power-flowing-reverse {
+            stroke-dasharray: 8, 4;
+            animation: flow-reverse 0.6s linear infinite;
+            filter: drop-shadow(0 0 4px currentColor);
+        }
         
         /* PV/DC wire animation - electron flow from panels to controller */
         .wire.pv-flowing {
@@ -6419,11 +6425,20 @@
                 const batteryCharge = simStats.batteryCharge || 0;
                 const acOutputEnabled = simStats.controllerACOutputEnabled !== false;
                 
-                // Create cache key from current state
-                const cacheKey = `${currentLoadPower}_${currentSolarOutput}_${batteryCharge}_${acOutputEnabled}`;
+                // Build a string of which loads are running for more accurate cache invalidation
+                const runningLoads = allItems
+                    .filter(i => (i.type === 'acload' || i.type === 'processor') && i.simState?.isRunning)
+                    .map(i => i.id)
+                    .sort()
+                    .join(',');
+                
+                // Create cache key from current state including which loads are running
+                const cacheKey = `${currentLoadPower}_${currentSolarOutput}_${batteryCharge}_${acOutputEnabled}_${runningLoads}`;
                 
                 // Check if we need to recalculate
-                if (SimulateMode._powerFlowCache && SimulateMode._powerFlowCacheKey === cacheKey) {
+                // During active simulation playback, always recalculate to ensure animations update correctly
+                const forceRecalculate = currentMode === 'simulate' && isPlaying;
+                if (!forceRecalculate && SimulateMode._powerFlowCache && SimulateMode._powerFlowCacheKey === cacheKey) {
                     // Use cached result
                     SimulateMode.powerFlow = SimulateMode._powerFlowCache;
                     return;
@@ -6513,13 +6528,21 @@
                         
                         // Find the handle on the other end
                         const otherHandleId = connObj.sourceItemId === item.id ? connObj.targetHandleId : connObj.sourceHandleId;
-                        const otherHandle = Object.values(otherItem.handles).find(h => h.id === otherHandleId);
+                        const otherHandle = Object.values(otherItem.handles || {}).find(h => h.id === otherHandleId);
                         if (!otherHandle) return;
                         
-                        // Continue tracing upstream
-                        if (otherItem.type === 'acoutlet' && otherHandle.id.includes('-in')) {
-                            // Outlet input - trace further upstream
-                            traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
+                        // Continue tracing upstream based on component type
+                        if (otherItem.type === 'acoutlet') {
+                            // Outlet - trace through input if we came in through load/output
+                            if (otherHandle.id.includes('load') || otherHandle.id.includes('output')) {
+                                // Mark input connections too
+                                if (otherItem.handles?.input) {
+                                    traceAndMarkUpstream(otherItem, otherItem.handles.input, watts, voltage);
+                                }
+                            } else if (otherHandle.id.includes('input') || otherHandle.id.includes('-in')) {
+                                // Came in through input - trace further upstream
+                                traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
+                            }
                         } else if (otherItem.type === 'breakerpanel') {
                             // Breaker panel - could be circuit output or main input
                             if (otherHandle.id.includes('circuit')) {
@@ -6527,33 +6550,193 @@
                                 if (otherItem.handles?.mainInput) {
                                     traceAndMarkUpstream(otherItem, otherItem.handles.mainInput, watts, 240);
                                 }
-                            } else if (otherHandle.id.includes('main-in') || otherHandle.id.includes('mainInput')) {
+                            } else if (otherHandle.id.includes('main') || otherHandle.id.includes('Input')) {
                                 // Main input - trace to source (controller, hub, etc.)
                                 traceAndMarkUpstream(otherItem, otherHandle, watts, 240);
                             }
                         } else if (otherItem.type === 'acbreaker') {
-                            // AC breaker - could be load output or line input
-                            if (otherHandle.id.includes('loadOut')) {
+                            // AC breaker - trace through
+                            if (otherHandle.id.includes('loadOut') || otherHandle.id.includes('load-out')) {
                                 // Load output - trace to line input
                                 if (otherItem.handles?.lineIn) {
                                     traceAndMarkUpstream(otherItem, otherItem.handles.lineIn, watts, voltage);
                                 }
-                            } else if (otherHandle.id.includes('lineIn') || otherHandle.id.includes('line-in')) {
-                                // Line input - trace to source
+                            } else if (otherHandle.id.includes('lineIn') || otherHandle.id.includes('line-in') || otherHandle.id.includes('line_in')) {
+                                // Line input - trace further upstream
                                 traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
                             }
-                        } else if (otherItem.type === 'controller' && (otherHandle.id.includes('ac-out') || otherHandle.polarity === 'ac')) {
-                            // Reached controller AC output - stop tracing (connection already marked in STEP 1)
-                            return;
-                        } else if (otherItem.type === 'doublevoltagehub' && otherHandle.polarity === 'ac') {
-                            // Double voltage hub - trace through it
-                            traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
+                        } else if (otherItem.type === 'controller') {
+                            // Reached controller - check if it's AC output
+                            if (otherHandle.id.includes('ac') || otherHandle.polarity === 'ac') {
+                                // Reached controller AC output - stop tracing
+                                return;
+                            }
+                        } else if (otherItem.type === 'doublevoltagehub') {
+                            // Double voltage hub - trace through all AC handles
+                            Object.values(otherItem.handles || {}).forEach(hubHandle => {
+                                if (hubHandle.polarity === 'ac' && hubHandle.id !== otherHandle.id) {
+                                    traceAndMarkUpstream(otherItem, hubHandle, watts, voltage);
+                                }
+                            });
+                        } else if (otherItem.type === 'spiderbox') {
+                            // Spider box - trace through main input if we came from an output
+                            if (otherHandle.id.includes('out') || otherHandle.id.includes('circuit')) {
+                                if (otherItem.handles?.mainIn || otherItem.handles?.input) {
+                                    const inputHandle = otherItem.handles.mainIn || otherItem.handles.input;
+                                    traceAndMarkUpstream(otherItem, inputHandle, watts, voltage);
+                                }
+                            } else {
+                                traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
+                            }
+                        } else {
+                            // Unknown component type - try to trace through any AC handles
+                            Object.values(otherItem.handles || {}).forEach(otherH => {
+                                if (otherH.id !== otherHandle.id && 
+                                    (otherH.polarity === 'ac' || otherH.polarity === 'load' || otherH.polarity === 'parallel')) {
+                                    traceAndMarkUpstream(otherItem, otherH, watts, voltage);
+                                }
+                            });
                         }
                     });
                 };
                 
-                // STEP 1: Mark all connections from controllers to panels/breakers
+                // STEP 1: Trace BACKWARDS from each active load to mark all AC connections
+                // This ensures we only mark connections that actually lead to active loads
+                const traceLoadToController = (load, loadWatts, loadVoltage) => {
+                    const visited = new Set();
+                    
+                    const traceBack = (item, entryHandle) => {
+                        if (!item || visited.has(item.id)) return;
+                        visited.add(item.id);
+                        
+                        // For loads, start from their cord handle
+                        if (item.type === 'acload' || item.type === 'processor') {
+                            const cordHandle = item.handles?.cord;
+                            if (cordHandle?.connectedTo) {
+                                cordHandle.connectedTo.forEach(conn => {
+                                    const connObj = connections.find(c => c.id === conn.connectionId);
+                                    if (connObj && !visitedConnections.has(connObj.id)) {
+                                        visitedConnections.add(connObj.id);
+                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
+                                        
+                                        // Continue tracing
+                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                        const otherItem = allItems.find(i => i.id === otherItemId);
+                                        if (otherItem) traceBack(otherItem, null);
+                                    }
+                                });
+                            }
+                            return;
+                        }
+                        
+                        // For outlets, trace through input
+                        if (item.type === 'acoutlet') {
+                            // Mark connection to load if exists
+                            if (item.handles?.load?.connectedTo) {
+                                item.handles.load.connectedTo.forEach(conn => {
+                                    const connObj = connections.find(c => c.id === conn.connectionId);
+                                    if (connObj && !visitedConnections.has(connObj.id)) {
+                                        visitedConnections.add(connObj.id);
+                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
+                                    }
+                                });
+                            }
+                            // Trace through input
+                            if (item.handles?.input?.connectedTo) {
+                                item.handles.input.connectedTo.forEach(conn => {
+                                    const connObj = connections.find(c => c.id === conn.connectionId);
+                                    if (connObj && !visitedConnections.has(connObj.id)) {
+                                        visitedConnections.add(connObj.id);
+                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
+                                        
+                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                        const otherItem = allItems.find(i => i.id === otherItemId);
+                                        if (otherItem) traceBack(otherItem, null);
+                                    }
+                                });
+                            }
+                            return;
+                        }
+                        
+                        // For breaker panels, trace through main input
+                        if (item.type === 'breakerpanel') {
+                            // Mark the circuit connections that lead to this path
+                            for (let i = 0; i < 8; i++) {
+                                const circuitHandle = item.handles?.[`circuit${i + 1}`];
+                                if (circuitHandle?.connectedTo) {
+                                    circuitHandle.connectedTo.forEach(conn => {
+                                        const connObj = connections.find(c => c.id === conn.connectionId);
+                                        // Only mark if this circuit's connection is already visited (meaning it leads to a load)
+                                        // This avoids marking unused circuits
+                                    });
+                                }
+                            }
+                            // Always trace to main input
+                            if (item.handles?.mainInput?.connectedTo) {
+                                item.handles.mainInput.connectedTo.forEach(conn => {
+                                    const connObj = connections.find(c => c.id === conn.connectionId);
+                                    if (connObj && !visitedConnections.has(connObj.id)) {
+                                        visitedConnections.add(connObj.id);
+                                        markConnectionLive(connObj.id, loadWatts, 240, 'to-load');
+                                        
+                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                        const otherItem = allItems.find(i => i.id === otherItemId);
+                                        if (otherItem) traceBack(otherItem, null);
+                                    }
+                                });
+                            }
+                            return;
+                        }
+                        
+                        // For AC breakers, trace through line input
+                        if (item.type === 'acbreaker') {
+                            if (item.handles?.lineIn?.connectedTo) {
+                                item.handles.lineIn.connectedTo.forEach(conn => {
+                                    const connObj = connections.find(c => c.id === conn.connectionId);
+                                    if (connObj && !visitedConnections.has(connObj.id)) {
+                                        visitedConnections.add(connObj.id);
+                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
+                                        
+                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                        const otherItem = allItems.find(i => i.id === otherItemId);
+                                        if (otherItem) traceBack(otherItem, null);
+                                    }
+                                });
+                            }
+                            return;
+                        }
+                        
+                        // For controllers, we've reached the source - stop
+                        if (item.type === 'controller') {
+                            return;
+                        }
+                        
+                        // For other AC components (spiderbox, hub, etc.), trace through all AC inputs
+                        Object.values(item.handles || {}).forEach(handle => {
+                            if (handle.polarity === 'ac' || handle.id.includes('input') || handle.id.includes('in')) {
+                                if (handle.connectedTo) {
+                                    handle.connectedTo.forEach(conn => {
+                                        const connObj = connections.find(c => c.id === conn.connectionId);
+                                        if (connObj && !visitedConnections.has(connObj.id)) {
+                                            visitedConnections.add(connObj.id);
+                                            markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
+                                            
+                                            const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+                                            const otherItem = allItems.find(i => i.id === otherItemId);
+                                            if (otherItem) traceBack(otherItem, null);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                    };
+                    
+                    traceBack(load, null);
+                };
+                
+                // STEP 1: Find controller and check if it has power
                 const controllers = allItems.filter(i => i.type === 'controller');
+                let hasLiveController = false;
                 controllers.forEach(controller => {
                     const controllerACEnabled = simStats.controllerACOutputEnabled !== false;
                     const batterySpecs = calculateConnectedBatterySpecs(controller);
@@ -6562,57 +6745,23 @@
                     const arraySpecs = calculateConnectedArraySpecs(controller);
                     const hasSolar = arraySpecs.wmp > 0;
                     const hasPowerSource = hasBattery || hasSolar;
-                    const isLive = controllerACEnabled && hasPowerSource;
-                    
-                    if (isLive && controller.handles?.acOutput) {
-                        controller.handles.acOutput.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (!connObj) return;
-                            
-                            // Find what's connected - could be breaker panel, outlet, load, or other AC device
-                            const sourceItem = allItems.find(i => i.id === connObj.sourceItemId);
-                            const targetItem = allItems.find(i => i.id === connObj.targetItemId);
-                            
-                            // Determine voltage and watts based on what's connected
-                            let connectionVoltage = 120; // Default controller AC output voltage
-                            let connectionWatts = 0;
-                            
-                            if (sourceItem?.type === 'breakerpanel' || targetItem?.type === 'breakerpanel') {
-                                // Connected to breaker panel - use total watts
-                                connectionWatts = totalACWatts;
-                                connectionVoltage = 240; // Breaker panels typically take 240V input
-                            } else if (sourceItem?.type === 'acoutlet' || targetItem?.type === 'acoutlet') {
-                                // Connected to outlet - get outlet watts
-                                const outlet = sourceItem?.type === 'acoutlet' ? sourceItem : targetItem;
-                                connectionWatts = getOutletTotalWatts(outlet);
-                                connectionVoltage = outlet.specs?.voltage || 120;
-                            } else if (sourceItem?.type === 'acload' || sourceItem?.type === 'processor' ||
-                                      targetItem?.type === 'acload' || targetItem?.type === 'processor') {
-                                // Direct connection to load - get load watts
-                                const load = (sourceItem?.type === 'acload' || sourceItem?.type === 'processor') ? sourceItem : targetItem;
-                                connectionWatts = getLoadPowerWatts(load);
-                                connectionVoltage = load.specs?.voltage || 120;
-                                
-                                if (connectionWatts > 0) {
-                                    markConnectionLive(connObj.id, connectionWatts, connectionVoltage, 'from-controller');
-                                    // Trace backwards from load to mark upstream connections
-                                    const loadHandle = Object.values(load.handles).find(h => 
-                                        h.connectedTo?.some(c => c.connectionId === connObj.id)
-                                    );
-                                    if (loadHandle) {
-                                        traceAndMarkUpstream(load, loadHandle, connectionWatts, connectionVoltage);
-                                    }
-                                }
-                            } else {
-                                // Other connection - use total watts
-                                connectionWatts = totalACWatts;
-                                if (connectionWatts > 0) {
-                                    markConnectionLive(connObj.id, connectionWatts, connectionVoltage, 'from-controller');
-                                }
-                            }
-                        });
+                    if (controllerACEnabled && hasPowerSource) {
+                        hasLiveController = true;
                     }
                 });
+                
+                // STEP 2: For each active load, trace back to controller
+                if (hasLiveController) {
+                    allLoads.forEach(load => {
+                        if (load.simState?.isRunning) {
+                            const loadWatts = load.simState.currentPowerWatts || load.specs?.avgWatts || 0;
+                            const loadVoltage = load.specs?.voltage || 120;
+                            if (loadWatts > 0) {
+                                traceLoadToController(load, loadWatts, loadVoltage);
+                            }
+                        }
+                    });
+                }
                 
                 // STEP 2: Mark all breaker panel circuit connections
                 const breakerPanels = allItems.filter(i => i.type === 'breakerpanel');
@@ -8472,13 +8621,14 @@
         
         function render() {
             renderItems();
-            renderWires();
-            updateScores();
             
-            // Recalculate power flow in simulate mode to update wire glow
+            // Calculate power flow BEFORE rendering wires so wire classes have fresh data
             if (currentMode === 'simulate') {
                 SimulateMode.calculatePowerFlow();
             }
+            
+            renderWires();
+            updateScores();
             
             // Mark initial render as done after first render
             if (!_initialRenderDone) {
@@ -12654,60 +12804,78 @@
                 .attr("d", d => generateWirePath(d))
                 .classed("selected", d => selectedConnection && selectedConnection.id === d.id)
                 .classed("power-flowing", d => {
-                    // Add power-flowing class for AC wire animation in simulate mode
+                    // Add power-flowing class for AC wire animation in simulate AND live modes
                     // Force re-evaluation on every render by always checking current power flow state
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        // Animate if circuit is live AND has power flowing (AC only)
-                        // Check all AC connection types
-                        if (powerFlow && powerFlow.isLive && powerFlow.watts > 0 && !powerFlow.isPV && !powerFlow.isBattery) {
-                            const isACConnection = d.polarity === 'ac' || d.polarity === 'load' || d.polarity === 'parallel';
-                            if (isACConnection) {
-                                // Ensure direction is correct - power should flow from source to target
-                                // The wire path goes from sourceItem to targetItem, so animation direction is correct
-                                return true;
-                            }
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    // Animate if circuit is live AND has power flowing (AC only)
+                    // Check all AC connection types
+                    if (powerFlow && powerFlow.isLive && powerFlow.watts > 0 && !powerFlow.isPV && !powerFlow.isBattery) {
+                        const isACConnection = d.polarity === 'ac' || d.polarity === 'load' || d.polarity === 'parallel';
+                        if (isACConnection) {
+                            // Check if wire is drawn from source to load (forward) or load to source (reverse)
+                            // Power should always animate TOWARDS the load
+                            const sourceItem = allItems.find(i => i.id === d.sourceItemId);
+                            const targetItem = allItems.find(i => i.id === d.targetItemId);
+                            const sourceIsLoad = sourceItem?.type === 'acload' || sourceItem?.type === 'processor';
+                            // If source is the load, we need reverse animation
+                            // Mark in powerFlow for the reverse class check
+                            powerFlow.needsReverse = sourceIsLoad;
+                            return !sourceIsLoad; // Only return true for forward (non-reversed) wires
                         }
                     }
                     // Always return false if conditions aren't met to ensure class is removed when power stops
                     return false;
                 })
-                .each(function(d) {
-                    // Force CSS animation restart by triggering a reflow
-                    // This ensures animations work even when simulation is running
-                    const wire = this;
-                    if (d3.select(wire).classed("power-flowing")) {
-                        // Force reflow to restart animation by accessing offsetHeight
-                        void wire.offsetHeight;
-                        // Also try toggling animation-play-state to force restart
-                        const style = window.getComputedStyle(wire);
-                        if (style.animationName && style.animationName !== 'none') {
-                            wire.style.animationPlayState = 'paused';
-                            // Use requestAnimationFrame to restart animation
-                            requestAnimationFrame(() => {
-                                wire.style.animationPlayState = 'running';
-                            });
+                .classed("power-flowing-reverse", d => {
+                    // Add power-flowing-reverse class for AC wires drawn from load to source
+                    // This makes the animation flow towards the load (opposite of wire draw direction)
+                    let powerFlow = null;
+                    if (currentMode === 'simulate') {
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    if (powerFlow && powerFlow.isLive && powerFlow.watts > 0 && !powerFlow.isPV && !powerFlow.isBattery) {
+                        const isACConnection = d.polarity === 'ac' || d.polarity === 'load' || d.polarity === 'parallel';
+                        if (isACConnection && powerFlow.needsReverse) {
+                            return true;
                         }
                     }
+                    return false;
                 })
                 .classed("pv-flowing", d => {
-                    // Add pv-flowing class for PV wire animation in simulate mode
+                    // Add pv-flowing class for PV wire animation in simulate AND live modes
                     // Only for positive wires (electron flow: panel+ to controller+)
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        if (powerFlow && powerFlow.isPV && powerFlow.isLive && powerFlow.watts > 0) {
-                            return powerFlow.direction === 'pv-to-controller';
-                        }
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    if (powerFlow && powerFlow.isPV && powerFlow.isLive && powerFlow.watts > 0) {
+                        return powerFlow.direction === 'pv-to-controller';
                     }
                     return false;
                 })
                 .classed("pv-flowing-reverse", d => {
                     // Add pv-flowing-reverse for negative wires (electron flow: controller- to panel-)
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        if (powerFlow && powerFlow.isPV && powerFlow.isLive && powerFlow.watts > 0) {
-                            return powerFlow.direction === 'pv-from-controller';
-                        }
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    if (powerFlow && powerFlow.isPV && powerFlow.isLive && powerFlow.watts > 0) {
+                        return powerFlow.direction === 'pv-from-controller';
                     }
                     return false;
                 })
@@ -12725,45 +12893,54 @@
                 })
                 .classed("battery-charging", d => {
                     // Add battery-charging class for battery wire animation (power flowing INTO battery)
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        if (powerFlow && powerFlow.isBattery && powerFlow.isLive) {
-                            // Charging: positive wire flows toward battery (forward animation)
-                            return powerFlow.isCharging && (d.polarity === 'positive' || d.polarity === 'pv-positive');
-                        }
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    if (powerFlow && powerFlow.isBattery && powerFlow.isLive) {
+                        // Charging: positive wire flows toward battery (forward animation)
+                        const isCharging = powerFlow.isCharging || powerFlow.direction === 'battery-charging';
+                        return isCharging && (d.polarity === 'positive' || d.polarity === 'pv-positive');
                     }
                     return false;
                 })
                 .classed("battery-discharging", d => {
                     // Add battery-discharging class for battery wire animation (power flowing FROM battery)
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        if (powerFlow && powerFlow.isBattery && powerFlow.isLive) {
-                            // Discharging: positive wire flows away from battery (reverse animation)
-                            // OR Charging: negative wire flows away from battery
-                            if (!powerFlow.isCharging && (d.polarity === 'positive' || d.polarity === 'pv-positive')) {
-                                return true;
-                            }
-                            // Negative wires animate opposite to positive
-                            if (powerFlow.isCharging && (d.polarity === 'negative' || d.polarity === 'pv-negative')) {
-                                return true;
-                            }
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
+                    }
+                    
+                    if (powerFlow && powerFlow.isBattery && powerFlow.isLive) {
+                        // Discharging: positive wire flows away from battery (reverse animation)
+                        // OR Charging: negative wire flows away from battery
+                        const isCharging = powerFlow.isCharging || powerFlow.direction === 'battery-charging';
+                        if (!isCharging && (d.polarity === 'positive' || d.polarity === 'pv-positive')) {
+                            return true;
+                        }
+                        // Negative wires animate opposite to positive
+                        if (isCharging && (d.polarity === 'negative' || d.polarity === 'pv-negative')) {
+                            return true;
                         }
                     }
                     return false;
                 })
                 .classed("battery-live", d => {
                     // Add battery-live class for battery wire glow
+                    let powerFlow = null;
                     if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        return powerFlow && powerFlow.isBattery && powerFlow.isLive;
+                        powerFlow = SimulateMode.powerFlow[d.id];
+                    } else if (liveViewActive && LiveView.state.active) {
+                        powerFlow = LiveView.state.powerFlow[d.id];
                     }
-                    if (liveViewActive && LiveView.state.active) {
-                        // In live mode, glow battery wires when system has power
-                        const powerFlow = LiveView.state.powerFlow[d.id];
-                        if (powerFlow && powerFlow.isBattery) {
-                            return powerFlow.isLive || powerFlow.watts > 0;
-                        }
+                    
+                    if (powerFlow && powerFlow.isBattery) {
+                        return powerFlow.isLive || powerFlow.watts > 0;
                     }
                     return false;
                 })
@@ -21495,10 +21672,13 @@
             
             const behavior = load.specs.behavior;
             
-            if (behavior.type === 'constant') {
-                // Constant loads are always on (user controls via LiveView)
-                // For simulation, we'll check if they were on in live mode or use a default
-                return true; // Will be filtered by actual load states
+            if (behavior.type === 'constant' || behavior.type === 'simple') {
+                // Constant/simple loads are user-controlled via LiveView toggle
+                // Check the actual LiveView state for these loads
+                if (LiveView.state && LiveView.state.loadStates && LiveView.state.loadStates[load.id] !== undefined) {
+                    return LiveView.state.loadStates[load.id] === true;
+                }
+                return false; // Default to off if no state
             } else if (behavior.type === 'scheduled') {
                 const schedule = behavior.schedule;
                 if (!schedule) return false;
@@ -21673,11 +21853,11 @@
                     // Automation says on - continue to calculate power consumption below
                     // Don't check manual toggle state - automation controls this load
                 } else {
-                    // No automations - check manual state first (for constant loads) or schedule
+                    // No automations - check manual state first (for constant/simple loads) or schedule
                     const behavior = load.specs.behavior || { type: 'constant' };
                     
-                    // For constant loads, manual toggle state (LiveView.state.loadStates) is the primary control
-                    if (behavior.type === 'constant') {
+                    // For constant and simple loads, manual toggle state (LiveView.state.loadStates) is the primary control
+                    if (behavior.type === 'constant' || behavior.type === 'simple') {
                         if (LiveView.state && LiveView.state.loadStates) {
                             const isActuallyOn = LiveView.state.loadStates[load.id] === true;
                             if (!isActuallyOn) {
