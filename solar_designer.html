@@ -20307,6 +20307,8 @@
                 item = createSpiderBox(x, y);
             } else if (type === 'breakerpanel') {
                 item = createBreakerPanel(x, y);
+            } else if (type === 'acload') {
+                item = createACLoad(x, y, APPLIANCE_PRESETS[index]);
             }
             
             if (item) {
@@ -20393,17 +20395,26 @@
             // Include 3D structure geometry if available
             if (window.linkageLabGeometry) {
                 exportData.structureGeometry = window.linkageLabGeometry;
+                // Also save separately to localStorage for persistence across page loads
+                localStorage.setItem('linkageLabGeometry', JSON.stringify(window.linkageLabGeometry));
             }
             
             // Include camera state if available
+            let cameraStateToExport = null;
             if (window.linkageLabCameraState) {
-                exportData.cameraState = window.linkageLabCameraState;
+                cameraStateToExport = window.linkageLabCameraState;
             } else if (bgCamera) {
                 // Export current camera position
-                exportData.cameraState = {
+                cameraStateToExport = {
                     position: { x: bgCamera.position.x, y: bgCamera.position.y, z: bgCamera.position.z },
                     target: bgOrbitControls ? { x: bgOrbitControls.target.x, y: bgOrbitControls.target.y, z: bgOrbitControls.target.z } : { x: 0, y: 0, z: 0 }
                 };
+            }
+            
+            if (cameraStateToExport) {
+                exportData.cameraState = cameraStateToExport;
+                // Also save separately to localStorage for persistence
+                localStorage.setItem('linkageLabCameraState', JSON.stringify(cameraStateToExport));
             }
             
             // Store in localStorage for simulator to read

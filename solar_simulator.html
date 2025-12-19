@@ -362,7 +362,7 @@
         #structure-viewport {
             position: absolute;
             top: 10px;
-            right: 10px;
+            right: 350px; /* Position to left of right sidebar (340px + 10px margin) */
             width: 320px;
             height: 220px;
             border: 2px solid #444;
@@ -423,7 +423,6 @@
             transition: width var(--transition-med), opacity var(--transition-med); 
         }
         #right-sidebar { 
-            display: none !important; /* Hidden in simulator - components come from designer */
             width: 340px; right: 0; 
             border-left: 1px solid var(--space-400); 
             transition: width var(--transition-med), transform var(--transition-med); 
@@ -2932,6 +2931,160 @@
             0%, 100% { filter: brightness(1); }
             50% { filter: brightness(1.3); }
         }
+        
+        /* ============================================
+           BOTTOM STATS BAR
+           ============================================ */
+        #statsBar {
+            background: linear-gradient(135deg, var(--space-700) 0%, var(--space-800) 100%);
+            border-top: 3px solid var(--energy-amber);
+            box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.5);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: nowrap;
+            gap: 10px;
+            z-index: 1000;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            overflow-x: auto;
+            overflow-y: hidden;
+            min-height: 90px;
+        }
+        
+        /* Add padding to body/content to prevent overlap with fixed stats bar */
+        body {
+            padding-bottom: 110px;
+        }
+        
+        #statsBar::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        #statsBar::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        #statsBar::-webkit-scrollbar-thumb {
+            background: rgba(245, 158, 11, 0.5);
+            border-radius: 3px;
+        }
+        
+        #statsBar::-webkit-scrollbar-thumb:hover {
+            background: rgba(245, 158, 11, 0.7);
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 120px;
+            height: 90px;
+            flex: 0 0 auto;
+            padding: 8px 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: var(--radius-md);
+            border: 2px solid rgba(245, 158, 11, 0.3);
+            transition: all var(--transition-med);
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        
+        .stat-item:hover {
+            background: rgba(0, 0, 0, 0.5);
+            border-color: rgba(245, 158, 11, 0.6);
+            transform: translateY(-2px);
+            box-shadow: var(--glow-amber);
+        }
+        
+        .stat-item[style*="cursor: pointer"]:hover {
+            border-color: rgba(59, 130, 246, 0.8);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        }
+        
+        .stat-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+        
+        .stat-label.auto-scale {
+            font-size: 11px;
+        }
+        
+        .stat-unit {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-top: 4px;
+            font-weight: 600;
+            white-space: nowrap;
+            text-align: center;
+            width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            line-height: 1.2;
+        }
+        
+        .stat-unit.auto-scale {
+            font-size: 11px;
+        }
+        
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+            color: var(--energy-amber);
+            text-shadow: 0 0 10px rgba(245, 158, 11, 0.5), 2px 2px 4px rgba(0, 0, 0, 0.8);
+            font-family: var(--font-mono);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            text-align: center;
+            line-height: 1.2;
+        }
+        
+        .stat-value.large {
+            font-size: 24px;
+        }
+        
+        .stat-value.auto-scale {
+            font-size: 20px;
+        }
+        
+        .stat-value.large.auto-scale {
+            font-size: 24px;
+        }
+        
+        .stat-value.resource-stat-value {
+            font-size: 20px;
+        }
+        
+        #resourceStatsContainer {
+            display: flex;
+            gap: 10px;
+            flex-wrap: nowrap;
+            align-items: center;
+            flex: 0 0 auto;
+        }
+        
+        #resourceStatsContainer .stat-item {
+            width: 120px;
+        }
     </style>
 </head>
 <body>
@@ -3148,7 +3301,7 @@
         </div>
         
         <!-- RIGHT SIDEBAR - Component Library & Inspector -->
-        <div id="right-sidebar" class="closed" style="display: none;">
+        <div id="right-sidebar" class="open">
             <button id="right-sidebar-toggle" title="Toggle Library Panel (L)">▶</button>
             
             <!-- Tab Header -->
@@ -8657,29 +8810,25 @@
                 )
                 .on("click", (event, d) => {
                     event.stopPropagation();
-                    // In simulate mode, allow toggling loads for simulation control
-                    if (d.type === 'acload' && currentMode === 'simulate') {
-                        toggleLoadInSimulate(d);
-                    }
-                    // Show read-only info tooltip instead of opening inspector
-                    showTooltip(event, d);
+                    // Select item and open inspector
+                    selectItem(d);
+                    openInspector(d);
                 })
                 .on("touchend", (event, d) => {
-                    // Handle touch as click for mobile devices (read-only)
+                    // Handle touch as click for mobile devices
                     event.stopPropagation();
                     event.preventDefault();
-                    // In simulate mode, allow toggling loads
-                    if (d.type === 'acload' && currentMode === 'simulate') {
-                        toggleLoadInSimulate(d);
-                    }
+                    selectItem(d);
+                    openInspector(d);
                 })
                 .on("dblclick", (event, d) => {
                     event.stopPropagation();
-                    // In simulate mode, toggle loads on double-click
-                    if (d.type === 'acload' && currentMode === 'simulate') {
+                    // Double-click also opens inspector (or toggles load if it's an AC load)
+                    if (d.type === 'acload') {
                         toggleLoadInSimulate(d);
                     }
-                    // Inspector disabled - components are read-only
+                    selectItem(d);
+                    openInspector(d);
                 });
             
             // Render based on type
@@ -21204,6 +21353,8 @@
                 item = createSpiderBox(x, y);
             } else if (type === 'breakerpanel') {
                 item = createBreakerPanel(x, y);
+            } else if (type === 'acload') {
+                item = createACLoad(x, y, APPLIANCE_PRESETS[index]);
             }
             
             if (item) {
@@ -21226,6 +21377,22 @@
         // Simulator always runs in simulate mode - no mode switching needed
         function initializeSimulation() {
             currentMode = 'simulate';
+            
+            // Show simulation stats section in sidebar
+            const simStatsSection = document.getElementById('simStatsSection');
+            if (simStatsSection) {
+                simStatsSection.style.display = 'block';
+            }
+            // Hide live stats section if it was visible
+            const liveStatsSection = document.getElementById('liveStatsSection');
+            if (liveStatsSection) {
+                liveStatsSection.style.display = 'none';
+            }
+            
+            // Regenerate ports for all recipe-based loads to ensure they're properly set up
+            allItems.filter(i => i.type === 'acload' && i.specs.recipes && i.specs.recipes.length > 0).forEach(load => {
+                regeneratePortsForLoad(load);
+            });
             
             // Check if system is valid for simulation
             const controller = allItems.find(i => i.type === 'controller');
@@ -21273,6 +21440,20 @@
                 source: 'solarSimulator',
                 version: 1
             };
+            
+            // Include 3D structure geometry if available
+            if (window.linkageLabGeometry) {
+                exportData.structureGeometry = window.linkageLabGeometry;
+                // Also save separately to localStorage for persistence across page loads
+                localStorage.setItem('linkageLabGeometry', JSON.stringify(window.linkageLabGeometry));
+            }
+            
+            // Include camera state if available
+            if (window.linkageLabCameraState) {
+                exportData.cameraState = window.linkageLabCameraState;
+                // Also save separately to localStorage for persistence
+                localStorage.setItem('linkageLabCameraState', JSON.stringify(window.linkageLabCameraState));
+            }
             
             // Store in localStorage for designer to read
             localStorage.setItem('solarDesignerExport', JSON.stringify(exportData));
@@ -21390,6 +21571,25 @@
             loadConsumption: {}, // Track per-load power consumption: { loadId: { watts, kwh } }
             inverterLoadConsumption: {} // Track per-controller inverter load consumption: { controllerId: { watts, kwh } }
         };
+        
+        // Live stats for bottom stats bar (cumulative tracking)
+        const liveStats = {
+            solarKwhGenerated: 0,
+            solarKwhPossible: 0,
+            solarKwhCaptured: 0,
+            totalKwhGenerated: 0,
+            totalKwhConsumed: 0,
+            resourcesProduced: {},
+            resourcesConsumed: {},
+            biocharProduced: 0,
+            woodgasConsumed: 0,
+            eco2Sequestered: 0,
+            eco2Avoided: 0,
+            eco2TotalSaved: 0
+        };
+        
+        // Stats bar cache for efficient DOM updates
+        const statsBarCache = new Map();
         
         // ========== SOLAR CALCULATION FUNCTIONS ==========
         
@@ -22267,6 +22467,121 @@
                     parentItem.setAttribute('data-tooltip', `${daylight.toFixed(1)} hours of daylight (${sunriseStr} - ${sunsetStr})`);
                 }
             }
+            
+            // Update bottom stats bar
+            updateLiveStatsBar();
+        }
+        
+        // Function to compute Micro-Kardashev score
+        function computeMicroKardashev(captured, possible) {
+            const f = possible > 0 ? captured / possible : 0;
+            return 0.1 * f;
+        }
+        
+        // Function to update the live stats bar
+        function updateLiveStatsBar() {
+            if (currentMode !== 'simulate') return;
+            
+            const timeElapsedEl = document.getElementById('liveTimeElapsed');
+            const solarKwhEl = document.getElementById('liveSolarKwh');
+            const kwhGeneratedEl = document.getElementById('liveKwhGenerated');
+            const kwhConsumedEl = document.getElementById('liveKwhConsumed');
+            const netKwhEl = document.getElementById('liveNetKwh');
+            const efficiencyEl = document.getElementById('liveEfficiency');
+            const kMicroEl = document.getElementById('liveKMicro');
+            const eco2SeqEl = document.getElementById('liveEco2Sequestered');
+            const eco2AvdEl = document.getElementById('liveEco2Avoided');
+            const eco2TotalEl = document.getElementById('liveEco2TotalSaved');
+            const resourceStatsContainer = document.getElementById('resourceStatsContainer');
+            
+            if (!timeElapsedEl) return; // Stats bar not initialized yet
+            
+            // Update time elapsed
+            const timeText = `${Math.floor(elapsedHours)}`;
+            if (statsBarCache.get('time') !== timeText) {
+                timeElapsedEl.textContent = timeText;
+                statsBarCache.set('time', timeText);
+            }
+            
+            // Update solar kWh generated
+            const solarKwhText = liveStats.solarKwhGenerated.toFixed(2);
+            if (statsBarCache.get('solarKwh') !== solarKwhText) {
+                solarKwhEl.textContent = solarKwhText;
+                statsBarCache.set('solarKwh', solarKwhText);
+            }
+            
+            // Update total kWh generated
+            const kwhGenText = liveStats.totalKwhGenerated.toFixed(2);
+            if (statsBarCache.get('kwhGen') !== kwhGenText) {
+                kwhGeneratedEl.textContent = kwhGenText;
+                statsBarCache.set('kwhGen', kwhGenText);
+            }
+            
+            // Update total kWh consumed
+            const kwhConsText = liveStats.totalKwhConsumed.toFixed(2);
+            if (statsBarCache.get('kwhCons') !== kwhConsText) {
+                kwhConsumedEl.textContent = kwhConsText;
+                statsBarCache.set('kwhCons', kwhConsText);
+            }
+            
+            // Update net kWh (generated - consumed)
+            const netKwh = liveStats.totalKwhGenerated - liveStats.totalKwhConsumed;
+            const netKwhText = (netKwh >= 0 ? '+' : '') + netKwh.toFixed(2);
+            const netKwhColor = netKwh >= 0 ? '#5cb85c' : '#d9534f';
+            if (statsBarCache.get('netKwh') !== netKwhText || statsBarCache.get('netKwhColor') !== netKwhColor) {
+                netKwhEl.textContent = netKwhText;
+                netKwhEl.style.color = netKwhColor;
+                statsBarCache.set('netKwh', netKwhText);
+                statsBarCache.set('netKwhColor', netKwhColor);
+            }
+            
+            // Update efficiency (actual captured solar / possible solar)
+            const efficiency = liveStats.solarKwhPossible > 0 
+                ? (liveStats.solarKwhCaptured / liveStats.solarKwhPossible * 100).toFixed(2)
+                : '0.00';
+            const efficiencyText = `${efficiency}%`;
+            if (statsBarCache.get('efficiency') !== efficiencyText) {
+                efficiencyEl.textContent = efficiencyText;
+                statsBarCache.set('efficiency', efficiencyText);
+            }
+            
+            // Update Micro-Kardashev score
+            const kMicro = computeMicroKardashev(liveStats.solarKwhCaptured, liveStats.solarKwhPossible);
+            const kMicroText = kMicro.toFixed(5);
+            if (statsBarCache.get('kMicro') !== kMicroText) {
+                kMicroEl.textContent = kMicroText;
+                // Color based on K_micro thresholds
+                if (kMicro >= 0.02) {
+                    kMicroEl.style.color = '#5cb85c'; // Green - good
+                } else if (kMicro >= 0.01) {
+                    kMicroEl.style.color = '#f0ad4e'; // Yellow - typical
+                } else {
+                    kMicroEl.style.color = '#d9534f'; // Red - poor
+                }
+                statsBarCache.set('kMicro', kMicroText);
+            }
+            
+            // Update CO2 stats (for now, set to 0 - will be populated when recipe processing tracks biochar/woodgas)
+            const eco2SeqText = liveStats.eco2Sequestered.toFixed(2);
+            if (statsBarCache.get('eco2Seq') !== eco2SeqText) {
+                eco2SeqEl.textContent = eco2SeqText;
+                statsBarCache.set('eco2Seq', eco2SeqText);
+            }
+            
+            const eco2AvdText = liveStats.eco2Avoided.toFixed(2);
+            if (statsBarCache.get('eco2Avd') !== eco2AvdText) {
+                eco2AvdEl.textContent = eco2AvdText;
+                statsBarCache.set('eco2Avd', eco2AvdText);
+            }
+            
+            const eco2TotalText = liveStats.eco2TotalSaved.toFixed(2);
+            if (statsBarCache.get('eco2Total') !== eco2TotalText) {
+                eco2TotalEl.textContent = eco2TotalText;
+                statsBarCache.set('eco2Total', eco2TotalText);
+            }
+            
+            // TODO: Update resource stats container when recipe processing is fully implemented
+            // For now, resource stats will be empty until recipe processing tracks resources
         }
         
         function playPause() {
@@ -22600,6 +22915,12 @@
                 const actualCaptured = simStats.batteryCharge - previousCharge;
                 simStats.totalSolarGenerated += actualCaptured;
                 
+                // Update liveStats for stats bar
+                liveStats.solarKwhGenerated += actualCaptured;
+                liveStats.solarKwhPossible += rawSolarPowerKw * 1.0; // Track possible solar (before clipping)
+                liveStats.solarKwhCaptured += actualCaptured;
+                liveStats.totalKwhGenerated += actualCaptured;
+                
                 // Check if battery has recovered above re-enable threshold after solar generation
                 // This allows AC output to be re-enabled if solar charging brings battery above threshold
                 // Reuse lowBatteryProtection from earlier in the loop (already calculated above)
@@ -22787,6 +23108,9 @@
                 const totalConsumptionKwh = actualConsumptionKwh + inverterLoadKwh;
                 simStats.batteryCharge = Math.max(0, simStats.batteryCharge - totalConsumptionKwh);
                 simStats.totalEnergyUsed += totalConsumptionKwh;
+                
+                // Update liveStats for stats bar
+                liveStats.totalKwhConsumed += totalConsumptionKwh;
             }
             
             // Note: Fractional hours are handled by accumulating elapsedHours continuously
@@ -23368,6 +23692,21 @@
                 controllerACOutputEnabled: true // Reset to enabled
             };
             
+            // Reset liveStats for stats bar
+            liveStats.solarKwhGenerated = 0;
+            liveStats.solarKwhPossible = 0;
+            liveStats.solarKwhCaptured = 0;
+            liveStats.totalKwhGenerated = 0;
+            liveStats.totalKwhConsumed = 0;
+            liveStats.resourcesProduced = {};
+            liveStats.resourcesConsumed = {};
+            liveStats.biocharProduced = 0;
+            liveStats.woodgasConsumed = 0;
+            liveStats.eco2Sequestered = 0;
+            liveStats.eco2Avoided = 0;
+            liveStats.eco2TotalSaved = 0;
+            statsBarCache.clear();
+            
             // Reset load simulation states
             const loads = allItems.filter(i => i.type === 'acload' || i.type === 'processor');
             loads.forEach(load => {
@@ -23411,6 +23750,7 @@
             
             updateTimeDisplay();
             updateSimulationDisplay();
+            updateLiveStatsBar();
         }
         
         // ============================================
@@ -24347,10 +24687,10 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             updateSvgDimensions();
-            // populateLibraries(); // Removed - components come from designer only
+            populateLibraries(); // Enable library for adding components
             setupKeyboardShortcuts();
             setupTooltips();
-            // setupQuickActions(); // Removed - no editing in simulator
+            setupQuickActions(); // Enable quick actions for editing
             initIncidentReportListeners();
             
             // Initialize undo/redo system (Phase 3.4)
@@ -24445,15 +24785,44 @@
                         if (data.structureGeometry) {
                             console.log('Import: Loading 3D structure geometry');
                             window.linkageLabGeometry = data.structureGeometry;
+                            // Also save to localStorage for persistence
+                            localStorage.setItem('linkageLabGeometry', JSON.stringify(data.structureGeometry));
                         } else {
                             console.log('Import: No 3D structure geometry in export data');
+                            // Try to load from localStorage if not in export
+                            const savedGeometry = localStorage.getItem('linkageLabGeometry');
+                            if (savedGeometry) {
+                                try {
+                                    window.linkageLabGeometry = JSON.parse(savedGeometry);
+                                    console.log('Import: Loaded 3D geometry from localStorage');
+                                } catch (e) {
+                                    console.error('Failed to parse saved geometry:', e);
+                                }
+                            }
                         }
                         
                         // Load camera state if available
                         if (data.cameraState) {
                             console.log('Import: Loading camera state');
                             window.linkageLabCameraState = data.cameraState;
+                            localStorage.setItem('linkageLabCameraState', JSON.stringify(data.cameraState));
+                        } else {
+                            // Try to load from localStorage
+                            const savedCameraState = localStorage.getItem('linkageLabCameraState');
+                            if (savedCameraState) {
+                                try {
+                                    window.linkageLabCameraState = JSON.parse(savedCameraState);
+                                    console.log('Import: Loaded camera state from localStorage');
+                                } catch (e) {
+                                    console.error('Failed to parse saved camera state:', e);
+                                }
+                            }
                         }
+                        
+                        // Regenerate ports for all recipe-based loads after import
+                        allItems.filter(i => i.type === 'acload' && i.specs.recipes && i.specs.recipes.length > 0).forEach(load => {
+                            regeneratePortsForLoad(load);
+                        });
                         
                         tutorialCompleted = true;
                         systemValidated = true;
@@ -24525,14 +24894,12 @@
                 }
             }
             
-            // Hide right sidebar (library/inspector) - not needed in simulator
+            // Show right sidebar (library/inspector) - open by default in simulator
             const rightSidebar = document.getElementById('right-sidebar');
             if (rightSidebar) {
-                rightSidebar.style.display = 'none';
-            }
-            const rightSidebarToggle = document.getElementById('right-sidebar-toggle');
-            if (rightSidebarToggle) {
-                rightSidebarToggle.style.display = 'none';
+                rightSidebar.classList.remove('closed');
+                rightSidebar.classList.add('open');
+                updateRightSidebarToggle();
             }
             
             // Initialize simulation if we have a circuit
@@ -25640,8 +26007,104 @@
             window.addEventListener('resize', () => {
                 updateSvgDimensions();
             });
+            
+            // Initialize 3D background if geometry already exists (e.g., from previous session or import)
+            // This ensures the 3D background loads even when not importing from designer
+            // First check if geometry exists in window, if not try localStorage
+            if (!window.linkageLabGeometry) {
+                const savedGeometry = localStorage.getItem('linkageLabGeometry');
+                if (savedGeometry) {
+                    try {
+                        window.linkageLabGeometry = JSON.parse(savedGeometry);
+                        console.log('Loaded 3D geometry from localStorage on page load');
+                    } catch (e) {
+                        console.error('Failed to parse saved geometry:', e);
+                    }
+                }
+            }
+            
+            // Also check for camera state
+            if (!window.linkageLabCameraState) {
+                const savedCameraState = localStorage.getItem('linkageLabCameraState');
+                if (savedCameraState) {
+                    try {
+                        window.linkageLabCameraState = JSON.parse(savedCameraState);
+                        console.log('Loaded camera state from localStorage on page load');
+                    } catch (e) {
+                        console.error('Failed to parse saved camera state:', e);
+                    }
+                }
+            }
+            
+            if (window.linkageLabGeometry) {
+                const structureBtn = document.getElementById('structureViewBtn');
+                if (structureBtn) {
+                    structureBtn.style.display = 'inline-block';
+                }
+                // Delay initialization slightly to ensure DOM is fully ready
+                setTimeout(() => {
+                    if (typeof initStructureViewport === 'function') {
+                        initStructureViewport();
+                    }
+                }, 200);
+            }
         });
     </script>
+    
+    <!-- Bottom Stats Bar -->
+    <div id="statsBar">
+        <div class="stat-item">
+            <div class="stat-label">Time</div>
+            <div class="stat-value" id="liveTimeElapsed">0</div>
+            <div class="stat-unit">hours</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Solar</div>
+            <div class="stat-value large" id="liveSolarKwh">0.00</div>
+            <div class="stat-unit">kWh</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Generated</div>
+            <div class="stat-value large" id="liveKwhGenerated">0.00</div>
+            <div class="stat-unit">kWh</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Consumed</div>
+            <div class="stat-value large" id="liveKwhConsumed">0.00</div>
+            <div class="stat-unit">kWh</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Net</div>
+            <div class="stat-value large" id="liveNetKwh">0.00</div>
+            <div class="stat-unit">kWh</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-label">Solar</div>
+            <div class="stat-value" id="liveEfficiency">0.00%</div>
+            <div class="stat-unit">Utilization</div>
+        </div>
+        <div class="stat-item" title="Micro-Kardashev Scale: 0.1 = perfect capture, 0.02 = good, 0.015 = typical">
+            <div class="stat-label">K<sub>micro</sub></div>
+            <div class="stat-value" id="liveKMicro">0.00000</div>
+            <div class="stat-unit">score</div>
+        </div>
+        <div class="stat-item" id="eco2SequesteredStat" style="cursor: pointer;" title="Double-click to edit factors">
+            <div class="stat-label">CO₂ Sequestered</div>
+            <div class="stat-value large" id="liveEco2Sequestered">0.00</div>
+            <div class="stat-unit">kg eCO₂</div>
+        </div>
+        <div class="stat-item" id="eco2AvoidedStat" style="cursor: pointer;" title="Double-click to edit factors">
+            <div class="stat-label">CO₂ Avoided</div>
+            <div class="stat-value large" id="liveEco2Avoided">0.00</div>
+            <div class="stat-unit">kg eCO₂</div>
+        </div>
+        <div class="stat-item" id="eco2TotalSavedStat" style="cursor: pointer;" title="Double-click to edit factors">
+            <div class="stat-label">CO₂ Saved</div>
+            <div class="stat-value large" id="liveEco2TotalSaved">0.00</div>
+            <div class="stat-unit">kg eCO₂</div>
+        </div>
+        <div id="resourceStatsContainer" style="display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; flex: 0 0 auto;"></div>
+    </div>
 </body>
 </html>
 
