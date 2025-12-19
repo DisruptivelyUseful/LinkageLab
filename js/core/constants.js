@@ -43,6 +43,7 @@ const BATTERY_PRESETS = [
     { name: "Zoom 48V 200Ah LiFePO4", voltage: 51.2, ah: 200, maxDischargeRate: 1, maxDischarge: 200, width: 250, height: 350, cost: 2500 },
     { name: "Ruixu 48V 100Ah LiFePO4", voltage: 51.2, ah: 100, maxDischargeRate: 1, maxDischarge: 100, width: 200, height: 300, cost: 1300 },
     { name: "Ruixu 48V 200Ah LiFePO4", voltage: 51.2, ah: 200, maxDischargeRate: 1, maxDischarge: 200, width: 250, height: 350, cost: 2400 },
+    { name: "Ruixu 48V 314Ah LiFePO4", voltage: 51.2, ah: 314, maxDischargeRate: 1, maxDischarge: 314, width: 530, height: 455, cost: 2800 },
     { name: "Server Rack 48V 100Ah", voltage: 51.2, ah: 100, maxDischargeRate: 1, maxDischarge: 100, width: 200, height: 300, cost: 1200 },
     { name: "Server Rack 48V 200Ah", voltage: 51.2, ah: 200, maxDischargeRate: 1, maxDischarge: 200, width: 250, height: 350, cost: 2200 },
     { name: "Big Battery 48V 100Ah LiFePO4", voltage: 51.2, ah: 100, maxDischargeRate: 1, maxDischarge: 100, width: 200, height: 300, cost: 1450 },

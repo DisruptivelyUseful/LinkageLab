@@ -2829,6 +2829,249 @@ const SolarDesigner = (function() {
         }
     }
     
+    /**
+     * Remove all panels while preserving other components
+     * @returns {number} Number of panels removed
+     */
+    function removeAllPanels() {
+        const panels = allItems.filter(i => i.type === 'panel');
+        panels.forEach(panel => {
+            // Delete connections associated with this panel
+            const panelConns = connections.filter(c => c.sourceItemId === panel.id || c.targetItemId === panel.id);
+            panelConns.forEach(deleteConnection);
+        });
+        
+        const count = panels.length;
+        allItems = allItems.filter(i => i.type !== 'panel');
+        
+        if (selectedItem && selectedItem.type === 'panel') {
+            selectedItem = null;
+        }
+        
+        return count;
+    }
+    
+    /**
+     * Sync panels from linkage mode configuration
+     * Removes existing panels and creates new ones matching linkage layout
+     * Preserves all non-panel components (batteries, controllers, loads, etc.)
+     * Auto-wires panels: columns in series, rows in parallel
+     * Adds default controller and battery if none exist
+     * @param {Object} config - Configuration from linkage mode
+     * @returns {Object} Sync result with panel count and layout info
+     */
+    function syncPanelsFromLinkage(config) {
+        if (!config || !config.panels || config.panels.length === 0) {
+            return { synced: false, message: 'No panels to sync' };
+        }
+        
+        // Remove existing panels (this also removes their connections)
+        const removedCount = removeAllPanels();
+        
+        // Extract configuration
+        const {
+            panels: linkagePanels,
+            specs: panelSpecs,
+            layout: layoutConfig
+        } = config;
+        
+        const isArchMode = layoutConfig.isArchMode || false;
+        const gridRows = layoutConfig.gridRows || Math.ceil(Math.sqrt(linkagePanels.length));
+        const gridCols = layoutConfig.gridCols || Math.ceil(linkagePanels.length / gridRows);
+        const panelsPerSide = gridRows * gridCols;
+        
+        // Calculate panel pixel dimensions from actual linkage specs
+        // panelSpecs.width and .height are in mm (converted from inches * 25.4)
+        const specWidthMm = panelSpecs.width || 990;  // Default ~39 inches
+        const specHeightMm = panelSpecs.height || 1651; // Default ~65 inches
+        
+        // Scale: maintain aspect ratio, target ~100-150px for typical panels
+        const scaleFactor = 0.09; // ~90px per meter
+        const panelWidthPx = Math.max(60, Math.min(180, specWidthMm * scaleFactor));
+        const panelHeightPx = Math.max(80, Math.min(220, specHeightMm * scaleFactor));
+        
+        // Calculate spacing from linkage padding (inches -> pixels)
+        // paddingX/Y are in inches, convert to pixels with scale
+        const paddingScale = 2.5; // pixels per inch of padding
+        const spacingX = Math.max(15, (layoutConfig.paddingX || 2) * paddingScale);
+        const spacingY = Math.max(15, (layoutConfig.paddingY || 2) * paddingScale);
+        
+        // Store created panels in a 2D grid for wiring
+        const panelGrid = []; // panelGrid[row][col] = panel
+        for (let r = 0; r < gridRows; r++) {
+            panelGrid[r] = [];
+        }
+        
+        // Create panels with correct layout
+        if (isArchMode) {
+            // Arch mode: Group panels by A/B sides
+            const numSides = Math.ceil(linkagePanels.length / panelsPerSide);
+            const arrayWidth = gridCols * (panelWidthPx + spacingX) - spacingX;
+            const arrayHeight = gridRows * (panelHeightPx + spacingY) - spacingY;
+            const groupSpacing = 60;
+            
+            const numPairs = Math.ceil(numSides / 2);
+            const totalWidth = numPairs * (arrayWidth * 2 + groupSpacing) - groupSpacing;
+            const startX = -totalWidth / 2;
+            const startY = -arrayHeight / 2 - 100;
+            
+            linkagePanels.forEach((panel, idx) => {
+                const sideIndex = Math.floor(idx / panelsPerSide);
+                const pairIndex = Math.floor(sideIndex / 2);
+                const isASide = sideIndex % 2 === 0;
+                const withinSide = idx % panelsPerSide;
+                const row = Math.floor(withinSide / gridCols);
+                const col = withinSide % gridCols;
+                
+                const pairStartX = startX + pairIndex * (arrayWidth * 2 + groupSpacing + 40);
+                const arrayOffsetX = isASide ? 0 : arrayWidth + groupSpacing;
+                
+                const x = pairStartX + arrayOffsetX + col * (panelWidthPx + spacingX);
+                const y = startY + row * (panelHeightPx + spacingY);
+                
+                const newPanel = addPanelFromLinkageWithDimensions(x, y, panelSpecs, panelWidthPx, panelHeightPx);
+                
+                // Only wire first side for now (can extend later)
+                if (sideIndex === 0 && row < gridRows && col < gridCols) {
+                    panelGrid[row][col] = newPanel;
+                }
+            });
+        } else {
+            // Top panel mode: Use exact grid layout
+            const totalWidth = gridCols * (panelWidthPx + spacingX) - spacingX;
+            const totalHeight = gridRows * (panelHeightPx + spacingY) - spacingY;
+            const startX = -totalWidth / 2;
+            const startY = -totalHeight / 2 - 150;
+            
+            linkagePanels.forEach((panel, idx) => {
+                const row = Math.floor(idx / gridCols);
+                const col = idx % gridCols;
+                const x = startX + col * (panelWidthPx + spacingX);
+                const y = startY + row * (panelHeightPx + spacingY);
+                
+                const newPanel = addPanelFromLinkageWithDimensions(x, y, panelSpecs, panelWidthPx, panelHeightPx);
+                panelGrid[row][col] = newPanel;
+            });
+        }
+        
+        // Auto-wire panels: columns in series, rows in parallel
+        // Each column forms a "string" wired in series
+        // All strings connect in parallel to the controller PV inputs
+        
+        // Check if controller and battery exist, if not create defaults
+        const existingControllers = allItems.filter(i => i.type === 'controller');
+        const existingBatteries = allItems.filter(i => i.type === 'battery');
+        
+        let controller = existingControllers[0];
+        let battery = existingBatteries[0];
+        
+        // Calculate positions below panel array
+        const arrayBottomY = panelGrid[gridRows - 1]?.[0]?.y + panelHeightPx + 80 || 100;
+        const arrayCenterX = (panelGrid[0]?.[0]?.x + panelGrid[0]?.[gridCols-1]?.x + panelWidthPx) / 2 || 0;
+        
+        if (!controller) {
+            // Find PowMR 5000W Hybrid in presets
+            const powmrPreset = CONTROLLER_PRESETS.find(p => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
+            const controllerWidth = powmrPreset.width ? powmrPreset.width * 0.12 : 100;
+            controller = createController(arrayCenterX - controllerWidth/2 - 50, arrayBottomY, powmrPreset);
+            allItems.push(controller);
+        }
+        
+        if (!battery) {
+            // Find Ruixu 48V 314Ah in presets
+            const ruixuPreset = BATTERY_PRESETS.find(p => p.name.includes('Ruixu 48V 314Ah')) || 
+                               BATTERY_PRESETS.find(p => p.name.includes('48V') && p.ah >= 200) ||
+                               BATTERY_PRESETS[0];
+            battery = createBattery(controller.x + controller.width + 40, arrayBottomY, ruixuPreset);
+            allItems.push(battery);
+        }
+        
+        // Wire panels in series within each column (string)
+        // Connect negative (right side) of upper panel to positive (left side) of lower panel
+        for (let col = 0; col < gridCols; col++) {
+            for (let row = 0; row < gridRows - 1; row++) {
+                const upperPanel = panelGrid[row]?.[col];
+                const lowerPanel = panelGrid[row + 1]?.[col];
+                
+                if (upperPanel && lowerPanel) {
+                    createConnection(upperPanel, 'negative', lowerPanel, 'positive');
+                }
+            }
+        }
+        
+        // Connect each string to controller in parallel
+        // Top of each string (first row positive) → Controller PV+
+        // Bottom of each string (last row negative) → Controller PV-
+        if (gridCols > 0 && gridRows > 0 && controller) {
+            for (let col = 0; col < gridCols; col++) {
+                const stringTopPanel = panelGrid[0]?.[col];
+                const stringBottomPanel = panelGrid[gridRows - 1]?.[col];
+                
+                // Connect string positive to controller PV+
+                if (stringTopPanel && controller.handles?.pvPositive) {
+                    createConnection(stringTopPanel, 'positive', controller, 'pvPositive');
+                }
+                // Connect string negative to controller PV-
+                if (stringBottomPanel && controller.handles?.pvNegative) {
+                    createConnection(stringBottomPanel, 'negative', controller, 'pvNegative');
+                }
+            }
+            
+            // Connect controller to battery
+            if (controller.handles?.batteryPositive && battery?.handles?.positive) {
+                createConnection(controller, 'batteryPositive', battery, 'positive');
+            }
+            if (controller.handles?.batteryNegative && battery?.handles?.negative) {
+                createConnection(controller, 'batteryNegative', battery, 'negative');
+            }
+        }
+        
+        render();
+        
+        const layoutDesc = isArchMode 
+            ? `${Math.ceil(linkagePanels.length / panelsPerSide)} sides (${gridRows}×${gridCols} per side)`
+            : `${gridRows}×${gridCols} grid`;
+        
+        return {
+            synced: true,
+            added: linkagePanels.length,
+            removed: removedCount,
+            layout: layoutDesc,
+            message: `Synced ${linkagePanels.length} panels (${layoutDesc}), auto-wired ${gridCols} strings × ${gridRows} series`
+        };
+    }
+    
+    /**
+     * Add panel from linkage with specific pixel dimensions
+     */
+    function addPanelFromLinkageWithDimensions(x, y, specs, widthPx, heightPx) {
+        const id = `panel-${++itemIdCounter}`;
+        const imp = specs.imp || (specs.wmp / specs.vmp) || (specs.isc * 0.9);
+        
+        const panel = {
+            id, type: 'panel', x, y,
+            width: widthPx, height: heightPx,
+            specs: {
+                name: specs.name,
+                wmp: specs.wmp,
+                vmp: specs.vmp,
+                voc: specs.voc,
+                isc: specs.isc,
+                imp: parseFloat(imp.toFixed(2)),
+                width: specs.width,
+                height: specs.height,
+                cost: specs.cost || 150
+            },
+            handles: {
+                positive: { id: `${id}-pos`, polarity: 'positive', x: 0, y: heightPx / 2, connectedTo: [] },
+                negative: { id: `${id}-neg`, polarity: 'negative', x: widthPx, y: heightPx / 2, connectedTo: [] }
+            }
+        };
+        
+        allItems.push(panel);
+        return panel;
+    }
+    
     // ============================================
     // RENDERING
     // ============================================
@@ -8104,6 +8347,74 @@ const SolarDesigner = (function() {
         showToast('Exported solar design', 'info');
     }
     
+    /**
+     * Export current design to Solar Simulator (3D mode)
+     * Uses the shared ExportFormat for standardized data exchange
+     */
+    function exportToSimulator() {
+        // Get current config
+        const config = getSolarConfig();
+        
+        // Calculate summary stats
+        let totalPanelWatts = 0;
+        let totalBatteryKwh = 0;
+        let totalLoadWatts = 0;
+        
+        allItems.forEach(item => {
+            if (item.type === 'panel') {
+                totalPanelWatts += item.specs.wmp || 0;
+            } else if (item.type === 'battery') {
+                totalBatteryKwh += ((item.specs.voltage || 0) * (item.specs.ah || 0)) / 1000;
+            } else if (item.type === 'smartbattery') {
+                totalBatteryKwh += item.specs.kWh || 0;
+            } else if (item.type === 'controller' && item.specs.internalBatteryKWh) {
+                totalBatteryKwh += item.specs.internalBatteryKWh;
+            } else if (item.type === 'acload' || item.type === 'producer') {
+                totalLoadWatts += item.specs.watts || 0;
+            }
+        });
+        
+        // Create export using shared format
+        const exportData = ExportFormat.createDesignerExport({
+            // Components
+            components: config.items,
+            connections: config.connections,
+            
+            // Canvas state (get current transform from D3 if available)
+            canvasWidth: 2000,
+            canvasHeight: 1500,
+            zoom: svg ? d3.zoomTransform(svg.node()).k : 1,
+            panX: svg ? d3.zoomTransform(svg.node()).x : 0,
+            panY: svg ? d3.zoomTransform(svg.node()).y : 0,
+            
+            // Automation rules
+            automationRules: Automations.exportRules(),
+            
+            // Simulation state
+            timeOfDay: Simulation.time,
+            isLiveMode: LiveView.state.active,
+            loadStates: LiveView.state.loadStates,
+            breakerStates: LiveView.state.breakerStates,
+            
+            // Summary
+            totalPanelWatts,
+            totalBatteryKwh,
+            totalLoadWatts,
+            componentCount: allItems.length
+        });
+        
+        // Save to localStorage
+        ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.DESIGNER_EXPORT, exportData);
+        
+        // Also save automation rules separately for potential sync
+        ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.AUTOMATION_RULES, Automations.exportRules());
+        
+        // Open Solar Simulator with import flag
+        window.open('solar_simulator.html?import=solarDesigner', '_blank');
+        
+        showToast(`Exported ${allItems.length} components to 3D Simulator`, 'info');
+    }
+    
     // Import solar config from JSON file
     function importSolarConfig() {
         const input = document.createElement('input');
@@ -10261,6 +10572,10 @@ const SolarDesigner = (function() {
         getItems: () => allItems,
         getConnections: () => connections,
         isInitialized: () => isInitialized,
+        // Export functions
+        exportToSimulator,  // Export to 3D Solar Simulator
+        exportSolarConfig,  // Export to JSON file
+        importSolarConfig,  // Import from JSON file
         // Linkage import functions
         addPanelFromLinkage,
         importPanelArray,
@@ -10268,6 +10583,9 @@ const SolarDesigner = (function() {
         addBatteryFromLinkage,
         importSystemFromLinkage,
         arrangePanelsInGrid,
+        // Panel sync (preserves other components)
+        syncPanelsFromLinkage,
+        removeAllPanels,
         // Stats and modes
         updateStats,
         stopLiveMode,  // Expose for cleanup on mode switch

@@ -4233,7 +4233,7 @@
             _ctrlPreset("Renogy Rover 60A MPPT", { maxVoc: 150, maxIsc: 35, maxWmp: 1560, mppVoltageMax: 140, ratedChargeCurrent: 60, supportedVoltages: [12,24], width: 190, height: 340, cost: 250 }),
             _ctrlPreset("EPever Tracer 40A MPPT", { maxVoc: 150, maxIsc: 25, maxWmp: 1040, mppVoltageMax: 140, ratedChargeCurrent: 40, supportedVoltages: [12,24], width: 200, height: 300, cost: 120 }),
             // Hybrid Inverters (with built-in MPPT)
-            _ctrlPreset("PowMR 5000W Hybrid", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 18, maxWmp: 5500, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 115, ratedChargeCurrent: 80, supportedVoltages: [48], maxACOutputW: 5000, width: 460, height: 540, cost: 650 }),
+            _ctrlPreset("PowMR 5000W Hybrid", { type: 'hybrid_inverter', maxVoc: 500, maxIsc: 18, maxWmp: 5500, minVmp: 120, mppVoltageMin: 120, mppVoltageMax: 450, ratedChargeCurrent: 80, supportedVoltages: [48], maxACOutputW: 5000, width: 460, height: 540, cost: 650 }),
             _ctrlPreset("Victron MultiPlus-II 48/5000", { type: 'hybrid_inverter', maxVoc: 150, maxIsc: 35, maxWmp: 4500, minVmp: 38, mppVoltageMin: 38, mppVoltageMax: 145, ratedChargeCurrent: 70, supportedVoltages: [48], maxACOutputW: 5000, width: 328, height: 520, cost: 2200 }),
             _ctrlPreset("Growatt SPF 5000ES", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 18, maxWmp: 5500, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 115, ratedChargeCurrent: 80, supportedVoltages: [48], maxACOutputW: 5000, width: 460, height: 540, cost: 700 }),
             _ctrlPreset("PowMR 3000W Hybrid", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 18, maxWmp: 3000, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 115, ratedChargeCurrent: 60, supportedVoltages: [24,48], maxACOutputW: 3000, width: 410, height: 480, cost: 450 }),
@@ -7485,6 +7485,36 @@
                     // Positive on left side, negative on right side (standard convention)
                     positive: { id: `${id}-pos`, polarity: 'positive', x: 0, y: panelHeightPx / 2, side: 'left', connectedTo: [] },
                     negative: { id: `${id}-neg`, polarity: 'negative', x: panelWidthPx, y: panelHeightPx / 2, side: 'right', connectedTo: [] }
+                }
+            };
+        }
+        
+        // Create panel with specific pixel dimensions (for LinkageLab import)
+        function createPanelWithDimensions(x, y, specs, widthPx, heightPx) {
+            const id = `panel-${++itemIdCounter}`;
+            let imp = specs.imp;
+            if (!imp && specs.wmp && specs.vmp) {
+                imp = specs.wmp / specs.vmp;
+            } else if (!imp && specs.isc) {
+                imp = specs.isc * 0.9;
+            } else if (!imp) {
+                imp = 0;
+            }
+            
+            return {
+                id,
+                type: 'panel',
+                x, y,
+                width: widthPx,
+                height: heightPx,
+                specs: { 
+                    ...specs, 
+                    imp: parseFloat(imp.toFixed(2)),
+                    scaleFactor: heightPx / ((specs.height || 1650) / 1000)
+                },
+                handles: {
+                    positive: { id: `${id}-pos`, polarity: 'positive', x: 0, y: heightPx / 2, side: 'left', connectedTo: [] },
+                    negative: { id: `${id}-neg`, polarity: 'negative', x: widthPx, y: heightPx / 2, side: 'right', connectedTo: [] }
                 }
             };
         }
@@ -23418,34 +23448,142 @@
                 window.linkageLabCameraState = data.cameraState;
             }
             
-            // Calculate layout for panels
+            // Calculate layout for panels - use grid config from LinkageLab
             const panelCount = data.solarPanels.count || 0;
-            const panelWidth = 120; // Display width in pixels
-            const panelHeight = 80; // Display height in pixels
-            const padding = 20;
-            const cols = Math.min(4, panelCount); // Max 4 columns
-            const rows = Math.ceil(panelCount / cols);
+            const config = data.solarPanels.configuration || {};
+            const isArchMode = config.isArchMode || config.layoutMode === 'arch';
+            const gridRows = config.gridRows || Math.ceil(Math.sqrt(panelCount));
+            const gridCols = config.gridCols || Math.ceil(panelCount / gridRows);
+            const panelsPerSide = config.panelsPerSide || (gridRows * gridCols);
+            const numSides = config.numSides || Math.ceil(panelCount / panelsPerSide);
             
-            const totalWidth = cols * (panelWidth + padding) - padding;
-            const startX = (svgWidth - totalWidth) / 2;
-            const startY = 80;
+            // Calculate panel pixel dimensions from actual specs (width/height in mm)
+            const specWidthMm = customPanel.width || 990;  // Default ~39 inches
+            const specHeightMm = customPanel.height || 1651; // Default ~65 inches
             
-            // Create panels based on count
-            for (let i = 0; i < panelCount; i++) {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
-                const x = startX + col * (panelWidth + padding);
-                const y = startY + row * (panelHeight + padding);
-                
-                const panel = createPanel(x, y, customPanel);
-                allItems.push(panel);
+            // Scale: maintain aspect ratio, ~90px per meter
+            const scaleFactor = 0.09;
+            const panelWidth = Math.max(60, Math.min(180, specWidthMm * scaleFactor));
+            const panelHeight = Math.max(80, Math.min(220, specHeightMm * scaleFactor));
+            
+            // Calculate spacing from linkage padding (inches -> pixels)
+            const paddingScale = 2.5;
+            const paddingX = Math.max(15, (config.paddingX || 2) * paddingScale);
+            const paddingY = Math.max(15, (config.paddingY || 2) * paddingScale);
+            
+            // Store panels in grid for auto-wiring
+            const panelGrid = [];
+            for (let r = 0; r < gridRows; r++) {
+                panelGrid[r] = [];
             }
             
-            // Add a controller and battery below the panels
-            const controllerY = startY + rows * (panelHeight + padding) + 40;
-            const controller = createController(svgWidth / 2 - 75, controllerY, CONTROLLER_PRESETS[0]);
-            const battery = createBattery(svgWidth / 2 - 50, controllerY + 150, BATTERY_PRESETS[0]);
+            if (isArchMode && numSides > 1) {
+                // Arch mode: Create panels grouped by A/B sides
+                const arrayWidth = gridCols * (panelWidth + paddingX) - paddingX;
+                const arrayHeight = gridRows * (panelHeight + paddingY) - paddingY;
+                const groupSpacing = 50;
+                
+                const numPairs = Math.ceil(numSides / 2);
+                const pairWidth = arrayWidth * 2 + groupSpacing;
+                const totalWidth = numPairs * pairWidth + (numPairs - 1) * 30;
+                let baseStartX = (svgWidth - totalWidth) / 2;
+                const startY = 80;
+                
+                for (let i = 0; i < panelCount; i++) {
+                    const sideIndex = Math.floor(i / panelsPerSide);
+                    const pairIndex = Math.floor(sideIndex / 2);
+                    const isASide = sideIndex % 2 === 0;
+                    const withinSide = i % panelsPerSide;
+                    const row = Math.floor(withinSide / gridCols);
+                    const col = withinSide % gridCols;
+                    
+                    const pairStartX = baseStartX + pairIndex * (pairWidth + 30);
+                    const arrayOffsetX = isASide ? 0 : arrayWidth + groupSpacing;
+                    
+                    const x = pairStartX + arrayOffsetX + col * (panelWidth + paddingX);
+                    const y = startY + row * (panelHeight + paddingY);
+                    
+                    // Create panel with correct dimensions
+                    const panel = createPanelWithDimensions(x, y, customPanel, panelWidth, panelHeight);
+                    allItems.push(panel);
+                    
+                    // Only wire first side
+                    if (sideIndex === 0) {
+                        panelGrid[row][col] = panel;
+                    }
+                }
+            } else {
+                // Top panel mode: Use exact grid layout from LinkageLab
+                const totalWidth = gridCols * (panelWidth + paddingX) - paddingX;
+                const startX = (svgWidth - totalWidth) / 2;
+                const startY = 80;
+                
+                for (let i = 0; i < panelCount; i++) {
+                    const col = i % gridCols;
+                    const row = Math.floor(i / gridCols);
+                    const x = startX + col * (panelWidth + paddingX);
+                    const y = startY + row * (panelHeight + paddingY);
+                    
+                    const panel = createPanelWithDimensions(x, y, customPanel, panelWidth, panelHeight);
+                    allItems.push(panel);
+                    panelGrid[row][col] = panel;
+                }
+            }
+            
+            // Auto-wire panels: columns in series, rows in parallel
+            // Each column forms a "string" wired in series
+            // All strings connect in parallel to the controller PV inputs
+            
+            // Wire panels in series within each column (string)
+            for (let col = 0; col < gridCols; col++) {
+                for (let row = 0; row < gridRows - 1; row++) {
+                    const upperPanel = panelGrid[row]?.[col];
+                    const lowerPanel = panelGrid[row + 1]?.[col];
+                    
+                    if (upperPanel && lowerPanel && upperPanel.handles?.negative && lowerPanel.handles?.positive) {
+                        createConnection(upperPanel, upperPanel.handles.negative, lowerPanel, lowerPanel.handles.positive);
+                    }
+                }
+            }
+            
+            // Add controller and battery with correct defaults
+            const panelArrayHeight = gridRows * (panelHeight + paddingY) - paddingY;
+            const controllerY = 80 + panelArrayHeight + 60;
+            
+            // Find PowMR 5000W Hybrid in presets
+            const powmrPreset = CONTROLLER_PRESETS.find(p => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3] || CONTROLLER_PRESETS[0];
+            const controller = createController(svgWidth / 2 - 75, controllerY, powmrPreset);
+            
+            // Find Ruixu 48V 314Ah in presets
+            const ruixuPreset = BATTERY_PRESETS.find(p => p.name.includes('Ruixu 48V 314Ah')) || 
+                               BATTERY_PRESETS.find(p => p.name.includes('48V') && p.ah >= 200) ||
+                               BATTERY_PRESETS[0];
+            const battery = createBattery(svgWidth / 2 + 100, controllerY, ruixuPreset);
+            
             allItems.push(controller, battery);
+            
+            // Connect each string to controller in parallel
+            for (let col = 0; col < gridCols; col++) {
+                const stringTopPanel = panelGrid[0]?.[col];
+                const stringBottomPanel = panelGrid[gridRows - 1]?.[col];
+                
+                // Connect string positive to controller PV+
+                if (stringTopPanel?.handles?.positive && controller.handles?.pvPositive) {
+                    createConnection(stringTopPanel, stringTopPanel.handles.positive, controller, controller.handles.pvPositive);
+                }
+                // Connect string negative to controller PV-
+                if (stringBottomPanel?.handles?.negative && controller.handles?.pvNegative) {
+                    createConnection(stringBottomPanel, stringBottomPanel.handles.negative, controller, controller.handles.pvNegative);
+                }
+            }
+            
+            // Wire controller to battery
+            if (controller.handles?.batteryPositive && battery.handles?.positive) {
+                createConnection(controller, controller.handles.batteryPositive, battery, battery.handles.positive);
+            }
+            if (controller.handles?.batteryNegative && battery.handles?.negative) {
+                createConnection(controller, controller.handles.batteryNegative, battery, battery.handles.negative);
+            }
             
             // Refresh library UI to show custom panel
             populateLibraries();
@@ -23465,8 +23603,10 @@
             
             // Show import summary
             const structureCostStr = data.structureCost ? `Structure cost: $${data.structureCost.subtotal.toFixed(2)}` : '';
+            const layoutDesc = isArchMode ? `${numSides} sides (${gridRows}×${gridCols} per side)` : `${gridRows}×${gridCols} grid`;
+            const wiringDesc = `${gridCols} strings × ${gridRows} series`;
             showHint("LinkageLab Import", 
-                `Imported ${panelCount} x ${customPanel.wmp}W panels from LinkageLab. ${structureCostStr}\n\nConnect the panels to the controller to build your microgrid.`);
+                `Imported ${panelCount} x ${customPanel.wmp}W panels (${layoutDesc}) from LinkageLab.\n\nAuto-wired: ${wiringDesc} to ${powmrPreset.name} with ${ruixuPreset.name}.\n\n${structureCostStr}`);
         }
         
         // ============================================
