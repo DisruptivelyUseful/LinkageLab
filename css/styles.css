@@ -1,4 +1,4 @@
-﻿/* ============================================
+/* ============================================
            LINKAGE LAB - ENHANCED STYLES
            Based on simbiosis design system
            ============================================ */
@@ -203,6 +203,140 @@
         .topbar-sun input[type="range"] {
             width: 50px;
             height: 4px;
+        }
+        
+        /* Hide azimuth/elevation sliders in solar mode, show daylight slider */
+        body.solar-mode .topbar-sun {
+            display: none !important;
+        }
+        
+        .topbar-daylight {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        body.solar-mode .topbar-daylight {
+            display: flex !important;
+        }
+        
+        .topbar-daylight input[type="range"] {
+            width: 120px;
+            height: 4px;
+            accent-color: var(--clr-warning);
+        }
+        
+        #daylight-time-display-top {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            min-width: 70px;
+            text-align: center;
+        }
+        
+        /* Topbar Simulation Controls (Solar Live mode) */
+        #topbar-sim-controls {
+            display: none;
+            align-items: center;
+            gap: 8px;
+            padding: 0 12px;
+            background: linear-gradient(135deg, rgba(240, 173, 78, 0.1) 0%, rgba(234, 88, 12, 0.1) 100%);
+            border: 1px solid rgba(240, 173, 78, 0.3);
+            border-radius: var(--radius-md);
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+        
+        body.solar-mode #topbar-sim-controls.active {
+            display: flex !important;
+        }
+        
+        .topbar-sim-time {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--clr-warning);
+            min-width: 70px;
+            text-align: center;
+        }
+        
+        .sim-slider-top {
+            width: 120px;
+            height: 4px;
+            accent-color: var(--clr-warning);
+        }
+        
+        .topbar-select {
+            padding: 4px 8px;
+            font-size: 0.7rem;
+            background: var(--bg-input);
+            border: 1px solid var(--border-light);
+            color: var(--text-primary);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+        }
+        
+        .topbar-select:hover {
+            border-color: var(--clr-warning);
+        }
+        
+        /* Live Power Stats Panel */
+        #live-power-stats-panel {
+            display: none;
+            position: fixed;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(25, 39, 52, 0.95) 0%, rgba(21, 32, 43, 0.95) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 8px 16px;
+            z-index: 150;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            backdrop-filter: blur(10px);
+        }
+        
+        #live-power-stats-panel.active {
+            display: flex;
+            gap: 20px;
+        }
+        
+        .live-stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .live-stat-icon {
+            font-size: 1.2rem;
+        }
+        
+        .live-stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .live-stat-label {
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+        }
+        
+        .live-stat-value {
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        
+        .live-stat-value.charging {
+            color: var(--clr-success);
+        }
+        
+        .live-stat-value.discharging {
+            color: var(--clr-warning);
         }
 
         /* SIDEBAR - Narrower, more compact */
@@ -1357,19 +1491,12 @@
             color: var(--text-muted);
         }
 
-        /* Solar Mode Left Sidebar - Stats and Controls */
+        /* Solar Mode Left Sidebar - HIDDEN (all features moved to right sidebar) */
         #solar-sidebar {
-            display: none;
-            flex-direction: column;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 15px;
-            padding-bottom: 80px;
-            width: 280px;
-            box-sizing: border-box;
+            display: none !important;
         }
         body.solar-mode #solar-sidebar {
-            display: block;
+            display: none !important;
         }
         #solar-sidebar::-webkit-scrollbar {
             width: 5px;
@@ -1816,31 +1943,57 @@
             animation: lowBatteryPulse 1s ease infinite;
         }
         
-        /* Power flow animations */
+        /* Power flow animations - direction based on visual flow 
+           flowRight: dashes appear to move right/down (offset decreases toward negative)
+           flowLeft: dashes appear to move left/up (offset increases toward positive)
+           Note: stroke-dashoffset increasing = pattern shifts backward = visual movement forward
+        */
         @keyframes flowRight {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: 20; }
+            0% { stroke-dashoffset: 12; }
+            100% { stroke-dashoffset: 0; }
         }
         
         @keyframes flowLeft {
             0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -20; }
+            100% { stroke-dashoffset: 12; }
         }
         
-        /* Wire visual states */
-        /* Live but not flowing: glow only */
+        /* ============================================
+           WIRE VISUAL STATES
+           ============================================ */
+        
+        /* Live but not flowing: glow only (no animation, no dashes) */
         .wire.wire-live {
             filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.4));
         }
         
         .wire.ac.wire-live {
+            filter: drop-shadow(0 0 5px rgba(240, 173, 78, 0.5));
+        }
+        
+        /* PV wires glow (golden/green) when solar available */
+        .wire.pv-live {
+            filter: drop-shadow(0 0 5px rgba(92, 184, 92, 0.6));
+        }
+        
+        .wire.dc-positive.wire-live,
+        .wire.dc-negative.wire-live {
             filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.5));
         }
         
-        /* Live and flowing: glow + animation */
+        /* Battery wires glow when connected/active */
+        .wire.battery-live {
+            filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.5));
+        }
+        
+        /* ============================================
+           WIRE FLOWING ANIMATIONS (live + active flow)
+           ============================================ */
+        
+        /* AC wires - flowing when loads are active */
         .wire.wire-flowing {
-            filter: drop-shadow(0 0 6px rgba(92, 184, 92, 0.7));
             stroke-dasharray: 8, 4;
+            filter: drop-shadow(0 0 6px rgba(240, 173, 78, 0.7));
         }
         
         .wire.ac.wire-flowing.flow-right {
@@ -1851,37 +2004,295 @@
             animation: flowLeft var(--animation-duration, 0.6s) linear infinite;
         }
         
+        /* ============================================
+           PV WIRE ANIMATIONS (solar charging)
+           ============================================ */
+        
+        /* PV positive wire: current flows FROM panels TO controller 
+           Visual: dashes flow toward controller (typically rightward/downward) */
         .wire.pv-flowing {
+            stroke-dasharray: 8, 4;
+            filter: drop-shadow(0 0 5px rgba(92, 184, 92, 0.7));
             animation: flowRight var(--animation-duration, 0.6s) linear infinite;
         }
         
+        /* PV negative wire: electron flow FROM controller TO panels
+           Visual: dashes flow toward panels (opposite of positive wire) */
         .wire.pv-flowing-reverse {
+            stroke-dasharray: 8, 4;
+            filter: drop-shadow(0 0 5px rgba(92, 184, 92, 0.7));
             animation: flowLeft var(--animation-duration, 0.6s) linear infinite;
         }
         
-        /* Solar PV wire animations */
-        /* PV wire animations - only when charging */
-        .wire.pv-flowing {
+        /* ============================================
+           BATTERY WIRE ANIMATIONS
+           ============================================ */
+        
+        /* Battery charging: power flowing INTO battery */
+        .wire.battery-charging {
             stroke-dasharray: 8, 4;
-            animation: flowRight 0.6s linear infinite;
-            filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.6));
+            filter: drop-shadow(0 0 5px rgba(92, 184, 92, 0.7));
+            animation: flowRight var(--animation-duration, 0.8s) linear infinite;
         }
         
-        .wire.pv-flowing-reverse {
-            stroke-dasharray: 8, 4;
-            animation: flowLeft 0.6s linear infinite;
-            filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.6));
+        /* Positive terminal: current flows in = rightward */
+        .wire.battery-charging.positive {
+            animation: flowRight var(--animation-duration, 0.8s) linear infinite;
         }
         
-        /* PV wires glow when solar available (even if not charging) */
-        .wire.dc-positive.wire-live,
-        .wire.dc-negative.wire-live {
-            filter: drop-shadow(0 0 4px rgba(92, 184, 92, 0.5));
+        /* Negative terminal: electron flow out = leftward visual */
+        .wire.battery-charging.negative {
+            animation: flowLeft var(--animation-duration, 0.8s) linear infinite;
+        }
+        
+        /* Battery discharging: power flowing FROM battery to loads */
+        .wire.battery-discharging {
+            stroke-dasharray: 8, 4;
+            filter: drop-shadow(0 0 5px rgba(240, 173, 78, 0.7));
+            animation: flowLeft var(--animation-duration, 0.8s) linear infinite;
+        }
+        
+        /* Positive terminal: current flows out = leftward */
+        .wire.battery-discharging.positive {
+            animation: flowLeft var(--animation-duration, 0.8s) linear infinite;
+        }
+        
+        /* Negative terminal: electron flow in = rightward visual */
+        .wire.battery-discharging.negative {
+            animation: flowRight var(--animation-duration, 0.8s) linear infinite;
+        }
+        
+        /* Battery wire glow states (live but idle) */
+        .wire.battery-positive.wire-live {
+            filter: drop-shadow(0 0 4px rgba(217, 83, 79, 0.6));
+        }
+        
+        .wire.battery-negative.wire-live {
+            filter: drop-shadow(0 0 3px rgba(100, 100, 100, 0.5));
+        }
+        
+        /* Wire overload/warning state */
+        .wire.overloaded {
+            stroke: #ff4444 !important;
+            stroke-dasharray: 4, 2;
+            animation: wireOverload 0.3s linear infinite;
+            filter: drop-shadow(0 0 8px rgba(255, 68, 68, 0.8));
+        }
+        
+        @keyframes wireOverload {
+            0%, 100% { stroke-opacity: 1; }
+            50% { stroke-opacity: 0.5; }
         }
         
         /* Legacy support - keep for backwards compatibility */
         .wire.power-flowing {
             filter: drop-shadow(0 0 6px rgba(245, 158, 11, 0.6));
+        }
+        
+        /* ============================================
+           ADDITIONAL WIRE ANIMATIONS
+           ============================================ */
+        
+        /* Pulse glow for live wires */
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.6; }
+            50% { opacity: 1; }
+        }
+        
+        /* Legacy power-flowing class (backwards compatibility) */
+        .wire.power-flowing {
+            stroke-dasharray: 8, 4;
+            animation: flowRight var(--animation-duration, 0.6s) linear infinite;
+            filter: drop-shadow(0 0 4px currentColor);
+        }
+        
+        /* Resource flow animations */
+        .wire.resource-consuming {
+            stroke-dasharray: 6, 6;
+            animation: flowRight var(--animation-duration, 0.8s) linear infinite;
+        }
+        .wire.resource-producing {
+            stroke-dasharray: 6, 6;
+            animation: flowLeft var(--animation-duration, 0.8s) linear infinite;
+        }
+        
+        /* Legacy is-flowing class */
+        .connection.is-flowing { 
+            stroke-dasharray: 10, 5; 
+            animation: flowRight var(--animation-duration, 0.8s) linear infinite; 
+        }
+        
+        /* High power glow effect - enhanced glow for high-current wires */
+        .wire.high-power {
+            stroke-width: 6px;
+            filter: 
+                drop-shadow(0 0 3px currentColor)
+                drop-shadow(0 0 8px currentColor);
+        }
+        
+        /* ============================================
+           WIRE THERMAL & FAILURE ANIMATIONS
+           ============================================ */
+        
+        /* Wire heating effect - pre-burn warning */
+        .wire-group.wire-heating path {
+            stroke: #ff8800 !important;
+            filter: drop-shadow(0 0 6px rgba(255, 136, 0, 0.8));
+            animation: wireHeatPulse 0.8s ease infinite;
+        }
+        
+        /* Wire critical - about to burn */
+        .wire-group.wire-critical path {
+            stroke: #ff4400 !important;
+            stroke-width: 6px;
+            filter: drop-shadow(0 0 10px rgba(255, 68, 0, 1));
+            animation: wireCriticalPulse 0.3s ease infinite;
+        }
+        
+        /* Wire overload/burn animation */
+        .wire-group.failure-burned path {
+            stroke: #ff0000 !important;
+            stroke-width: 8px !important;
+            stroke-dasharray: 5, 5;
+            animation: wireBurn 1s ease-out;
+            filter: drop-shadow(0 0 8px rgba(255, 0, 0, 0.8));
+        }
+        
+        @keyframes wireBurn {
+            0% { 
+                stroke: #ff6600;
+                stroke-width: 4px;
+                opacity: 1;
+            }
+            50% {
+                stroke: #ff0000;
+                stroke-width: 6px;
+                opacity: 0.8;
+            }
+            100% {
+                stroke: #990000;
+                stroke-width: 8px;
+                opacity: 0.5;
+            }
+        }
+        
+        /* Heat shimmer effect overlay */
+        .heat-shimmer {
+            pointer-events: none;
+            animation: shimmerMove 2s linear infinite;
+        }
+        
+        @keyframes shimmerMove {
+            0% { transform: translateY(0); opacity: 0.3; }
+            50% { opacity: 0.6; }
+            100% { transform: translateY(-20px); opacity: 0; }
+        }
+        
+        /* Smoke particle */
+        .smoke-particle {
+            fill: #555;
+            opacity: 0.7;
+            animation: smokeRise 2s ease-out forwards;
+        }
+        
+        @keyframes smokeRise {
+            0% {
+                transform: translateY(0) scale(1);
+                opacity: 0.7;
+            }
+            100% {
+                transform: translateY(-60px) scale(2);
+                opacity: 0;
+            }
+        }
+        
+        /* ============================================
+           ENHANCED FAILURE STATE ANIMATIONS
+           ============================================ */
+        
+        /* Explosion effect - for destroyed components */
+        .item-group.failure-exploded {
+            animation: explosionShake 0.5s ease-out;
+        }
+        
+        .item-group.failure-exploded rect,
+        .item-group.failure-exploded .panel-body,
+        .item-group.failure-exploded circle {
+            stroke: #ff0000 !important;
+            stroke-width: 4px !important;
+            filter: drop-shadow(0 0 20px rgba(255, 0, 0, 1)) drop-shadow(0 0 40px rgba(255, 100, 0, 0.8));
+            animation: explosionFlash 0.5s ease-out;
+        }
+        
+        @keyframes explosionShake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-10px, -5px) rotate(-5deg); }
+            20% { transform: translate(10px, 5px) rotate(5deg); }
+            30% { transform: translate(-8px, -3px) rotate(-3deg); }
+            40% { transform: translate(8px, 3px) rotate(3deg); }
+            50% { transform: translate(-5px, -2px) rotate(-2deg); }
+            60% { transform: translate(5px, 2px) rotate(2deg); }
+            70% { transform: translate(-3px, -1px) rotate(-1deg); }
+            80% { transform: translate(3px, 1px) rotate(1deg); }
+            90% { transform: translate(-1px, 0) rotate(0deg); }
+        }
+        
+        @keyframes explosionFlash {
+            0% { opacity: 1; filter: drop-shadow(0 0 5px rgba(255, 0, 0, 0.5)); }
+            25% { opacity: 0.3; filter: drop-shadow(0 0 30px rgba(255, 0, 0, 1)); }
+            50% { opacity: 1; filter: drop-shadow(0 0 20px rgba(255, 100, 0, 1)); }
+            75% { opacity: 0.5; filter: drop-shadow(0 0 15px rgba(255, 0, 0, 0.8)); }
+            100% { opacity: 0.7; filter: drop-shadow(0 0 10px rgba(255, 0, 0, 0.6)); }
+        }
+        
+        /* Spark particles for explosions */
+        .spark-particle {
+            fill: #ffaa00;
+            opacity: 1;
+            animation: sparkFly 0.8s ease-out forwards;
+        }
+        
+        @keyframes sparkFly {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 1;
+            }
+            100% {
+                transform: translate(var(--spark-x, 50px), var(--spark-y, -50px)) scale(0);
+                opacity: 0;
+            }
+        }
+        
+        /* Spark effect */
+        .spark-effect {
+            fill: #ffff00;
+            animation: sparkFlash 0.15s ease-out;
+        }
+        
+        @keyframes sparkFlash {
+            0% { 
+                transform: scale(0);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.5);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(0);
+                opacity: 0;
+            }
+        }
+        
+        /* Overload warning pulse - enhanced */
+        .item-group.failure-overloaded {
+            animation: overloadPulse 1s ease infinite;
+        }
+        
+        .item-group.failure-overloaded rect {
+            stroke: #ff8800 !important;
+            stroke-width: 3px !important;
+            filter: drop-shadow(0 0 12px rgba(255, 136, 0, 0.8));
         }
         
         /* Solar Right Sidebar - Component Library & Inspector */
@@ -2019,6 +2430,363 @@
         #solar-right-sidebar::-webkit-scrollbar-thumb:hover,
         #solar-right-sidebar .tab-content::-webkit-scrollbar-thumb:hover {
             background: var(--border-light);
+        }
+
+        /* Library Search Box */
+        .library-search {
+            position: relative;
+            margin-bottom: 16px;
+        }
+        
+        .library-search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 14px;
+            pointer-events: none;
+        }
+        
+        .library-search input {
+            width: 100%;
+            padding: 10px 36px 10px 36px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            color: var(--text-primary);
+            font-size: 12px;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+        
+        .library-search input:hover {
+            border-color: var(--border-med);
+        }
+        
+        .library-search input:focus {
+            outline: none;
+            border-color: var(--clr-warning);
+            box-shadow: 0 0 0 3px rgba(240, 173, 78, 0.15);
+        }
+        
+        .library-search input::placeholder {
+            color: var(--text-dim);
+            font-style: italic;
+        }
+        
+        .library-search-clear {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 12px;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+        
+        .library-search-clear:hover {
+            opacity: 1;
+            color: var(--clr-danger);
+        }
+        
+        /* Library Categories */
+        .library-category {
+            margin-bottom: 8px;
+        }
+        
+        .library-category-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            padding: 10px 12px;
+            background: linear-gradient(135deg, var(--bg-input) 0%, var(--panel) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            margin-bottom: 4px;
+            transition: all 0.2s ease;
+        }
+        
+        .library-category-header::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--border);
+            transition: all 0.2s ease;
+        }
+        
+        .library-category-header:hover {
+            background: linear-gradient(135deg, var(--bg-input) 0%, rgba(240, 173, 78, 0.1) 100%);
+            border-color: var(--clr-warning);
+        }
+        
+        .library-category-header.expanded {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            margin-bottom: 0;
+            border-bottom-color: transparent;
+            background: linear-gradient(135deg, var(--bg-input) 0%, rgba(240, 173, 78, 0.1) 100%);
+        }
+        
+        .library-category-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--text-secondary);
+        }
+        
+        .library-category-header:hover .library-category-title,
+        .library-category-header.expanded .library-category-title {
+            color: var(--text-primary);
+        }
+        
+        .library-category-icon {
+            font-size: 16px;
+        }
+        
+        .library-category-toggle {
+            font-size: 10px;
+            color: var(--text-muted);
+            transition: all 0.2s ease;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background: var(--bg-input);
+        }
+        
+        .library-category-header:hover .library-category-toggle {
+            background: var(--panel);
+            color: var(--clr-warning);
+        }
+        
+        .library-category-header.expanded .library-category-toggle {
+            transform: rotate(180deg);
+            background: var(--clr-warning);
+            color: var(--bg-body);
+        }
+        
+        .library-category-content {
+            display: none;
+            padding: 10px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-top: none;
+            border-radius: 0 0 var(--radius-md) var(--radius-md);
+            margin-bottom: 8px;
+        }
+        
+        .library-category-content.expanded {
+            display: block;
+            animation: expandCategory 0.3s ease-out;
+        }
+        
+        @keyframes expandCategory {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        /* Library Items (Component Buttons) */
+        .component-library {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+        }
+        
+        .library-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 6px;
+            background: linear-gradient(135deg, var(--bg-input) 0%, var(--panel) 100%);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-align: center;
+            transition: all 0.2s ease;
+            min-height: 50px;
+        }
+        
+        .library-item:hover {
+            background: linear-gradient(135deg, rgba(240, 173, 78, 0.1) 0%, rgba(240, 173, 78, 0.05) 100%);
+            border-color: var(--clr-warning);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+        
+        .library-item:active {
+            transform: translateY(0);
+        }
+        
+        .library-item-icon {
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+        
+        .library-item-name {
+            font-size: 9px;
+            line-height: 1.2;
+            max-width: 100%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .library-item.hidden {
+            display: none;
+        }
+        
+        /* Inspector Empty State */
+        .inspector-empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-muted);
+        }
+        
+        .inspector-empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        
+        .inspector-empty-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+        
+        .inspector-empty-text {
+            font-size: 12px;
+            line-height: 1.5;
+            margin-bottom: 16px;
+        }
+        
+        .inspector-empty-hint {
+            font-size: 11px;
+            padding: 10px;
+            background: rgba(240, 173, 78, 0.1);
+            border-radius: var(--radius-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Inspector Quick Actions */
+        .inspector-quick-actions {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .inspector-quick-actions.hidden {
+            display: none;
+        }
+        
+        .quick-action-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 10px 12px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            color: var(--text-secondary);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-action-btn:hover {
+            background: rgba(240, 173, 78, 0.1);
+            border-color: var(--clr-warning);
+            color: var(--text-primary);
+        }
+        
+        .quick-action-btn.danger:hover {
+            background: rgba(217, 83, 79, 0.1);
+            border-color: var(--clr-danger);
+            color: var(--clr-danger);
+        }
+        
+        .quick-action-icon {
+            font-size: 14px;
+        }
+        
+        /* Keyboard Shortcuts Help */
+        .shortcuts-help {
+            margin-top: 20px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+        }
+        
+        .shortcuts-help-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        .shortcuts-help-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .shortcuts-help-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10px;
+            color: var(--text-dim);
+        }
+        
+        .keyboard-shortcut {
+            display: flex;
+            gap: 2px;
+        }
+        
+        .keyboard-shortcut kbd {
+            padding: 2px 5px;
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 9px;
+            color: var(--text-secondary);
         }
 
         /* Solar Component Palette - Using linkage group styles */
@@ -2430,8 +3198,42 @@
             padding: 8px;
             display: none;
         }
+        /* Properties Panel in Inspector Tab */
+        #solar-properties-panel {
+            display: none;
+            margin-top: 16px;
+        }
         #solar-properties-panel.visible {
             display: block;
+        }
+        #solar-properties-panel.hidden {
+            display: none;
+        }
+        
+        /* Inspector Section Divider */
+        .inspector-section-divider {
+            height: 1px;
+            background: var(--border);
+            margin: 16px 0;
+        }
+        
+        /* Sidebar Section (for inspector content) */
+        .sidebar-section {
+            padding: 0;
+        }
+        
+        /* Ensure solar groups work in right sidebar */
+        #solar-right-sidebar .solar-group {
+            margin-bottom: 12px;
+        }
+        
+        #solar-right-sidebar .solar-group-title {
+            font-size: 0.7rem;
+            padding: 8px 12px;
+        }
+        
+        #solar-right-sidebar .solar-group-content {
+            padding: 8px 12px;
         }
         .prop-title {
             font-size: 0.7rem;
@@ -2733,22 +3535,9 @@
         .wire.ac { stroke: #f0ad4e; }
         .wire.ac-240 { stroke: #ff6b6b; }
         
-        /* Power flow animation */
-        .wire.power-flowing {
-            animation: power-pulse 1s ease-in-out infinite, power-flow 2s linear infinite;
-            filter: drop-shadow(0 0 3px currentColor);
-        }
-        @keyframes power-pulse {
-            0%, 100% { stroke-opacity: 0.8; }
-            50% { stroke-opacity: 1; stroke-width: 4.5px; }
-        }
-        @keyframes power-flow {
-            0% { stroke-dashoffset: 0; }
-            100% { stroke-dashoffset: -20; }
-        }
-        .wire.power-flowing {
-            stroke-dasharray: 10 5;
-        }
+        /* Power flow animation - REMOVED: conflicting with earlier wire-flowing rules */
+        /* Wire animation is now handled by earlier .wire.wire-flowing, .wire.pv-flowing, etc. rules */
+        /* using flowRight/flowLeft keyframes with --animation-duration CSS variable */
         
         /* Component state animations */
         @keyframes component-glow-pulse {

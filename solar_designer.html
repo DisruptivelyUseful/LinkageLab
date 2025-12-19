@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';">
-    <title>Solar Builder & Simulator</title>
+    <title>Solar Circuit Designer</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Three.js for 3D structure visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
     <!-- Mission Control Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -16,7 +14,7 @@
     
     <style>
         /* ============================================
-           SOLAR ENERGY SIMULATOR - MISSION CONTROL
+           SOLAR CIRCUIT DESIGNER - MISSION CONTROL
            Aerospace-Inspired Interface Design
            ============================================ */
         
@@ -423,7 +421,6 @@
             transition: width var(--transition-med), opacity var(--transition-med); 
         }
         #right-sidebar { 
-            display: none !important; /* Hidden in simulator - components come from designer */
             width: 340px; right: 0; 
             border-left: 1px solid var(--space-400); 
             transition: width var(--transition-med), transform var(--transition-med); 
@@ -2966,16 +2963,17 @@
         </div>
         
         <div class="toolbar-center">
-            <!-- Time display - always visible and centered -->
-            <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
-
-            <!-- Simulate Mode Controls -->
-            <div id="simulateControls">
-                <div class="play-controls">
-                    <button id="playPauseButton">▶</button>
-                    <input type="range" id="speedSlider" min="1" max="100" value="10">
-                    <span class="speed-label" id="speedLabel">1x</span>
-                    <button id="resetSimulationBtn" style="margin-left: 10px;">Reset Simulation</button>
+            <!-- Mode toggle - Build and Test modes -->
+            <div class="mode-toggle">
+                <button id="buildModeBtn" class="active">Build</button>
+                <button id="testModeBtn">Test</button>
+            </div>
+            
+            <!-- Test Mode Controls (hidden by default) -->
+            <div id="testModeControls" class="hidden">
+                <div class="live-view-controls-container">
+                    <button id="resetAllLoadsBtn" class="live-view-reset-btn">Reset All Loads</button>
+                    <button id="resetAllBreakersBtn" class="live-view-reset-btn">Reset All Breakers</button>
                 </div>
             </div>
         </div>
@@ -2985,18 +2983,9 @@
                 <input type="checkbox" id="showHintsToggle" checked style="cursor: pointer;">
                 Show Hints
             </label>
-            <button id="structureViewBtn" onclick="toggleStructureViewport()" style="display: none;" title="Toggle 3D Structure View">🏗️ Structure</button>
-            <button id="editCircuitBtn" style="background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);">✏️ Edit Circuit</button>
-            <button id="challengeModeBtn">Challenge Mode</button>
-            <div class="weather-controls">
-                <label for="weatherDifficulty" style="color: white;">Weather:</label>
-                <select id="weatherDifficulty" style="padding: 5px;">
-                    <option value="clear" selected>Clear Sky (100%)</option>
-                    <option value="easy">Easy (80-100%)</option>
-                    <option value="medium">Medium (50-80%)</option>
-                    <option value="hard">Hard (20-60%)</option>
-                </select>
-            </div>
+            <button id="saveBtn">Save</button>
+            <button id="loadBtn">Load</button>
+            <button id="exportToSimulatorBtn" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">▶ Simulate</button>
         </div>
     </div>
     
@@ -3148,7 +3137,7 @@
         </div>
         
         <!-- RIGHT SIDEBAR - Component Library & Inspector -->
-        <div id="right-sidebar" class="closed" style="display: none;">
+        <div id="right-sidebar" class="open">
             <button id="right-sidebar-toggle" title="Toggle Library Panel (L)">▶</button>
             
             <!-- Tab Header -->
@@ -6338,869 +6327,11 @@
         }
         
         // ============================================
-        // SIMULATE MODE POWER FLOW MODULE
+        // SIMULATE MODE REMOVED - This functionality moved to solar_simulator.html
         // ============================================
-        const SimulateMode = {
-            // Power flow state for simulation
-            powerFlow: {}, // { connectionId: { watts, amps, voltage, direction, isLive } }
-            resourceFlow: {}, // { connectionId: { isFlowing, direction: 'consuming'|'producing', resourceType } }
-            
-            // Calculate resource flow for recipe-based loads
-            calculateResourceFlow: function() {
-                SimulateMode.resourceFlow = {};
-                
-                if (currentMode !== 'simulate') return;
-                
-                // Find all active recipe loads
-                const recipeLoads = allItems.filter(i => 
-                    i.type === 'acload' && 
-                    i.specs.recipes && 
-                    i.specs.recipes.length > 0 &&
-                    i.isProcessing
-                );
-                
-                recipeLoads.forEach(load => {
-                    const activeRecipeIndex = load.activeRecipeIndex || 0;
-                    const recipe = load.specs.recipes[activeRecipeIndex];
-                    if (!recipe) return;
-                    
-                    // Mark input connections as consuming
-                    Object.values(load.handles || {}).forEach(handle => {
-                        if (handle.polarity === 'input' && handle.connectedTo) {
-                            handle.connectedTo.forEach(conn => {
-                                const connObj = connections.find(c => c.id === conn.connectionId);
-                                if (connObj) {
-                                    SimulateMode.resourceFlow[connObj.id] = {
-                                        isFlowing: true,
-                                        direction: 'consuming',
-                                        resourceType: handle.resourceType
-                                    };
-                                }
-                            });
-                        }
-                        
-                        // Mark output connections as producing (only if recipe is near completion or has outputs)
-                        if (handle.polarity === 'output' && handle.connectedTo) {
-                            // Check if recipe produces outputs
-                            const recipeOutputs = recipe.outputs || [];
-                            if (recipeOutputs.length > 0) {
-                                handle.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj) {
-                                        SimulateMode.resourceFlow[connObj.id] = {
-                                            isFlowing: true,
-                                            direction: 'producing',
-                                            resourceType: handle.resourceType
-                                        };
-                                    }
-                                });
-                            }
-                        }
-                    });
-                });
-            },
-            
-            // Calculate power flow during simulation
-            calculatePowerFlow: function() {
-                // Phase 1.4: Power flow calculation caching
-                // Only recalculate if load states or power values have changed
-                const currentLoadPower = simStats.currentLoadPower || 0;
-                const currentSolarOutput = simStats.currentSolarOutput || 0;
-                const batteryCharge = simStats.batteryCharge || 0;
-                const acOutputEnabled = simStats.controllerACOutputEnabled !== false;
-                
-                // Build a string of which loads are running for more accurate cache invalidation
-                const runningLoads = allItems
-                    .filter(i => (i.type === 'acload' || i.type === 'processor') && i.simState?.isRunning)
-                    .map(i => i.id)
-                    .sort()
-                    .join(',');
-                
-                // Create cache key from current state including which loads are running
-                const cacheKey = `${currentLoadPower}_${currentSolarOutput}_${batteryCharge}_${acOutputEnabled}_${runningLoads}`;
-                
-                // Check if we need to recalculate
-                // During active simulation playback, always recalculate to ensure animations update correctly
-                const forceRecalculate = currentMode === 'simulate' && isPlaying;
-                if (!forceRecalculate && SimulateMode._powerFlowCache && SimulateMode._powerFlowCacheKey === cacheKey) {
-                    // Use cached result
-                    SimulateMode.powerFlow = SimulateMode._powerFlowCache;
-                    return;
-                }
-                
-                // Recalculate power flow
-                SimulateMode.powerFlow = {};
-                
-                // Also calculate resource flow
-                SimulateMode.calculateResourceFlow();
-                
-                // Calculate power flow even when paused, so wire glow works
-                if (currentMode !== 'simulate') {
-                    // Cache the empty result
-                    SimulateMode._powerFlowCache = SimulateMode.powerFlow;
-                    SimulateMode._powerFlowCacheKey = cacheKey;
-                    return;
-                }
-                
-                // Track visited connections for upstream tracing
-                const visitedConnections = new Set();
-                
-                // Calculate total AC power being consumed
-                let totalACWatts = 0;
-                const allLoads = allItems.filter(i => i.type === 'acload' || i.type === 'processor');
-                allLoads.forEach(load => {
-                    if (load.simState && load.simState.isRunning) {
-                        totalACWatts += load.simState.currentPowerWatts || 0;
-                    }
-                });
-                
-                // Helper to get watts for a specific load
-                const getLoadPowerWatts = (load) => {
-                    if (load.simState && load.simState.isRunning) {
-                        return load.simState.currentPowerWatts || 0;
-                    }
-                    return 0;
-                };
-                
-                // Helper to calculate total watts for all loads connected to an outlet
-                const getOutletTotalWatts = (outlet) => {
-                    let watts = 0;
-                    const checkConnection = (conn) => {
-                        const connObj = connections.find(c => c.id === conn.connectionId);
-                        if (connObj) {
-                            const load = allItems.find(i => 
-                                (i.id === connObj.sourceItemId || i.id === connObj.targetItemId) &&
-                                (i.type === 'acload' || i.type === 'processor')
-                            );
-                            if (load) {
-                                watts += getLoadPowerWatts(load);
-                            }
-                        }
-                    };
-                    if (outlet.handles?.load) outlet.handles.load.connectedTo.forEach(checkConnection);
-                    if (outlet.handles?.output) outlet.handles.output.connectedTo.forEach(checkConnection);
-                    return watts;
-                };
-                
-                // Helper to mark a connection as live with power flow
-                const markConnectionLive = (connId, watts, voltage = 120, direction = 'power') => {
-                    SimulateMode.powerFlow[connId] = {
-                        watts: watts,
-                        amps: watts / voltage,
-                        voltage: voltage,
-                        direction: direction,
-                        isLive: true
-                    };
-                };
-                
-                // Helper to trace backwards from a load/outlet and mark all upstream connections
-                const traceAndMarkUpstream = (item, handle, watts, voltage) => {
-                    if (!handle || !handle.connectedTo) return;
-                    
-                    handle.connectedTo.forEach(conn => {
-                        const connObj = connections.find(c => c.id === conn.connectionId);
-                        if (!connObj || visitedConnections.has(connObj.id)) return;
-                        visitedConnections.add(connObj.id);
-                        
-                        // Mark this connection
-                        markConnectionLive(connObj.id, watts, voltage, 'to-load');
-                        
-                        // Find the item on the other end
-                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                        const otherItem = allItems.find(i => i.id === otherItemId);
-                        if (!otherItem) return;
-                        
-                        // Find the handle on the other end
-                        const otherHandleId = connObj.sourceItemId === item.id ? connObj.targetHandleId : connObj.sourceHandleId;
-                        const otherHandle = Object.values(otherItem.handles || {}).find(h => h.id === otherHandleId);
-                        if (!otherHandle) return;
-                        
-                        // Continue tracing upstream based on component type
-                        if (otherItem.type === 'acoutlet') {
-                            // Outlet - trace through input if we came in through load/output
-                            if (otherHandle.id.includes('load') || otherHandle.id.includes('output')) {
-                                // Mark input connections too
-                                if (otherItem.handles?.input) {
-                                    traceAndMarkUpstream(otherItem, otherItem.handles.input, watts, voltage);
-                                }
-                            } else if (otherHandle.id.includes('input') || otherHandle.id.includes('-in')) {
-                                // Came in through input - trace further upstream
-                                traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
-                            }
-                        } else if (otherItem.type === 'breakerpanel') {
-                            // Breaker panel - could be circuit output or main input
-                            if (otherHandle.id.includes('circuit')) {
-                                // Circuit output - trace to main input
-                                if (otherItem.handles?.mainInput) {
-                                    traceAndMarkUpstream(otherItem, otherItem.handles.mainInput, watts, 240);
-                                }
-                            } else if (otherHandle.id.includes('main') || otherHandle.id.includes('Input')) {
-                                // Main input - trace to source (controller, hub, etc.)
-                                traceAndMarkUpstream(otherItem, otherHandle, watts, 240);
-                            }
-                        } else if (otherItem.type === 'acbreaker') {
-                            // AC breaker - trace through
-                            if (otherHandle.id.includes('loadOut') || otherHandle.id.includes('load-out')) {
-                                // Load output - trace to line input
-                                if (otherItem.handles?.lineIn) {
-                                    traceAndMarkUpstream(otherItem, otherItem.handles.lineIn, watts, voltage);
-                                }
-                            } else if (otherHandle.id.includes('lineIn') || otherHandle.id.includes('line-in') || otherHandle.id.includes('line_in')) {
-                                // Line input - trace further upstream
-                                traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
-                            }
-                        } else if (otherItem.type === 'controller') {
-                            // Reached controller - check if it's AC output
-                            if (otherHandle.id.includes('ac') || otherHandle.polarity === 'ac') {
-                                // Reached controller AC output - stop tracing
-                                return;
-                            }
-                        } else if (otherItem.type === 'doublevoltagehub') {
-                            // Double voltage hub - trace through all AC handles
-                            Object.values(otherItem.handles || {}).forEach(hubHandle => {
-                                if (hubHandle.polarity === 'ac' && hubHandle.id !== otherHandle.id) {
-                                    traceAndMarkUpstream(otherItem, hubHandle, watts, voltage);
-                                }
-                            });
-                        } else if (otherItem.type === 'spiderbox') {
-                            // Spider box - trace through main input if we came from an output
-                            if (otherHandle.id.includes('out') || otherHandle.id.includes('circuit')) {
-                                if (otherItem.handles?.mainIn || otherItem.handles?.input) {
-                                    const inputHandle = otherItem.handles.mainIn || otherItem.handles.input;
-                                    traceAndMarkUpstream(otherItem, inputHandle, watts, voltage);
-                                }
-                            } else {
-                                traceAndMarkUpstream(otherItem, otherHandle, watts, voltage);
-                            }
-                        } else {
-                            // Unknown component type - try to trace through any AC handles
-                            Object.values(otherItem.handles || {}).forEach(otherH => {
-                                if (otherH.id !== otherHandle.id && 
-                                    (otherH.polarity === 'ac' || otherH.polarity === 'load' || otherH.polarity === 'parallel')) {
-                                    traceAndMarkUpstream(otherItem, otherH, watts, voltage);
-                                }
-                            });
-                        }
-                    });
-                };
-                
-                // STEP 1: Trace BACKWARDS from each active load to mark all AC connections
-                // This ensures we only mark connections that actually lead to active loads
-                const traceLoadToController = (load, loadWatts, loadVoltage) => {
-                    const visited = new Set();
-                    
-                    const traceBack = (item, entryHandle) => {
-                        if (!item || visited.has(item.id)) return;
-                        visited.add(item.id);
-                        
-                        // For loads, start from their cord handle
-                        if (item.type === 'acload' || item.type === 'processor') {
-                            const cordHandle = item.handles?.cord;
-                            if (cordHandle?.connectedTo) {
-                                cordHandle.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !visitedConnections.has(connObj.id)) {
-                                        visitedConnections.add(connObj.id);
-                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                        
-                                        // Continue tracing
-                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                                        const otherItem = allItems.find(i => i.id === otherItemId);
-                                        if (otherItem) traceBack(otherItem, null);
-                                    }
-                                });
-                            }
-                            return;
-                        }
-                        
-                        // For outlets, trace through input
-                        if (item.type === 'acoutlet') {
-                            // Mark connection to load if exists
-                            if (item.handles?.load?.connectedTo) {
-                                item.handles.load.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !visitedConnections.has(connObj.id)) {
-                                        visitedConnections.add(connObj.id);
-                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                    }
-                                });
-                            }
-                            // Trace through input
-                            if (item.handles?.input?.connectedTo) {
-                                item.handles.input.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !visitedConnections.has(connObj.id)) {
-                                        visitedConnections.add(connObj.id);
-                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                        
-                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                                        const otherItem = allItems.find(i => i.id === otherItemId);
-                                        if (otherItem) traceBack(otherItem, null);
-                                    }
-                                });
-                            }
-                            return;
-                        }
-                        
-                        // For breaker panels, trace through main input
-                        if (item.type === 'breakerpanel') {
-                            // Mark the circuit connections that lead to this path
-                            for (let i = 0; i < 8; i++) {
-                                const circuitHandle = item.handles?.[`circuit${i + 1}`];
-                                if (circuitHandle?.connectedTo) {
-                                    circuitHandle.connectedTo.forEach(conn => {
-                                        const connObj = connections.find(c => c.id === conn.connectionId);
-                                        // Only mark if this circuit's connection is already visited (meaning it leads to a load)
-                                        // This avoids marking unused circuits
-                                    });
-                                }
-                            }
-                            // Always trace to main input
-                            if (item.handles?.mainInput?.connectedTo) {
-                                item.handles.mainInput.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !visitedConnections.has(connObj.id)) {
-                                        visitedConnections.add(connObj.id);
-                                        markConnectionLive(connObj.id, loadWatts, 240, 'to-load');
-                                        
-                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                                        const otherItem = allItems.find(i => i.id === otherItemId);
-                                        if (otherItem) traceBack(otherItem, null);
-                                    }
-                                });
-                            }
-                            return;
-                        }
-                        
-                        // For AC breakers, trace through line input
-                        if (item.type === 'acbreaker') {
-                            if (item.handles?.lineIn?.connectedTo) {
-                                item.handles.lineIn.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !visitedConnections.has(connObj.id)) {
-                                        visitedConnections.add(connObj.id);
-                                        markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                        
-                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                                        const otherItem = allItems.find(i => i.id === otherItemId);
-                                        if (otherItem) traceBack(otherItem, null);
-                                    }
-                                });
-                            }
-                            return;
-                        }
-                        
-                        // For controllers, we've reached the source - stop
-                        if (item.type === 'controller') {
-                            return;
-                        }
-                        
-                        // For other AC components (spiderbox, hub, etc.), trace through all AC inputs
-                        Object.values(item.handles || {}).forEach(handle => {
-                            if (handle.polarity === 'ac' || handle.id.includes('input') || handle.id.includes('in')) {
-                                if (handle.connectedTo) {
-                                    handle.connectedTo.forEach(conn => {
-                                        const connObj = connections.find(c => c.id === conn.connectionId);
-                                        if (connObj && !visitedConnections.has(connObj.id)) {
-                                            visitedConnections.add(connObj.id);
-                                            markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                            
-                                            const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
-                                            const otherItem = allItems.find(i => i.id === otherItemId);
-                                            if (otherItem) traceBack(otherItem, null);
-                                        }
-                                    });
-                                }
-                            }
-                        });
-                    };
-                    
-                    traceBack(load, null);
-                };
-                
-                // STEP 1: Find controller and check if it has power
-                const controllers = allItems.filter(i => i.type === 'controller');
-                let hasLiveController = false;
-                controllers.forEach(controller => {
-                    const controllerACEnabled = simStats.controllerACOutputEnabled !== false;
-                    const batterySpecs = calculateConnectedBatterySpecs(controller);
-                    const batteryCharge = simStats.batteryCharge || 0;
-                    const hasBattery = (batterySpecs.kWh || 0) > 0 && batteryCharge > 0;
-                    const arraySpecs = calculateConnectedArraySpecs(controller);
-                    const hasSolar = arraySpecs.wmp > 0;
-                    const hasPowerSource = hasBattery || hasSolar;
-                    if (controllerACEnabled && hasPowerSource) {
-                        hasLiveController = true;
-                    }
-                });
-                
-                // STEP 2: For each active load, trace back to controller
-                if (hasLiveController) {
-                    allLoads.forEach(load => {
-                        if (load.simState?.isRunning) {
-                            const loadWatts = load.simState.currentPowerWatts || load.specs?.avgWatts || 0;
-                            const loadVoltage = load.specs?.voltage || 120;
-                            if (loadWatts > 0) {
-                                traceLoadToController(load, loadWatts, loadVoltage);
-                            }
-                        }
-                    });
-                }
-                
-                // STEP 2: Mark all breaker panel circuit connections
-                const breakerPanels = allItems.filter(i => i.type === 'breakerpanel');
-                breakerPanels.forEach(panel => {
-                    if (panel.mainBreakerOn === false) return;
-                    
-                    // Mark main input connection
-                    if (panel.handles?.mainInput) {
-                        panel.handles.mainInput.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (connObj && totalACWatts > 0) {
-                                markConnectionLive(connObj.id, totalACWatts, 240, 'to-panel');
-                            }
-                        });
-                    }
-                    
-                    // Mark each circuit connection
-                    for (let i = 0; i < 8; i++) {
-                        if (panel.breakerStates && panel.breakerStates[i] === false) continue;
-                        
-                        const circuitHandle = panel.handles[`circuit${i + 1}`];
-                        if (!circuitHandle || !circuitHandle.connectedTo) continue;
-                        
-                        const circuitVoltage = circuitHandle.voltage || 120;
-                        
-                        circuitHandle.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (!connObj) return;
-                            
-                            // Find what's connected to this circuit - could be outlet, load, or other AC device
-                            const sourceItem = allItems.find(i => i.id === connObj.sourceItemId);
-                            const targetItem = allItems.find(i => i.id === connObj.targetItemId);
-                            const outlet = (sourceItem?.type === 'acoutlet') ? sourceItem : 
-                                          (targetItem?.type === 'acoutlet') ? targetItem : null;
-                            const load = (sourceItem?.type === 'acload' || sourceItem?.type === 'processor') ? sourceItem :
-                                        (targetItem?.type === 'acload' || targetItem?.type === 'processor') ? targetItem : null;
-                            
-                            let circuitWatts = 0;
-                            if (outlet) {
-                                // Connected to outlet - get total watts from outlet
-                                circuitWatts = getOutletTotalWatts(outlet);
-                            } else if (load) {
-                                // Direct connection to load - get load watts
-                                circuitWatts = getLoadPowerWatts(load);
-                            }
-                            
-                            if (circuitWatts > 0) {
-                                markConnectionLive(connObj.id, circuitWatts, circuitVoltage, 'from-panel');
-                                // Trace backwards from load to mark upstream connections
-                                if (load) {
-                                    const loadHandle = Object.values(load.handles).find(h => 
-                                        h.connectedTo?.some(c => c.connectionId === connObj.id)
-                                    );
-                                    if (loadHandle) {
-                                        traceAndMarkUpstream(load, loadHandle, circuitWatts, circuitVoltage);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                // STEP 3: Mark all outlet input connections
-                const outlets = allItems.filter(i => i.type === 'acoutlet');
-                outlets.forEach(outlet => {
-                    const circuitStatus = checkOutletCircuitStatus(outlet);
-                    if (!circuitStatus.isLive) return;
-                    
-                    const outletVoltage = outlet.specs.voltage || 120;
-                    const outletWatts = getOutletTotalWatts(outlet);
-                    
-                    // Mark input port connections
-                    if (outlet.handles?.input) {
-                        outlet.handles.input.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (connObj && outletWatts > 0) {
-                                markConnectionLive(connObj.id, outletWatts, outletVoltage, 'to-outlet');
-                            }
-                        });
-                    }
-                    
-                    // Mark load and output port connections
-                    const markLoadConnections = (conn) => {
-                        const connObj = connections.find(c => c.id === conn.connectionId);
-                        if (!connObj) return;
-                        
-                        const load = allItems.find(i => 
-                            (i.id === connObj.sourceItemId || i.id === connObj.targetItemId) &&
-                            (i.type === 'acload' || i.type === 'processor')
-                        );
-                        if (load) {
-                            const loadWatts = getLoadPowerWatts(load);
-                            if (loadWatts > 0) {
-                                markConnectionLive(connObj.id, loadWatts, outletVoltage, 'to-load');
-                                // Trace backwards to mark all upstream connections
-                                const loadHandle = Object.values(load.handles).find(h => 
-                                    h.connectedTo?.some(c => c.connectionId === connObj.id)
-                                );
-                                if (loadHandle) {
-                                    traceAndMarkUpstream(load, loadHandle, loadWatts, outletVoltage);
-                                }
-                            }
-                        }
-                    };
-                    
-                    if (outlet.handles?.load) outlet.handles.load.connectedTo.forEach(markLoadConnections);
-                    if (outlet.handles?.output) outlet.handles.output.connectedTo.forEach(markLoadConnections);
-                });
-                
-                // STEP 4: Mark standalone AC breaker connections
-                const acBreakers = allItems.filter(i => i.type === 'acbreaker');
-                acBreakers.forEach(breaker => {
-                    if (!LiveView.BreakerManager.isBreakerClosed(breaker)) return;
-                    if (!hasPowerSourceConnection(breaker)) return;
-                    
-                    const breakerVoltage = breaker.specs.voltage || 120;
-                    
-                    // Mark line input connections
-                    if (breaker.handles?.lineIn) {
-                        breaker.handles.lineIn.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (connObj && totalACWatts > 0) {
-                                markConnectionLive(connObj.id, totalACWatts, breakerVoltage, 'to-breaker');
-                            }
-                        });
-                    }
-                    
-                    // Mark load output connections
-                    if (breaker.handles?.loadOut) {
-                        breaker.handles.loadOut.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (!connObj) return;
-                            
-                            const sourceItem = allItems.find(i => i.id === connObj.sourceItemId);
-                            const targetItem = allItems.find(i => i.id === connObj.targetItemId);
-                            const outlet = (sourceItem?.type === 'acoutlet') ? sourceItem : 
-                                          (targetItem?.type === 'acoutlet') ? targetItem : null;
-                            const load = (sourceItem?.type === 'acload' || sourceItem?.type === 'processor') ? sourceItem :
-                                        (targetItem?.type === 'acload' || targetItem?.type === 'processor') ? targetItem : null;
-                            
-                            let circuitWatts = 0;
-                            if (outlet) {
-                                circuitWatts = getOutletTotalWatts(outlet);
-                            } else if (load) {
-                                circuitWatts = getLoadPowerWatts(load);
-                            }
-                            
-                            if (circuitWatts > 0) {
-                                markConnectionLive(connObj.id, circuitWatts, breakerVoltage, 'from-breaker');
-                                // Trace backwards from load to mark upstream connections
-                                if (load) {
-                                    const loadHandle = Object.values(load.handles).find(h => 
-                                        h.connectedTo?.some(c => c.connectionId === connObj.id)
-                                    );
-                                    if (loadHandle) {
-                                        traceAndMarkUpstream(load, loadHandle, circuitWatts, breakerVoltage);
-                                    }
-                                }
-                            }
-                        });
-                    }
-                });
-                
-                // Controller AC output power flow already calculated above (before breaker panels)
-                
-                // STEP 5: Calculate PV (solar panel) power flow
-                // Mark PV connections as live when solar is generating power
-                const currentSolarWatts = simStats.currentSolarOutput || 0;
-                
-                controllers.forEach(controller => {
-                    const arraySpecs = calculateConnectedArraySpecs(controller);
-                    if (arraySpecs.wmp <= 0) return;
-                    
-                    // Calculate solar voltage for display
-                    const solarVoltage = arraySpecs.vmp || arraySpecs.voc || 48;
-                    const solarAmps = currentSolarWatts > 0 ? currentSolarWatts / solarVoltage : 0;
-                    
-                    // Mark PV positive connections (flow from panel + to controller +)
-                    const pvPosHandles = [];
-                    if (controller.handles?.pvPositive) pvPosHandles.push(controller.handles.pvPositive);
-                    // Check for multiple MPPTs
-                    for (let i = 1; i <= (controller.specs.mpptCount || 1); i++) {
-                        if (controller.handles?.[`pvPositive${i}`]) {
-                            pvPosHandles.push(controller.handles[`pvPositive${i}`]);
-                        }
-                    }
-                    
-                    pvPosHandles.forEach(pvHandle => {
-                        if (pvHandle?.connectedTo) {
-                            pvHandle.connectedTo.forEach(conn => {
-                                const connObj = connections.find(c => c.id === conn.connectionId);
-                                if (connObj) {
-                                    SimulateMode.powerFlow[connObj.id] = {
-                                        watts: currentSolarWatts / pvPosHandles.length,
-                                        amps: solarAmps / pvPosHandles.length,
-                                        voltage: solarVoltage,
-                                        direction: 'pv-to-controller',
-                                        isPV: true,
-                                        isLive: currentSolarWatts > 0
-                                    };
-                                }
-                            });
-                        }
-                    });
-                    
-                    // Mark PV negative connections (flow from controller - to panel -)
-                    const pvNegHandles = [];
-                    if (controller.handles?.pvNegative) pvNegHandles.push(controller.handles.pvNegative);
-                    for (let i = 1; i <= (controller.specs.mpptCount || 1); i++) {
-                        if (controller.handles?.[`pvNegative${i}`]) {
-                            pvNegHandles.push(controller.handles[`pvNegative${i}`]);
-                        }
-                    }
-                    
-                    pvNegHandles.forEach(pvHandle => {
-                        if (pvHandle?.connectedTo) {
-                            pvHandle.connectedTo.forEach(conn => {
-                                const connObj = connections.find(c => c.id === conn.connectionId);
-                                if (connObj) {
-                                    SimulateMode.powerFlow[connObj.id] = {
-                                        watts: currentSolarWatts / pvNegHandles.length,
-                                        amps: solarAmps / pvNegHandles.length,
-                                        voltage: solarVoltage,
-                                        direction: 'pv-from-controller',
-                                        isPV: true,
-                                        isLive: currentSolarWatts > 0
-                                    };
-                                }
-                            });
-                        }
-                    });
-                    
-                    // Also mark connections through combiners to panels
-                    // Trace panel connections through solar combiners
-                    const tracePVConnections = (item, handle, direction) => {
-                        if (!handle?.connectedTo) return;
-                        handle.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (!connObj) return;
-                            
-                            // Mark this connection
-                            if (!SimulateMode.powerFlow[connObj.id]) {
-                                SimulateMode.powerFlow[connObj.id] = {
-                                    watts: currentSolarWatts,
-                                    amps: solarAmps,
-                                    voltage: solarVoltage,
-                                    direction: direction,
-                                    isPV: true,
-                                    isLive: currentSolarWatts > 0
-                                };
-                            }
-                            
-                            // Find connected item
-                            const connectedItem = allItems.find(i => 
-                                i.id === conn.itemId || 
-                                i.id === connObj.sourceItemId || 
-                                i.id === connObj.targetItemId
-                            );
-                            
-                            if (connectedItem?.type === 'solarcombiner' || connectedItem?.type === 'combiner') {
-                                // Trace through combiner inputs
-                                Object.values(connectedItem.handles || {}).forEach(h => {
-                                    if (h.inputIndex !== undefined) {
-                                        tracePVConnections(connectedItem, h, direction);
-                                    }
-                                });
-                            } else if (connectedItem?.type === 'panel') {
-                                // Mark panel terminal connections
-                                Object.values(connectedItem.handles || {}).forEach(h => {
-                                    h.connectedTo?.forEach(panelConn => {
-                                        const panelConnObj = connections.find(c => c.id === panelConn.connectionId);
-                                        if (panelConnObj && !SimulateMode.powerFlow[panelConnObj.id]) {
-                                            SimulateMode.powerFlow[panelConnObj.id] = {
-                                                watts: currentSolarWatts,
-                                                amps: solarAmps,
-                                                voltage: solarVoltage,
-                                                direction: h.polarity === 'positive' ? 'pv-to-controller' : 'pv-from-controller',
-                                                isPV: true,
-                                                isLive: currentSolarWatts > 0
-                                            };
-                                        }
-                                    });
-                                });
-                            }
-                        });
-                    };
-                    
-                    // Trace from controller PV handles through all connections
-                    pvPosHandles.forEach(h => tracePVConnections(controller, h, 'pv-to-controller'));
-                    pvNegHandles.forEach(h => tracePVConnections(controller, h, 'pv-from-controller'));
-                    
-                    // STEP 6: Calculate Battery power flow
-                    // Battery wires animate when either charging (PV > 0) or discharging (AC load > 0)
-                    const isCharging = currentSolarWatts > 0;
-                    const isDischarging = totalACWatts > 0;
-                    const batteryActive = isCharging || isDischarging;
-                    
-                    if (batteryActive) {
-                        const batterySpecs = calculateConnectedBatterySpecs(controller);
-                        const batteryVoltage = batterySpecs.voltage || 48;
-                        
-                        // Determine net power flow direction
-                        // Positive = charging (solar > load), Negative = discharging (load > solar)
-                        const netPower = currentSolarWatts - totalACWatts;
-                        const batteryDirection = netPower >= 0 ? 'battery-charging' : 'battery-discharging';
-                        const batteryWatts = Math.abs(netPower);
-                        const batteryAmps = batteryWatts / batteryVoltage;
-                        
-                        // Mark battery positive connections
-                        if (controller.handles?.batteryPositive?.connectedTo) {
-                            controller.handles.batteryPositive.connectedTo.forEach(conn => {
-                                const connObj = connections.find(c => c.id === conn.connectionId);
-                                if (connObj) {
-                                    SimulateMode.powerFlow[connObj.id] = {
-                                        watts: batteryWatts,
-                                        amps: batteryAmps,
-                                        voltage: batteryVoltage,
-                                        direction: batteryDirection,
-                                        isBattery: true,
-                                        isCharging: netPower >= 0,
-                                        isLive: true
-                                    };
-                                }
-                            });
-                        }
-                        
-                        // Mark battery negative connections
-                        if (controller.handles?.batteryNegative?.connectedTo) {
-                            controller.handles.batteryNegative.connectedTo.forEach(conn => {
-                                const connObj = connections.find(c => c.id === conn.connectionId);
-                                if (connObj) {
-                                    SimulateMode.powerFlow[connObj.id] = {
-                                        watts: batteryWatts,
-                                        amps: batteryAmps,
-                                        voltage: batteryVoltage,
-                                        direction: batteryDirection,
-                                        isBattery: true,
-                                        isCharging: netPower >= 0,
-                                        isLive: true
-                                    };
-                                }
-                            });
-                        }
-                        
-                        // Also trace to connected batteries
-                        const batteries = allItems.filter(i => i.type === 'battery');
-                        batteries.forEach(battery => {
-                            // Mark battery terminal connections
-                            if (battery.handles?.positive?.connectedTo) {
-                                battery.handles.positive.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !SimulateMode.powerFlow[connObj.id]) {
-                                        SimulateMode.powerFlow[connObj.id] = {
-                                            watts: batteryWatts,
-                                            amps: batteryAmps,
-                                            voltage: batteryVoltage,
-                                            direction: batteryDirection,
-                                            isBattery: true,
-                                            isCharging: netPower >= 0,
-                                            isLive: true
-                                        };
-                                    }
-                                });
-                            }
-                            if (battery.handles?.negative?.connectedTo) {
-                                battery.handles.negative.connectedTo.forEach(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (connObj && !SimulateMode.powerFlow[connObj.id]) {
-                                        SimulateMode.powerFlow[connObj.id] = {
-                                            watts: batteryWatts,
-                                            amps: batteryAmps,
-                                            voltage: batteryVoltage,
-                                            direction: batteryDirection,
-                                            isBattery: true,
-                                            isCharging: netPower >= 0,
-                                            isLive: true
-                                        };
-                                    }
-                                });
-                            }
-                        });
-                    }
-                });
-                
-                // STEP 7: Check for voltage mismatches and trigger explosions
-                connections.forEach(conn => {
-                    if (!conn.voltageMismatch) return; // Skip if no voltage mismatch
-                    
-                    const powerFlow = SimulateMode.powerFlow[conn.id];
-                    if (!powerFlow || !powerFlow.isLive || powerFlow.watts <= 0) return; // No power flowing
-                    
-                    // Power is flowing through a mismatched connection - trigger explosion
-                    const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
-                    const targetItem = allItems.find(i => i.id === conn.targetItemId);
-                    const load = (targetItem?.type === 'acload' || targetItem?.type === 'processor') ? targetItem :
-                                (sourceItem?.type === 'acload' || sourceItem?.type === 'processor') ? sourceItem : null;
-                    
-                    if (load && !load.exploded) {
-                        // Mark load as exploded
-                        load.exploded = true;
-                        load.simState = load.simState || {};
-                        load.simState.isRunning = false;
-                        load.simState.currentPowerWatts = 0;
-                        
-                        // Add visual failure state class
-                        const loadGroup = itemsGroup.select(`[data-id="${load.id}"]`);
-                        if (!loadGroup.empty()) {
-                            loadGroup.classed('failure-exploded', true);
-                        }
-                        
-                        // Disconnect the load
-                        const loadHandle = Object.values(load.handles).find(h => 
-                            h.connectedTo?.some(c => c.connectionId === conn.id)
-                        );
-                        if (loadHandle) {
-                            loadHandle.connectedTo = loadHandle.connectedTo.filter(c => c.connectionId !== conn.id);
-                        }
-                        
-                        // Remove connection
-                        connections = connections.filter(c => c.id !== conn.id);
-                        
-                        // Show failure card
-                        showIncidentReport({
-                            type: 'error',
-                            icon: '💥',
-                            category: 'Voltage Mismatch',
-                            title: 'Appliance Destroyed!',
-                            description: `The ${load.specs?.name || 'appliance'} was connected to a 240V source but is rated for 120V. When power flowed, the appliance was destroyed by overvoltage.`,
-                            math: {
-                                explanation: 'Connecting a 120V appliance to 240V doubles the voltage, causing excessive current flow and component failure.',
-                                formula: 'Power = Voltage² / Resistance',
-                                result: 'At 240V, power is 4x rated power → instant failure'
-                            },
-                            realworld: 'In real life, connecting a 120V device to 240V will cause immediate damage - components will overheat, fuses will blow, and the device may catch fire or explode.',
-                            solutions: [
-                                'Always match appliance voltage to circuit voltage',
-                                'Use a step-down transformer if you must connect 120V devices to 240V',
-                                'Check appliance labels for voltage requirements before connecting'
-                            ]
-                        });
-                        
-                        // Recalculate power flow after explosion (invalidate cache)
-                        SimulateMode._powerFlowCache = null;
-                        SimulateMode.calculatePowerFlow();
-                        scheduleRender();
-                    }
-                });
-                
-                // Phase 1.4: Save power flow result to cache
-                SimulateMode._powerFlowCache = { ...SimulateMode.powerFlow }; // Deep copy
-                SimulateMode._powerFlowCacheKey = cacheKey;
-            }
-        };
+        // SimulateMode module removed - all simulation logic is now in solar_simulator.html
         
-        // Resource types (matching simulator.html)
+        // Resource types (shared definitions)
         const RESOURCE_TYPES = {
             POWER: 'Power',
             WATER: 'Water',
@@ -7334,9 +6465,10 @@
         }
         
         // Simulation state
-        let isPlaying = false;
-        let simulationSpeed = 1;
-        let elapsedHours = 0;
+        // Simulation variables removed - moved to solar_simulator.html
+        // let isPlaying = false;
+        // let simulationSpeed = 1;
+        // let elapsedHours = 0;
         let lastProcessedHour = 0; // Track the last hour that was fully processed
         let previousDisplayHour = 0; // Track previous hour for visual updates
         let animationFrameId = null;
@@ -8606,10 +7738,8 @@
         function render() {
             renderItems();
             
-            // Calculate power flow BEFORE rendering wires so wire classes have fresh data
-            if (currentMode === 'simulate') {
-                SimulateMode.calculatePowerFlow();
-            }
+            // Simulate mode removed - power flow calculation moved to simulator
+            // Power flow is now only calculated in LiveView (Test mode) for circuit validation
             
             renderWires();
             updateScores();
@@ -8629,7 +7759,7 @@
             // Remove old items
             itemGroups.exit().remove();
             
-            // Add new items with drag support
+            // Add new items
             const newItems = itemGroups.enter()
                 .append("g")
                 .attr("class", d => `item-group ${d.type}`)
@@ -8656,30 +7786,41 @@
                     })
                 )
                 .on("click", (event, d) => {
+                    // Simple check: if the event was already handled by a switch (propagation stopped), do nothing
+                    // The switch handlers will stop propagation, so if we get here, it's not a switch click
                     event.stopPropagation();
-                    // In simulate mode, allow toggling loads for simulation control
-                    if (d.type === 'acload' && currentMode === 'simulate') {
-                        toggleLoadInSimulate(d);
-                    }
-                    // Show read-only info tooltip instead of opening inspector
-                    showTooltip(event, d);
+                    // Always select the item to open inspector
+                    selectItem(d);
                 })
                 .on("touchend", (event, d) => {
-                    // Handle touch as click for mobile devices (read-only)
+                    // Handle touch as click for mobile devices
                     event.stopPropagation();
                     event.preventDefault();
-                    // In simulate mode, allow toggling loads
-                    if (d.type === 'acload' && currentMode === 'simulate') {
-                        toggleLoadInSimulate(d);
+                    // Only trigger if it wasn't a drag (check if moved significantly)
+                    if (event.changedTouches && event.changedTouches.length > 0) {
+                        const touch = event.changedTouches[0];
+                        // Check if this was a tap (not a drag) by checking drag state
+                        if (!isDragging || (Math.abs(touch.clientX - dragStartPos.x) < 10 && Math.abs(touch.clientY - dragStartPos.y) < 10)) {
+                            // In live or simulate mode, toggle loads when tapped
+                            if (d.type === 'acload') {
+                                if (currentMode === 'live' && LiveView.state.active) {
+                                    toggleLoad(d);
+                                }
+                            }
+                            // Always select the item to open inspector
+                            selectItem(d);
+                        }
                     }
                 })
                 .on("dblclick", (event, d) => {
                     event.stopPropagation();
-                    // In simulate mode, toggle loads on double-click
-                    if (d.type === 'acload' && currentMode === 'simulate') {
-                        toggleLoadInSimulate(d);
+                    // In live or simulate mode, toggle loads on double-click too
+                    if (d.type === 'acload') {
+                        if (currentMode === 'live' && LiveView.state.active) {
+                            toggleLoad(d);
+                        }
                     }
-                    // Inspector disabled - components are read-only
+                    selectItem(d); // Also open inspector on double-click
                 });
             
             // Render based on type
@@ -9075,8 +8216,8 @@
                 .attr("dominant-baseline", "middle")
                 .text(d.specs.ah + "Ah");
             
-            // Show real-time charge in live view or simulation
-            const showCharge = liveViewActive || currentMode === 'simulate';
+            // Show real-time charge in test mode (live view)
+            const showCharge = liveViewActive;
             if (showCharge) {
                 // Find controller connected to this battery to get system battery specs
                 const controllers = allItems.filter(i => i.type === 'controller');
@@ -9093,12 +8234,13 @@
                                 const batterySpecs = calculateConnectedBatterySpecs(controller);
                                 batteryKwh = batterySpecs.kWh || batteryKwh;
                                 
-                                // Get current charge from simulation stats if in simulate mode
-                                if (currentMode === 'simulate' && simStats.maxBatteryCapacity > 0) {
-                                    currentCharge = simStats.batteryCharge;
-                                    batteryPercent = (currentCharge / simStats.maxBatteryCapacity) * 100;
+                                // Get current charge from LiveView state (test mode)
+                                if (liveViewActive && LiveView.state.batteryState) {
+                                    currentCharge = LiveView.state.batteryState.currentKwh || 0;
+                                    const maxKwh = LiveView.state.batteryState.maxKwh || batteryKwh;
+                                    batteryPercent = maxKwh > 0 ? (currentCharge / maxKwh) * 100 : 50;
                                 } else {
-                                    batteryPercent = 50; // Default for live view
+                                    batteryPercent = 50; // Default when not in test mode
                                 }
                             }
                         });
@@ -9827,21 +8969,7 @@
             }
             
             // In simulate mode, use a simpler check - if AC output is enabled and battery has power
-            // This avoids complex LiveView state dependencies that may not be fully populated in simulate mode
-            if (currentMode === 'simulate') {
-                // If AC output is explicitly disabled (e.g., due to low battery protection), circuit is not live
-                if (simStats.controllerACOutputEnabled === false) {
-                    return { isLive: false };
-                }
-                // If we have battery charge and AC output is enabled, consider circuit live
-                // This simplified check works better for simulate mode where LiveView power flow may not be computed
-                if (simStats.batteryCharge > 0) {
-                    return { isLive: true };
-                }
-                // No battery charge - circuit is not live
-                return { isLive: false };
-            }
-            
+            // Simulate mode removed - use LiveView power flow for circuit status
             // Trace back through daisy-chained outlets to find the breaker
             const visitedOutlets = new Set();
             const traceToBreaker = (currentOutlet) => {
@@ -9875,9 +9003,6 @@
                                 return { isLive: false };
                             }
                             // Check if controller AC output is enabled
-                            if (currentMode === 'simulate' && simStats.controllerACOutputEnabled === false) {
-                                return { isLive: false };
-                            }
                             if (LiveView.state.active && LiveView.state.controllerACOutputEnabled === false) {
                                 return { isLive: false };
                             }
@@ -11028,36 +10153,12 @@
         
         // Toggle load in simulate mode
         function toggleLoadInSimulate(load) {
-            if (currentMode !== 'simulate') return;
-            
-            // Initialize LiveView state if needed
-            if (!LiveView.state.loadStates) {
-                LiveView.state.loadStates = {};
-            }
-            
-            // Determine current state - check both simState and LiveView state
-            const currentlyOn = (load.simState && load.simState.isRunning) || 
-                               LiveView.state.loadStates[load.id] === true;
-            const newState = !currentlyOn;
-            
-            // Toggle state changed
-            
-            // Update both states to keep them in sync
-            LiveView.state.loadStates[load.id] = newState;
-            
-            // Initialize simState if needed (match structure from simulation code)
             if (!load.simState) {
-                load.simState = {
-                    isRunning: false,
-                    isProcessing: false,
-                    recipeTimeElapsed: 0,
-                    currentPowerWatts: 0,
-                    lastConsumptionKwh: 0
-                };
+                load.simState = { isRunning: false, currentPowerWatts: 0 };
             }
+            const newState = !load.simState.isRunning;
             load.simState.isRunning = newState;
             
-            // Set currentPowerWatts immediately so power flow shows correctly
             if (newState) {
                 // Load turned ON - set its power consumption immediately
                 load.simState.currentPowerWatts = getLoadWatts(load);
@@ -11071,24 +10172,32 @@
             // Update simStats.currentLoadPower immediately (includes inverter load)
             simStats.currentLoadPower = calculateTotalLoadPower();
             
-            // Recalculate power flow to update wire glow
-            SimulateMode.calculatePowerFlow();
+            // Recalculate power flow to update wire glow if SimulateMode exists
+            if (typeof SimulateMode !== 'undefined' && SimulateMode.calculatePowerFlow) {
+                SimulateMode.calculatePowerFlow();
+            }
             
-            // Update display immediately
-            updateSimulationDisplay();
+            // Update display immediately if function exists
+            if (typeof updateSimulationDisplay === 'function') {
+                updateSimulationDisplay();
+            }
             
             // Re-render to show updated state
             scheduleRender();
             
             // If simulation is running, force another render on next frame to ensure wire animations start
             // This is necessary because CSS animations may not start immediately when simulation loop is busy
-            if (isPlaying) {
+            if (typeof isPlaying !== 'undefined' && isPlaying) {
                 requestAnimationFrame(() => {
                     // Recalculate to ensure state is current
-                    const hourOfDayForDisplay = Math.floor(elapsedHours) % 24;
-                    calculateLoadConsumption(hourOfDayForDisplay);
+                    const hourOfDayForDisplay = Math.floor(typeof elapsedHours !== 'undefined' ? elapsedHours : 0) % 24;
+                    if (typeof calculateLoadConsumption === 'function') {
+                        calculateLoadConsumption(hourOfDayForDisplay);
+                    }
                     simStats.currentLoadPower = calculateTotalLoadPower();
-                    SimulateMode.calculatePowerFlow();
+                    if (typeof SimulateMode !== 'undefined' && SimulateMode.calculatePowerFlow) {
+                        SimulateMode.calculatePowerFlow();
+                    }
                     scheduleRender();
                 });
             }
@@ -12823,9 +11932,7 @@
                     // Add pv-flowing class for PV wire animation in simulate AND live modes
                     // Only for positive wires (electron flow: panel+ to controller+)
                     let powerFlow = null;
-                    if (currentMode === 'simulate') {
-                        powerFlow = SimulateMode.powerFlow[d.id];
-                    } else if (liveViewActive && LiveView.state.active) {
+                    if (liveViewActive && LiveView.state.active) {
                         powerFlow = LiveView.state.powerFlow[d.id];
                     }
                     
@@ -12849,11 +11956,7 @@
                     return false;
                 })
                 .classed("pv-live", d => {
-                    // Add pv-live class for PV wire glow in both live and simulate modes
-                    if (currentMode === 'simulate') {
-                        const powerFlow = SimulateMode.powerFlow[d.id];
-                        return powerFlow && powerFlow.isPV && powerFlow.isLive;
-                    }
+                    // Add pv-live class for PV wire glow in test mode
                     if (liveViewActive && LiveView.state.active) {
                         const powerFlow = LiveView.state.powerFlow[d.id];
                         return powerFlow && (d.polarity === 'positive' || d.polarity === 'negative' || d.polarity === 'pv-positive' || d.polarity === 'pv-negative');
@@ -21220,164 +20323,109 @@
         }
         
         // ============================================
-        // SIMULATION INITIALIZATION
+        // MODE SWITCHING
         // ============================================
         
-        // Simulator always runs in simulate mode - no mode switching needed
-        function initializeSimulation() {
-            currentMode = 'simulate';
-            
-            // Check if system is valid for simulation
-            const controller = allItems.find(i => i.type === 'controller');
-            if (controller) {
-                const arraySpecs = calculateConnectedArraySpecs(controller);
-                const batterySpecs = calculateConnectedBatterySpecs(controller);
-                
-                if (arraySpecs.wmp === 0 || batterySpecs.kWh === 0) {
-                    showHint("⚠️ Incomplete System", 
-                        "Your system needs connected solar panels and batteries to simulate. " +
-                        "Click 'Edit Circuit' to complete the connections in the designer.");
-                    return;
-                }
-                
-                // Initialize simulation
-                initializeSimulationFromBuild();
-                
-                // Initialize visual state
-                const hourOfDay = Math.floor(elapsedHours) % 24;
-                updateBackgroundColor(hourOfDay);
-                updateStructureLighting(hourOfDay);
-                updateShadowAngle(hourOfDay);
-                
-                // Show hint about simulation
-                showSimulationStartHint(arraySpecs, batterySpecs);
-                
-                // Update display
-                updateTimeDisplay();
-                updateSimulationDisplay();
-                render();
-            } else {
-                showHint("⚠️ No Controller", 
-                    "Click 'Edit Circuit' to add a charge controller to your system.");
+        function setMode(mode) {
+            // Only support 'build' and 'test' modes in designer
+            if (mode !== 'build' && mode !== 'test') {
+                mode = 'build';
             }
+            
+            currentMode = mode === 'test' ? 'live' : 'build'; // Map 'test' to 'live' for LiveView compatibility
+            
+            document.getElementById('buildModeBtn').classList.toggle('active', mode === 'build');
+            document.getElementById('testModeBtn').classList.toggle('active', mode === 'test');
+            
+            const testModeControls = document.getElementById('testModeControls');
+            if (testModeControls) {
+                testModeControls.classList.toggle('hidden', mode !== 'test');
+            }
+            
+            // Show/hide live stats section (for test mode)
+            const liveStatsSection = document.getElementById('liveStatsSection');
+            if (liveStatsSection) {
+                liveStatsSection.style.display = mode === 'test' ? 'block' : 'none';
+            }
+            
+            if (mode === 'test') {
+                // Initialize live view mode (renamed to test mode)
+                LiveView.initialize();
+            } else {
+                // Stop live view animation when switching to build mode
+                LiveView.stop();
+            }
+            
+            render();
         }
         
-        // Export circuit back to designer for editing
-        function exportToDesigner() {
+        // Export circuit to simulator
+        function exportToSimulator() {
+            // Validate system has required components
+            const controller = allItems.find(i => i.type === 'controller');
+            if (!controller) {
+                showHint("⚠️ No Controller", 
+                    "Add a charge controller to your system before simulating.");
+                return;
+            }
+            
+            const arraySpecs = calculateConnectedArraySpecs(controller);
+            const batterySpecs = calculateConnectedBatterySpecs(controller);
+            
+            if (arraySpecs.wmp === 0 || batterySpecs.kWh === 0) {
+                showHint("⚠️ Incomplete System", 
+                    "Your system needs connected solar panels and batteries to simulate. " +
+                    "Complete the connections before exporting.");
+                return;
+            }
+            
+            // Export circuit data
             const exportData = {
                 items: allItems,
                 connections: connections,
                 itemIdCounter: itemIdCounter,
                 connectionIdCounter: connectionIdCounter,
                 timestamp: Date.now(),
-                source: 'solarSimulator',
+                source: 'solarDesigner',
                 version: 1
             };
             
-            // Store in localStorage for designer to read
+            // Include 3D structure geometry if available
+            if (window.linkageLabGeometry) {
+                exportData.structureGeometry = window.linkageLabGeometry;
+            }
+            
+            // Include camera state if available
+            if (window.linkageLabCameraState) {
+                exportData.cameraState = window.linkageLabCameraState;
+            } else if (bgCamera) {
+                // Export current camera position
+                exportData.cameraState = {
+                    position: { x: bgCamera.position.x, y: bgCamera.position.y, z: bgCamera.position.z },
+                    target: bgOrbitControls ? { x: bgOrbitControls.target.x, y: bgOrbitControls.target.y, z: bgOrbitControls.target.z } : { x: 0, y: 0, z: 0 }
+                };
+            }
+            
+            // Store in localStorage for simulator to read
             localStorage.setItem('solarDesignerExport', JSON.stringify(exportData));
             
-            // Open designer in new window
-            window.open('solar_designer.html?import=designer', '_blank');
+            // Open simulator in new window
+            window.open('solar_simulator.html?import=designer', '_blank');
             
-            showHint("📤 Exported to Designer", 
+            showHint("📤 Exported to Simulator", 
                 `Circuit exported with ${allItems.length} components and ${connections.length} connections. ` +
-                `Opening designer...`);
+                `Opening simulator...`);
         }
         
         
-        function initializeSimulationFromBuild() {
-            resetSimulation();
-            
-            const controller = allItems.find(i => i.type === 'controller');
-            if (!controller) return;
-            
-            const arraySpecs = calculateConnectedArraySpecs(controller);
-            const batterySpecs = calculateConnectedBatterySpecs(controller);
-            
-            // Store the built system specs for simulation
-            simStats.systemSpecs = {
-                arrayWmp: arraySpecs.wmp,
-                arrayVoc: arraySpecs.voc,
-                arrayImp: arraySpecs.imp,
-                arrayConfig: arraySpecs.config,
-                batteryKwh: batterySpecs.kWh,
-                batteryVoltage: batterySpecs.voltage,
-                controllerMaxWatts: getMaxWattsForController(controller, batterySpecs.voltage),
-                controllerMaxIsc: controller.specs.maxIsc
-            };
-            
-            // Initialize battery charge to 20% (morning scenario)
-            simStats.maxBatteryCapacity = batterySpecs.kWh;
-            simStats.batteryCharge = batterySpecs.kWh * 0.2;
-            
-            // Initialize load states from LiveView - if loads were ON in live mode, keep them ON
-            const loads = allItems.filter(i => i.type === 'acload');
-            let totalLoadWatts = 0;
-            loads.forEach(load => {
-                // Initialize simState if needed
-                if (!load.simState) {
-                    load.simState = {
-                        isRunning: false,
-                        isProcessing: false,
-                        recipeTimeElapsed: 0,
-                        currentPowerWatts: 0,
-                        lastConsumptionKwh: 0
-                    };
-                }
-                
-                // Check if load was ON in LiveView mode
-                const wasOnInLiveView = LiveView.state && LiveView.state.loadStates && LiveView.state.loadStates[load.id] === true;
-                if (wasOnInLiveView) {
-                    load.simState.isRunning = true;
-                    load.simState.currentPowerWatts = getLoadWatts(load);
-                    totalLoadWatts += load.simState.currentPowerWatts;
-                }
-            });
-            // Use helper function to include inverter load
-            simStats.currentLoadPower = calculateTotalLoadPower();
-            
-            updateSimulationDisplay();
-        }
-        
-        function showSimulationStartHint(arraySpecs, batterySpecs) {
-            if (!areHintsEnabled()) return;
-            const controller = allItems.find(i => i.type === 'controller');
-            const maxWatts = controller ? getMaxWattsForController(controller, batterySpecs.voltage) : 0;
-            
-            const hintPopup = document.getElementById('hintPopup');
-            hintPopup.innerHTML = `
-                <div style="display: flex; align-items: flex-start; gap: 20px;">
-                    <div style="flex: 1;">
-                        <h3 style="margin: 0 0 8px 0; color: #5bc0de;">▶ Simulation Started!</h3>
-                        <p style="margin: 0 0 8px 0;">
-                            Your <strong>${arraySpecs.wmp}W</strong> solar array and <strong>${batterySpecs.kWh.toFixed(2)} kWh</strong> battery are now simulating.
-                        </p>
-                        <p style="margin: 0; color: #aaa; font-size: 12px;">
-                            Press <strong>Play</strong> to start time progression. Watch your battery charge during the day and discharge at night.
-                            Use the speed slider to fast-forward through days.
-                        </p>
-                        <button onclick="hideHint()" style="margin-top: 10px;">Got it</button>
-                    </div>
-                    <div style="padding: 10px 15px; background: rgba(91, 192, 222, 0.2); border-radius: 8px; text-align: center; min-width: 110px;">
-                        <div style="font-size: 10px; color: #aaa; margin-bottom: 2px;">SYSTEM</div>
-                        <div style="font-size: 16px; font-weight: bold; color: #5bc0de;">${arraySpecs.config || '1P1S'}</div>
-                        <div style="font-size: 11px; color: #888; margin-top: 4px;">${arraySpecs.wmp}W / ${batterySpecs.kWh.toFixed(1)}kWh</div>
-                        <div style="border-top: 1px solid #444; margin-top: 8px; padding-top: 8px;">
-                            <div style="font-size: 10px; color: #aaa;">BATTERY</div>
-                            <div style="font-size: 14px; color: #5cb85c;">20%</div>
-                        </div>
-                    </div>
-                </div>
-            `;
-            hintPopup.classList.remove('hidden');
-        }
+        // Simulation functions removed - moved to solar_simulator.html
+        // All simulation initialization logic is now in solar_simulator.html
         
         // ============================================
-        // SIMULATION
+        // SIMULATION CODE REMOVED
         // ============================================
-        
-        // Simulation stats
+        // All simulation logic moved to solar_simulator.html
+        // Keeping minimal simStats structure for compatibility with LiveView
         let simStats = {
             controllerACOutputEnabled: true, // Track if controller AC output is enabled (disabled when battery is low)
             totalSolarGenerated: 0,
@@ -23725,7 +22773,7 @@
         }
         
         // ============================================
-        // THREE.JS STRUCTURE RENDERING SYSTEM
+        // THREE.JS STRUCTURE RENDERING
         // ============================================
         
         // Main background renderer (full canvas)
@@ -23764,13 +22812,7 @@
          * Initialize both structure renderers
          */
         function initStructureViewport() {
-            console.log('3D Viewport: initStructureViewport called');
-            console.log('3D Viewport: linkageLabGeometry exists:', !!window.linkageLabGeometry);
-            
-            if (!window.linkageLabGeometry) {
-                console.log('3D Viewport: No geometry data, skipping initialization');
-                return;
-            }
+            if (!window.linkageLabGeometry) return;
             
             // Check for WebGL support
             if (typeof THREE === 'undefined') {
@@ -23817,22 +22859,10 @@
         function initMainBackgroundRenderer() {
             const canvas = document.getElementById('structure-background-canvas');
             const container = document.getElementById('canvas-container');
-            if (!canvas || !container) {
-                console.log('3D Background: Canvas or container not found');
-                return;
-            }
+            if (!canvas || !container) return;
             
             const width = container.clientWidth;
             const height = container.clientHeight;
-            
-            // If container has no size yet, retry after a short delay
-            if (width === 0 || height === 0) {
-                console.log('3D Background: Container has zero size, retrying in 100ms');
-                setTimeout(initMainBackgroundRenderer, 100);
-                return;
-            }
-            
-            console.log(`3D Background: Initializing with size ${width}x${height}`);
             
             try {
                 bgRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
@@ -23894,23 +22924,12 @@
             // Show the canvas
             canvas.style.display = 'block';
             
-            // Make container transparent so 3D canvas shows through
-            container.style.backgroundColor = 'transparent';
-            
-            // Also make the SVG transparent
-            const svgElement = document.getElementById('canvas');
-            if (svgElement) {
-                svgElement.style.backgroundColor = 'transparent';
-            }
-            
             // Set legacy aliases for compatibility
             structureRenderer = bgRenderer;
             structureScene = bgScene;
             structureCamera = bgCamera;
             structureDirectionalLight = bgDirectionalLight;
             structureAmbientLight = bgAmbientLight;
-            
-            console.log('3D Background: Initialization complete, canvas visible');
         }
         
         /**
@@ -24308,10 +23327,8 @@
             renderMinimap();
         }
         
-        // ============================================
-        // DEFAULT LAYOUT
-        // ============================================
         
+        // Simple default layout setup (3D removed)
         function setupDefaultLayout() {
             // Reset tutorial state
             tutorialStep = 0;
@@ -24347,10 +23364,10 @@
         
         document.addEventListener('DOMContentLoaded', () => {
             updateSvgDimensions();
-            // populateLibraries(); // Removed - components come from designer only
+            populateLibraries();
             setupKeyboardShortcuts();
             setupTooltips();
-            // setupQuickActions(); // Removed - no editing in simulator
+            setupQuickActions();
             initIncidentReportListeners();
             
             // Initialize undo/redo system (Phase 3.4)
@@ -24412,7 +23429,7 @@
                 }
             }
             
-            // Import from Designer
+            // Import from Simulator (round-trip editing)
             if (urlParams.get('import') === 'designer') {
                 const importData = localStorage.getItem('solarDesignerExport');
                 if (importData) {
@@ -24441,38 +23458,14 @@
                             }
                         });
                         
-                        // Load 3D structure geometry if available
-                        if (data.structureGeometry) {
-                            console.log('Import: Loading 3D structure geometry');
-                            window.linkageLabGeometry = data.structureGeometry;
-                        } else {
-                            console.log('Import: No 3D structure geometry in export data');
-                        }
-                        
-                        // Load camera state if available
-                        if (data.cameraState) {
-                            console.log('Import: Loading camera state');
-                            window.linkageLabCameraState = data.cameraState;
-                        }
-                        
                         tutorialCompleted = true;
                         systemValidated = true;
                         render();
                         skipDefaultSetup = true;
-                        
-                        // Initialize 3D structure viewport if geometry is available
-                        if (window.linkageLabGeometry) {
-                            const structureBtn = document.getElementById('structureViewBtn');
-                            if (structureBtn) {
-                                structureBtn.style.display = 'inline-block';
-                            }
-                            setTimeout(() => initStructureViewport(), 100);
-                        }
-                        
                         showHint("📥 Circuit Loaded", 
-                            `Loaded circuit with ${allItems.length} components and ${connections.length} connections from designer.`);
+                            `Loaded circuit with ${allItems.length} components and ${connections.length} connections from simulator.`);
                     } catch (e) {
-                        console.error('Failed to import from designer:', e);
+                        console.error('Failed to import from simulator:', e);
                     }
                 }
             }
@@ -24518,27 +23511,8 @@
                         setupDefaultLayout();
                     }
                 } else {
-                    // No circuit loaded - show message to import from designer
-                    showHint("📥 No Circuit Loaded", 
-                        "This simulator requires a circuit design. " +
-                        "Open the Solar Circuit Designer to create a circuit, then click 'Simulate' to export it here.");
+                    setupDefaultLayout();
                 }
-            }
-            
-            // Hide right sidebar (library/inspector) - not needed in simulator
-            const rightSidebar = document.getElementById('right-sidebar');
-            if (rightSidebar) {
-                rightSidebar.style.display = 'none';
-            }
-            const rightSidebarToggle = document.getElementById('right-sidebar-toggle');
-            if (rightSidebarToggle) {
-                rightSidebarToggle.style.display = 'none';
-            }
-            
-            // Initialize simulation if we have a circuit
-            // Delay 200ms to ensure 3D viewport has time to initialize first (100ms delay)
-            if (allItems.length > 0) {
-                setTimeout(() => initializeSimulation(), 200);
             }
             
             // Keyboard shortcuts
@@ -24558,21 +23532,22 @@
                 }
             });
             
-            // Edit Circuit button - export to designer
-            document.getElementById('editCircuitBtn')?.addEventListener('click', exportToDesigner);
+            // Mode toggle
+            document.getElementById('buildModeBtn').addEventListener('click', () => setMode('build'));
+            document.getElementById('testModeBtn').addEventListener('click', () => setMode('test'));
             
-            // Note: initializeSimulation() is called via setTimeout above (line ~24487)
-            // to ensure 3D viewport has time to initialize first
+            // Export to simulator button
+            document.getElementById('exportToSimulatorBtn').addEventListener('click', exportToSimulator);
             
             // Live view controls
-            document.getElementById('resetAllLoadsBtn')?.addEventListener('click', () => {
+            document.getElementById('resetAllLoadsBtn').addEventListener('click', () => {
                 Object.keys(liveViewLoadStates).forEach(loadId => {
                     LiveView.state.loadStates[loadId] = false;
                 });
                 render();
             });
             
-            document.getElementById('resetAllBreakersBtn')?.addEventListener('click', () => {
+            document.getElementById('resetAllBreakersBtn').addEventListener('click', () => {
                 // Reset regular AC breakers
                 allItems.filter(i => i.type === 'acbreaker' || i.type === 'breaker').forEach(breaker => {
                     breaker.isClosed = true;
@@ -24659,7 +23634,7 @@
             };
             
             // Reset Canvas button (build mode)
-            document.getElementById('resetCanvasBtn')?.addEventListener('click', () => {
+            document.getElementById('resetCanvasBtn').addEventListener('click', () => {
                 if (confirm('Are you sure you want to reset the canvas? This will remove all components and connections.')) {
                     // Clear all items and connections
                     allItems = [];
@@ -24688,35 +23663,41 @@
             });
             
             // System Review button
-            document.getElementById('systemReviewBtn')?.addEventListener('click', () => {
+            document.getElementById('systemReviewBtn').addEventListener('click', () => {
                 showSystemReview();
             });
             
             // BOM buttons
-            document.getElementById('bomCloseBtn')?.addEventListener('click', hideBillOfMaterials);
-            document.getElementById('bomExportBtn')?.addEventListener('click', exportBillOfMaterials);
+            document.getElementById('bomCloseBtn').addEventListener('click', hideBillOfMaterials);
+            document.getElementById('bomExportBtn').addEventListener('click', exportBillOfMaterials);
             
-            // Simulate controls
-            document.getElementById('playPauseButton')?.addEventListener('click', playPause);
-            document.getElementById('speedSlider')?.addEventListener('input', (e) => {
-                simulationSpeed = parseInt(e.target.value);
-                const speedLabel = document.getElementById('speedLabel');
-                if (speedLabel) {
-                    speedLabel.textContent = simulationSpeed + 'x';
-                }
-            });
+            // Simulate controls (if they exist - simulate mode moved to solar_simulator.html)
+            const playPauseButton = document.getElementById('playPauseButton');
+            if (playPauseButton) {
+                playPauseButton.addEventListener('click', playPause);
+            }
+            const speedSlider = document.getElementById('speedSlider');
+            if (speedSlider) {
+                speedSlider.addEventListener('input', (e) => {
+                    simulationSpeed = parseInt(e.target.value);
+                    const speedLabel = document.getElementById('speedLabel');
+                    if (speedLabel) {
+                        speedLabel.textContent = simulationSpeed + 'x';
+                    }
+                });
+            }
             const resetSimulationBtn = document.getElementById('resetSimulationBtn');
             if (resetSimulationBtn) {
                 resetSimulationBtn.addEventListener('click', () => {
-                    if (isPlaying) {
+                    if (typeof isPlaying !== 'undefined' && isPlaying) {
                         playPause(); // Stop simulation first
                     }
-                    resetSimulation();
-                    updateSimulationDisplay();
-                    const hourOfDay = Math.floor(elapsedHours) % 24;
-                    updateBackgroundColor(hourOfDay);
-                    updateStructureLighting(hourOfDay);
-                    updateShadowAngle(hourOfDay);
+                    if (typeof resetSimulation === 'function') resetSimulation();
+                    if (typeof updateSimulationDisplay === 'function') updateSimulationDisplay();
+                    const hourOfDay = Math.floor(typeof elapsedHours !== 'undefined' ? elapsedHours : 12) % 24;
+                    if (typeof updateBackgroundColor === 'function') updateBackgroundColor(hourOfDay);
+                    if (typeof updateStructureLighting === 'function') updateStructureLighting(hourOfDay);
+                    if (typeof updateShadowAngle === 'function') updateShadowAngle(hourOfDay);
                     render();
                 });
             }
@@ -24742,15 +23723,15 @@
             }
             
             // Show Hints toggle - hide any visible hint when unchecked
-            document.getElementById('showHintsToggle')?.addEventListener('change', (e) => {
+            document.getElementById('showHintsToggle').addEventListener('change', (e) => {
                 if (!e.target.checked) {
                     hideHint();
                 }
             });
             
             // Save/Load
-            document.getElementById('saveBtn')?.addEventListener('click', saveSystem);
-            document.getElementById('loadBtn')?.addEventListener('click', loadSystem);
+            document.getElementById('saveBtn').addEventListener('click', saveSystem);
+            document.getElementById('loadBtn').addEventListener('click', loadSystem);
             
             // Simulate mode specific buttons
             const challengeModeBtn = document.getElementById('challengeModeBtn');
@@ -24773,14 +23754,14 @@
             }
             
             // Sidebar toggles
-            document.getElementById('left-sidebar-toggle')?.addEventListener('click', () => {
-                document.getElementById('left-sidebar')?.classList.toggle('collapsed');
+            document.getElementById('left-sidebar-toggle').addEventListener('click', () => {
+                document.getElementById('left-sidebar').classList.toggle('collapsed');
             });
             
-            document.getElementById('right-sidebar-toggle')?.addEventListener('click', () => {
+            document.getElementById('right-sidebar-toggle').addEventListener('click', () => {
                 const sidebar = document.getElementById('right-sidebar');
-                sidebar?.classList.toggle('closed');
-                sidebar?.classList.toggle('open');
+                sidebar.classList.toggle('closed');
+                sidebar.classList.toggle('open');
                 updateRightSidebarToggle();
             });
             
@@ -24823,7 +23804,7 @@
             }
             
             // Inspector apply buttons
-            document.getElementById('applyPanelChanges')?.addEventListener('click', () => {
+            document.getElementById('applyPanelChanges').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'panel') return;
                 
                 const newSpecs = {
@@ -24900,7 +23881,7 @@
                 validateSystem();
             });
             
-            document.getElementById('applyBatteryChanges')?.addEventListener('click', () => {
+            document.getElementById('applyBatteryChanges').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'battery') return;
                 
                 const voltage = parseFloat(document.getElementById('batteryVoltage').value);
@@ -24966,7 +23947,7 @@
             });
             
             // Controller Model Selector - swap controller while keeping connections
-            document.getElementById('controllerModelSelector')?.addEventListener('change', (e) => {
+            document.getElementById('controllerModelSelector').addEventListener('change', (e) => {
                 if (!e.target.value || !selectedItem || selectedItem.type !== 'controller') return;
                 
                 const presetIndex = parseInt(e.target.value);
@@ -24978,7 +23959,7 @@
                 openInspector(newController);
             });
             
-            document.getElementById('applyControllerChanges')?.addEventListener('click', () => {
+            document.getElementById('applyControllerChanges').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'controller') return;
                 
                 const newType = document.getElementById('controllerType').value;
@@ -25208,12 +24189,12 @@
             });
             
             // Toggle AC output visibility when controller type changes
-            document.getElementById('controllerType')?.addEventListener('change', (e) => {
+            document.getElementById('controllerType').addEventListener('change', (e) => {
                 const isHybrid = e.target.value === 'hybrid_inverter' || e.target.value === 'all_in_one';
-                document.getElementById('controllerACOutput')?.classList.toggle('hidden', !isHybrid);
+                document.getElementById('controllerACOutput').classList.toggle('hidden', !isHybrid);
             });
             
-            document.getElementById('deleteWire')?.addEventListener('click', () => {
+            document.getElementById('deleteWire').addEventListener('click', () => {
                 if (selectedConnection) {
                     deleteConnection(selectedConnection.id);
                     closeInspector();
@@ -25221,7 +24202,7 @@
             });
             
             // Add breaker to wire
-            document.getElementById('addBreakerToWire')?.addEventListener('click', () => {
+            document.getElementById('addBreakerToWire').addEventListener('click', () => {
                 if (!selectedConnection) return;
                 
                 const conn = selectedConnection;
@@ -25266,18 +24247,18 @@
             });
             
             // Breaker inspector buttons
-            document.getElementById('toggleBreaker')?.addEventListener('click', () => {
+            document.getElementById('toggleBreaker').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'breaker') return;
                 selectedItem.isClosed = !selectedItem.isClosed;
                 openInspector(selectedItem); // Refresh inspector
                 render();
             });
             
-            document.getElementById('applyBreakerChanges')?.addEventListener('click', () => _applySimple('breaker', [
+            document.getElementById('applyBreakerChanges').addEventListener('click', () => _applySimple('breaker', [
                 ['rating', 'breakerRating', parseInt], ['maxVoltage', 'breakerMaxVoltage', parseFloat], ['cost', 'breakerCost', parseFloat]
             ]));
             
-            document.getElementById('autosizeBreaker')?.addEventListener('click', () => {
+            document.getElementById('autosizeBreaker').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'breaker') return;
                 
                 // Find connections to this breaker and calculate expected current
@@ -25303,31 +24284,31 @@
             });
             
             // Combiner inspectors
-            document.getElementById('applyCombinerChanges')?.addEventListener('click', () => _applySimple('combiner', [
+            document.getElementById('applyCombinerChanges').addEventListener('click', () => _applySimple('combiner', [
                 ['maxAmpsPerInput', 'combinerMaxAmps', parseFloat], ['cost', 'combinerCost', parseFloat]
             ]));
-            document.getElementById('applySolarCombinerChanges')?.addEventListener('click', () => _applySimple('solarcombiner', [
+            document.getElementById('applySolarCombinerChanges').addEventListener('click', () => _applySimple('solarcombiner', [
                 ['breakerRating', 'solarCombinerBreakerRating', parseInt], ['maxVoltage', 'solarCombinerMaxVoltage', parseFloat], ['cost', 'solarCombinerCost', parseFloat]
             ]));
             
             // Spider Box inspector
-            document.getElementById('applySpiderboxChanges')?.addEventListener('click', () => _applySimple('spiderbox', [['cost', 'spiderboxCost', parseFloat]]));
-            document.getElementById('spiderboxAllOn')?.addEventListener('click', () => {
+            document.getElementById('applySpiderboxChanges').addEventListener('click', () => _applySimple('spiderbox', [['cost', 'spiderboxCost', parseFloat]]));
+            document.getElementById('spiderboxAllOn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'spiderbox') return;
                 _setAllCircuits('spiderbox', selectedItem.specs.circuits.length, true, true);
             });
-            document.getElementById('spiderboxAllOff')?.addEventListener('click', () => {
+            document.getElementById('spiderboxAllOff').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'spiderbox') return;
                 _setAllCircuits('spiderbox', selectedItem.specs.circuits.length, false, true);
             });
             
             // Breaker Panel inspector
-            document.getElementById('applyBreakerpanelChanges')?.addEventListener('click', () => _applySimple('breakerpanel', [['cost', 'breakerpanelCost', parseFloat]]));
-            document.getElementById('breakerpanelAllOn')?.addEventListener('click', () => _setAllCircuits('breakerpanel', 8, true, false));
-            document.getElementById('breakerpanelAllOff')?.addEventListener('click', () => _setAllCircuits('breakerpanel', 8, false, false));
+            document.getElementById('applyBreakerpanelChanges').addEventListener('click', () => _applySimple('breakerpanel', [['cost', 'breakerpanelCost', parseFloat]]));
+            document.getElementById('breakerpanelAllOn').addEventListener('click', () => _setAllCircuits('breakerpanel', 8, true, false));
+            document.getElementById('breakerpanelAllOff').addEventListener('click', () => _setAllCircuits('breakerpanel', 8, false, false));
             
             // AC Load inspector
-            document.getElementById('loadPreset')?.addEventListener('change', (e) => {
+            document.getElementById('loadPreset').addEventListener('change', (e) => {
                 if (!selectedItem || selectedItem.type !== 'acload') return;
                 const preset = APPLIANCE_PRESETS[parseInt(e.target.value)];
                 selectedItem.specs.name = preset.name;
@@ -25367,7 +24348,7 @@
             });
             
             // Behavior type change
-            document.getElementById('loadBehaviorType')?.addEventListener('change', (e) => {
+            document.getElementById('loadBehaviorType').addEventListener('change', (e) => {
                 if (!selectedItem || selectedItem.type !== 'acload') return;
                 const newType = e.target.value;
                 
@@ -25388,24 +24369,24 @@
             });
             
             // Add recipe button - opens inline editor
-            document.getElementById('addRecipeBtn')?.addEventListener('click', () => {
+            document.getElementById('addRecipeBtn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'acload') return;
                 if (!selectedItem.specs.recipes) selectedItem.specs.recipes = [];
                 openRecipeEditor(selectedItem, null);
             });
             
             // Recipe editor - Add Input button
-            document.getElementById('addRecipeInputBtn')?.addEventListener('click', () => {
+            document.getElementById('addRecipeInputBtn').addEventListener('click', () => {
                 addRecipeIORow('recipeEditorInputs', 'input');
             });
             
             // Recipe editor - Add Output button
-            document.getElementById('addRecipeOutputBtn')?.addEventListener('click', () => {
+            document.getElementById('addRecipeOutputBtn').addEventListener('click', () => {
                 addRecipeIORow('recipeEditorOutputs', 'output');
             });
             
             // Recipe editor - Save button
-            document.getElementById('saveRecipeBtn')?.addEventListener('click', () => {
+            document.getElementById('saveRecipeBtn').addEventListener('click', () => {
                 const editor = document.getElementById('recipeEditor');
                 const itemId = editor.dataset.itemId;
                 const recipeIndex = editor.dataset.recipeIndex;
@@ -25444,23 +24425,23 @@
             });
             
             // Recipe editor - Cancel button
-            document.getElementById('cancelRecipeBtn')?.addEventListener('click', () => {
-                document.getElementById('recipeEditor')?.classList.add('hidden');
+            document.getElementById('cancelRecipeBtn').addEventListener('click', () => {
+                document.getElementById('recipeEditor').classList.add('hidden');
             });
             
             // Add automation button
-            document.getElementById('addAutomationBtn')?.addEventListener('click', () => {
+            document.getElementById('addAutomationBtn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'acload') return;
                 if (!selectedItem.automations) selectedItem.automations = [];
                 openAutomationEditor(selectedItem, null);
             });
             
             // Automation editor handlers
-            document.getElementById('automationTriggerType')?.addEventListener('change', updateAutomationFields);
-            document.getElementById('automationAction')?.addEventListener('change', updateAutomationFields);
+            document.getElementById('automationTriggerType').addEventListener('change', updateAutomationFields);
+            document.getElementById('automationAction').addEventListener('change', updateAutomationFields);
             
             // Recipe selection change - update details display
-            document.getElementById('automationRecipeSelect')?.addEventListener('change', (e) => {
+            document.getElementById('automationRecipeSelect').addEventListener('change', (e) => {
                 const editor = document.getElementById('automationEditor');
                 const itemId = editor.dataset.itemId;
                 const item = allItems.find(i => i.id === itemId);
@@ -25469,7 +24450,7 @@
                 }
             });
             
-            document.getElementById('saveAutomationBtn')?.addEventListener('click', () => {
+            document.getElementById('saveAutomationBtn').addEventListener('click', () => {
                 const editor = document.getElementById('automationEditor');
                 const itemId = editor.dataset.itemId;
                 const automationIndex = editor.dataset.automationIndex;
@@ -25521,14 +24502,14 @@
                 render();
             });
             
-            document.getElementById('cancelAutomationBtn')?.addEventListener('click', () => {
-                document.getElementById('automationEditor')?.classList.add('hidden');
+            document.getElementById('cancelAutomationBtn').addEventListener('click', () => {
+                document.getElementById('automationEditor').classList.add('hidden');
             });
             
             // Processor inspector removed - recipe-based loads are handled in load inspector
             
             // Resource Container Inspector handlers
-            document.getElementById('applyContainerChanges')?.addEventListener('click', () => {
+            document.getElementById('applyContainerChanges').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'resourcecontainer') return;
                 
                 selectedItem.specs.name = document.getElementById('containerName').value;
@@ -25549,7 +24530,7 @@
                 render();
             });
             
-            document.getElementById('containerFillBtn')?.addEventListener('click', () => {
+            document.getElementById('containerFillBtn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'resourcecontainer') return;
                 selectedItem.specs.value = selectedItem.specs.capacity || 100;
                 document.getElementById('containerValue').value = selectedItem.specs.value;
@@ -25557,7 +24538,7 @@
                 render();
             });
             
-            document.getElementById('containerEmptyBtn')?.addEventListener('click', () => {
+            document.getElementById('containerEmptyBtn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'resourcecontainer') return;
                 selectedItem.specs.value = 0;
                 document.getElementById('containerValue').value = 0;
@@ -25565,7 +24546,7 @@
                 render();
             });
             
-            document.getElementById('deleteContainerBtn')?.addEventListener('click', () => {
+            document.getElementById('deleteContainerBtn').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'resourcecontainer') return;
                 
                 // Remove all connections to/from this container
@@ -25578,13 +24559,13 @@
                 
                 // Close inspector
                 selectedItem = null;
-                document.getElementById('resourceContainerInspector')?.classList.add('hidden');
-                document.getElementById('inspectorEmpty')?.classList.remove('hidden');
+                document.getElementById('resourceContainerInspector').classList.add('hidden');
+                document.getElementById('inspectorEmpty').classList.remove('hidden');
                 
                 render();
             });
             
-            document.getElementById('applyLoadChanges')?.addEventListener('click', () => {
+            document.getElementById('applyLoadChanges').addEventListener('click', () => {
                 if (!selectedItem || selectedItem.type !== 'acload') return;
                 selectedItem.specs.name = document.getElementById('loadName').value;
                 selectedItem.specs.voltage = parseInt(document.getElementById('loadVoltage').value);
@@ -25625,8 +24606,8 @@
             }
             
             // Achievement close
-            document.getElementById('achievementClose')?.addEventListener('click', hideAchievement);
-            document.getElementById('startSimulation')?.addEventListener('click', () => {
+            document.getElementById('achievementClose').addEventListener('click', hideAchievement);
+            document.getElementById('startSimulation').addEventListener('click', () => {
                 hideAchievement();
                 setMode('simulate');
             });

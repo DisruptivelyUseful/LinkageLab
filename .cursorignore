@@ -1,0 +1,14 @@
+# Exclude large reference files
+
+
+# Exclude build/generated files  
+*.min.js
+*.bundle.js
+dist/
+build/
+
+# Exclude logs and temp files
+*.log
+*.tmp
+*.bak
+.DS_Store

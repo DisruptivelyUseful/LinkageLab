@@ -2203,7 +2203,7 @@
         <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-solar-simulator" title="Open 3D Solar Simulator with structure" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">🌐 3D Mode</button>
+        <button class="topbar-btn" id="btn-solar-simulator" title="Open Solar Circuit Designer - Design microgrid circuits and simulate energy flows" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Design Microgrid</button>
     </div>
 </div>
 
@@ -10094,7 +10094,7 @@ function importFromJSON() {
 }
 
 /**
- * Serializes 3D geometry data for export to Solar Simulator
+ * Serializes 3D geometry data for export to Solar Circuit Designer
  * @param {Object} data - Linkage data containing beams and panels
  * @returns {Object} Serialized geometry object
  */
@@ -10195,8 +10195,9 @@ function serializeGeometry(data) {
 }
 
 /**
- * Exports current design to Solar Simulator for microgrid design
+ * Exports current design to Solar Circuit Designer for microgrid design
  * Passes panel configuration, BOM costs, and 3D geometry
+ * User can then export from designer to simulator for 3D energy flow simulation
  */
 function exportToSolarSimulator() {
     // Get current linkage data
@@ -10275,13 +10276,14 @@ function exportToSolarSimulator() {
         }
     };
     
-    // Store in localStorage for the simulator to read
+    // Store in localStorage for the designer to read
     localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
     
-    // Open Solar Simulator with import flag
-    window.open('solar_simulator.html?import=linkageLab', '_blank');
+    // Open Solar Circuit Designer with import flag
+    // User can then export to simulator from the designer
+    window.open('solar_designer.html?import=linkageLab', '_blank');
     
-    showToast(`Exported ${panelCount} panels to Solar Simulator`, 'info');
+    showToast(`Exported ${panelCount} panels to Solar Circuit Designer`, 'info');
 }
 
 
@@ -14340,7 +14342,7 @@ window.addEventListener('resize', debounce(() => {
             <div class="guide-header-actions">
                 <button class="guide-header-btn" onclick="window.print()">🖨️ Print</button>
                 <button class="guide-header-btn" onclick="exportGuideJSON()">💾 Export JSON</button>
-                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Design Microgrid</button>
+                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Circuit Designer</button>
             </div>
             <button class="guide-close" onclick="closeBuildGuide()">&times;</button>
         </div>
