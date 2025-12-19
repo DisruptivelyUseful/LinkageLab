@@ -24461,18 +24461,27 @@
                     const mesh = new THREE.Mesh(geometry, material);
                     mesh.position.set(panel.center.x, panel.center.y, panel.center.z);
                     
-                    // Apply rotation if specified
-                    if (panel.rotation) {
-                        mesh.rotation.y = panel.rotation;
-                    }
-                    
-                    // Apply normal-based orientation if available
+                    // Apply normal-based orientation first if available (for tilted/vertical panels)
                     if (panel.normal && (panel.normal.x !== 0 || panel.normal.z !== 0 || panel.normal.y !== 1)) {
                         const up = new THREE.Vector3(0, 1, 0);
                         const normal = new THREE.Vector3(panel.normal.x, panel.normal.y, panel.normal.z);
                         const quaternion = new THREE.Quaternion();
                         quaternion.setFromUnitVectors(up, normal);
                         mesh.quaternion.copy(quaternion);
+                        
+                        // Apply rotation around the normal axis if specified
+                        // Negate rotation to match Panel3D's rotation convention
+                        if (panel.rotation) {
+                            const rotationQuat = new THREE.Quaternion();
+                            rotationQuat.setFromAxisAngle(normal, -panel.rotation);
+                            mesh.quaternion.multiplyQuaternions(mesh.quaternion, rotationQuat);
+                        }
+                    } else {
+                        // For horizontal panels (normal pointing up), apply rotation around Y axis
+                        // Negate rotation to match Panel3D's rotation convention (opposite to Three.js)
+                        if (panel.rotation) {
+                            mesh.rotation.y = -panel.rotation;
+                        }
                     }
                     
                     mesh.castShadow = true;
