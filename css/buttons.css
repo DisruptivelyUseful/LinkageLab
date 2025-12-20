@@ -1,0 +1,117 @@
+/* ============================================
+   BUTTONS - Unified Button Styling
+   ============================================ */
+
+/* Base button styles */
+button {
+    font-family: var(--font-display);
+    padding: 8px 14px;
+    background: var(--space-600);
+    color: var(--text-secondary);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+button:hover {
+    background: var(--space-500);
+    border-color: var(--clr-primary);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+button:active {
+    transform: translateY(0);
+}
+
+button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+button.active {
+    background: rgba(var(--clr-primary-rgb), 0.2);
+    border-color: var(--clr-primary);
+    color: var(--clr-primary);
+    box-shadow: var(--glow-primary);
+}
+
+/* Button groups */
+.btn-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.btn-group button {
+    flex: 1;
+}
+
+.btn-group button:first-child {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.btn-group button:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.btn-group button:not(:first-child):not(:last-child) {
+    border-radius: 0;
+}
+
+/* Primary button variant */
+.btn-primary {
+    background: var(--gradient-primary);
+    border-color: var(--clr-primary);
+    color: var(--space-900);
+    font-weight: 600;
+}
+
+.btn-primary:hover {
+    background: var(--clr-primary);
+    box-shadow: var(--glow-primary-strong);
+}
+
+/* Secondary button variant */
+.btn-secondary {
+    background: transparent;
+    border-color: var(--border-light);
+}
+
+.btn-secondary:hover {
+    background: var(--space-600);
+}
+
+/* Small button variant */
+.btn-sm {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    min-height: 24px;
+}
+
+/* Large button variant */
+.btn-lg {
+    padding: 12px 20px;
+    font-size: 1rem;
+    min-height: 44px;
+}
+
+/* Icon-only buttons */
+.btn-icon {
+    padding: 6px;
+    min-width: 32px;
+    width: 32px;
+    height: 32px;
+}

@@ -1,0 +1,118 @@
+/* ============================================
+   SIDEBAR - Side Panel Styling
+   ============================================ */
+
+.sidebar,
+#sidebar {
+    position: fixed;
+    top: 52px; /* Below topbar */
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid var(--border-light);
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+    z-index: var(--z-sticky);
+    transition: width var(--transition-med), transform var(--transition-med);
+    overflow: hidden;
+}
+
+.sidebar-content,
+#controls {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+}
+
+.sidebar-content::-webkit-scrollbar,
+#controls::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar-content::-webkit-scrollbar-track,
+#controls::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb,
+#controls::-webkit-scrollbar-thumb {
+    background: var(--border-med);
+    border-radius: var(--radius-sm);
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover,
+#controls::-webkit-scrollbar-thumb:hover {
+    background: var(--border-light);
+}
+
+/* Sidebar groups */
+.group,
+.sidebar-group {
+    background: rgba(255, 255, 255, 0.02);
+    padding: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 8px;
+    border-radius: var(--radius-sm);
+    transition: all var(--transition-fast);
+}
+
+.group:hover,
+.sidebar-group:hover {
+    border-color: var(--border-med);
+}
+
+.group-title,
+.sidebar-group-title {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--clr-primary);
+    margin-bottom: 8px;
+    font-weight: 700;
+    border-bottom: 1px solid rgba(var(--clr-primary-rgb), 0.2);
+    padding-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Control rows */
+.control-row,
+.chk-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 0.8rem;
+}
+
+.control-row label,
+.chk-row label {
+    flex: 1;
+    margin-bottom: 0;
+    font-size: 0.8rem;
+}
+
+.control-row input,
+.control-row select {
+    flex: 0 0 auto;
+}
+
+/* Collapsible sections */
+.collapsible {
+    cursor: pointer;
+    user-select: none;
+}
+
+.collapsible-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height var(--transition-med);
+}
+
+.collapsible.open .collapsible-content {
+    max-height: 2000px;
+}

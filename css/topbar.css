@@ -1,0 +1,248 @@
+/* ============================================
+   TOPBAR - Unified Toolbar Styling
+   Consistent across all modes (Linkage, Designer, Simulator)
+   ============================================ */
+
+/* Unified topbar - supports both ID and class for transition */
+.topbar,
+#topbar,
+.toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 52px;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--clr-primary);
+    box-shadow: 
+        0 4px 20px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    z-index: var(--z-fixed);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    gap: 15px;
+    flex-shrink: 0;
+}
+
+/* Subtle scan line effect (aerospace aesthetic) */
+.topbar::before,
+#topbar::before,
+.toolbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0, 0, 0, 0.02) 2px,
+        rgba(0, 0, 0, 0.02) 4px
+    );
+    pointer-events: none;
+}
+
+/* Topbar sections */
+.topbar-left,
+.topbar-center,
+.topbar-right,
+.toolbar-left,
+.toolbar-center,
+.toolbar-right {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+}
+
+.topbar-left,
+.toolbar-left {
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+.topbar-center,
+.toolbar-center {
+    gap: 15px;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
+}
+
+.topbar-right,
+.toolbar-right {
+    gap: 10px;
+    flex: 0 0 auto;
+}
+
+/* App title */
+.topbar h1,
+#topbar h1,
+.topbar .app-title,
+.toolbar .app-title {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 700;
+    font-family: var(--font-display);
+    color: var(--clr-primary);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    text-shadow: var(--glow-primary);
+}
+
+/* Topbar buttons */
+.topbar-btn,
+.topbar button,
+#topbar button,
+.toolbar button {
+    font-family: var(--font-display);
+    padding: 8px 14px;
+    min-width: 32px;
+    height: 32px;
+    background: var(--space-600);
+    color: var(--text-secondary);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 0.85em;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.topbar-btn:hover,
+.topbar button:hover,
+#topbar button:hover,
+.toolbar button:hover {
+    background: var(--space-500);
+    border-color: var(--clr-primary);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-md);
+}
+
+.topbar-btn.active,
+.topbar button.active,
+#topbar button.active,
+.toolbar button.active {
+    background: rgba(var(--clr-primary-rgb), 0.2);
+    border-color: var(--clr-primary);
+    color: var(--clr-primary);
+    box-shadow: var(--glow-primary);
+}
+
+/* Mode toggle group - segmented control */
+.mode-toggle {
+    display: flex;
+    gap: 0;
+    background: var(--space-800);
+    border-radius: var(--radius-md);
+    padding: 3px;
+    border: 1px solid var(--space-400);
+    flex-shrink: 0;
+}
+
+.mode-toggle button {
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    min-width: 100px;
+    padding: 8px 20px;
+    color: var(--text-secondary);
+    font-weight: 500;
+}
+
+.mode-toggle button.active {
+    background: var(--gradient-primary);
+    color: var(--space-900);
+    font-weight: 600;
+    box-shadow: var(--glow-primary);
+}
+
+.mode-toggle button:hover:not(.active) {
+    background: var(--space-600);
+    color: var(--text-primary);
+}
+
+/* Topbar dividers */
+.topbar-divider {
+    width: 1px;
+    height: 24px;
+    background: var(--border-light);
+    margin: 0 8px;
+}
+
+/* Topbar animation controls */
+.topbar-anim {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.topbar-anim button {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.topbar-anim button:hover {
+    border-color: var(--clr-primary);
+    color: var(--clr-primary);
+}
+
+.topbar-anim input[type="range"] {
+    width: 80px;
+    height: 4px;
+}
+
+.topbar-anim-status {
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    min-width: 60px;
+}
+
+/* Topbar checkboxes and number inputs */
+.topbar-chk {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.topbar-chk input[type="checkbox"] {
+    width: 12px;
+    height: 12px;
+    margin: 0;
+}
+
+.topbar-chk input[type="number"] {
+    width: 40px;
+    padding: 2px 4px;
+    font-size: 0.65rem;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    color: var(--text-primary);
+    border-radius: var(--radius-sm);
+}
+
+/* Sun position controls */
+.topbar-sun {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.topbar-sun input[type="range"] {
+    width: 50px;
+    height: 4px;
+}

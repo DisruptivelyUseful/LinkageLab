@@ -1,0 +1,128 @@
+/* ============================================
+   UNIFIED DESIGN SYSTEM - CSS VARIABLES
+   StarShade Linkage Lab - Aerospace Engineering Theme
+   Blends architectural precision with aerospace aesthetics
+   ============================================ */
+
+:root {
+    /* === TYPOGRAPHY === */
+    --font-display: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+    --font-body: 'Segoe UI', system-ui, sans-serif;
+    
+    /* === PRIMARY COLORS - Blue/Cyan Aerospace === */
+    --clr-primary: #22d3ee;           /* Cyan blue - main brand color */
+    --clr-primary-light: #67e8f9;    /* Light cyan */
+    --clr-primary-dark: #0891b2;     /* Dark cyan */
+    --clr-primary-rgb: 34, 211, 238; /* For rgba() usage */
+    
+    /* === ENERGY COLORS - Status Indicators === */
+    --energy-amber: #f59e0b;         /* Warning/caution */
+    --energy-orange: #ea580c;        /* Critical */
+    --energy-gold: #fbbf24;          /* Highlight */
+    --energy-green: #10b981;          /* Success/nominal */
+    --energy-red: #ef4444;            /* Error/danger */
+    --energy-blue: #3b82f6;           /* Info */
+    --energy-glow: rgba(34, 211, 238, 0.15); /* Subtle cyan glow */
+    
+    /* === STATUS COLORS (Semantic) === */
+    --clr-success: var(--energy-green);
+    --clr-success-rgb: 16, 185, 129;
+    --clr-danger: var(--energy-red);
+    --clr-danger-rgb: 239, 68, 68;
+    --clr-warning: var(--energy-amber);
+    --clr-warning-rgb: 245, 158, 11;
+    --clr-info: var(--energy-blue);
+    --clr-info-rgb: 59, 130, 246;
+    
+    /* === SPACE BACKGROUNDS (Deep Space Palette) === */
+    --space-900: #0a0e1a;             /* Deepest space */
+    --space-800: #0f1629;             /* Dark space */
+    --space-700: #151d35;             /* Medium dark */
+    --space-600: #1c2541;             /* Panel background */
+    --space-500: #253152;             /* Input background */
+    --space-400: #3a4a6b;             /* Border light */
+    --space-300: #4a5a7b;             /* Border medium */
+    
+    /* === BACKGROUNDS (Unified) === */
+    --bg-body: var(--space-900);
+    --bg-sidebar: var(--space-700);
+    --bg-panel: var(--space-600);
+    --bg-input: var(--space-500);
+    --bg-canvas: var(--space-900);
+    --bg-toolbar: linear-gradient(180deg, var(--space-700) 0%, var(--space-800) 100%);
+    --gradient-panel: linear-gradient(180deg, var(--space-600) 0%, var(--space-700) 100%);
+    --gradient-primary: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
+    --gradient-energy: linear-gradient(135deg, var(--energy-amber) 0%, var(--energy-orange) 100%);
+    
+    /* === BORDERS === */
+    --border: var(--space-400);
+    --border-light: var(--space-400);
+    --border-med: var(--space-500);
+    --border-dark: var(--space-600);
+    --border-primary: var(--clr-primary);
+    
+    /* === TEXT HIERARCHY === */
+    --text-primary: #e2e8f0;          /* Main text */
+    --text-secondary: #94a3b8;        /* Secondary text */
+    --text-muted: #64748b;            /* Muted text */
+    --text-dim: #475569;              /* Dim text */
+    --text-data: var(--clr-primary);  /* Data/numbers */
+    --text-accent: var(--clr-primary); /* Accent text */
+    
+    /* === GLOW EFFECTS (Subtle, Professional) === */
+    --glow-primary: 0 0 12px rgba(34, 211, 238, 0.4);      /* Cyan glow */
+    --glow-primary-strong: 0 0 20px rgba(34, 211, 238, 0.6); /* Strong cyan */
+    --glow-green: 0 0 12px rgba(16, 185, 129, 0.4);        /* Success glow */
+    --glow-red: 0 0 12px rgba(239, 68, 68, 0.4);           /* Error glow */
+    --glow-amber: 0 0 12px rgba(245, 158, 11, 0.3);         /* Warning glow (subtle) */
+    
+    /* === BORDER RADIUS (Professional, Less Cartoony) === */
+    --radius-sm: 4px;                 /* Small elements */
+    --radius-md: 4px;                 /* Medium elements (reduced from 6px) */
+    --radius-lg: 6px;                 /* Large elements (reduced from 12px) */
+    --radius-xl: 8px;                 /* Extra large (for modals) */
+    
+    /* === SPACING === */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 12px;
+    --spacing-lg: 16px;
+    --spacing-xl: 24px;
+    --spacing-2xl: 32px;
+    
+    /* === TRANSITIONS === */
+    --transition-fast: 0.15s ease;
+    --transition-med: 0.25s ease;
+    --transition-slow: 0.4s ease;
+    
+    /* === SHADOWS === */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.5);
+    --shadow-glow: 0 0 20px rgba(34, 211, 238, 0.3);
+    
+    /* === Z-INDEX SCALE === */
+    --z-base: 1;
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 900;
+    --z-modal: 1000;
+    --z-tooltip: 1100;
+    
+    /* === STATUS VARIABLES (for compatibility) === */
+    --status-nominal: var(--energy-green);
+    --status-info: var(--energy-blue);
+    --status-warning: var(--energy-amber);
+    --status-caution: var(--energy-orange);
+    --status-error: var(--energy-red);
+    
+    /* === LEGACY COMPATIBILITY === */
+    /* Maintain backward compatibility with existing variable names */
+    --bg: var(--bg-body);
+    --panel: var(--bg-panel);
+    --text: var(--text-primary);
+    --accent: var(--clr-primary);
+    --wood: #e1b12c;                  /* For beam visualization */
+}
