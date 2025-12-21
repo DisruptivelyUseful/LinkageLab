@@ -104,7 +104,7 @@ const ExportFormat = (function() {
      * @returns {Object} Formatted export data
      */
     function createDesignerExport(config) {
-        return {
+        const exportData = {
             version: VERSION,
             source: SOURCES.SOLAR_DESIGNER,
             timestamp: Date.now(),
@@ -141,6 +141,45 @@ const ExportFormat = (function() {
                 componentCount: config.componentCount || 0
             }
         };
+        
+        // Include structure geometry if provided or from localStorage (passed through from LinkageLab)
+        if (config.structureGeometry) {
+            exportData.structureGeometry = config.structureGeometry;
+        } else {
+            // Try to load from localStorage (set by LinkageLab export)
+            try {
+                const linkageExport = localStorage.getItem('linkageLabExport');
+                if (linkageExport) {
+                    const linkageData = JSON.parse(linkageExport);
+                    if (linkageData.structureGeometry) {
+                        exportData.structureGeometry = linkageData.structureGeometry;
+                    }
+                }
+                // Also try standalone geometry storage
+                const geometryData = localStorage.getItem('linkageLabGeometry');
+                if (geometryData && !exportData.structureGeometry) {
+                    exportData.structureGeometry = JSON.parse(geometryData);
+                }
+            } catch (e) {
+                console.warn('ExportFormat: Could not load structure geometry', e);
+            }
+        }
+        
+        // Include camera state if provided or from localStorage
+        if (config.cameraState) {
+            exportData.cameraState = config.cameraState;
+        } else {
+            try {
+                const cameraState = localStorage.getItem('linkageLabCameraState');
+                if (cameraState) {
+                    exportData.cameraState = JSON.parse(cameraState);
+                }
+            } catch (e) {
+                console.warn('ExportFormat: Could not load camera state', e);
+            }
+        }
+        
+        return exportData;
     }
     
     // ========================================

@@ -9,6 +9,40 @@
     <!-- Three.js for 3D structure visualization -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- convert-units library for unit conversions -->
+    <script src="https://cdn.jsdelivr.net/npm/convert-units@2.3.4/dist/index.js"></script>
+    <script src="js/core/unit-converter.js"></script>
+    <!-- Circuit Modules (Phase 1 & 2 Refactor) -->
+    <script type="module">
+        // Import modules and attach to global namespace for compatibility
+        import * as WireStyles from './js/circuit/wire-styles.js';
+        import * as WireRenderer from './js/circuit/wire-renderer.js';
+        import * as NodeFactory from './js/circuit/node-factory.js';
+        import * as PowerFlow from './js/circuit/power-flow.js';
+        import { Scene3D, CoordinateMapper } from './js/circuit/scene3d.js';
+        import * as Node3D from './js/circuit/node3d.js';
+        import * as Connection3DModule from './js/circuit/connection3d.js';
+        import { Interaction3D } from './js/circuit/interaction3d.js';
+        import * as PowerStation3DModule from './js/circuit/powerstation3d.js';
+        import * as Animation3D from './js/circuit/animation3d.js';
+        
+        // Attach to window for global access
+        window.CircuitModules = {
+            WireStyles,
+            WireRenderer,
+            NodeFactory,
+            PowerFlow,
+            Scene3D,
+            CoordinateMapper,
+            Node3D,
+            Connection3D: Connection3DModule,
+            Interaction3D,
+            PowerStation3D: PowerStation3DModule
+        };
+        
+        // Dispatch event when modules are loaded
+        window.dispatchEvent(new CustomEvent('circuitModulesLoaded'));
+    </script>
     <!-- Mission Control Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -76,6 +110,46 @@
         </div>
         
         <div class="toolbar-right topbar-right">
+            <!-- File Operations -->
+            <div class="file-controls" style="display: flex; align-items: center; gap: 5px; margin-right: 15px; border-right: 1px solid #444; padding-right: 15px;">
+                <button id="saveFullConfigBtn" title="Save full config (Ctrl+S)" style="padding: 5px 10px; background: #2a6a2a; color: #fff; border: 1px solid #3a8a3a; border-radius: 3px; cursor: pointer; font-size: 11px;">💾 Save</button>
+                <button id="loadFullConfigBtn" title="Load full config (Ctrl+O)" style="padding: 5px 10px; background: #2a4a6a; color: #fff; border: 1px solid #3a6a9a; border-radius: 3px; cursor: pointer; font-size: 11px;">📂 Load</button>
+                <button id="exportFullConfigBtn" title="Export to JSON file (Ctrl+E)" style="padding: 5px 10px; background: #4a4a2a; color: #fff; border: 1px solid #6a6a3a; border-radius: 3px; cursor: pointer; font-size: 11px;">📤 Export</button>
+                <input type="file" id="importFullConfigInput" accept=".json" style="display: none;">
+            </div>
+            <!-- Unit System Toggle -->
+            <div class="unit-system-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px; border-right: 1px solid #444; padding-right: 15px;">
+                <button id="btn-unit-system-sim" title="Toggle Unit System (Metric/Imperial)" style="padding: 5px 10px; background: #3a3a5a; color: #fff; border: 1px solid #5a5a7a; border-radius: 3px; cursor: pointer; font-size: 11px;">📏 <span id="unit-system-label-sim">Imperial</span></button>
+            </div>
+            <!-- Phase 6: 3D Sync Toggle -->
+            <div class="sync-2d-3d-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px; display: none;" id="sync2D3DToggleContainer">
+                <label style="font-size: 12px; color: #aaa;">Sync 2D/3D:</label>
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="sync2D3DCheckbox" style="margin-right: 5px; cursor: pointer;">
+                    <span style="font-size: 12px; color: #aaa;">Enabled</span>
+                </label>
+            </div>
+            <!-- Phase 2: 3D View Mode Toggle -->
+            <div class="view-mode-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px;">
+                <label style="font-size: 12px; color: #aaa;">View:</label>
+                <select id="viewModeSelect" style="padding: 5px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer;">
+                    <option value="2d">2D</option>
+                    <option value="3d">3D</option>
+                    <option value="split">Split</option>
+                </select>
+            </div>
+            <!-- Phase 9: 3D View Controls (shown only in 3D/Split mode) -->
+            <div class="3d-view-controls" style="display: none; align-items: center; gap: 5px; margin-right: 10px;" id="3dViewControlsContainer">
+                <button id="cameraResetBtn" title="Reset Camera" style="padding: 5px 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer; font-size: 11px;">📷 Reset</button>
+                <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
+                    <input type="checkbox" id="gridToggle" checked style="cursor: pointer;">
+                    <span>Grid</span>
+                </label>
+                <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
+                    <input type="checkbox" id="shadowsToggle" style="cursor: pointer;">
+                    <span>Shadows</span>
+                </label>
+            </div>
             <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
                 <input type="checkbox" id="showHintsToggle" checked style="cursor: pointer;">
                 Show Hints
@@ -727,6 +801,77 @@
                     <label>Power Loss (W):
                         <input type="text" id="wirePowerLossDisplay" readonly style="width: 100%; padding: 5px; margin-top: 3px; background: #2a2a2a; color: #d9534f; border: 1px solid #444; font-weight: bold;">
                     </label>
+                    
+                    <hr style="border-color: #444; margin: 12px 0;">
+                    <h5 style="margin: 0 0 8px 0; color: #5bc0de;">3D Wire Appearance</h5>
+                    <p style="font-size: 11px; color: #aaa; margin-bottom: 8px;">Control wire visual appearance</p>
+                    
+                    <label>Wire Thickness Multiplier:
+                        <input type="number" id="wireRadiusMultiplier" min="0.5" max="5" step="0.1" value="1" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">1.0 = normal, &gt;1.0 = thicker, &lt;1.0 = thinner</p>
+                    
+                    <label>Wire Color:
+                        <input type="color" id="wireColorPicker" value="#888888" style="width: 100%; padding: 2px; margin-top: 3px; height: 35px; border: 1px solid #444; border-radius: 3px; cursor: pointer;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">Custom wire color (overrides polarity colors)</p>
+                    
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <input type="checkbox" id="wireUseCustomColor" style="margin: 0;">
+                        <span style="font-size: 12px;">Use custom color</span>
+                    </label>
+                    
+                    <hr style="border-color: #444; margin: 12px 0;">
+                    <h5 style="margin: 0 0 8px 0; color: #5bc0de;">3D Wire Routing</h5>
+                    <p style="font-size: 11px; color: #aaa; margin-bottom: 8px;">Control wire path and routing style</p>
+                    
+                    <label>Routing Style:
+                        <select id="wireRoutingStyle" style="width: 100%; padding: 5px; margin-top: 3px; background: #2a2a2a; color: #fff; border: 1px solid #444;">
+                            <option value="direct">Direct (straight line)</option>
+                            <option value="curved">Curved (smooth curve)</option>
+                            <option value="structure-aware">Structure-Aware (follows structure)</option>
+                            <option value="custom">Custom (manual waypoints)</option>
+                        </select>
+                    </label>
+                    
+                    <label>Wire Length Multiplier:
+                        <input type="number" id="wireLengthMultiplier" min="0.5" max="5" step="0.1" value="1" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">1.0 = direct route, &gt;1.0 = longer route</p>
+                    
+                    <label>Vertical Offset (meters):
+                        <input type="number" id="wireVerticalOffset" min="-5" max="5" step="0.1" value="0" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">Positive = higher, Negative = lower</p>
+                    
+                    <label>Curve Amount:
+                        <input type="number" id="wireCurveAmount" min="0" max="2" step="0.1" value="0.5" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">0 = straight, 1 = moderate curve, 2 = strong curve</p>
+                    
+                    <label>Number of Waypoints:
+                        <input type="number" id="wireWaypointCount" min="0" max="5" step="1" value="1" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">0 = direct, 1-5 = intermediate points</p>
+                    
+                    <label>Horizontal Spread (meters):
+                        <input type="number" id="wireHorizontalSpread" min="0" max="10" step="0.1" value="0" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">Spread waypoints horizontally from direct path</p>
+                    
+                    <label>Catenary Sag (meters):
+                        <input type="number" id="wireSagAmount" min="0" max="2" step="0.05" value="0" style="width: 100%; padding: 5px; margin-top: 3px;">
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">Wire sag due to gravity (0 = straight, higher = more sag)</p>
+                    
+                    <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                        <input type="checkbox" id="wireApplyToString" style="margin: 0;">
+                        <span style="font-size: 12px;">Apply to all wires in this string</span>
+                    </label>
+                    <p style="font-size: 10px; color: #888; margin-top: 3px;">When enabled, changes apply to all series-connected wires</p>
+                    
+                    <button id="update3DWireRouting" style="margin-top: 8px; width: 100%; padding: 6px; background: #5bc0de; border: none; color: white; border-radius: 3px; cursor: pointer; font-weight: bold;">Update 3D Wire</button>
+                    <button id="reset3DWireRouting" style="margin-top: 5px; width: 100%; padding: 5px; background: #666; border: none; color: white; border-radius: 3px; cursor: pointer;">Reset to Defaults</button>
                     
                     <hr style="border-color: #444; margin: 12px 0;">
                     <button id="deleteWire">Delete Connection</button>
@@ -1847,7 +1992,7 @@
         // STATE MANAGEMENT
         // ============================================
         
-        let currentMode = 'build'; // 'build', 'live', or 'simulate'
+        let currentMode = 'simulate'; // 'build', 'live', or 'simulate' - simulator always runs in simulate mode
         
         // ============================================
         // LIVE VIEW MODULE
@@ -4395,6 +4540,7 @@
         // Tracks if a render is already scheduled to prevent redundant renders
         let _renderPending = false;
         let _renderScheduled = false;
+        let _wireRenderScheduled = false; // Phase 1.3: Debounce wire rendering during drag
         let _initialRenderDone = false;
         
         function scheduleRender(immediate = false) {
@@ -5703,6 +5849,33 @@
         
         function render() {
             renderItems();
+            
+            // Phase 3: Sync 2D nodes to 3D scene
+            if (scene3D && scene3D.initialized) {
+                syncNodesTo3D();
+                // Phase 4: Sync connections after nodes are synced
+                syncConnectionsTo3D();
+                
+                // Update sky, celestial objects, and sun position based on simulation time (if in simulate mode)
+                if (currentMode === 'simulate') {
+                    const hourOfDay = typeof elapsedHours !== 'undefined' ? elapsedHours % 24 : 12;
+                    const dayOfYear = typeof currentDayOfYear !== 'undefined' ? currentDayOfYear : 172;
+                    const latitude = typeof simulationLatitude !== 'undefined' ? simulationLatitude : 40;
+                    
+                    // Update sky color and celestial objects (moon, stars)
+                    if (scene3D.updateSkyAndCelestials) {
+                        scene3D.updateSkyAndCelestials(hourOfDay);
+                    }
+                    
+                    // Update sun position for shadows
+                    if (scene3D.shadowsEnabled) {
+                        const solarPos = calculateSolarPosition(latitude, dayOfYear, hourOfDay);
+                        if (solarPos && solarPos.elevation > 0) {
+                            scene3D.updateSunPosition(solarPos.elevation, solarPos.azimuth);
+                        }
+                    }
+                }
+            }
             
             // Calculate power flow BEFORE rendering wires so wire classes have fresh data
             if (currentMode === 'simulate') {
@@ -10349,6 +10522,8 @@
                         wpData.x = event.x;
                         wpData.y = event.y;
                         d3.select(this).attr('transform', `translate(${event.x}, ${event.y})`);
+                        // Phase 1.3: Invalidate cache when waypoint moves
+                        invalidateWirePathCache(conn.id);
                         // Update wire path in real-time
                         group.select('.wire').attr('d', generateWirePath(conn));
                     })
@@ -10356,6 +10531,8 @@
                         d3.select(this).select('.waypoint-inner')
                             .attr('fill', '#fff')
                             .attr('r', 5);
+                        // Phase 1.3: Final cache invalidation after drag ends
+                        invalidateWirePathCache(conn.id);
                         render();
                     });
                 
@@ -10412,6 +10589,9 @@
             
             // Insert waypoint at the best position
             conn.waypoints.splice(bestInsertIndex, 0, newWaypoint);
+            
+            // Phase 1.3: Invalidate cache for this connection (waypoints changed)
+            invalidateWirePathCache(conn.id);
             
             // Re-render
             render();
@@ -10539,8 +10719,31 @@
             };
         }
         
-        // Generate a smooth bezier curve between two handles
+        // Phase 1.3: Wire path cache for performance
+        const wirePathCache = new Map();
+        const invalidatedConnections = new Set();
+        
+        function invalidateWirePathCache(connId) {
+            if (connId) {
+                invalidatedConnections.add(connId);
+                wirePathCache.delete(connId);
+            } else {
+                // Invalidate all
+                wirePathCache.clear();
+                invalidatedConnections.clear();
+            }
+        }
+        
+        // Generate a smooth bezier curve between two handles (with caching)
         function generateWirePath(conn) {
+            // Check cache first (if not invalidated)
+            if (!invalidatedConnections.has(conn.id)) {
+                const cached = wirePathCache.get(conn.id);
+                if (cached !== undefined) {
+                    return cached;
+                }
+            }
+            
             const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
             const targetItem = allItems.find(i => i.id === conn.targetItemId);
             if (!sourceItem || !targetItem) return "";
@@ -10552,13 +10755,20 @@
             const start = getHandlePosition(sourceItem, sourceHandle);
             const end = getHandlePosition(targetItem, targetHandle);
             
+            let path;
             // If no waypoints, use simple curve
             if (!conn.waypoints || conn.waypoints.length === 0) {
-                return generateCurvePath(start.x, start.y, end.x, end.y, sourceHandle.side, targetHandle.side);
+                path = generateCurvePath(start.x, start.y, end.x, end.y, sourceHandle.side, targetHandle.side);
+            } else {
+                // With waypoints, use Catmull-Rom spline through all points
+                path = generateWaypointPath(start, end, conn.waypoints, sourceHandle.side, targetHandle.side);
             }
             
-            // With waypoints, use Catmull-Rom spline through all points
-            return generateWaypointPath(start, end, conn.waypoints, sourceHandle.side, targetHandle.side);
+            // Cache the result
+            wirePathCache.set(conn.id, path);
+            invalidatedConnections.delete(conn.id);
+            
+            return path;
         }
         
         // Generate smooth path through waypoints using Catmull-Rom to Bezier conversion
@@ -10774,7 +10984,21 @@
                 });
             }
             
-            renderWires();
+            // Phase 1.3: Invalidate wire path cache for connections involving moved nodes
+            connections.forEach(conn => {
+                if (conn.sourceItemId === d.id || conn.targetItemId === d.id) {
+                    invalidateWirePathCache(conn.id);
+                }
+            });
+            
+            // Phase 1.3: Debounced wire rendering during drag
+            if (!_wireRenderScheduled) {
+                _wireRenderScheduled = true;
+                requestAnimationFrame(() => {
+                    _wireRenderScheduled = false;
+                    renderWires();
+                });
+            }
         }
         
         function dragEnded(event, d) {
@@ -13010,6 +13234,255 @@
                         render();
                     }
                 }
+            });
+            
+            // Initialize 3D wire appearance and routing controls
+            const radiusMultiplierInput = document.getElementById('wireRadiusMultiplier');
+            const colorPicker = document.getElementById('wireColorPicker');
+            const useCustomColorCheckbox = document.getElementById('wireUseCustomColor');
+            const routingStyleSelect = document.getElementById('wireRoutingStyle');
+            const lengthMultiplierInput = document.getElementById('wireLengthMultiplier');
+            const verticalOffsetInput = document.getElementById('wireVerticalOffset');
+            const curveAmountInput = document.getElementById('wireCurveAmount');
+            const waypointCountInput = document.getElementById('wireWaypointCount');
+            const horizontalSpreadInput = document.getElementById('wireHorizontalSpread');
+            const update3DWireBtn = document.getElementById('update3DWireRouting');
+            const reset3DWireBtn = document.getElementById('reset3DWireRouting');
+            
+            // Initialize values from connection data with defaults
+            if (conn.wireRadiusMultiplier === undefined) conn.wireRadiusMultiplier = 1.0;
+            if (conn.wireVerticalOffset === undefined) conn.wireVerticalOffset = 0;
+            if (conn.wireLengthMultiplier === undefined) conn.wireLengthMultiplier = 1.0;
+            if (conn.wireRoutingStyle === undefined) conn.wireRoutingStyle = 'curved';
+            if (conn.wireCurveAmount === undefined) conn.wireCurveAmount = 0.5;
+            if (conn.wireWaypointCount === undefined) conn.wireWaypointCount = 1;
+            if (conn.wireHorizontalSpread === undefined) conn.wireHorizontalSpread = 0;
+            if (conn.wireSagAmount === undefined) conn.wireSagAmount = 0;
+            if (conn.useCustomColor === undefined) conn.useCustomColor = false;
+            if (conn.customColor === undefined) conn.customColor = '#888888';
+            
+            // Set initial values
+            radiusMultiplierInput.value = conn.wireRadiusMultiplier;
+            colorPicker.value = conn.customColor;
+            useCustomColorCheckbox.checked = conn.useCustomColor;
+            routingStyleSelect.value = conn.wireRoutingStyle;
+            lengthMultiplierInput.value = conn.wireLengthMultiplier;
+            verticalOffsetInput.value = conn.wireVerticalOffset;
+            curveAmountInput.value = conn.wireCurveAmount;
+            waypointCountInput.value = conn.wireWaypointCount;
+            horizontalSpreadInput.value = conn.wireHorizontalSpread;
+            
+            // Find sag input and set value
+            const sagAmountInput = document.getElementById('wireSagAmount');
+            if (sagAmountInput) {
+                sagAmountInput.value = conn.wireSagAmount || 0;
+            }
+            
+            // Clone and replace to remove old listeners
+            const newRadiusMultiplier = radiusMultiplierInput.cloneNode(true);
+            const newColorPicker = colorPicker.cloneNode(true);
+            const newUseCustomColor = useCustomColorCheckbox.cloneNode(true);
+            const newRoutingStyle = routingStyleSelect.cloneNode(true);
+            const newLengthMultiplier = lengthMultiplierInput.cloneNode(true);
+            const newVerticalOffset = verticalOffsetInput.cloneNode(true);
+            const newCurveAmount = curveAmountInput.cloneNode(true);
+            const newWaypointCount = waypointCountInput.cloneNode(true);
+            const newHorizontalSpread = horizontalSpreadInput.cloneNode(true);
+            const newSagAmount = sagAmountInput ? sagAmountInput.cloneNode(true) : null;
+            const newApplyToString = document.getElementById('wireApplyToString');
+            const newApplyToStringCheckbox = newApplyToString ? newApplyToString.cloneNode(true) : null;
+            const newUpdateBtn = update3DWireBtn.cloneNode(true);
+            const newResetBtn = reset3DWireBtn.cloneNode(true);
+            
+            radiusMultiplierInput.parentNode.replaceChild(newRadiusMultiplier, radiusMultiplierInput);
+            colorPicker.parentNode.replaceChild(newColorPicker, colorPicker);
+            useCustomColorCheckbox.parentNode.replaceChild(newUseCustomColor, useCustomColorCheckbox);
+            routingStyleSelect.parentNode.replaceChild(newRoutingStyle, routingStyleSelect);
+            lengthMultiplierInput.parentNode.replaceChild(newLengthMultiplier, lengthMultiplierInput);
+            verticalOffsetInput.parentNode.replaceChild(newVerticalOffset, verticalOffsetInput);
+            curveAmountInput.parentNode.replaceChild(newCurveAmount, curveAmountInput);
+            waypointCountInput.parentNode.replaceChild(newWaypointCount, waypointCountInput);
+            horizontalSpreadInput.parentNode.replaceChild(newHorizontalSpread, horizontalSpreadInput);
+            if (sagAmountInput && newSagAmount) {
+                sagAmountInput.parentNode.replaceChild(newSagAmount, sagAmountInput);
+            }
+            if (newApplyToString && newApplyToStringCheckbox) {
+                newApplyToString.parentNode.replaceChild(newApplyToStringCheckbox, newApplyToString);
+            }
+            update3DWireBtn.parentNode.replaceChild(newUpdateBtn, update3DWireBtn);
+            reset3DWireBtn.parentNode.replaceChild(newResetBtn, reset3DWireBtn);
+            
+            // Restore values
+            newRadiusMultiplier.value = conn.wireRadiusMultiplier;
+            newColorPicker.value = conn.customColor;
+            newUseCustomColor.checked = conn.useCustomColor;
+            newRoutingStyle.value = conn.wireRoutingStyle;
+            newLengthMultiplier.value = conn.wireLengthMultiplier;
+            newVerticalOffset.value = conn.wireVerticalOffset;
+            newCurveAmount.value = conn.wireCurveAmount;
+            newWaypointCount.value = conn.wireWaypointCount;
+            newHorizontalSpread.value = conn.wireHorizontalSpread;
+            if (newSagAmount) {
+                newSagAmount.value = conn.wireSagAmount || 0;
+            }
+            
+            // Helper function to find all connections in the same series string
+            function findStringConnections(startConn) {
+                const stringConns = [startConn];
+                const processed = new Set([startConn.id]);
+                
+                // Get source and target items
+                const sourceItem = allItems.find(i => i.id === startConn.sourceItemId);
+                const targetItem = allItems.find(i => i.id === startConn.targetItemId);
+                
+                if (!sourceItem || !targetItem) return stringConns;
+                
+                // Traverse forward (from target)
+                function traverseForward(item, handleId) {
+                    const handle = Object.values(item.handles || {}).find(h => h.id === handleId);
+                    if (!handle || !handle.connectedTo) return;
+                    
+                    handle.connectedTo.forEach(connRef => {
+                        const nextConn = connections.find(c => 
+                            c.id === connRef.connectionId && !processed.has(c.id)
+                        );
+                        if (nextConn) {
+                            const nextItem = allItems.find(i => i.id === connRef.itemId);
+                            if (nextItem && nextItem.type === 'panel') {
+                                processed.add(nextConn.id);
+                                stringConns.push(nextConn);
+                                const nextHandle = Object.values(nextItem.handles).find(h => h.id === connRef.handleId);
+                                if (nextHandle) {
+                                    // Continue traversing from opposite handle
+                                    const oppositeHandle = nextHandle.polarity === 'positive' 
+                                        ? nextItem.handles.negative 
+                                        : nextItem.handles.positive;
+                                    if (oppositeHandle) {
+                                        oppositeHandle.connectedTo.forEach(ref => {
+                                            traverseForward(nextItem, ref.handleId);
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Traverse backward (from source)
+                function traverseBackward(item, handleId) {
+                    const handle = Object.values(item.handles || {}).find(h => h.id === handleId);
+                    if (!handle || !handle.connectedTo) return;
+                    
+                    handle.connectedTo.forEach(connRef => {
+                        const prevConn = connections.find(c => 
+                            c.id === connRef.connectionId && !processed.has(c.id)
+                        );
+                        if (prevConn) {
+                            const prevItem = allItems.find(i => i.id === connRef.itemId);
+                            if (prevItem && prevItem.type === 'panel') {
+                                processed.add(prevConn.id);
+                                stringConns.push(prevConn);
+                                const prevHandle = Object.values(prevItem.handles).find(h => h.id === connRef.handleId);
+                                if (prevHandle) {
+                                    // Continue traversing from opposite handle
+                                    const oppositeHandle = prevHandle.polarity === 'positive' 
+                                        ? prevItem.handles.negative 
+                                        : prevItem.handles.positive;
+                                    if (oppositeHandle) {
+                                        oppositeHandle.connectedTo.forEach(ref => {
+                                            traverseBackward(prevItem, ref.handleId);
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                // Start traversal from both ends
+                traverseForward(targetItem, startConn.targetHandleId);
+                traverseBackward(sourceItem, startConn.sourceHandleId);
+                
+                return stringConns;
+            }
+            
+            // Update button handler
+            newUpdateBtn.addEventListener('click', function() {
+                // Get all connections to update
+                const applyToString = newApplyToStringCheckbox ? newApplyToStringCheckbox.checked : false;
+                const connectionsToUpdate = applyToString ? findStringConnections(conn) : [conn];
+                
+                // Save all parameters to all connections in string
+                connectionsToUpdate.forEach(connection => {
+                    connection.wireRadiusMultiplier = Math.max(0.5, Math.min(5, parseFloat(newRadiusMultiplier.value) || 1.0));
+                    connection.useCustomColor = newUseCustomColor.checked;
+                    connection.customColor = newColorPicker.value;
+                    connection.wireRoutingStyle = newRoutingStyle.value;
+                    connection.wireLengthMultiplier = Math.max(0.5, Math.min(5, parseFloat(newLengthMultiplier.value) || 1.0));
+                    connection.wireVerticalOffset = Math.max(-5, Math.min(5, parseFloat(newVerticalOffset.value) || 0));
+                    connection.wireCurveAmount = Math.max(0, Math.min(2, parseFloat(newCurveAmount.value) || 0.5));
+                    connection.wireWaypointCount = Math.max(0, Math.min(5, Math.round(parseFloat(newWaypointCount.value) || 1)));
+                    connection.wireHorizontalSpread = Math.max(0, Math.min(10, parseFloat(newHorizontalSpread.value) || 0));
+                    connection.wireSagAmount = Math.max(0, Math.min(2, parseFloat(newSagAmount ? newSagAmount.value : 0) || 0));
+                    
+                    // Update 3D wire
+                    const conn3D = connections3D.get(connection.id);
+                    if (conn3D) {
+                        conn3D.update();
+                    }
+                });
+                
+                render();
+                
+                console.log('Updated 3D wire(s):', {
+                    count: connectionsToUpdate.length,
+                    applyToString: applyToString,
+                    radiusMultiplier: conn.wireRadiusMultiplier,
+                    routingStyle: conn.wireRoutingStyle,
+                    sagAmount: conn.wireSagAmount
+                });
+            });
+            
+            // Reset button handler
+            newResetBtn.addEventListener('click', function() {
+                const applyToString = newApplyToStringCheckbox ? newApplyToStringCheckbox.checked : false;
+                const connectionsToUpdate = applyToString ? findStringConnections(conn) : [conn];
+                
+                // Reset to defaults for all connections in string
+                connectionsToUpdate.forEach(connection => {
+                    connection.wireRadiusMultiplier = 1.0;
+                    connection.useCustomColor = false;
+                    connection.customColor = '#888888';
+                    connection.wireRoutingStyle = 'curved';
+                    connection.wireLengthMultiplier = 1.0;
+                    connection.wireVerticalOffset = 0;
+                    connection.wireCurveAmount = 0.5;
+                    connection.wireWaypointCount = 1;
+                    connection.wireHorizontalSpread = 0;
+                    connection.wireSagAmount = 0;
+                    
+                    // Update 3D wire
+                    const conn3D = connections3D.get(connection.id);
+                    if (conn3D) {
+                        conn3D.update();
+                    }
+                });
+                
+                // Update UI
+                newRadiusMultiplier.value = 1.0;
+                newColorPicker.value = '#888888';
+                newUseCustomColor.checked = false;
+                newRoutingStyle.value = 'curved';
+                newLengthMultiplier.value = 1.0;
+                newVerticalOffset.value = 0;
+                newCurveAmount.value = 0.5;
+                newWaypointCount.value = 1;
+                newHorizontalSpread.value = 0;
+                if (newSagAmount) {
+                    newSagAmount.value = 0;
+                }
+                
+                render();
             });
         }
         
@@ -16530,8 +17003,18 @@
                 }
                 
                 // Create deep copy of current state
+                // Filter out any Three.js references that might cause circular reference errors
+                const itemsCopy = allItems.map(item => {
+                    const itemCopy = { ...item };
+                    // Remove any Three.js object references that might be attached
+                    delete itemCopy.mesh;
+                    delete itemCopy.node3D;
+                    // Keep linkedStructurePanel data (it's just plain data, not Three.js objects)
+                    return itemCopy;
+                });
+                
                 const state = {
-                    items: JSON.parse(JSON.stringify(allItems)),
+                    items: JSON.parse(JSON.stringify(itemsCopy)),
                     connections: JSON.parse(JSON.stringify(connections)),
                     itemIdCounter: itemIdCounter,
                     connectionIdCounter: connectionIdCounter,
@@ -18374,6 +18857,68 @@
             }
         }
         
+        /**
+         * Clean geometry data to remove any Three.js object references
+         * Returns a plain object that can be safely JSON.stringify'd
+         */
+        function cleanGeometryData(geometry) {
+            if (!geometry || typeof geometry !== 'object') return geometry;
+            
+            // Create a clean copy with only serializable data
+            const clean = {};
+            
+            // Copy beams with orientation data
+            if (geometry.beams && Array.isArray(geometry.beams)) {
+                clean.beams = geometry.beams.map(beam => ({
+                    p1: beam.p1,
+                    p2: beam.p2,
+                    w: beam.w,
+                    t: beam.t,
+                    isH: beam.isH,
+                    color: beam.color,
+                    stackType: beam.stackType,
+                    moduleIndex: beam.moduleIndex,
+                    // Include orientation vectors for correct cross-section rendering
+                    axisX: beam.axisX,
+                    axisY: beam.axisY,
+                    axisZ: beam.axisZ
+                }));
+            }
+            
+            // Copy panels with orientation data
+            if (geometry.panels && Array.isArray(geometry.panels)) {
+                clean.panels = geometry.panels.map(panel => ({
+                    center: panel.center,
+                    width: panel.width,
+                    length: panel.length,
+                    thickness: panel.thickness,
+                    rotation: panel.rotation,
+                    normal: panel.normal,
+                    // Include axisX for proper panel orientation
+                    axisX: panel.axisX,
+                    row: panel.row,
+                    col: panel.col,
+                    side: panel.side,
+                    index: panel.index
+                }));
+            }
+            
+            // Copy bounds
+            if (geometry.bounds) {
+                clean.bounds = {
+                    min: { ...geometry.bounds.min },
+                    max: { ...geometry.bounds.max }
+                };
+            }
+            
+            // Copy panelLayout
+            if (geometry.panelLayout) {
+                clean.panelLayout = { ...geometry.panelLayout };
+            }
+            
+            return clean;
+        }
+        
         // Export circuit back to designer for editing
         function exportToDesigner() {
             const exportData = {
@@ -18388,9 +18933,15 @@
             
             // Include 3D structure geometry if available
             if (window.linkageLabGeometry) {
-                exportData.structureGeometry = window.linkageLabGeometry;
+                // Ensure we only export plain data, not Three.js objects
+                const cleanGeometry = cleanGeometryData(window.linkageLabGeometry);
+                exportData.structureGeometry = cleanGeometry;
                 // Also save separately to localStorage for persistence across page loads
-                localStorage.setItem('linkageLabGeometry', JSON.stringify(window.linkageLabGeometry));
+                try {
+                    localStorage.setItem('linkageLabGeometry', JSON.stringify(cleanGeometry));
+                } catch (e) {
+                    console.warn('Failed to save geometry to localStorage:', e);
+                }
             }
             
             // Include camera state if available
@@ -18398,6 +18949,84 @@
                 exportData.cameraState = window.linkageLabCameraState;
                 // Also save separately to localStorage for persistence
                 localStorage.setItem('linkageLabCameraState', JSON.stringify(window.linkageLabCameraState));
+            }
+            
+            // Add 3D position/orientation/connection data for troubleshooting
+            if (nodes3D && connections3D) {
+                exportData.threeDData = {
+                    nodes: Array.from(nodes3D.entries()).map(([id, node3D]) => {
+                        const node2D = node3D.node2D;
+                        const mesh = node3D.getMesh();
+                        const pos = node3D.position3D || { x: 0, y: 0, z: 0 };
+                        const meshPos = mesh ? mesh.position : { x: 0, y: 0, z: 0 };
+                        const meshRot = mesh ? mesh.rotation : { x: 0, y: 0, z: 0 };
+                        
+                        const nodeData = {
+                            id: id,
+                            type: node2D?.type || 'unknown',
+                            position3D: { x: pos.x, y: pos.y, z: pos.z },
+                            meshPosition: { x: meshPos.x, y: meshPos.y, z: meshPos.z },
+                            meshRotation: { x: meshRot.x, y: meshRot.y, z: meshRot.z },
+                            linkedStructurePanel: node2D?.linkedStructurePanel ? {
+                                index: node2D.linkedStructurePanel.index,
+                                center: node2D.linkedStructurePanel.center,
+                                rotation: node2D.linkedStructurePanel.rotation
+                            } : null
+                        };
+                        
+                        // Add handle positions
+                        if (node2D?.handles && node3D.getPortHandleMeshes) {
+                            const portHandles = node3D.getPortHandleMeshes();
+                            nodeData.handles = {};
+                            Object.values(node2D.handles).forEach(handle => {
+                                const portHandle = portHandles.find(h => h.userData?.handleId === handle.id);
+                                if (portHandle) {
+                                    const worldPos = new THREE.Vector3();
+                                    portHandle.getWorldPosition(worldPos);
+                                    nodeData.handles[handle.id] = {
+                                        polarity: handle.polarity,
+                                        position3D: { x: worldPos.x, y: worldPos.y, z: worldPos.z }
+                                    };
+                                }
+                            });
+                        }
+                        
+                        return nodeData;
+                    }),
+                    connections: Array.from(connections3D.entries()).map(([id, conn3D]) => {
+                        const conn2D = conn3D.connection2D;
+                        const sourceNode3D = conn3D.sourceNode3D;
+                        const targetNode3D = conn3D.targetNode3D;
+                        
+                        // Get handle positions
+                        let sourceHandlePos = { x: 0, y: 0, z: 0 };
+                        let targetHandlePos = { x: 0, y: 0, z: 0 };
+                        
+                        if (sourceNode3D && targetNode3D) {
+                            try {
+                                sourceHandlePos = conn3D.getHandlePosition3D(sourceNode3D, conn2D.sourceHandleId);
+                                targetHandlePos = conn3D.getHandlePosition3D(targetNode3D, conn2D.targetHandleId);
+                            } catch (e) {
+                                console.warn('Failed to get handle positions for connection:', id, e);
+                            }
+                        }
+                        
+                        return {
+                            id: id,
+                            sourceItemId: conn2D.sourceItemId,
+                            sourceHandleId: conn2D.sourceHandleId,
+                            targetItemId: conn2D.targetItemId,
+                            targetHandleId: conn2D.targetHandleId,
+                            polarity: conn2D.polarity,
+                            sourceHandlePosition: { x: sourceHandlePos.x, y: sourceHandlePos.y, z: sourceHandlePos.z },
+                            targetHandlePosition: { x: targetHandlePos.x, y: targetHandlePos.y, z: targetHandlePos.z },
+                            sourceType: sourceNode3D?.node2D?.type || 'unknown',
+                            targetType: targetNode3D?.node2D?.type || 'unknown',
+                            usesStructureRouting: conn3D.shouldUseStructureRouting ? 
+                                conn3D.shouldUseStructureRouting(sourceHandlePos, targetHandlePos) : false
+                        };
+                    })
+                };
             }
             
             // Store in localStorage for designer to read
@@ -18409,6 +19038,443 @@
             showHint("📤 Exported to Designer", 
                 `Circuit exported with ${allItems.length} components and ${connections.length} connections. ` +
                 `Opening designer...`);
+        }
+        
+        // ============================================
+        // UNIFIED CONFIG SYSTEM
+        // ============================================
+        
+        /**
+         * Get unified config that combines structure geometry and circuit data
+         * This format works across Linkage, Designer, and Simulator modes
+         */
+        function getUnifiedConfig() {
+            const config = {
+                version: 'unified-v2',
+                appVersion: 'StarShade Solar Simulator v2.0',
+                exportType: 'unified',
+                timestamp: new Date().toISOString(),
+                
+                // Circuit topology
+                circuit: {
+                    items: allItems.map(item => {
+                        // Clone item but remove mesh/node3D references
+                        const cleanItem = { ...item };
+                        delete cleanItem.mesh;
+                        delete cleanItem.node3D;
+                        return cleanItem;
+                    }),
+                    connections: connections,
+                    itemIdCounter: itemIdCounter,
+                    connectionIdCounter: connectionIdCounter
+                },
+                
+                // Simulation settings
+                simulation: {
+                    latitude: document.getElementById('latitude')?.value || 40,
+                    dayOfYear: document.getElementById('daySlider')?.value || 172,
+                    weatherDifficulty: document.getElementById('weatherDifficulty')?.value || 'clear'
+                }
+            };
+            
+            // Include structure geometry if available
+            if (window.linkageLabGeometry) {
+                config.structureGeometry = cleanGeometryData(window.linkageLabGeometry);
+            }
+            
+            // Include camera state if available
+            if (window.linkageLabCameraState) {
+                config.cameraState = window.linkageLabCameraState;
+            }
+            
+            // Include original LinkageLab structure config if available
+            // This allows round-tripping back to LinkageLab mode
+            const linkageLabConfig = localStorage.getItem('linkageLabExport');
+            if (linkageLabConfig) {
+                try {
+                    const parsed = JSON.parse(linkageLabConfig);
+                    // Include the structure parameters for full restoration
+                    if (parsed.structure) config.structure = parsed.structure;
+                    if (parsed.mode) config.mode = parsed.mode;
+                    if (parsed.foldAngle) config.foldAngle = parsed.foldAngle;
+                    if (parsed.panels) config.panels = parsed.panels;
+                    if (parsed.costs) config.costs = parsed.costs;
+                    if (parsed.geometrySnapshot) config.geometrySnapshot = parsed.geometrySnapshot;
+                } catch (e) {
+                    console.warn('Failed to parse linkageLabExport:', e);
+                }
+            }
+            
+            // Calculate summary stats
+            const panels = allItems.filter(i => i.type === 'panel');
+            const batteries = allItems.filter(i => i.type === 'battery');
+            const controllers = allItems.filter(i => i.type === 'controller');
+            
+            config.summary = {
+                panelCount: panels.length,
+                totalWatts: panels.reduce((sum, p) => sum + (p.specs?.wmp || 0), 0),
+                batteryCount: batteries.length,
+                totalKWh: batteries.reduce((sum, b) => sum + (b.specs?.kWh || 0), 0),
+                controllerCount: controllers.length,
+                connectionCount: connections.length,
+                hasStructureGeometry: !!config.structureGeometry,
+                structureType: config.mode?.type || 'unknown'
+            };
+            
+            return config;
+        }
+        
+        /**
+         * Save unified config to localStorage
+         */
+        function saveFullConfig() {
+            try {
+                const config = getUnifiedConfig();
+                localStorage.setItem('solarUnifiedConfig', JSON.stringify(config));
+                showHint("💾 Config Saved", 
+                    `Saved ${config.summary.panelCount} panels, ${config.summary.batteryCount} batteries, ` +
+                    `${config.summary.connectionCount} connections` +
+                    (config.summary.hasStructureGeometry ? ', with structure geometry' : ''));
+            } catch (e) {
+                console.error('Failed to save config:', e);
+                showHint("❌ Save Failed", "Could not save configuration: " + e.message, true);
+            }
+        }
+        
+        /**
+         * Load unified config from localStorage
+         */
+        function loadFullConfig() {
+            try {
+                const saved = localStorage.getItem('solarUnifiedConfig');
+                if (!saved) {
+                    showHint("ℹ️ No Saved Config", "No saved configuration found. Use 'Load' button to import a JSON file.");
+                    return;
+                }
+                
+                const config = JSON.parse(saved);
+                applyUnifiedConfig(config);
+                showHint("📂 Config Loaded", 
+                    `Loaded ${config.summary?.panelCount || 0} panels, ${config.summary?.batteryCount || 0} batteries, ` +
+                    `${config.summary?.connectionCount || 0} connections`);
+            } catch (e) {
+                console.error('Failed to load config:', e);
+                showHint("❌ Load Failed", "Could not load configuration: " + e.message, true);
+            }
+        }
+        
+        /**
+         * Export unified config to JSON file
+         */
+        function exportFullConfig() {
+            const config = getUnifiedConfig();
+            
+            // Generate filename with structure name if available
+            let filename = 'solar-system';
+            if (config.structure?.modules) {
+                filename = `StarShade-${config.structure.modules}m-${config.mode?.type || 'system'}`;
+            }
+            filename += `-${config.summary.panelCount}p`;
+            filename += `-${new Date().toISOString().slice(0, 10)}`;
+            filename += '.json';
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            showHint("📤 Config Exported", 
+                `Exported to ${filename}: ${config.summary.panelCount} panels, ` +
+                `${config.summary.connectionCount} connections` +
+                (config.summary.hasStructureGeometry ? ', with structure geometry' : ''));
+        }
+        
+        /**
+         * Import unified config from JSON file
+         */
+        function importFullConfig(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const config = JSON.parse(e.target.result);
+                    applyUnifiedConfig(config);
+                    showHint("📂 Config Imported", 
+                        `Imported from ${file.name}: ${config.summary?.panelCount || 0} panels, ` +
+                        `${config.summary?.connectionCount || 0} connections`);
+                } catch (err) {
+                    console.error('Failed to import config:', err);
+                    showHint("❌ Import Failed", "Could not parse JSON file: " + err.message, true);
+                }
+            };
+            reader.readAsText(file);
+        }
+        
+        /**
+         * Apply unified config to the current state
+         */
+        function applyUnifiedConfig(config) {
+            console.log('Applying unified config:', config.version, config.summary);
+            
+            // Handle different config versions/formats
+            let circuitData = null;
+            let geometryData = null;
+            
+            // Check for unified-v2 format
+            if (config.version === 'unified-v2' || config.circuit) {
+                circuitData = config.circuit;
+                geometryData = config.structureGeometry || config.geometrySnapshot;
+            }
+            // Check for old solar-system format
+            else if (config.items && config.connections) {
+                circuitData = {
+                    items: config.items,
+                    connections: config.connections,
+                    itemIdCounter: config.itemIdCounter || config.items.length + 1,
+                    connectionIdCounter: config.connectionIdCounter || config.connections.length + 1
+                };
+                geometryData = config.structureGeometry;
+            }
+            // Check for LinkageLab unified format
+            else if (config.exportType === 'unified' && config.geometrySnapshot) {
+                geometryData = config.geometrySnapshot;
+                // No circuit data in LinkageLab format - will need to create from panels
+            }
+            
+            // Apply structure geometry first (needed for panel positioning)
+            if (geometryData) {
+                // Convert geometrySnapshot to structureGeometry format if needed
+                if (geometryData.beams || geometryData.horizontalBeams) {
+                    applyGeometrySnapshot(geometryData, config);
+                } else {
+                    window.linkageLabGeometry = geometryData;
+                }
+                console.log('Applied structure geometry:', {
+                    beamCount: window.linkageLabGeometry?.beams?.length || 0,
+                    panelCount: window.linkageLabGeometry?.panels?.length || 0
+                });
+            }
+            
+            // Apply camera state
+            if (config.cameraState) {
+                window.linkageLabCameraState = config.cameraState;
+            }
+            
+            // Apply circuit data
+            if (circuitData && circuitData.items) {
+                // Reset state
+                allItems = [];
+                connections = [];
+                invalidateSpecsCache();
+                
+                // Apply items
+                circuitData.items.forEach(item => {
+                    // Remove any Three.js objects
+                    delete item.mesh;
+                    delete item.node3D;
+                    allItems.push(item);
+                });
+                
+                // Apply connections
+                if (circuitData.connections) {
+                    connections = circuitData.connections;
+                }
+                
+                // Apply counters
+                itemIdCounter = circuitData.itemIdCounter || allItems.length + 1;
+                connectionIdCounter = circuitData.connectionIdCounter || connections.length + 1;
+                
+                // Link panels to structure geometry
+                if (window.linkageLabGeometry?.panels) {
+                    linkPanelsToStructureGeometry();
+                }
+                
+                console.log('Applied circuit data:', {
+                    items: allItems.length,
+                    connections: connections.length
+                });
+            }
+            
+            // Apply simulation settings
+            if (config.simulation) {
+                const latInput = document.getElementById('latitude');
+                const daySlider = document.getElementById('daySlider');
+                const weatherSelect = document.getElementById('weatherDifficulty');
+                
+                if (latInput && config.simulation.latitude) {
+                    latInput.value = config.simulation.latitude;
+                }
+                if (daySlider && config.simulation.dayOfYear) {
+                    daySlider.value = config.simulation.dayOfYear;
+                }
+                if (weatherSelect && config.simulation.weatherDifficulty) {
+                    weatherSelect.value = config.simulation.weatherDifficulty;
+                }
+            }
+            
+            // Store in localStorage for persistence
+            try {
+                localStorage.setItem('solarUnifiedConfig', JSON.stringify(config));
+                if (geometryData) {
+                    localStorage.setItem('linkageLabGeometry', JSON.stringify(cleanGeometryData(window.linkageLabGeometry)));
+                }
+            } catch (e) {
+                console.warn('Failed to save to localStorage:', e);
+            }
+            
+            // Rebuild 3D scene
+            if (scene3D && scene3D.initialized) {
+                buildCircuitStructureMeshes();
+                syncNodesTo3D();
+                syncConnectionsTo3D();
+                
+                // Update orbit controls target after structure is built
+                // Use setTimeout to ensure structure is fully built
+                setTimeout(() => {
+                    if (typeof updateOrbitControlsTarget === 'function') {
+                        updateOrbitControlsTarget();
+                    }
+                }, 100);
+            }
+            
+            // Render
+            render();
+            if (typeof historyManager !== 'undefined') {
+                historyManager.pushState();
+            }
+        }
+        
+        /**
+         * Apply geometrySnapshot format (from LinkageLab exports)
+         */
+        function applyGeometrySnapshot(geo, fullConfig) {
+            console.log('applyGeometrySnapshot: Input geo has', geo.beams?.length || 0, 'beams,', geo.panels?.length || 0, 'panels');
+            if (geo.beams && geo.beams.length > 0) {
+                console.log('First beam input:', JSON.stringify(geo.beams[0], null, 2));
+            }
+            
+            // Convert beams
+            let beams = [];
+            if (geo.beams && geo.beams.length > 0) {
+                beams = geo.beams.map(b => ({
+                    p1: b.p1 || (b.center ? { x: b.center.x, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 }),
+                    p2: b.p2 || (b.center ? { x: b.center.x, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 }),
+                    w: b.w || 3.5,
+                    t: b.t || 1.5,
+                    axisX: b.axisX,
+                    axisY: b.axisY,
+                    axisZ: b.axisZ,
+                    stackType: b.type || b.stackType || 'beam',
+                    color: b.color || { r: 139, g: 90, b: 43 }
+                }));
+            } else if (geo.horizontalBeams && geo.horizontalBeams.length > 0) {
+                beams = geo.horizontalBeams.map(b => ({
+                    p1: b.center ? { x: b.center.x - 48, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 },
+                    p2: b.center ? { x: b.center.x + 48, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 },
+                    w: 3.5,
+                    t: 1.5,
+                    axisX: null,
+                    axisY: null,
+                    axisZ: b.axisZ,
+                    stackType: b.type,
+                    color: { r: 139, g: 90, b: 43 }
+                }));
+            }
+            
+            // Convert panels
+            const panels = (geo.panels || []).map((p, i) => ({
+                center: p.center,
+                normal: p.normal,
+                axisX: p.axisX,
+                width: p.width,
+                length: p.length,
+                thickness: p.thickness,
+                rotation: p.rotation !== undefined ? p.rotation : (p.axisX ? Math.atan2(p.axisX.z, p.axisX.x) : 0),
+                index: p.index !== undefined ? p.index : i
+            }));
+            
+            // Calculate bounds from beam endpoints (all positions are in inches)
+            let minX = Infinity, minY = Infinity, minZ = Infinity;
+            let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+            let pointCount = 0;
+            
+            beams.forEach(b => {
+                if (b.p1) {
+                    minX = Math.min(minX, b.p1.x); minY = Math.min(minY, b.p1.y); minZ = Math.min(minZ, b.p1.z);
+                    maxX = Math.max(maxX, b.p1.x); maxY = Math.max(maxY, b.p1.y); maxZ = Math.max(maxZ, b.p1.z);
+                    pointCount++;
+                }
+                if (b.p2) {
+                    minX = Math.min(minX, b.p2.x); minY = Math.min(minY, b.p2.y); minZ = Math.min(minZ, b.p2.z);
+                    maxX = Math.max(maxX, b.p2.x); maxY = Math.max(maxY, b.p2.y); maxZ = Math.max(maxZ, b.p2.z);
+                    pointCount++;
+                }
+            });
+            panels.forEach(p => {
+                if (p.center) {
+                    const hw = (p.width || 65) / 2;
+                    const hl = (p.length || 39) / 2;
+                    minX = Math.min(minX, p.center.x - hw); maxX = Math.max(maxX, p.center.x + hw);
+                    minY = Math.min(minY, p.center.y); maxY = Math.max(maxY, p.center.y);
+                    minZ = Math.min(minZ, p.center.z - hl); maxZ = Math.max(maxZ, p.center.z + hl);
+                    pointCount++;
+                }
+            });
+            
+            if (!isFinite(minY) || pointCount === 0) {
+                minX = -(geo.maxRadius || 0); minY = 0; minZ = -(geo.maxRadius || 0);
+                maxX = geo.maxRadius || 0; maxY = geo.maxHeight || 0; maxZ = geo.maxRadius || 0;
+            }
+            
+            // Calculate structure center from actual geometric bounds (in inches)
+            // This is the true center of the structure, not a pivot point
+            const structureCenter = {
+                x: (minX + maxX) / 2,
+                y: 0, // Ground level (structure sits on ground, Y offset applied later)
+                z: (minZ + maxZ) / 2
+            };
+            
+            console.log('[applyGeometrySnapshot] Structure center calculation:', {
+                bounds: { min: { x: minX, y: minY, z: minZ }, max: { x: maxX, y: maxY, z: maxZ } },
+                center: structureCenter,
+                centerInMeters: {
+                    x: unitConverter.inchesToMeters(structureCenter.x),
+                    y: 0,
+                    z: unitConverter.inchesToMeters(structureCenter.z)
+                },
+                pointCount: pointCount,
+                beamCount: beams.length,
+                panelCount: panels.length,
+                firstBeamCenter: beams[0] ? { x: (beams[0].p1.x + beams[0].p2.x) / 2, z: (beams[0].p1.z + beams[0].p2.z) / 2 } : null,
+                note: 'This is the geometric center of all beams and panels, not a pivot point. Should NOT be at first beam center (0,0,0).'
+            });
+            
+            window.linkageLabGeometry = {
+                beams: beams,
+                panels: panels,
+                bounds: { min: { x: minX, y: minY, z: minZ }, max: { x: maxX, y: maxY, z: maxZ } },
+                structureCenter: structureCenter,
+                panelLayout: geo.debugConfig ? { gridRotation: geo.debugConfig.gridRotation || 0 } : null
+            };
+            
+            console.log('[applyGeometrySnapshot] Created geometry with', beams.length, 'beams,', panels.length, 'panels');
+            console.log('[applyGeometrySnapshot] Bounds:', JSON.stringify(window.linkageLabGeometry.bounds));
+            console.log('[applyGeometrySnapshot] Structure center:', JSON.stringify(structureCenter));
+            if (beams.length > 0) {
+                console.log('[applyGeometrySnapshot] First 3 converted beams:');
+                beams.slice(0, 3).forEach((b, i) => {
+                    console.log(`  Beam ${i} (${b.stackType}):`, {
+                        p1: b.p1,
+                        p2: b.p2,
+                        hasAxes: !!(b.axisX && b.axisY && b.axisZ),
+                        axisX: b.axisX,
+                        axisY: b.axisY,
+                        axisZ: b.axisZ
+                    });
+                });
+            }
         }
         
         
@@ -18706,6 +19772,47 @@
         function getSummerSolsticeDay(latitude) {
             return latitude >= 0 ? 172 : 355; // June 21 or December 21
         }
+        
+        // Calculate solar elevation and azimuth angles
+        // Make function globally accessible for Scene3D
+        window.calculateSolarPosition = function(latitude, dayOfYear, hourOfDay) {
+            const declination = 23.45 * Math.sin((360/365) * (dayOfYear - 81) * Math.PI / 180);
+            const latRad = latitude * Math.PI / 180;
+            const decRad = declination * Math.PI / 180;
+            
+            // Hour angle (15 degrees per hour from solar noon)
+            const hourAngle = (hourOfDay - 12) * 15 * Math.PI / 180;
+            
+            // Solar elevation angle
+            const sinElevation = Math.sin(latRad) * Math.sin(decRad) + 
+                                 Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
+            
+            // Return null if sun is below horizon
+            if (sinElevation <= 0) {
+                return { elevation: 0, azimuth: 0 };
+            }
+            
+            const elevation = Math.asin(sinElevation) * 180 / Math.PI;
+            
+            // Solar azimuth angle (0 = North, 90 = East, 180 = South, 270 = West)
+            // Formula: azimuth = atan2(sin(hourAngle), cos(hourAngle) * sin(lat) - tan(dec) * cos(lat))
+            const sinAzimuth = Math.sin(hourAngle) * Math.cos(decRad) / Math.cos(Math.asin(sinElevation));
+            const cosAzimuth = (Math.sin(decRad) - Math.sin(latRad) * sinElevation) / 
+                               (Math.cos(latRad) * Math.cos(Math.asin(sinElevation)));
+            
+            // Calculate azimuth using atan2 for proper quadrant handling
+            let azimuth = Math.atan2(sinAzimuth, cosAzimuth) * 180 / Math.PI;
+            
+            // Convert from -180 to 180 range to 0 to 360 range
+            if (azimuth < 0) {
+                azimuth += 360;
+            }
+            
+            return { elevation, azimuth };
+        };
+        
+        // Also create a local alias for backward compatibility
+        const calculateSolarPosition = window.calculateSolarPosition;
         
         // Main solar irradiance function with latitude and seasonal effects
         function getSolarIrradiance(hourOfDay, dayOfYear = null, latitude = null) {
@@ -20709,10 +21816,32 @@
         // ============================================
         
         function saveSystem() {
+            // Phase 9: Collect 3D state for persistence
+            const state3D = {
+                viewMode: scene3D ? scene3D.viewMode : '2d',
+                cameraState: scene3D ? scene3D.getCameraState() : null,
+                gridVisible: scene3D ? scene3D.getGridVisible() : true,
+                sync2D3D: interaction3D ? interaction3D.getSync2D3D() : false,
+                nodePositions3D: {}
+            };
+            
+            // Save 3D positions for nodes that have been manually positioned
+            nodes3D.forEach((node3D, nodeId) => {
+                if (node3D && !node3D.syncEnabled && node3D.position3D) {
+                    state3D.nodePositions3D[nodeId] = {
+                        x: node3D.position3D.x,
+                        y: node3D.position3D.y,
+                        z: node3D.position3D.z,
+                        syncEnabled: false
+                    };
+                }
+            });
+            
             const data = {
                 items: allItems,
                 connections: connections,
-                version: 1
+                state3D: state3D, // Phase 9: Include 3D state
+                version: 2 // Increment version to indicate 3D state support
             };
             
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
@@ -20739,6 +21868,47 @@
                         allItems = data.items || [];
                         connections = data.connections || [];
                         invalidateSpecsCache(); // New data loaded - clear cached specs
+                        
+                        // Phase 9: Restore 3D state if available
+                        if (data.state3D && scene3D) {
+                            // Restore view mode
+                            if (data.state3D.viewMode) {
+                                const viewModeSelect = document.getElementById('viewModeSelect');
+                                if (viewModeSelect) {
+                                    viewModeSelect.value = data.state3D.viewMode;
+                                    scene3D.setViewMode(data.state3D.viewMode);
+                                }
+                            }
+                            
+                            // Restore camera state
+                            if (data.state3D.cameraState) {
+                                scene3D.restoreCameraState(data.state3D.cameraState);
+                            }
+                            
+                            // Restore grid visibility
+                            if (data.state3D.gridVisible !== undefined) {
+                                scene3D.setGridVisible(data.state3D.gridVisible);
+                                const gridToggle = document.getElementById('gridToggle');
+                                if (gridToggle) {
+                                    gridToggle.checked = data.state3D.gridVisible;
+                                }
+                            }
+                            
+                            // Restore sync 2D/3D setting
+                            if (data.state3D.sync2D3D !== undefined && interaction3D) {
+                                interaction3D.setSync2D3D(data.state3D.sync2D3D);
+                                const sync2D3DCheckbox = document.getElementById('sync2D3DCheckbox');
+                                if (sync2D3DCheckbox) {
+                                    sync2D3DCheckbox.checked = data.state3D.sync2D3D;
+                                }
+                            }
+                            
+                            // Restore 3D node positions (will be applied after nodes are created)
+                            if (data.state3D.nodePositions3D) {
+                                // Store for later restoration
+                                window._pending3DPositions = data.state3D.nodePositions3D;
+                            }
+                        }
                         
                         // Initialize wire properties for old connections that don't have them
                         connections.forEach(conn => {
@@ -20807,6 +21977,98 @@
         // ============================================
         
         /**
+         * Link existing panel nodes to structure geometry panels
+         * This should be called after panels are created and geometry is loaded
+         */
+        function linkPanelsToStructureGeometry() {
+            if (!window.linkageLabGeometry || !window.linkageLabGeometry.panels) {
+                console.log('linkPanelsToStructureGeometry: No geometry or panels available');
+                return;
+            }
+            
+            const panels = window.linkageLabGeometry.panels;
+            const panelItems = allItems.filter(item => item.type === 'panel');
+            
+            if (panelItems.length === 0) {
+                console.log('linkPanelsToStructureGeometry: No panel items found');
+                return;
+            }
+            
+            console.log('Linking panels to structure geometry:', {
+                structurePanels: panels.length,
+                circuitPanels: panelItems.length
+            });
+            
+            // Warn if there's a mismatch
+            if (panels.length < panelItems.length) {
+                console.warn(`Warning: Only ${panels.length} structure panels available for ${panelItems.length} circuit panels. ` +
+                    `Some panels will use 2D positioning. Re-export from LinkageLab to get full panel data.`);
+            }
+            
+            // Debug: Log structure panel data to verify format
+            if (panels.length > 0) {
+                console.log('Structure panels sample (first 3):', panels.slice(0, 3).map((p, i) => ({
+                    index: i,
+                    center: p.center,
+                    axisX: p.axisX,
+                    rotation: p.rotation,
+                    width: p.width,
+                    length: p.length
+                })));
+            }
+            
+            // Link panels by index (matching order)
+            panelItems.forEach((panel, i) => {
+                if (i < panels.length) {
+                    const structurePanel = panels[i];
+                    
+                    // Get panel specs for dimensions
+                    const panelSpecs = panel.specs || {};
+                    const widthMm = panelSpecs.width || 1650;
+                    const heightMm = panelSpecs.height || 992;
+                    const thicknessMm = 40;
+                    const INCHES_PER_MM = 0.0393701;
+                    const widthInches = widthMm * INCHES_PER_MM;
+                    const lengthInches = heightMm * INCHES_PER_MM;
+                    const thicknessInches = thicknessMm * INCHES_PER_MM;
+                    
+                    // Calculate rotation from axisX if available
+                    let rotation = 0;
+                    if (structurePanel.axisX) {
+                        // Calculate rotation angle from axisX vector
+                        const axisX = structurePanel.axisX;
+                        rotation = Math.atan2(axisX.z, axisX.x);
+                    }
+                    
+                    // Create complete panel data with all required fields
+                    panel.linkedStructurePanelIndex = i;
+                    panel.linkedStructurePanel = {
+                        center: structurePanel.center || { x: 0, y: 0, z: 0 },
+                        normal: structurePanel.normal || { x: 0, y: 1, z: 0 },
+                        width: structurePanel.width || widthInches,
+                        length: structurePanel.length || lengthInches,
+                        thickness: structurePanel.thickness || thicknessInches,
+                        rotation: structurePanel.rotation !== undefined ? structurePanel.rotation : rotation,
+                        index: structurePanel.index !== undefined ? structurePanel.index : i
+                    };
+                    
+                    console.log(`Linked panel ${i} to structure panel:`, {
+                        center: panel.linkedStructurePanel.center,
+                        normal: panel.linkedStructurePanel.normal,
+                        rotation: panel.linkedStructurePanel.rotation
+                    });
+                } else {
+                    console.warn(`Panel ${i} has no matching structure panel (only ${panels.length} structure panels)`);
+                }
+            });
+            
+            // Force 3D nodes to update if scene is initialized
+            if (scene3D && scene3D.initialized) {
+                syncNodesTo3D();
+            }
+        }
+        
+        /**
          * Import data from LinkageLab structure designer
          */
         function importFromLinkageLab(data) {
@@ -20839,8 +22101,137 @@
             window.linkageLabStructureCost = data.structureCost;
             
             // Store 3D geometry for Three.js rendering
+            // Handle both structureGeometry and geometrySnapshot formats
             if (data.structureGeometry) {
                 window.linkageLabGeometry = data.structureGeometry;
+                console.log('Import: Using structureGeometry directly', {
+                    beamCount: data.structureGeometry.beams?.length || 0,
+                    panelCount: data.structureGeometry.panels?.length || 0
+                });
+            } else if (data.geometrySnapshot) {
+                // Convert geometrySnapshot format to structureGeometry format
+                const geo = data.geometrySnapshot;
+                
+                // Convert beams - handle both new format (geo.beams) and old format (geo.horizontalBeams)
+                let beams = [];
+                if (geo.beams && geo.beams.length > 0) {
+                    // New format: beams array with full orientation data
+                    beams = geo.beams.map(b => {
+                        // Ensure p1 and p2 exist
+                        const p1 = b.p1 || (b.center ? { x: b.center.x, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 });
+                        const p2 = b.p2 || (b.center ? { x: b.center.x, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 });
+                        return {
+                            p1: p1,
+                            p2: p2,
+                            w: b.w || 3.5,
+                            t: b.t || 1.5,
+                            axisX: b.axisX,
+                            axisY: b.axisY,
+                            axisZ: b.axisZ,
+                            stackType: b.type || b.stackType || 'beam',
+                            color: b.color || { r: 139, g: 90, b: 43 }
+                        };
+                    });
+                    console.log('Import: Loaded', beams.length, 'beams, first beam:', beams[0]);
+                } else if (geo.horizontalBeams && geo.horizontalBeams.length > 0) {
+                    // Old format: only horizontal beams with limited data
+                    // We can't fully reconstruct vertical beams, but we can include what we have
+                    beams = geo.horizontalBeams.map(b => ({
+                        p1: b.center ? { x: b.center.x - 48, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 },
+                        p2: b.center ? { x: b.center.x + 48, y: b.center.y, z: b.center.z } : { x: 0, y: 0, z: 0 },
+                        w: 3.5,
+                        t: 1.5,
+                        axisX: null, // Will use fallback orientation
+                        axisY: null,
+                        axisZ: b.axisZ,
+                        stackType: b.type,
+                        color: { r: 139, g: 90, b: 43 }
+                    }));
+                    console.warn('Import: Using old horizontalBeams format - vertical beams not available. Re-export from LinkageLab for full beam data.');
+                }
+                
+                // Convert panels - ensure all panel data is preserved
+                const panels = (geo.panels || []).map((p, i) => ({
+                    center: p.center,
+                    normal: p.normal,
+                    axisX: p.axisX,
+                    width: p.width,
+                    length: p.length,
+                    thickness: p.thickness,
+                    rotation: p.rotation !== undefined ? p.rotation : (p.axisX ? Math.atan2(p.axisX.z, p.axisX.x) : 0),
+                    index: p.index !== undefined ? p.index : i
+                }));
+                
+                // Calculate actual bounds from beam endpoints (not just maxRadius/maxHeight)
+                let minX = Infinity, minY = Infinity, minZ = Infinity;
+                let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+                beams.forEach(b => {
+                    if (b.p1) {
+                        minX = Math.min(minX, b.p1.x);
+                        minY = Math.min(minY, b.p1.y);
+                        minZ = Math.min(minZ, b.p1.z);
+                        maxX = Math.max(maxX, b.p1.x);
+                        maxY = Math.max(maxY, b.p1.y);
+                        maxZ = Math.max(maxZ, b.p1.z);
+                    }
+                    if (b.p2) {
+                        minX = Math.min(minX, b.p2.x);
+                        minY = Math.min(minY, b.p2.y);
+                        minZ = Math.min(minZ, b.p2.z);
+                        maxX = Math.max(maxX, b.p2.x);
+                        maxY = Math.max(maxY, b.p2.y);
+                        maxZ = Math.max(maxZ, b.p2.z);
+                    }
+                });
+                // Include panels in bounds
+                panels.forEach(p => {
+                    if (p.center) {
+                        const hw = (p.width || 65) / 2;
+                        const hl = (p.length || 39) / 2;
+                        minX = Math.min(minX, p.center.x - hw);
+                        maxX = Math.max(maxX, p.center.x + hw);
+                        minY = Math.min(minY, p.center.y);
+                        maxY = Math.max(maxY, p.center.y);
+                        minZ = Math.min(minZ, p.center.z - hl);
+                        maxZ = Math.max(maxZ, p.center.z + hl);
+                    }
+                });
+                // Fallback if no beam/panel data
+                if (!isFinite(minY)) {
+                    minX = -(geo.maxRadius || 0);
+                    minY = 0;
+                    minZ = -(geo.maxRadius || 0);
+                    maxX = geo.maxRadius || 0;
+                    maxY = geo.maxHeight || 0;
+                    maxZ = geo.maxRadius || 0;
+                }
+                
+                // Calculate structure center for PowerStation positioning
+                const structureCenter = {
+                    x: (minX + maxX) / 2,
+                    y: 0, // Ground level
+                    z: (minZ + maxZ) / 2
+                };
+                
+                window.linkageLabGeometry = {
+                    beams: beams,
+                    panels: panels,
+                    bounds: {
+                        min: { x: minX, y: minY, z: minZ },
+                        max: { x: maxX, y: maxY, z: maxZ }
+                    },
+                    structureCenter: structureCenter,
+                    panelLayout: geo.debugConfig ? {
+                        gridRotation: geo.debugConfig.gridRotation || 0
+                    } : null
+                };
+                console.log('Import: Converted geometrySnapshot to structureGeometry format', {
+                    beamCount: beams.length,
+                    panelCount: panels.length,
+                    bounds: window.linkageLabGeometry.bounds,
+                    structureCenter: structureCenter,
+                    gridRotation: geo.debugConfig?.gridRotation
+                });
             }
             
             // Store camera state for matching the view from index.html
@@ -20999,6 +22390,17 @@
                     structureBtn.style.display = 'inline-block';
                 }
                 setTimeout(() => initStructureViewport(), 100);
+                
+                // Phase 1: Build structure meshes in circuit 3D scene if initialized
+                // IMPORTANT: Must be called BEFORE linkPanelsToStructureGeometry so that
+                // the structure offsets (X, Y, Z) are set before panels are positioned
+                if (scene3D && scene3D.initialized) {
+                    buildCircuitStructureMeshes();
+                }
+                
+                // Phase 2: Link panels to structure geometry AFTER structure meshes are built
+                // This ensures panels use the correct offset values
+                linkPanelsToStructureGeometry();
             }
             
             // Show import summary
@@ -21025,9 +22427,18 @@
         // Shared elements
         let structureMeshGroup = null;
         let structureGeometryData = null;
-        let structureCenter = { x: 0, y: 0, z: 0 };
+        let structureCenter = { x: 0, y: 0, z: 0 }; // In meters for circuit 3D scene
         let structureSize = 100;
         let exportedCameraState = null;
+        
+        // Make structureCenter accessible globally for circuit 3D scene
+        // Account for Y offset to ground level
+        // Structure center is now always at origin (0, 0, 0) because we offset all geometry
+        // The structure is centered at X/Z origin with bottom ring at Y=0 (ground level)
+        window.getStructureCenter = function() {
+            // Structure is centered at origin, ground is at y=0
+            return { x: 0, y: 0, z: 0 };
+        };
         
         // Legacy alias for compatibility
         let structureRenderer = null;
@@ -21062,17 +22473,18 @@
             }
             
             // Calculate structure bounds
+            // Note: bounds are in inches, convert to meters for circuit 3D scene
             const bounds = structureGeometryData.bounds;
             structureCenter = {
-                x: (bounds.min.x + bounds.max.x) / 2,
-                y: (bounds.min.y + bounds.max.y) / 2,
-                z: (bounds.min.z + bounds.max.z) / 2
+                x: unitConverter.inchesToMeters((bounds.min.x + bounds.max.x) / 2),
+                y: unitConverter.inchesToMeters((bounds.min.y + bounds.max.y) / 2),
+                z: unitConverter.inchesToMeters((bounds.min.z + bounds.max.z) / 2)
             };
-            structureSize = Math.max(
+            structureSize = unitConverter.inchesToMeters(Math.max(
                 bounds.max.x - bounds.min.x,
                 bounds.max.y - bounds.min.y,
                 bounds.max.z - bounds.min.z
-            ) || 100;
+            )) || 100;
             
             // Initialize main background renderer
             initMainBackgroundRenderer();
@@ -21154,17 +22566,14 @@
             rebuildStructureMeshes();
             bgScene.add(structureMeshGroup);
             
-            // Add ground plane - centered on structure
+            // Add ground plane - centered at origin (structure is now centered at origin)
             const groundSize = structureSize * 6; // Increased size to prevent cutoff
             const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
             const groundMat = new THREE.MeshLambertMaterial({ color: 0x3d5c3d });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.set(
-                structureCenter.x,
-                structureGeometryData.bounds.min.y - 1,
-                structureCenter.z
-            );
+            // Ground is at y=0 (structure bottom ring is at y=0, centered at origin)
+            ground.position.set(0, 0, 0);
             ground.receiveShadow = true;
             bgScene.add(ground);
             
@@ -21253,8 +22662,12 @@
                 bgOrbitControls.screenSpacePanning = true;
                 bgOrbitControls.minDistance = 10;
                 bgOrbitControls.maxDistance = structureSize * 10;
-                bgOrbitControls.target.set(structureCenter.x, structureCenter.y, structureCenter.z);
-                bgOrbitControls.update();
+                
+                // Get the actual structure center (not a pivot point)
+                // Update target after a short delay to ensure structure geometry is loaded
+                setTimeout(() => {
+                    updateOrbitControlsTarget();
+                }, 50);
                 
                 // Start animation loop for smooth damping
                 startOrbitControlsAnimation();
@@ -21322,6 +22735,57 @@
             canvas3D.addEventListener('mouseup', () => {
                 if (is3DMode) canvas3D.style.cursor = 'grab';
             });
+        }
+        
+        /**
+         * Update OrbitControls target to the structure center (which is now at origin)
+         */
+        function updateOrbitControlsTarget() {
+            if (!bgOrbitControls) {
+                // OrbitControls not initialized yet - schedule update for later
+                setTimeout(() => {
+                    if (bgOrbitControls) {
+                        updateOrbitControlsTarget();
+                    }
+                }, 100);
+                return;
+            }
+            
+            // Structure is centered at origin (0, 0, 0)
+            // Orbit controls target should be at origin
+            const currentTarget = bgOrbitControls.target.clone();
+            const targetDiff = Math.abs(currentTarget.x) + Math.abs(currentTarget.y) + Math.abs(currentTarget.z);
+            
+            if (targetDiff > 0.01) {
+                console.log('[updateOrbitControlsTarget] Updating orbit target from:', {
+                    x: currentTarget.x.toFixed(3),
+                    y: currentTarget.y.toFixed(3),
+                    z: currentTarget.z.toFixed(3)
+                }, 'to origin (0, 0, 0)');
+                
+                // Store old camera position
+                const oldCameraPos = bgCamera.position.clone();
+                
+                // Calculate camera offset from old target
+                const cameraOffset = new THREE.Vector3().subVectors(oldCameraPos, currentTarget);
+                
+                // Set target to origin
+                bgOrbitControls.target.set(0, 0, 0);
+                
+                // Adjust camera position to maintain same relative offset from new target (origin)
+                bgCamera.position.copy(cameraOffset);
+                
+                bgOrbitControls.update();
+                
+                console.log('[updateOrbitControlsTarget] Orbit target set to origin. Camera position:', {
+                    x: bgCamera.position.x.toFixed(3),
+                    y: bgCamera.position.y.toFixed(3),
+                    z: bgCamera.position.z.toFixed(3)
+                });
+            } else {
+                // Already at origin, just update
+                bgOrbitControls.update();
+            }
         }
         
         /**
@@ -21634,6 +23098,1155 @@
         }
         
         // ============================================
+        // PHASE 2: 3D SCENE INITIALIZATION
+        // ============================================
+        
+        // Phase 2: 3D Scene and Coordinate Mapper
+        let scene3D = null;
+        let coordinateMapper = null;
+        
+        // Phase 3: 3D Node mapping
+        const nodes3D = new Map(); // Map of node2D.id -> Node3D instance
+        const connections3D = new Map(); // Map of connection2D.id -> Connection3D instance
+        
+        // Phase 7: PowerStation grouping (simulate mode)
+        let powerStation3D = null; // Single PowerStation3D instance when in simulate mode
+        let groupingAnimation = null; // Current grouping/ungrouping animation
+        
+        // Phase 6: 3D Interaction handler
+        let interaction3D = null;
+        
+        // Phase 1: Build structure meshes in circuit 3D scene
+        // Track if structure is already built to prevent unnecessary rebuilds
+        let structureMeshesBuilt = false;
+        let buildingStructure = false; // Prevent concurrent builds
+        
+        function buildCircuitStructureMeshes() {
+            if (!scene3D || !scene3D.initialized || !window.linkageLabGeometry) {
+                console.log('buildCircuitStructureMeshes: Scene not ready or no geometry', {
+                    scene3D: !!scene3D,
+                    initialized: scene3D?.initialized,
+                    geometry: !!window.linkageLabGeometry
+                });
+                return;
+            }
+            
+            // Prevent concurrent builds
+            if (buildingStructure) {
+                console.log('buildCircuitStructureMeshes: Already building, skipping');
+                return;
+            }
+            
+            // Prevent multiple simultaneous builds if already built
+            if (structureMeshesBuilt && scene3D.structureGroup && scene3D.structureGroup.children.length > 0) {
+                // Verify structure is still in scene
+                const isInScene = scene3D.scene.children.includes(scene3D.structureGroup);
+                if (isInScene && scene3D.structureGroup.visible) {
+                    console.log('buildCircuitStructureMeshes: Structure already built and visible, skipping');
+                    return;
+                } else {
+                    console.warn('buildCircuitStructureMeshes: Structure built but not in scene or not visible, rebuilding');
+                }
+            }
+            
+            buildingStructure = true;
+            const geo = window.linkageLabGeometry;
+            console.log('buildCircuitStructureMeshes: Building structure with', geo.beams?.length || 0, 'beams');
+            
+            // Clear existing structure meshes only if rebuilding
+            if (scene3D.structureGroup) {
+                const childCount = scene3D.structureGroup.children.length;
+                while (scene3D.structureGroup.children.length > 0) {
+                    const child = scene3D.structureGroup.children[0];
+                    scene3D.removeStructure(child);
+                }
+                if (childCount > 0) {
+                    console.log('buildCircuitStructureMeshes: Cleared', childCount, 'existing meshes');
+                }
+            }
+            
+            structureMeshesBuilt = false; // Reset flag before building
+            
+            // Calculate structure offsets to:
+            // 1. Center the structure at origin (X/Z)
+            // 2. Place bottom ring at ground level (Y=0)
+            let structureXOffset = 0;
+            let structureYOffset = 0;
+            let structureZOffset = 0;
+            
+            if (geo.bounds && geo.bounds.min) {
+                // Y offset: move structure up so bottom ring is at ground level (y=0)
+                structureYOffset = -unitConverter.inchesToMeters(geo.bounds.min.y);
+            }
+            
+            // X/Z offset: move structure so its center is at origin (0, 0)
+            if (geo.structureCenter) {
+                structureXOffset = -unitConverter.inchesToMeters(geo.structureCenter.x);
+                structureZOffset = -unitConverter.inchesToMeters(geo.structureCenter.z);
+            } else if (geo.bounds) {
+                // Fallback: calculate from bounds
+                structureXOffset = -unitConverter.inchesToMeters((geo.bounds.min.x + geo.bounds.max.x) / 2);
+                structureZOffset = -unitConverter.inchesToMeters((geo.bounds.min.z + geo.bounds.max.z) / 2);
+            }
+            
+            console.log('[buildCircuitStructureMeshes] Structure offsets to center at origin:', {
+                xOffset: structureXOffset.toFixed(3),
+                yOffset: structureYOffset.toFixed(3),
+                zOffset: structureZOffset.toFixed(3),
+                note: 'Structure center is now at (0, 0, 0), bottom ring at y=0'
+            });
+            
+            // Store offsets globally for panel positioning and other uses
+            window.structureXOffset = structureXOffset;
+            window.structureYOffset = structureYOffset;
+            window.structureZOffset = structureZOffset;
+            
+            // Create beam meshes
+            if (geo.beams) {
+                console.log('Building', geo.beams.length, 'beams. First 3 beams:');
+                geo.beams.slice(0, 3).forEach((b, i) => {
+                    console.log(`Beam ${i}: type=${b.stackType}, p1=(${b.p1?.x?.toFixed(2)}, ${b.p1?.y?.toFixed(2)}, ${b.p1?.z?.toFixed(2)}), p2=(${b.p2?.x?.toFixed(2)}, ${b.p2?.y?.toFixed(2)}, ${b.p2?.z?.toFixed(2)})`);
+                    if (b.axisX && b.axisY && b.axisZ) {
+                        console.log(`  axisX=(${b.axisX.x?.toFixed(3)}, ${b.axisX.y?.toFixed(3)}, ${b.axisX.z?.toFixed(3)})`);
+                        console.log(`  axisY=(${b.axisY.x?.toFixed(3)}, ${b.axisY.y?.toFixed(3)}, ${b.axisY.z?.toFixed(3)})`);
+                        console.log(`  axisZ=(${b.axisZ.x?.toFixed(3)}, ${b.axisZ.y?.toFixed(3)}, ${b.axisZ.z?.toFixed(3)})`);
+                    } else {
+                        console.log('  WARNING: Missing axis data!');
+                    }
+                });
+                
+                geo.beams.forEach((beam, beamIndex) => {
+                    // Validate beam has required data
+                    if (!beam.p1 || !beam.p2) {
+                        console.warn(`Beam ${beamIndex}: Missing p1 or p2!`);
+                        return;
+                    }
+                    
+                    const dx = beam.p2.x - beam.p1.x;
+                    const dy = beam.p2.y - beam.p1.y;
+                    const dz = beam.p2.z - beam.p1.z;
+                    const length = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    
+                    if (length < 0.1) {
+                        console.warn(`Beam ${beamIndex}: Degenerate beam (length=${length})`);
+                        return; // Skip degenerate beams
+                    }
+                    
+                    // Convert beam dimensions from inches to meters
+                    const widthM = unitConverter.inchesToMeters(beam.w || 3.5);
+                    const thicknessM = unitConverter.inchesToMeters(beam.t || 1.5);
+                    
+                    // Convert positions from inches to meters and apply all offsets (X, Y, Z)
+                    // This centers the structure at origin with bottom ring at ground level
+                    const pos1M = {
+                        x: unitConverter.inchesToMeters(beam.p1.x) + structureXOffset,
+                        y: unitConverter.inchesToMeters(beam.p1.y) + structureYOffset,
+                        z: unitConverter.inchesToMeters(beam.p1.z) + structureZOffset
+                    };
+                    const pos2M = {
+                        x: unitConverter.inchesToMeters(beam.p2.x) + structureXOffset,
+                        y: unitConverter.inchesToMeters(beam.p2.y) + structureYOffset,
+                        z: unitConverter.inchesToMeters(beam.p2.z) + structureZOffset
+                    };
+                    
+                    // Create material matching LinkageLab's style (MeshLambertMaterial with darker, warmer wood tone)
+                    const color = beam.color || {r:139, g:90, b:43};
+                    // Darken and warm up the base color (matching LinkageLab's createBeamMesh)
+                    const woodColor = new THREE.Color(
+                        Math.max(0, (color.r * 0.7 - 20)) / 255,
+                        Math.max(0, (color.g * 0.65 - 15)) / 255,
+                        Math.max(0, (color.b * 0.5 - 10)) / 255
+                    );
+                    
+                    const material = new THREE.MeshLambertMaterial({
+                        color: woodColor,
+                        side: THREE.DoubleSide  // Render both sides to prevent x-ray effect
+                    });
+                    
+                    // Use polygon offset to prevent z-fighting (matching LinkageLab)
+                    material.polygonOffset = true;
+                    material.polygonOffsetFactor = 1;
+                    material.polygonOffsetUnits = 1;
+                    
+                    // Create beam geometry using BufferGeometry from corner vertices (matching LinkageLab approach)
+                    // This ensures exact matching with LinkageLab's beam rendering
+                    let geometry;
+                    let mesh;
+                    
+                    if (beam.axisX && beam.axisY && beam.axisZ) {
+                        // Reconstruct 8 corner vertices exactly as LinkageLab does
+                        const axisX = new THREE.Vector3(beam.axisX.x, beam.axisX.y, beam.axisX.z).normalize();
+                        const axisY = new THREE.Vector3(beam.axisY.x, beam.axisY.y, beam.axisY.z).normalize();
+                        const hw = widthM / 2;
+                        const ht = thicknessM / 2;
+                        
+                        // Corner offsets (same as LinkageLab)
+                        const offsets = [
+                            {u: -hw, v: -ht}, {u: hw, v: -ht},
+                            {u: hw, v: ht}, {u: -hw, v: ht}
+                        ];
+                        
+                        const corners = [];
+                        // Create corners at p1 (start)
+                        const p1Vec = new THREE.Vector3(pos1M.x, pos1M.y, pos1M.z);
+                        offsets.forEach(o => {
+                            const corner = p1Vec.clone();
+                            corner.addScaledVector(axisX, o.u);
+                            corner.addScaledVector(axisY, o.v);
+                            corners.push(corner);
+                        });
+                        
+                        // Create corners at p2 (end)
+                        const p2Vec = new THREE.Vector3(pos2M.x, pos2M.y, pos2M.z);
+                        offsets.forEach(o => {
+                            const corner = p2Vec.clone();
+                            corner.addScaledVector(axisX, o.u);
+                            corner.addScaledVector(axisY, o.v);
+                            corners.push(corner);
+                        });
+                        
+                        // Create BufferGeometry from corners (matching LinkageLab's createBeamMesh)
+                        geometry = new THREE.BufferGeometry();
+                        const positions = [];
+                        const normals = [];
+                        
+                        // Calculate beam center for normal calculation
+                        const beamCenter = new THREE.Vector3();
+                        corners.forEach(c => beamCenter.add(c));
+                        beamCenter.divideScalar(8);
+                        
+                        // Helper to calculate outward normal
+                        function calcOutwardNormal(p0, p1, p2, faceCenter) {
+                            const v1 = new THREE.Vector3().subVectors(p1, p0);
+                            const v2 = new THREE.Vector3().subVectors(p2, p0);
+                            const normal = new THREE.Vector3().crossVectors(v1, v2).normalize();
+                            
+                            // Ensure normal points outward (away from beam center)
+                            const toCenter = new THREE.Vector3().subVectors(faceCenter, beamCenter);
+                            if (normal.dot(toCenter) > 0) {
+                                normal.negate();
+                            }
+                            return normal;
+                        }
+                        
+                        // Helper to add quad
+                        function addQuad(p0, p1, p2, p3) {
+                            const faceCenter = new THREE.Vector3()
+                                .add(p0).add(p1).add(p2).add(p3)
+                                .divideScalar(4);
+                            const n = calcOutwardNormal(p0, p1, p2, faceCenter);
+                            
+                            // Triangle 1: p0, p1, p2
+                            positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+                            normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+                            // Triangle 2: p0, p2, p3
+                            positions.push(p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
+                            normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+                        }
+                        
+                        // Define faces (matching LinkageLab's face indices)
+                        // Face indices: [0, 3, 2, 1] = start face, [4, 5, 6, 7] = end face
+                        // Side faces: [0, 1, 5, 4], [1, 2, 6, 5], [2, 3, 7, 6], [3, 0, 4, 7]
+                        addQuad(corners[0], corners[3], corners[2], corners[1]); // Start face
+                        addQuad(corners[4], corners[5], corners[6], corners[7]); // End face
+                        addQuad(corners[0], corners[1], corners[5], corners[4]); // Side 1
+                        addQuad(corners[1], corners[2], corners[6], corners[5]); // Side 2
+                        addQuad(corners[2], corners[3], corners[7], corners[6]); // Side 3
+                        addQuad(corners[3], corners[0], corners[4], corners[7]); // Side 4
+                        
+                        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                        geometry.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                        geometry.computeBoundingSphere();
+                        
+                        mesh = new THREE.Mesh(geometry, material);
+                        // Mesh is already positioned correctly (corners are in world space)
+                        mesh.position.set(0, 0, 0);
+                        mesh.renderOrder = 1; // Match LinkageLab's render order
+                        mesh.userData.beam = beam;
+                        mesh.userData.type = 'beam';
+                        
+                        // Debug first few beams
+                        if (beamIndex < 3) {
+                            console.log(`[buildCircuitStructureMeshes] Beam ${beamIndex} (${beam.stackType}) created from corners:`, {
+                                p1: pos1M,
+                                p2: pos2M,
+                                width: widthM,
+                                thickness: thicknessM,
+                                corners: corners.map(c => ({x: c.x, y: c.y, z: c.z})),
+                                axisX: { x: axisX.x, y: axisX.y, z: axisX.z },
+                                axisY: { x: axisY.x, y: axisY.y, z: axisY.z }
+                            });
+                        }
+                    } else {
+                        // Fallback: use BoxGeometry if axis vectors not available
+                        const lengthM = unitConverter.inchesToMeters(length);
+                        geometry = new THREE.BoxGeometry(widthM, thicknessM, lengthM);
+                        mesh = new THREE.Mesh(geometry, material);
+                        
+                        // Position at midpoint
+                        mesh.position.set(
+                            (pos1M.x + pos2M.x) / 2,
+                            (pos1M.y + pos2M.y) / 2,
+                            (pos1M.z + pos2M.z) / 2
+                        );
+                        
+                        // Align along beam direction
+                        const direction = new THREE.Vector3(
+                            pos2M.x - pos1M.x,
+                            pos2M.y - pos1M.y,
+                            pos2M.z - pos1M.z
+                        ).normalize();
+                        const quaternion = new THREE.Quaternion();
+                        quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), direction);
+                        mesh.quaternion.copy(quaternion);
+                        
+                        if (beamIndex < 3) {
+                            console.log('Beam without orientation data (using fallback):', beam.stackType);
+                        }
+                    }
+                    
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mesh.userData = { type: 'structure-beam' };
+                    scene3D.addStructure(mesh);
+                });
+                
+                console.log('buildCircuitStructureMeshes: Added', geo.beams.length, 'beam meshes to structure group');
+                structureMeshesBuilt = true;
+            }
+            
+            // Ensure structure group is visible and in scene
+            if (scene3D.structureGroup) {
+                scene3D.structureGroup.visible = true;
+                
+                // Verify structure group is in the scene
+                if (!scene3D.scene.children.includes(scene3D.structureGroup)) {
+                    console.warn('buildCircuitStructureMeshes: Structure group not in scene, re-adding');
+                    scene3D.scene.add(scene3D.structureGroup);
+                }
+            }
+            
+            // Apply global rotation if provided from LinkageLab
+            if (window.linkageLabCameraState && window.linkageLabCameraState.globalRotation && scene3D.structureGroup) {
+                scene3D.structureGroup.rotation.y = window.linkageLabCameraState.globalRotation * Math.PI / 180;
+            }
+            
+            buildingStructure = false; // Release lock
+            
+            // Position grid at structure center (X/Z), but always at y=0 (ground level)
+            const structCenter = window.getStructureCenter ? window.getStructureCenter() : null;
+            if (structCenter) {
+                console.log('[buildCircuitStructureMeshes] Structure center from getStructureCenter():', structCenter);
+                scene3D.positionGridAtStructureCenter(structCenter);
+                
+                // Update OrbitControls target to structure center (with delay to ensure orbit controls are initialized)
+                setTimeout(() => {
+                    if (typeof updateOrbitControlsTarget === 'function') {
+                        updateOrbitControlsTarget();
+                    } else {
+                        console.warn('[buildCircuitStructureMeshes] updateOrbitControlsTarget function not available');
+                    }
+                }, 50);
+            } else {
+                console.warn('[buildCircuitStructureMeshes] No structure center available from getStructureCenter()');
+            }
+            
+            // Ensure structure group is at origin (beams are positioned relative to this)
+            // The Y offset is already applied to individual beam positions
+            if (scene3D.structureGroup) {
+                scene3D.structureGroup.position.set(0, 0, 0);
+            }
+            
+            // Auto-fit camera to see the structure (only if not in simulate mode)
+            // Don't reset camera during simulation as it's annoying
+            if (currentMode !== 'simulate' && scene3D.structureGroup && scene3D.structureGroup.children.length > 0) {
+                setTimeout(() => {
+                    // Double-check structure is still there before fitting camera
+                    if (scene3D.structureGroup && scene3D.structureGroup.children.length > 0) {
+                        const isInScene = scene3D.scene.children.includes(scene3D.structureGroup);
+                        if (!isInScene) {
+                            console.warn('buildCircuitStructureMeshes: Structure group removed before camera fit, re-adding');
+                            scene3D.scene.add(scene3D.structureGroup);
+                        }
+                        scene3D.fitCameraToNodes();
+                        scene3D._cameraFitted = true;
+                        console.log('buildCircuitStructureMeshes: Camera fit complete, structure children:', scene3D.structureGroup.children.length);
+                    } else {
+                        console.error('buildCircuitStructureMeshes: Structure group empty or missing during camera fit!');
+                    }
+                }, 200);
+            } else {
+                if (currentMode === 'simulate') {
+                    console.log('buildCircuitStructureMeshes: Skipping camera fit during simulation');
+                } else {
+                    console.warn('buildCircuitStructureMeshes: No structure meshes created or structure group missing');
+                }
+            }
+        }
+        
+        // Phase 3: Sync 2D nodes to 3D scene
+        function syncNodesTo3D() {
+            if (!scene3D || !coordinateMapper || !window.CircuitModules?.Node3D) {
+                return;
+            }
+            
+            // Phase 8.2: Mode Switching Logic
+            // Build/Edit mode: Show individual nodes, hide PowerStation
+            // Simulate mode: Show PowerStation, hide grouped components
+            const hasPowerStationModule = !!window.CircuitModules?.PowerStation3D;
+            const usePowerStation = currentMode === 'simulate' && hasPowerStationModule;
+            
+            if (usePowerStation) {
+                syncNodesTo3DWithPowerStation();
+            } else {
+                // Build/Edit mode: show individual nodes, hide PowerStation
+                syncNodesTo3DNormal();
+            }
+            
+            // Auto-adjust camera after nodes are synced (only if not in simulate mode)
+            // Don't reset camera during simulation as it's annoying
+            if (currentMode !== 'simulate' && (nodes3D.size > 0 || powerStation3D)) {
+                // Only fit camera once, not on every render
+                if (!scene3D._cameraFitted) {
+                    scene3D.fitCameraToNodes();
+                    scene3D._cameraFitted = true;
+                }
+            }
+        }
+        
+        // Normal sync (build/live mode)
+        function syncNodesTo3DNormal() {
+            // Cancel any ongoing animation
+            if (groupingAnimation) {
+                groupingAnimation.cancel();
+                groupingAnimation = null;
+            }
+            
+            // Animate ungrouping if PowerStation exists
+            if (powerStation3D && window.CircuitModules?.Animation3D) {
+                const nodesToAnimate = [];
+                
+                // Find nodes that were part of PowerStation and make them visible for animation
+                allItems.forEach(item => {
+                    if (['controller', 'battery'].includes(item.type) || item.type === 'breakerpanel') {
+                        const node3D = nodes3D.get(item.id);
+                        if (node3D && node3D.getMesh && node3D.getMesh()) {
+                            // Make visible for animation
+                            node3D.getMesh().visible = true;
+                            nodesToAnimate.push(node3D);
+                        }
+                    }
+                });
+                
+                if (nodesToAnimate.length > 0) {
+                    // Phase 8.3: Animate ungrouping (reverse animation)
+                    // Duration: ~500ms transition as specified in plan
+                    groupingAnimation = window.CircuitModules.Animation3D.animateUngrouping(
+                        powerStation3D,
+                        nodesToAnimate,
+                        500,
+                        () => {
+                            // After animation, remove PowerStation
+                            scene3D.removeNode(powerStation3D.getMesh());
+                            powerStation3D.dispose();
+                            powerStation3D = null;
+                            groupingAnimation = null;
+                            
+                            // Ensure nodes are fully visible and scaled
+                            nodesToAnimate.forEach(node3D => {
+                                if (node3D && node3D.getMesh && node3D.getMesh()) {
+                                    const mesh = node3D.getMesh();
+                                    mesh.visible = true;
+                                    mesh.scale.set(1, 1, 1);
+                                    mesh.traverse(child => {
+                                        if (child.material) {
+                                            const materials = Array.isArray(child.material) 
+                                                ? child.material 
+                                                : [child.material];
+                                            materials.forEach(m => {
+                                                if (m) m.opacity = 1;
+                                            });
+                                        }
+                                    });
+                                }
+                            });
+                        }
+                    );
+                    // Return early - let animation complete before continuing
+                    return;
+                } else {
+                    // No nodes to animate - just remove PowerStation
+                    scene3D.removeNode(powerStation3D.getMesh());
+                    powerStation3D.dispose();
+                    powerStation3D = null;
+                }
+            } else {
+                // No animation - just remove PowerStation immediately
+                if (powerStation3D) {
+                    scene3D.removeNode(powerStation3D.getMesh());
+                    powerStation3D.dispose();
+                    powerStation3D = null;
+                }
+            }
+            
+            const node2DIds = new Set(allItems.map(item => item.id));
+            
+            // Remove 3D nodes that no longer exist in 2D
+            for (const [nodeId, node3D] of nodes3D.entries()) {
+                if (!node2DIds.has(nodeId)) {
+                    scene3D.removeNode(node3D.getMesh());
+                    node3D.dispose();
+                    nodes3D.delete(nodeId);
+                }
+            }
+            
+            // Create or update 3D nodes for existing 2D nodes
+            allItems.forEach(node2D => {
+                // Only create 3D for panels, batteries, and controllers
+                if (!['panel', 'battery', 'controller'].includes(node2D.type)) {
+                    return;
+                }
+                
+                let node3D = nodes3D.get(node2D.id);
+                
+                if (!node3D) {
+                    // Create new 3D node
+                    try {
+                        node3D = window.CircuitModules.Node3D.createNode3D(node2D, coordinateMapper);
+                        if (node3D && node3D.getMesh()) {
+                            nodes3D.set(node2D.id, node3D);
+                            scene3D.addNode(node3D.getMesh());
+                            console.log('Created 3D node:', node2D.type, node2D.id, 'at', node3D.position3D);
+                        }
+                    } catch (e) {
+                        console.error('Failed to create 3D node:', e);
+                    }
+                } else {
+                    // Phase 9: Restore saved 3D position if available
+                    if (window._pending3DPositions && window._pending3DPositions[node2D.id]) {
+                        const savedPos = window._pending3DPositions[node2D.id];
+                        node3D.updatePosition(savedPos.x, savedPos.y, savedPos.z);
+                        node3D.syncEnabled = savedPos.syncEnabled !== undefined ? savedPos.syncEnabled : false;
+                        delete window._pending3DPositions[node2D.id];
+                    } else {
+                        // Update existing 3D node position from 2D
+                        node3D.updateFromNode2D();
+                    }
+                }
+            });
+            
+            // Clear pending positions after processing
+            if (window._pending3DPositions && Object.keys(window._pending3DPositions).length === 0) {
+                delete window._pending3DPositions;
+            }
+        }
+        
+        // Sync with PowerStation grouping (simulate mode)
+        function syncNodesTo3DWithPowerStation() {
+            // Phase 8.1: Component Detection - Find groupable components
+            const controller = allItems.find(i => i.type === 'controller');
+            const batteries = allItems.filter(i => i.type === 'battery');
+            const breakerPanel = allItems.find(i => i.type === 'breakerpanel');
+            
+            // Phase 8.1: Validate - must have at least 1 battery + 1 controller connected
+            // Check if controller and batteries are connected
+            const hasValidGroup = controller && batteries.length > 0;
+            
+            if (!hasValidGroup) {
+                // Fall back to normal sync if requirements not met
+                syncNodesTo3DNormal();
+                return;
+            }
+            
+            // Optional: Check if components are actually connected (more strict validation)
+            // For now, we'll just check existence as the plan specifies
+            
+            // Hide individual nodes that are part of PowerStation
+            const powerStationNodeIds = new Set();
+            if (controller) powerStationNodeIds.add(controller.id);
+            batteries.forEach(b => powerStationNodeIds.add(b.id));
+            if (breakerPanel) powerStationNodeIds.add(breakerPanel.id);
+            
+            // Remove/hide individual 3D nodes that are grouped
+            for (const nodeId of powerStationNodeIds) {
+                const node3D = nodes3D.get(nodeId);
+                if (node3D && node3D.getMesh()) {
+                    // Hide the mesh instead of removing (in case we switch modes)
+                    node3D.getMesh().visible = false;
+                }
+            }
+            
+            // Create or update PowerStation
+            if (!powerStation3D) {
+                // Cancel any ongoing animation
+                if (groupingAnimation) {
+                    groupingAnimation.cancel();
+                    groupingAnimation = null;
+                }
+                
+                try {
+                    // Phase 3: Position PowerStation at structure center for cylindrical structures
+                    const structCenter = window.getStructureCenter ? window.getStructureCenter() : null;
+                    
+                    // Get nodes that will be grouped
+                    const nodesToAnimate = [];
+                    if (controller) {
+                        const node3D = nodes3D.get(controller.id);
+                        if (node3D) nodesToAnimate.push(node3D);
+                    }
+                    batteries.forEach(b => {
+                        const node3D = nodes3D.get(b.id);
+                        if (node3D) nodesToAnimate.push(node3D);
+                    });
+                    if (breakerPanel) {
+                        const node3D = nodes3D.get(breakerPanel.id);
+                        if (node3D) nodesToAnimate.push(node3D);
+                    }
+                    
+                    // Create PowerStation (start invisible for animation)
+                    powerStation3D = window.CircuitModules.PowerStation3D.createPowerStation3D(
+                        controller,
+                        batteries,
+                        breakerPanel,
+                        coordinateMapper
+                    );
+                    
+                    if (powerStation3D && powerStation3D.getMesh()) {
+                        const mesh = powerStation3D.getMesh();
+                        // Start invisible and small for animation
+                        mesh.scale.set(0.1, 0.1, 0.1);
+                        mesh.traverse(child => {
+                            if (child.material) {
+                                const materials = Array.isArray(child.material) 
+                                    ? child.material 
+                                    : [child.material];
+                                materials.forEach(m => {
+                                    m.transparent = true;
+                                    m.opacity = 0;
+                                });
+                            }
+                        });
+                        
+                        scene3D.addNode(mesh);
+                        
+                        // Phase 3: Position PowerStation at structure center (origin)
+                        // Structure is now centered at (0, 0, 0), so PowerStation goes at origin
+                        powerStation3D.updatePosition(0, 0.1, 0); // Origin, slightly above ground
+                        console.log('[syncNodesTo3D] PowerStation positioned at origin (structure center)');
+                        
+                        // Also update orbit controls target (with delay to ensure orbit controls are initialized)
+                        setTimeout(() => {
+                            if (typeof updateOrbitControlsTarget === 'function') {
+                                updateOrbitControlsTarget();
+                            }
+                        }, 50);
+                        
+                        // Phase 8.3: Animate grouping if animation module is available
+                        // Duration: ~500ms transition as specified in plan
+                        if (window.CircuitModules?.Animation3D && nodesToAnimate.length > 0) {
+                            groupingAnimation = window.CircuitModules.Animation3D.animateGrouping(
+                                nodesToAnimate,
+                                powerStation3D,
+                                500,
+                                () => {
+                                    // After animation, hide the individual nodes
+                                    nodesToAnimate.forEach(node3D => {
+                                        if (node3D && node3D.getMesh()) {
+                                            node3D.getMesh().visible = false;
+                                        }
+                                    });
+                                    groupingAnimation = null;
+                                }
+                            );
+                        } else {
+                            // No animation - just show immediately and hide nodes
+                            mesh.scale.set(1, 1, 1);
+                            mesh.traverse(child => {
+                                if (child.material) {
+                                    const materials = Array.isArray(child.material) 
+                                        ? child.material 
+                                        : [child.material];
+                                    materials.forEach(m => {
+                                        m.opacity = 1;
+                                    });
+                                }
+                            });
+                            // Hide individual nodes
+                            nodesToAnimate.forEach(node3D => {
+                                if (node3D && node3D.getMesh()) {
+                                    node3D.getMesh().visible = false;
+                                }
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Failed to create PowerStation3D:', e);
+                }
+            } else {
+                // Update PowerStation position - structure is centered at origin
+                powerStation3D.updatePosition(0, 0.1, 0); // Origin, slightly above ground
+            }
+            
+            // Update PowerStation SOC glow based on battery state (always update for real-time glow)
+            if (powerStation3D) {
+                // Get SOC from simulation stats (most accurate)
+                if (typeof simStats !== 'undefined' && simStats.maxBatteryCapacity > 0) {
+                    const soc = Math.max(0, Math.min(1, simStats.batteryCharge / simStats.maxBatteryCapacity));
+                    powerStation3D.updateSOC(soc);
+                } else if (batteries.length > 0) {
+                    // Fallback: calculate from battery specs
+                    let totalSOC = 0;
+                    let batteryCount = 0;
+                    
+                    batteries.forEach(battery => {
+                        if (battery.specs && battery.specs.ah && battery.specs.voltage) {
+                            // Use specs to estimate (this is less accurate)
+                            const maxCharge = battery.specs.ah * battery.specs.voltage / 1000; // kWh
+                            // Assume 50% charge if no simState available
+                            totalSOC += 0.5;
+                            batteryCount++;
+                        }
+                    });
+                    
+                    if (batteryCount > 0) {
+                        const avgSOC = totalSOC / batteryCount;
+                        powerStation3D.updateSOC(avgSOC);
+                    }
+                } else {
+                    // No batteries - set SOC to 0
+                    powerStation3D.updateSOC(0);
+                }
+            }
+            
+            // Still create 3D nodes for panels (not part of PowerStation)
+            allItems.forEach(node2D => {
+                if (node2D.type === 'panel') {
+                    let node3D = nodes3D.get(node2D.id);
+                    
+                    if (!node3D) {
+                        try {
+                            node3D = window.CircuitModules.Node3D.createNode3D(node2D, coordinateMapper);
+                            if (node3D && node3D.getMesh()) {
+                                nodes3D.set(node2D.id, node3D);
+                                scene3D.addNode(node3D.getMesh());
+                            }
+                        } catch (e) {
+                            console.error('Failed to create 3D panel node:', e);
+                        }
+                    } else {
+                        node3D.updateFromNode2D();
+                        node3D.getMesh().visible = true; // Ensure panels are visible
+                    }
+                }
+            });
+        }
+        
+        // Phase 4: Sync 2D connections to 3D lines
+        function syncConnectionsTo3D() {
+            if (!scene3D || !coordinateMapper) {
+                return;
+            }
+            
+            if (!window.CircuitModules) {
+                return;
+            }
+            
+            const Connection3DModule = window.CircuitModules.Connection3D;
+            if (!Connection3DModule || !Connection3DModule.createConnection3D) {
+                // Module not loaded yet, will retry on next render
+                return;
+            }
+            
+            if (!connections || connections.length === 0) {
+                return;
+            }
+            
+            const connection2DIds = new Set(connections.map(conn => conn.id));
+            
+            // Remove 3D connections that no longer exist
+            for (const [connId, conn3D] of connections3D.entries()) {
+                if (!connection2DIds.has(connId)) {
+                    // Remove all meshes (tube + end caps)
+                    const meshes = conn3D.getMeshes ? conn3D.getMeshes() : (conn3D.getLine() ? [conn3D.getLine()] : []);
+                    meshes.forEach(mesh => scene3D.removeConnection(mesh));
+                    conn3D.dispose();
+                    connections3D.delete(connId);
+                }
+            }
+            
+            // Create or update 3D connections
+            connections.forEach(conn2D => {
+                // Phase 8.2: Maintain connection integrity - remap connections to/from PowerStation
+                let sourceNode3D = nodes3D.get(conn2D.sourceItemId);
+                let targetNode3D = nodes3D.get(conn2D.targetItemId);
+                
+                // If PowerStation exists in simulate mode, remap connections
+                if (powerStation3D && currentMode === 'simulate') {
+                    if (powerStation3D.containsNode(conn2D.sourceItemId)) {
+                        sourceNode3D = powerStation3D;
+                    }
+                    if (powerStation3D.containsNode(conn2D.targetItemId)) {
+                        targetNode3D = powerStation3D;
+                    }
+                }
+                
+                // Only create 3D connection if both nodes exist in 3D
+                if (!sourceNode3D || !targetNode3D) {
+                    // Debug: log why connection isn't being created
+                    if (connections3D.size < 5) { // Only log first few to avoid spam
+                        console.log('Connection skipped - missing nodes:', {
+                            connId: conn2D.id,
+                            sourceId: conn2D.sourceItemId,
+                            targetId: conn2D.targetItemId,
+                            hasSource: !!sourceNode3D,
+                            hasTarget: !!targetNode3D
+                        });
+                    }
+                    return;
+                }
+                
+                let conn3D = connections3D.get(conn2D.id);
+                
+                if (!conn3D) {
+                    // Create new 3D connection
+                    try {
+                        // Debug: Log connection details for panel-to-panel connections
+                        const sourceType = sourceNode3D?.node2D?.type;
+                        const targetType = targetNode3D?.node2D?.type;
+                        if (sourceType === 'panel' && targetType === 'panel' && connections3D.size < 10) {
+                            const sourceHandle = sourceNode3D?.node2D?.handles ? 
+                                Object.values(sourceNode3D.node2D.handles).find(h => h.id === conn2D.sourceHandleId) : null;
+                            const targetHandle = targetNode3D?.node2D?.handles ? 
+                                Object.values(targetNode3D.node2D.handles).find(h => h.id === conn2D.targetHandleId) : null;
+                            console.log('Creating panel-to-panel connection:', {
+                                connId: conn2D.id,
+                                sourcePanel: conn2D.sourceItemId,
+                                sourceHandleId: conn2D.sourceHandleId,
+                                sourcePolarity: sourceHandle?.polarity,
+                                targetPanel: conn2D.targetItemId,
+                                targetHandleId: conn2D.targetHandleId,
+                                targetPolarity: targetHandle?.polarity,
+                                connectionPolarity: conn2D.polarity
+                            });
+                        }
+                        
+                        // Use the module's createConnection3D function
+                        conn3D = Connection3DModule.createConnection3D(
+                            conn2D,
+                            sourceNode3D,
+                            targetNode3D,
+                            coordinateMapper,
+                            window.CircuitModules.WireRenderer
+                        );
+                        if (conn3D) {
+                            // Add all meshes (tube + end caps) to scene
+                            const meshes = conn3D.getMeshes ? conn3D.getMeshes() : (conn3D.getLine() ? [conn3D.getLine()] : []);
+                            if (meshes.length > 0) {
+                                connections3D.set(conn2D.id, conn3D);
+                                meshes.forEach(mesh => {
+                                    // Ensure mesh is visible
+                                    mesh.visible = true;
+                                    scene3D.addConnection(mesh);
+                                });
+                                if (connections3D.size <= 5) { // Log first few
+                                    console.log('Created 3D connection:', conn2D.id, 'with', meshes.length, 'meshes');
+                                }
+                            } else {
+                                console.warn('Connection3D created but no meshes:', conn2D.id, conn3D);
+                            }
+                        } else {
+                            console.warn('Failed to create Connection3D:', conn2D.id);
+                        }
+                    } catch (e) {
+                        console.error('Failed to create 3D connection:', e);
+                        console.error(e.stack);
+                    }
+                } else {
+                    // Update existing connection (nodes may have moved)
+                    // Remove old meshes and add updated ones
+                    const oldMeshes = conn3D.getMeshes ? conn3D.getMeshes() : (conn3D.getLine() ? [conn3D.getLine()] : []);
+                    oldMeshes.forEach(mesh => scene3D.removeConnection(mesh));
+                    conn3D.update();
+                    const newMeshes = conn3D.getMeshes ? conn3D.getMeshes() : (conn3D.getLine() ? [conn3D.getLine()] : []);
+                    newMeshes.forEach(mesh => {
+                        mesh.visible = true;
+                        scene3D.addConnection(mesh);
+                    });
+                }
+            });
+            
+            // Debug: Log connection summary
+            if (connections3D.size > 0) {
+                console.log('syncConnectionsTo3D: Total 3D connections:', connections3D.size, 'out of', connections.length, '2D connections');
+            }
+        }
+        
+        // Initialize 3D scene when modules are loaded
+        function init3DScene() {
+            // Check if modules are loaded
+            if (!window.CircuitModules) {
+                console.log('CircuitModules not loaded yet, retrying...');
+                setTimeout(init3DScene, 100);
+                return;
+            }
+            
+            if (!window.CircuitModules.Scene3D) {
+                console.log('Scene3D module not available, retrying...');
+                setTimeout(init3DScene, 100);
+                return;
+            }
+            
+            // Don't reinitialize if already initialized
+            if (scene3D && scene3D.initialized) {
+                return;
+            }
+            
+            try {
+                scene3D = new window.CircuitModules.Scene3D('canvas-container', {
+                    viewMode: '2d',
+                    cameraDistance: 10 // Start close, will auto-adjust
+                });
+                
+                if (scene3D.init()) {
+                    coordinateMapper = new window.CircuitModules.CoordinateMapper(120); // 120 pixels per meter
+                    console.log('3D scene initialized successfully');
+                    
+                    // Phase 1: Build structure meshes if geometry is available
+                    if (window.linkageLabGeometry) {
+                        buildCircuitStructureMeshes();
+                    }
+                    
+                    // Position grid at structure center if available
+                    const structCenter = window.getStructureCenter ? window.getStructureCenter() : null;
+                    if (structCenter && structCenter.x !== 0 && structCenter.z !== 0) {
+                        scene3D.positionGridAtStructureCenter(structCenter);
+                    }
+                    
+                    // Phase 9: Restore saved view preferences
+                    const savedViewMode = localStorage.getItem('circuit3d_viewMode');
+                    if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
+                        scene3D.setViewMode(savedViewMode);
+                        const viewModeSelect = document.getElementById('viewModeSelect');
+                        if (viewModeSelect) {
+                            viewModeSelect.value = savedViewMode;
+                        }
+                        
+                        // Show 3D view controls if in 3D or split mode
+                        const viewControlsContainer = document.getElementById('3dViewControlsContainer');
+                        if (viewControlsContainer) {
+                            viewControlsContainer.style.display = (savedViewMode === '3d' || savedViewMode === 'split') ? 'flex' : 'none';
+                        }
+                    }
+                    
+                    // Restore camera state if saved
+                    const savedCameraState = localStorage.getItem('circuit3d_cameraState');
+                    if (savedCameraState) {
+                        try {
+                            const cameraState = JSON.parse(savedCameraState);
+                            // Delay restoration slightly to ensure scene is fully initialized
+                            setTimeout(() => {
+                                if (scene3D) {
+                                    scene3D.restoreCameraState(cameraState);
+                                }
+                            }, 100);
+                        } catch (e) {
+                            console.warn('Failed to restore camera state:', e);
+                        }
+                    }
+                    
+                    // Initialize 3D interaction handler (Phase 6)
+                    if (window.CircuitModules.Interaction3D) {
+                        interaction3D = new window.CircuitModules.Interaction3D(
+                            scene3D,
+                            coordinateMapper,
+                            nodes3D,
+                            connections3D
+                        );
+                        
+                        // Setup callbacks
+                        interaction3D.onNodeMoved = (node3D) => {
+                            // When a node is moved in 3D, update its connections
+                            // Sync back to 2D if sync is enabled
+                            if (interaction3D.getSync2D3D() && node3D && node3D.node2D) {
+                                const pos2D = coordinateMapper.position3Dto2D(
+                                    node3D.position3D.x,
+                                    node3D.position3D.y,
+                                    node3D.position3D.z
+                                );
+                                node3D.node2D.x = pos2D.x;
+                                node3D.node2D.y = pos2D.y;
+                                // Trigger 2D render update
+                                if (typeof render === 'function') {
+                                    render();
+                                }
+                            }
+                        };
+                        
+                        interaction3D.onNodeSelected = (node3D) => {
+                            if (node3D && node3D.node2D) {
+                                // Select the corresponding 2D item and open inspector
+                                selectItem(node3D.node2D);
+                                console.log('3D node selected, opened inspector for:', node3D.node2D.id);
+                            }
+                        };
+                        
+                        // Setup sync toggle handler
+                        const sync2D3DCheckbox = document.getElementById('sync2D3DCheckbox');
+                        if (sync2D3DCheckbox) {
+                            sync2D3DCheckbox.addEventListener('change', (e) => {
+                                interaction3D.setSync2D3D(e.target.checked);
+                            });
+                        }
+                        
+                        console.log('3D interaction handler initialized');
+                    }
+                    
+                    // Start animation loop
+                    scene3D.startAnimationLoop();
+                } else {
+                    console.warn('3D scene initialization returned false');
+                }
+            } catch (e) {
+                console.error('Failed to initialize 3D scene:', e);
+                console.error(e.stack);
+            }
+        }
+        
+        // Listen for module load event
+        window.addEventListener('circuitModulesLoaded', () => {
+            console.log('Circuit modules loaded, initializing 3D scene...');
+            init3DScene();
+        });
+        
+        // View mode toggle handler
+        function setupViewModeToggle() {
+            const viewModeSelect = document.getElementById('viewModeSelect');
+            if (viewModeSelect) {
+                viewModeSelect.addEventListener('change', (e) => {
+                    const mode = e.target.value;
+                    console.log('View mode changed to:', mode);
+                    
+                    if (scene3D) {
+                        scene3D.setViewMode(mode);
+                        
+                        // Phase 1: Build structure meshes when switching to 3D view
+                        if ((mode === '3d' || mode === 'split') && window.linkageLabGeometry) {
+                            buildCircuitStructureMeshes();
+                        }
+                    } else {
+                        console.warn('Scene3D not initialized yet');
+                    }
+                    
+                    // Show/hide sync toggle based on view mode
+                    const syncToggleContainer = document.getElementById('sync2D3DToggleContainer');
+                    if (syncToggleContainer) {
+                        syncToggleContainer.style.display = (mode === '3d' || mode === 'split') ? 'flex' : 'none';
+                    }
+                    
+                    // Phase 9: Show/hide 3D view controls based on view mode
+                    const viewControlsContainer = document.getElementById('3dViewControlsContainer');
+                    if (viewControlsContainer) {
+                        viewControlsContainer.style.display = (mode === '3d' || mode === 'split') ? 'flex' : 'none';
+                    }
+                    
+                    // Also toggle SVG visibility
+                    const svg = document.querySelector('#canvas-container svg');
+                    if (svg) {
+                        if (mode === '3d') {
+                            svg.style.display = 'none';
+                        } else if (mode === 'split') {
+                            svg.style.display = 'block';
+                            svg.style.width = '50%';
+                            svg.style.position = 'absolute';
+                            svg.style.left = '0';
+                            svg.style.top = '0';
+                        } else {
+                            svg.style.display = 'block';
+                            svg.style.width = '100%';
+                            svg.style.position = 'relative';
+                        }
+                    }
+                    
+                    // Save view mode preference
+                    localStorage.setItem('circuit3d_viewMode', mode);
+                });
+                
+                // Set initial view mode and show controls if needed
+                const savedViewMode = localStorage.getItem('circuit3d_viewMode') || '2d';
+                if (savedViewMode !== '2d') {
+                    viewModeSelect.value = savedViewMode;
+                    const viewControlsContainer = document.getElementById('3dViewControlsContainer');
+                    if (viewControlsContainer) {
+                        viewControlsContainer.style.display = 'flex';
+                    }
+                    if (scene3D) {
+                        scene3D.setViewMode(savedViewMode);
+                    }
+                }
+            } else {
+                console.warn('View mode select element not found');
+            }
+            
+            // Phase 9: Setup 3D view controls
+            setup3DViewControls();
+        }
+        
+        // Phase 9: Setup 3D view controls (camera reset, grid toggle)
+        function setup3DViewControls() {
+            // Camera reset button
+            const cameraResetBtn = document.getElementById('cameraResetBtn');
+            if (cameraResetBtn) {
+                cameraResetBtn.addEventListener('click', () => {
+                    if (scene3D) {
+                        scene3D.resetCamera();
+                    }
+                });
+            }
+            
+            // Grid toggle
+            const gridToggle = document.getElementById('gridToggle');
+            if (gridToggle) {
+                // Load saved grid state
+                const savedGridState = localStorage.getItem('circuit3d_gridVisible');
+                if (savedGridState !== null && scene3D) {
+                    const isVisible = savedGridState === 'true';
+                    gridToggle.checked = isVisible;
+                    scene3D.setGridVisible(isVisible);
+                }
+                
+                gridToggle.addEventListener('change', (e) => {
+                    const isVisible = e.target.checked;
+                    if (scene3D) {
+                        scene3D.setGridVisible(isVisible);
+                    }
+                    // Save grid state
+                    localStorage.setItem('circuit3d_gridVisible', isVisible.toString());
+                });
+            }
+            
+            // Setup shadows toggle
+            const shadowsToggle = document.getElementById('shadowsToggle');
+            if (shadowsToggle) {
+                // Load saved shadows state
+                const savedShadowsState = localStorage.getItem('circuit3d_shadowsEnabled');
+                if (savedShadowsState !== null && scene3D) {
+                    const isEnabled = savedShadowsState === 'true';
+                    shadowsToggle.checked = isEnabled;
+                    scene3D.setShadowsEnabled(isEnabled);
+                }
+                
+                shadowsToggle.addEventListener('change', (e) => {
+                    const isEnabled = e.target.checked;
+                    if (scene3D) {
+                        scene3D.setShadowsEnabled(isEnabled);
+                    }
+                    // Save shadows state
+                    localStorage.setItem('circuit3d_shadowsEnabled', isEnabled.toString());
+                });
+            }
+        }
+        
+        // ============================================
         // EVENT LISTENERS
         // ============================================
         
@@ -21663,8 +24276,16 @@
                 });
             }
             
-            // Add keyboard shortcuts for undo/redo
+            // Add keyboard shortcuts for undo/redo and file operations
             document.addEventListener('keydown', (e) => {
+                // Skip shortcuts when typing in inputs
+                const activeEl = document.activeElement;
+                const isTyping = activeEl && (
+                    activeEl.tagName === 'INPUT' || 
+                    activeEl.tagName === 'TEXTAREA' || 
+                    activeEl.tagName === 'SELECT'
+                );
+                
                 if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
                     e.preventDefault();
                     if (historyManager.undo()) {
@@ -21675,6 +24296,15 @@
                     if (historyManager.redo()) {
                         showHint('↷ Redone', 'Action redone');
                     }
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 's' && !isTyping) {
+                    e.preventDefault();
+                    saveFullConfig();
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'o' && !isTyping) {
+                    e.preventDefault();
+                    document.getElementById('importFullConfigInput')?.click();
+                } else if ((e.ctrlKey || e.metaKey) && e.key === 'e' && !isTyping) {
+                    e.preventDefault();
+                    exportFullConfig();
                 }
             });
             
@@ -21704,17 +24334,35 @@
                 }
             }
             
-            // Import from Designer
-            if (urlParams.get('import') === 'designer') {
+            // Import from Designer (handles both 'designer' and 'solarDesigner' params)
+            const importType = urlParams.get('import');
+            if (importType === 'designer' || importType === 'solarDesigner') {
                 const importData = localStorage.getItem('solarDesignerExport');
                 if (importData) {
                     try {
                         const data = JSON.parse(importData);
-                        allItems = data.items || [];
-                        connections = data.connections || [];
+                        
+                        // Handle new ExportFormat structure from solar-designer.js
+                        let items, conns, idCounter, connIdCounter;
+                        if (data.schematic) {
+                            // New ExportFormat structure
+                            items = data.schematic.components || [];
+                            conns = data.schematic.connections || [];
+                            idCounter = items.length > 0 ? Math.max(...items.map(i => i.id || 0)) + 1 : 1;
+                            connIdCounter = conns.length > 0 ? Math.max(...conns.map(c => c.id || 0)) + 1 : 1;
+                        } else {
+                            // Old format (direct items/connections)
+                            items = data.items || [];
+                            conns = data.connections || [];
+                            idCounter = data.itemIdCounter || 0;
+                            connIdCounter = data.connectionIdCounter || 0;
+                        }
+                        
+                        allItems = items;
+                        connections = conns;
                         invalidateSpecsCache();
-                        itemIdCounter = data.itemIdCounter || 0;
-                        connectionIdCounter = data.connectionIdCounter || 0;
+                        itemIdCounter = idCounter;
+                        connectionIdCounter = connIdCounter;
                         
                         // Rebuild handle.connectedTo arrays from connections
                         allItems.forEach(item => {
@@ -21736,9 +24384,17 @@
                         // Load 3D structure geometry if available
                         if (data.structureGeometry) {
                             console.log('Import: Loading 3D structure geometry');
-                            window.linkageLabGeometry = data.structureGeometry;
+                            // Ensure we only store plain data, not Three.js objects
+                            const cleanGeometry = cleanGeometryData(data.structureGeometry);
+                            window.linkageLabGeometry = cleanGeometry;
                             // Also save to localStorage for persistence
-                            localStorage.setItem('linkageLabGeometry', JSON.stringify(data.structureGeometry));
+                            try {
+                                localStorage.setItem('linkageLabGeometry', JSON.stringify(cleanGeometry));
+                            } catch (e) {
+                                console.warn('Failed to save geometry to localStorage:', e);
+                            }
+                            // Note: linkPanelsToStructureGeometry() is called AFTER buildCircuitStructureMeshes()
+                            // to ensure offsets are set before panels are positioned
                         } else {
                             console.log('Import: No 3D structure geometry in export data');
                             // Try to load from localStorage if not in export
@@ -21747,6 +24403,7 @@
                                 try {
                                     window.linkageLabGeometry = JSON.parse(savedGeometry);
                                     console.log('Import: Loaded 3D geometry from localStorage');
+                                    // Note: linkPanelsToStructureGeometry() is called AFTER buildCircuitStructureMeshes()
                                 } catch (e) {
                                     console.error('Failed to parse saved geometry:', e);
                                 }
@@ -21788,6 +24445,16 @@
                                 structureBtn.style.display = 'inline-block';
                             }
                             setTimeout(() => initStructureViewport(), 100);
+                            
+                            // Phase 1: Build structure meshes in circuit 3D scene if initialized
+                            // IMPORTANT: Must be called BEFORE linkPanelsToStructureGeometry so that
+                            // the structure offsets (X, Y, Z) are set before panels are positioned
+                            if (scene3D && scene3D.initialized) {
+                                buildCircuitStructureMeshes();
+                            }
+                            
+                            // Phase 2: Link panels to structure geometry AFTER offsets are set
+                            linkPanelsToStructureGeometry();
                         }
                         
                         showHint("📥 Circuit Loaded", 
@@ -21979,7 +24646,7 @@
             
             // Reset Canvas button (build mode)
             document.getElementById('resetCanvasBtn')?.addEventListener('click', () => {
-                if (confirm('Are you sure you want to reset the canvas? This will remove all components and connections.')) {
+                if (confirm('Are you sure you want to reset the canvas? This will remove all components, connections, and cached structure geometry.')) {
                     // Clear all items and connections
                     allItems = [];
                     connections = [];
@@ -21987,8 +24654,22 @@
                     connectionIdCounter = 0;
                     invalidateSpecsCache();
                     
-                    // Clear saved state
+                    // Clear saved state AND geometry cache
                     localStorage.removeItem('solarBuilderState');
+                    localStorage.removeItem('linkageLabGeometry');
+                    localStorage.removeItem('linkageLabCameraState');
+                    localStorage.removeItem('linkageLabExport');
+                    localStorage.removeItem('solarUnifiedConfig');
+                    window.linkageLabGeometry = null;
+                    window.linkageLabCameraState = null;
+                    structureMeshesBuilt = false;
+                    
+                    // Clear 3D structure
+                    if (scene3D && scene3D.structureGroup) {
+                        while (scene3D.structureGroup.children.length > 0) {
+                            scene3D.removeStructure(scene3D.structureGroup.children[0]);
+                        }
+                    }
                     
                     // Reset tutorial state
                     tutorialStep = 0;
@@ -22014,6 +24695,66 @@
             // BOM buttons
             document.getElementById('bomCloseBtn')?.addEventListener('click', hideBillOfMaterials);
             document.getElementById('bomExportBtn')?.addEventListener('click', exportBillOfMaterials);
+            
+            // Phase 2: Initialize 3D scene and view mode toggle
+            // Setup view mode toggle immediately (works even without 3D)
+            setupViewModeToggle();
+            
+            // Initialize 3D scene (will retry if modules aren't loaded yet)
+            init3DScene();
+            
+            // Also try initializing after a delay to catch late-loading modules
+            setTimeout(() => {
+                if (!scene3D) {
+                    console.log('Retrying 3D scene initialization...');
+                    init3DScene();
+                }
+            }, 500);
+            
+            // File operation controls (unified config)
+            document.getElementById('saveFullConfigBtn')?.addEventListener('click', saveFullConfig);
+            document.getElementById('exportFullConfigBtn')?.addEventListener('click', exportFullConfig);
+            
+            // Unit system toggle button
+            document.getElementById('btn-unit-system-sim')?.addEventListener('click', () => {
+                const current = unitConverter.getPreferredUnitSystem();
+                const newSystem = current === 'metric' ? 'imperial' : 'metric';
+                unitConverter.setPreferredUnitSystem(newSystem);
+                
+                // Update button label
+                const label = document.getElementById('unit-system-label-sim');
+                if (label) {
+                    label.textContent = newSystem === 'metric' ? 'Metric' : 'Imperial';
+                }
+                
+                // Show notification
+                if (typeof showHint === 'function') {
+                    showHint('Unit System Changed', `Switched to ${newSystem} units`);
+                }
+            });
+            
+            // Initialize unit system label
+            (function() {
+                const label = document.getElementById('unit-system-label-sim');
+                if (label && typeof unitConverter !== 'undefined') {
+                    const system = unitConverter.getPreferredUnitSystem();
+                    label.textContent = system === 'metric' ? 'Metric' : 'Imperial';
+                }
+            })();
+            
+            const importFullConfigInput = document.getElementById('importFullConfigInput');
+            if (importFullConfigInput) {
+                importFullConfigInput.addEventListener('change', (e) => {
+                    if (e.target.files && e.target.files[0]) {
+                        importFullConfig(e.target.files[0]);
+                        e.target.value = ''; // Reset so same file can be selected again
+                    }
+                });
+                // Open file dialog when Load button is clicked
+                document.getElementById('loadFullConfigBtn')?.addEventListener('click', () => {
+                    importFullConfigInput.click();
+                });
+            }
             
             // Simulate controls
             document.getElementById('playPauseButton')?.addEventListener('click', playPause);
@@ -23003,6 +25744,11 @@
                         initStructureViewport();
                     }
                 }, 200);
+                
+                // Phase 1: Build structure meshes in circuit 3D scene if initialized
+                if (scene3D && scene3D.initialized) {
+                    buildCircuitStructureMeshes();
+                }
             }
         });
     </script>

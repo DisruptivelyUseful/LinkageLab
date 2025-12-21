@@ -23,8 +23,11 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <!-- D3.js for Solar Simulator SVG rendering -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- convert-units library for unit conversions -->
+    <script src="https://cdn.jsdelivr.net/npm/convert-units@2.3.4/dist/index.js"></script>
     
     <!-- Solar Designer dependencies (must load before solar-designer.js) -->
+    <script src="js/core/unit-converter.js"></script>
     <script src="js/core/constants.js"></script>
     <script src="js/core/automation.js"></script>
     <script src="js/core/export-format.js"></script>
@@ -74,6 +77,8 @@
         <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)">⬇️ Export</button>
         <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)">⬆️ Import</button>
+        <div class="topbar-divider"></div>
+        <button class="topbar-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)">📏 <span id="unit-system-label">Imperial</span></button>
         <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋 Guide</button>
     </div>
@@ -1246,8 +1251,8 @@
 // CONSTANTS & CONFIGURATION
 // ============================================================================
 
-/** Inches per foot conversion constant */
-const INCHES_PER_FOOT = 12;
+/** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
+const INCHES_PER_FOOT = 12; // Kept for backward compatibility, but prefer unitConverter
 
 /** Minimum fold angle in radians (5 degrees) */
 const MIN_FOLD_ANGLE = 5 * Math.PI / 180;
@@ -4641,6 +4646,7 @@ function solveLinkage(foldAngle) {
 
     // Apply orientation transformation for vertical (arch/bridge) mode
     if (state.orientation === 'vertical') {
+        console.log('[solveLinkage] Applying arch mode transformation (vertical orientation)');
         // For arch mode, transform the horizontal ring into a vertical arch
         // The feet (outer pivots of first and last modules) should track along the ground
         
@@ -4814,6 +4820,13 @@ function solveLinkage(foldAngle) {
         // Transform feet positions too
         leftFoot = transformPoint(leftFoot);
         rightFoot = transformPoint(rightFoot);
+        
+        console.log('[solveLinkage] Arch transformation complete:', {
+            leftFoot: leftFoot,
+            rightFoot: rightFoot,
+            transformation: '90° X-axis rotation: (x, y, z) -> (x, z, -y)',
+            beamCount: beams.length
+        });
         
         // Step 4: Ground to feet positions
         // The feet should be at Y=0, and centered on X
@@ -6645,8 +6658,8 @@ function updateHUD(data) {
     const totalCost = structureSubtotal + solarCost;
     uiStats.bt.innerText = formatNumber(totalCost, 2);
 
-    const heightFt = data.maxHeight / INCHES_PER_FOOT;
-    const diameterFt = (data.maxRad * 2) / INCHES_PER_FOOT;
+    const heightFt = unitConverter.inchesToFeet(data.maxHeight);
+    const diameterFt = unitConverter.inchesToFeet(data.maxRad * 2);
     // Update stats panel
     uiStats.h.innerText = formatNumber(heightFt, 2) + "'";
     uiStats.d.innerText = formatNumber(diameterFt, 2) + "'";
@@ -8282,6 +8295,13 @@ function serializeGeometry(data) {
     const isArchMode = state.orientation === 'vertical';
     const panelConfig = getActivePanelConfig();
     
+    console.log('[serializeGeometry] Starting export:', {
+        mode: isArchMode ? 'arch' : 'cylinder',
+        beamCount: data.beams?.length || 0,
+        panelCount: data.panels?.length || 0,
+        globalRotation: state.globalRotation || 0
+    });
+    
     const geometry = {
         beams: [],
         panels: [],
@@ -8298,16 +8318,43 @@ function serializeGeometry(data) {
         bounds: { min: {x:0, y:0, z:0}, max: {x:0, y:0, z:0} }
     };
     
-    // Serialize beams (simplified - just endpoints and dimensions)
+    // Serialize beams with orientation data for correct 3D rendering
     if (data.beams) {
-        geometry.beams = data.beams.map(beam => ({
-            p1: beam.p1,
-            p2: beam.p2,
-            w: beam.w,
-            t: beam.t,
-            isH: beam.isH,
-            color: beam.color || {r:139, g:90, b:43} // Wood brown
-        }));
+        console.log('[serializeGeometry] Processing', data.beams.length, 'beams');
+        geometry.beams = data.beams.map((beam, index) => {
+            const beamData = {
+                p1: beam.p1,
+                p2: beam.p2,
+                w: beam.w,
+                t: beam.t,
+                isH: beam.isH,
+                color: beam.color || {r:139, g:90, b:43}, // Wood brown
+                stackType: beam.stackType || 'unknown',
+                moduleIndex: beam.moduleIndex !== undefined ? beam.moduleIndex : -1
+            };
+            
+            // Include orientation vectors for correct cross-section orientation
+            if (beam.axisX && beam.axisY && beam.axisZ) {
+                beamData.axisX = beam.axisX;
+                beamData.axisY = beam.axisY;
+                beamData.axisZ = beam.axisZ;
+            }
+            
+            // Log first 3 beams for debugging
+            if (index < 3) {
+                console.log(`[serializeGeometry] Beam ${index} (${beamData.stackType}):`, {
+                    p1: beamData.p1,
+                    p2: beamData.p2,
+                    hasAxes: !!(beamData.axisX && beamData.axisY && beamData.axisZ),
+                    axisX: beamData.axisX,
+                    axisY: beamData.axisY,
+                    axisZ: beamData.axisZ
+                });
+            }
+            
+            return beamData;
+        });
+        console.log('[serializeGeometry] Exported', geometry.beams.length, 'beams');
     }
     
     // Serialize panels with row/col positions
@@ -8342,6 +8389,12 @@ function serializeGeometry(data) {
                 thickness: panel.thickness,
                 rotation: panel.rotation,
                 normal: panel.normal,
+                // Include axisX for proper orientation in simulator
+                axisX: panel.axisX ? {
+                    x: panel.axisX.x,
+                    y: panel.axisX.y,
+                    z: panel.axisX.z
+                } : null,
                 // Grid position info
                 row: row,
                 col: col,
@@ -8505,8 +8558,8 @@ function showBuildGuide() {
     const totalCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + solarPanelCost;
     
     // Calculate dimensions
-    const heightFt = data.maxHeight / INCHES_PER_FOOT;
-    const diameterFt = (data.maxRad * 2) / INCHES_PER_FOOT;
+    const heightFt = unitConverter.inchesToFeet(data.maxHeight);
+    const diameterFt = unitConverter.inchesToFeet(data.maxRad * 2);
     const actuatorInfo = calculateActuatorStroke();
     
     // Drill hole calculations
@@ -9447,23 +9500,31 @@ function getConfigSnapshot(includeMetadata = false) {
                     archPanelSeparation: state.solarPanels.archPanelSeparation,
                     archPanelOffset: state.solarPanels.archPanelOffset,
                     useFixedBeams: state.useFixedBeams,
-                    archCapUprights: state.archCapUprights
+                    archCapUprights: state.archCapUprights,
+                    gridRotation: state.solarPanels.gridRotation || 0
                 },
-                // Horizontal beam positions (first and last module for reference)
-                horizontalBeams: data.beams
-                    .filter(b => b.stackType && b.stackType.startsWith('horizontal'))
-                    .slice(0, 4)  // First 4 horizontal beams
-                    .map(b => ({
-                        type: b.stackType,
-                        center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
-                        axisZ: b.axisZ ? {x: +b.axisZ.x.toFixed(3), y: +b.axisZ.y.toFixed(3), z: +b.axisZ.z.toFixed(3)} : null
-                    })),
-                // Panel positions and orientations
-                panels: data.panels ? data.panels.slice(0, 8).map((p, i) => ({
+                // ALL beam positions with full orientation data
+                beams: data.beams.map(b => ({
+                    type: b.stackType,
+                    center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
+                    // Use actual p1/p2 endpoints, not corners (corners are box vertices, not centerline endpoints)
+                    p1: b.p1 ? {x: +b.p1.x.toFixed(2), y: +b.p1.y.toFixed(2), z: +b.p1.z.toFixed(2)} : null,
+                    p2: b.p2 ? {x: +b.p2.x.toFixed(2), y: +b.p2.y.toFixed(2), z: +b.p2.z.toFixed(2)} : null,
+                    axisX: b.axisX ? {x: +b.axisX.x.toFixed(3), y: +b.axisX.y.toFixed(3), z: +b.axisX.z.toFixed(3)} : null,
+                    axisY: b.axisY ? {x: +b.axisY.x.toFixed(3), y: +b.axisY.y.toFixed(3), z: +b.axisY.z.toFixed(3)} : null,
+                    axisZ: b.axisZ ? {x: +b.axisZ.x.toFixed(3), y: +b.axisZ.y.toFixed(3), z: +b.axisZ.z.toFixed(3)} : null,
+                    w: b.w,
+                    t: b.t
+                })),
+                // ALL panel positions and orientations (no truncation)
+                panels: data.panels ? data.panels.map((p, i) => ({
                     index: i,
                     center: {x: +p.center.x.toFixed(2), y: +p.center.y.toFixed(2), z: +p.center.z.toFixed(2)},
                     normal: p.axisY ? {x: +p.axisY.x.toFixed(3), y: +p.axisY.y.toFixed(3), z: +p.axisY.z.toFixed(3)} : null,
-                    axisX: p.axisX ? {x: +p.axisX.x.toFixed(3), y: +p.axisX.y.toFixed(3), z: +p.axisX.z.toFixed(3)} : null
+                    axisX: p.axisX ? {x: +p.axisX.x.toFixed(3), y: +p.axisX.y.toFixed(3), z: +p.axisX.z.toFixed(3)} : null,
+                    width: p.width,
+                    length: p.length,
+                    thickness: p.thickness
                 })) : [],
                 // Structure bounds
                 maxRadius: +data.maxRad.toFixed(2),
@@ -10433,7 +10494,10 @@ function drawMeasurements(ctx, data) {
     // Draw outer diameter measurement (orange)
     if (measurements.outerPoints) {
         const dist = measurements.outerDia;
-        const label = `Outer: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
+        const system = unitConverter.getPreferredUnitSystem();
+        const label = system === 'metric'
+            ? `Outer: ${unitConverter.formatLength(dist, 'in', 1)}`
+            : `Outer: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
     }
     
@@ -10441,7 +10505,10 @@ function drawMeasurements(ctx, data) {
     if (measurements.height > 0) {
         const heightPoint1 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[0].y, z: 0};
         const heightPoint2 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[1].y, z: 0};
-        const label = `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+        const system = unitConverter.getPreferredUnitSystem();
+        const label = system === 'metric'
+            ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+            : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(heightPoint1, heightPoint2, label, '#2ecc71', 0);
     }
     
@@ -10449,7 +10516,10 @@ function drawMeasurements(ctx, data) {
     if (measurements.span > 0) {
         const spanPoint1 = {x: measurements.spanPoints[0].x, y: measurements.spanPoints[0].y - 10, z: 0};
         const spanPoint2 = {x: measurements.spanPoints[1].x, y: measurements.spanPoints[0].y - 10, z: 0};
-        const label = `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
+        const system = unitConverter.getPreferredUnitSystem();
+        const label = system === 'metric'
+            ? `Span: ${unitConverter.formatLength(measurements.span, 'in', 1)}`
+            : `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(spanPoint1, spanPoint2, label, '#9b59b6', 0);
     }
     
@@ -10605,14 +10675,20 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
     if (measurements.height > 0 && measurements.spanPoints && measurements.heightPoints) {
         const heightPoint1 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[0].y, z: 0};
         const heightPoint2 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[1].y, z: 0};
-        const label = `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+        const system = unitConverter.getPreferredUnitSystem();
+        const label = system === 'metric'
+            ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+            : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(heightPoint1, heightPoint2, label, '#2ecc71', 0);
     }
     
     if (measurements.span > 0 && measurements.spanPoints) {
         const spanPoint1 = {x: measurements.spanPoints[0].x, y: measurements.spanPoints[0].y - 10, z: 0};
         const spanPoint2 = {x: measurements.spanPoints[1].x, y: measurements.spanPoints[0].y - 10, z: 0};
-        const label = `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
+        const system = unitConverter.getPreferredUnitSystem();
+        const label = system === 'metric'
+            ? `Span: ${unitConverter.formatLength(measurements.span, 'in', 1)}`
+            : `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(spanPoint1, spanPoint2, label, '#9b59b6', 0);
     }
 }
@@ -12227,12 +12303,197 @@ document.getElementById('nb-anim-stop-top').onchange = e => {
     if (sidebarNumber) sidebarNumber.value = val;
 };
 
-// Topbar Save/Export buttons
-document.getElementById('btn-save-top').onclick = saveConfig;
-document.getElementById('btn-load-top').onclick = loadConfig;
-document.getElementById('btn-export-json-top').onclick = exportToJSON;
-document.getElementById('btn-import-json-top').onclick = importFromJSON;
+// Topbar Save/Export buttons - mode-aware
+document.getElementById('btn-save-top').onclick = () => {
+    if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
+        // Save unified config in solar mode
+        saveUnifiedConfig();
+    } else {
+        // Save linkage config
+        saveConfig();
+    }
+};
+document.getElementById('btn-load-top').onclick = () => {
+    if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
+        // Load unified config in solar mode
+        loadUnifiedConfig();
+    } else {
+        // Load linkage config
+        loadConfig();
+    }
+};
+document.getElementById('btn-export-json-top').onclick = () => {
+    if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
+        // Export unified config in solar mode
+        exportUnifiedConfig();
+    } else {
+        // Export linkage config
+        exportToJSON();
+    }
+};
+// Unit system toggle button
+document.getElementById('btn-unit-system').onclick = () => {
+    const current = unitConverter.getPreferredUnitSystem();
+    const newSystem = current === 'metric' ? 'imperial' : 'metric';
+    unitConverter.setPreferredUnitSystem(newSystem);
+    
+    // Update button label
+    const label = document.getElementById('unit-system-label');
+    if (label) {
+        label.textContent = newSystem === 'metric' ? 'Metric' : 'Imperial';
+    }
+    
+    // Show toast notification
+    showToast(`Unit system changed to ${newSystem}`, 'info');
+    
+    // Trigger UI update if needed (measurements, etc.)
+    if (typeof requestRender === 'function') {
+        requestRender();
+    }
+};
+
+// Initialize unit system label
+(function() {
+    const label = document.getElementById('unit-system-label');
+    if (label && typeof unitConverter !== 'undefined') {
+        const system = unitConverter.getPreferredUnitSystem();
+        label.textContent = system === 'metric' ? 'Metric' : 'Imperial';
+    }
+})();
+
+document.getElementById('btn-import-json-top').onclick = () => {
+    if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
+        // Import unified config in solar mode
+        importUnifiedConfig();
+    } else {
+        // Import linkage config
+        importFromJSON();
+    }
+};
 document.getElementById('btn-build-guide-top').onclick = showBuildGuide;
+
+// Unified config functions for Solar mode
+function saveUnifiedConfig() {
+    const config = getUnifiedConfig();
+    localStorage.setItem('unifiedSolarConfig', JSON.stringify(config));
+    showToast('Unified config saved', 'info');
+}
+
+function loadUnifiedConfig() {
+    const saved = localStorage.getItem('unifiedSolarConfig');
+    if (!saved) {
+        showToast('No saved unified config found', 'error');
+        return;
+    }
+    
+    try {
+        const config = JSON.parse(saved);
+        applyUnifiedConfigToModes(config);
+        showToast('Unified config loaded', 'info');
+    } catch (e) {
+        console.error('Failed to load unified config:', e);
+        showToast('Failed to load config', 'error');
+    }
+}
+
+function exportUnifiedConfig() {
+    const config = getUnifiedConfig();
+    
+    // Generate filename
+    let filename = `StarShade-${state.modules}m-${state.orientation}`;
+    const panelCount = config.summary?.panelCount || 0;
+    if (panelCount > 0) filename += `-${panelCount}p`;
+    filename += `-${new Date().toISOString().slice(0, 10)}.json`;
+    
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast(`Exported unified config: ${filename}`, 'info');
+}
+
+function importUnifiedConfig() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            try {
+                const config = JSON.parse(event.target.result);
+                applyUnifiedConfigToModes(config);
+                showToast(`Imported: ${file.name}`, 'info');
+            } catch (err) {
+                console.error('Failed to import config:', err);
+                showToast('Failed to import config', 'error');
+            }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function applyUnifiedConfigToModes(config) {
+    // Apply to linkage mode if structure data present
+    if (config.structure || config.mode || config.foldAngle !== undefined) {
+        try {
+            applyConfig(config);
+        } catch (e) {
+            console.warn('Failed to apply linkage config:', e);
+        }
+    }
+    
+    // Apply to solar designer if circuit data present
+    if (typeof SolarDesigner !== 'undefined' && SolarDesigner.isInitialized()) {
+        try {
+            // Handle different config formats
+            let items = [], connections = [];
+            
+            if (config.circuit) {
+                // New unified-v2 format
+                items = config.circuit.items || [];
+                connections = config.circuit.connections || [];
+            } else if (config.solarDesigner) {
+                // Old format from getUnifiedConfig
+                items = (config.solarDesigner.items || []).map(item => ({
+                    id: item.id,
+                    type: item.type,
+                    x: item.x,
+                    y: item.y,
+                    specs: item.specs || {},
+                    handles: {}
+                }));
+                connections = (config.solarDesigner.connections || []).map(conn => ({
+                    id: conn.id,
+                    sourceItemId: conn.src,
+                    sourceHandleKey: conn.srcH,
+                    targetItemId: conn.tgt,
+                    targetHandleKey: conn.tgtH
+                }));
+            }
+            
+            if (items.length > 0) {
+                SolarDesigner.loadSolarConfig({ items, connections });
+            }
+        } catch (e) {
+            console.warn('Failed to apply solar designer config:', e);
+        }
+    }
+    
+    // Store structure geometry for simulator
+    if (config.structureGeometry || config.geometrySnapshot) {
+        const geometry = config.structureGeometry || config.geometrySnapshot;
+        localStorage.setItem('linkageLabGeometry', JSON.stringify(geometry));
+        window.linkageLabGeometry = geometry;
+    }
+}
 
 // Preset buttons
 document.getElementById('btn-save-preset').onclick = savePreset;
