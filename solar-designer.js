@@ -6615,7 +6615,7 @@ const SolarDesigner = (function() {
                     
                     // If source is breaker panel circuit and it's live
                     if (sourceItem && sourceItem.type === 'breakerpanel') {
-                        const mainConn = sourceItem.handles.mainInput?.connectedTo[0];
+                        const mainConn = sourceItem.handles.mainInput?.connectedTo?.[0];
                         if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive && sourceItem.mainBreakerOn) {
                             const handleKey = connObj.sourceHandleKey;
                             if (handleKey && handleKey.startsWith('circuit')) {
@@ -6642,7 +6642,7 @@ const SolarDesigner = (function() {
                     }
                     // If source is a breaker and it's live
                     else if (sourceItem && sourceItem.type === 'acbreaker' && sourceItem.isClosed) {
-                        const breakerInput = sourceItem.handles.lineIn?.connectedTo[0];
+                        const breakerInput = sourceItem.handles.lineIn?.connectedTo?.[0];
                         if (breakerInput && LiveView.state.powerFlow[breakerInput.connectionId]?.isLive) {
                             hasPower = true;
                             LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
@@ -6651,7 +6651,7 @@ const SolarDesigner = (function() {
                     }
                     // If source is spiderbox circuit and it's live
                     else if (sourceItem && sourceItem.type === 'spiderbox' && sourceItem.mainBreakerOn) {
-                        const mainConn = sourceItem.handles.mainInput?.connectedTo[0];
+                        const mainConn = sourceItem.handles.mainInput?.connectedTo?.[0];
                         if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive) {
                             const handleKey = connObj.sourceHandleKey;
                             if (handleKey && handleKey.startsWith('circuit')) {
@@ -6669,14 +6669,14 @@ const SolarDesigner = (function() {
             
             if (hasPower) {
                 // Mark load connections as live
-                outlet.handles.load?.connectedTo.forEach(conn => {
+                outlet.handles.load?.connectedTo?.forEach(conn => {
                     LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
                 });
                 
                 // Trace through outlet input to find daisy-chained outlets
                 // Outlets daisy-chain by connecting input-to-input (bidirectional)
                 if (outlet.handles.input) {
-                    outlet.handles.input.connectedTo.forEach(conn => {
+                    outlet.handles.input.connectedTo?.forEach(conn => {
                         const connObj = connections.find(c => c.id === conn.connectionId);
                         if (!connObj) return;
                         
@@ -6722,9 +6722,9 @@ const SolarDesigner = (function() {
                     
                     if (powerSource) {
                         let shouldMark = false;
-                        
+
                         if (powerSource.type === 'breakerpanel') {
-                            const mainConn = powerSource.handles.mainInput?.connectedTo[0];
+                            const mainConn = powerSource.handles.mainInput?.connectedTo?.[0];
                             if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive && powerSource.mainBreakerOn) {
                                 const handleKey = connObj.sourceItemId === powerSource.id ? connObj.sourceHandleKey : connObj.targetHandleKey;
                                 if (handleKey && handleKey.startsWith('circuit')) {
@@ -6735,12 +6735,12 @@ const SolarDesigner = (function() {
                                 }
                             }
                         } else if (powerSource.type === 'acbreaker' && powerSource.isClosed) {
-                            const breakerInput = powerSource.handles.lineIn?.connectedTo[0];
+                            const breakerInput = powerSource.handles.lineIn?.connectedTo?.[0];
                             if (breakerInput && LiveView.state.powerFlow[breakerInput.connectionId]?.isLive) {
                                 shouldMark = true;
                             }
                         } else if (powerSource.type === 'spiderbox' && powerSource.mainBreakerOn) {
-                            const mainConn = powerSource.handles.mainInput?.connectedTo[0];
+                            const mainConn = powerSource.handles.mainInput?.connectedTo?.[0];
                             if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive) {
                                 const handleKey = connObj.sourceItemId === powerSource.id ? connObj.sourceHandleKey : connObj.targetHandleKey;
                                 if (handleKey && handleKey.startsWith('circuit')) {
@@ -6762,14 +6762,14 @@ const SolarDesigner = (function() {
         
         // Mark Double Voltage Hub outputs as live if both inputs are connected
         allItems.filter(i => i.type === 'doublevoltagehub').forEach(hub => {
-            const input1Conn = hub.handles.input1?.connectedTo[0];
-            const input2Conn = hub.handles.input2?.connectedTo[0];
+            const input1Conn = hub.handles.input1?.connectedTo?.[0];
+            const input2Conn = hub.handles.input2?.connectedTo?.[0];
             const hasInput1 = input1Conn && LiveView.state.powerFlow[input1Conn.connectionId]?.isLive;
             const hasInput2 = input2Conn && LiveView.state.powerFlow[input2Conn.connectionId]?.isLive;
             
             // Hub can work with one or both inputs
             if (hasInput1 || hasInput2) {
-                hub.handles.acOutput?.connectedTo.forEach(conn => {
+                hub.handles.acOutput?.connectedTo?.forEach(conn => {
                     LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0, is240V: hasInput1 && hasInput2 };
                 });
             }
@@ -6778,13 +6778,13 @@ const SolarDesigner = (function() {
         // Mark Breaker Panel circuit outputs as live if main is on
         allItems.filter(i => i.type === 'breakerpanel').forEach(panel => {
             if (!panel.mainBreakerOn) return;
-            
-            const mainConn = panel.handles.mainInput?.connectedTo[0];
+
+            const mainConn = panel.handles.mainInput?.connectedTo?.[0];
             if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive) {
                 // Check each circuit breaker
                 for (let i = 0; i < 8; i++) {
                     if (panel.breakerStates && panel.breakerStates[i]) {
-                        panel.handles[`circuit${i + 1}`]?.connectedTo.forEach(conn => {
+                        panel.handles[`circuit${i + 1}`]?.connectedTo?.forEach(conn => {
                             LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0 };
                         });
                     }
@@ -6795,14 +6795,14 @@ const SolarDesigner = (function() {
         // Mark Spider Box circuit outputs as live if main is on
         allItems.filter(i => i.type === 'spiderbox').forEach(spiderbox => {
             if (!spiderbox.mainBreakerOn) return;
-            
-            const mainConn = spiderbox.handles.mainInput?.connectedTo[0];
+
+            const mainConn = spiderbox.handles.mainInput?.connectedTo?.[0];
             if (mainConn && LiveView.state.powerFlow[mainConn.connectionId]?.isLive) {
                 // All circuits are live when main is on
                 spiderbox.specs.circuits.forEach((circuit, i) => {
                     const handle = spiderbox.handles[`circuit${i + 1}`];
                     if (handle?.isClosed !== false) {
-                        handle?.connectedTo.forEach(conn => {
+                        handle?.connectedTo?.forEach(conn => {
                             LiveView.state.powerFlow[conn.connectionId] = { isLive: true, watts: 0, voltage: circuit.voltage };
                         });
                     }
