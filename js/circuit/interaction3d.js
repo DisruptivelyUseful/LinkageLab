@@ -44,6 +44,7 @@ export class Interaction3D {
         // Callbacks
         this.onNodeMoved = null; // Callback when node position changes
         this.onNodeSelected = null; // Callback when node is selected
+        this.onWireSelected = null; // Callback when wire is selected
         this.onSync2D3DChanged = null; // Callback when sync setting changes
         this.onWireCreated = null; // Callback when wire is created between ports
         
@@ -812,14 +813,79 @@ export class Interaction3D {
         // Only handle double-click if we didn't drag
         if (!this.isDragging) {
             this.updateMousePosition(event);
+            
+            // First check for node selection
             const node3D = this.getNodeUnderMouse();
             if (node3D) {
                 this.selectNode(node3D);
-            } else {
-                this.deselectNode();
+                event.preventDefault();
+                event.stopPropagation();
+                return;
             }
+            
+            // Then check for wire/connection selection
+            const connection3D = this.getConnectionUnderMouse();
+            if (connection3D) {
+                this.selectConnection(connection3D);
+                event.preventDefault();
+                event.stopPropagation();
+                return;
+            }
+            
+            // Nothing under mouse - deselect
+            this.deselectNode();
             event.preventDefault();
             event.stopPropagation();
+        }
+    }
+    
+    /**
+     * Get connection (wire) under mouse cursor
+     */
+    getConnectionUnderMouse() {
+        if (!this.scene3D || !this.scene3D.scene) return null;
+        
+        // Get all wire meshes from connections3D
+        const wireMeshes = [];
+        if (this.connections3D) {
+            this.connections3D.forEach((conn3D, connId) => {
+                const meshes = conn3D.getMeshes ? conn3D.getMeshes() : [];
+                meshes.forEach(mesh => {
+                    if (mesh) {
+                        mesh.userData.connection3D = conn3D;
+                        mesh.userData.connectionId = connId;
+                        wireMeshes.push(mesh);
+                    }
+                });
+            });
+        }
+        
+        if (wireMeshes.length === 0) return null;
+        
+        // Raycast against wire meshes
+        this.raycaster.setFromCamera(this.mouse, this.scene3D.camera);
+        const intersects = this.raycaster.intersectObjects(wireMeshes, true);
+        
+        if (intersects.length > 0) {
+            // Find the connection3D for the intersected mesh
+            let mesh = intersects[0].object;
+            while (mesh && !mesh.userData?.connection3D) {
+                mesh = mesh.parent;
+            }
+            if (mesh && mesh.userData?.connection3D) {
+                return mesh.userData.connection3D;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * Select a connection (wire)
+     */
+    selectConnection(connection3D) {
+        if (this.onWireSelected && connection3D.connection2D) {
+            this.onWireSelected(connection3D.connection2D);
         }
     }
     

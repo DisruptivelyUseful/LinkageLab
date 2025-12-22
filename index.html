@@ -41,46 +41,49 @@
 
 <div id="topbar" class="topbar">
     <div class="topbar-left">
-        <h1>StarShade Linkage Lab</h1>
+        <h1 style="font-size: 1rem; margin: 0; white-space: nowrap;">StarShade Lab</h1>
         <div class="topbar-divider"></div>
         <div class="mode-toggle">
-            <button id="btn-mode-linkage" class="topbar-btn active" title="Linkage Design Mode">⚙️ Linkage</button>
-            <button id="btn-mode-solar" class="topbar-btn" title="Solar/Electrical Design Mode">⚡ Solar</button>
+            <button id="btn-mode-linkage" class="topbar-btn active" title="Linkage Design Mode">⚙️</button>
+            <button id="btn-mode-solar" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
         </div>
     </div>
     <div class="topbar-center">
-        <div style="display:flex; align-items:center; gap:6px;">
-            <span style="font-size:0.75rem; color:var(--text-muted); white-space:nowrap;">Fold:</span>
-            <input type="range" id="sl-fold" min="5" max="175" step="0.1" style="width:100px;" title="Fold Angle">
-            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:55px;" title="Fold Angle (degrees)">
-            <span style="font-size:0.75rem; color:#8899a6;">°</span>
+        <div style="display:flex; align-items:center; gap:4px; font-size:0.7rem;">
+            <span style="color:var(--text-muted);">Fold:</span>
+            <input type="range" id="sl-fold" min="5" max="175" step="0.1" style="width:80px;" title="Fold Angle">
+            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:45px; font-size:0.75rem;" title="Fold Angle (degrees)">
+            <span style="color:#8899a6; font-size:0.7rem;">°</span>
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-anim">
-            <button id="btn-anim-play" title="Play Animation">▶</button>
-            <button id="btn-anim-pause" title="Pause Animation">⏸</button>
-            <button id="btn-anim-reverse" title="Reverse Direction">⟲</button>
-            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed">
-            <label class="topbar-chk" title="Ping-pong animation"><input type="checkbox" id="chk-anim-pingpong-top"> Loop</label>
-            <label class="topbar-chk" title="Close limit"><input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:42px;"></label>
+        <div class="topbar-anim" style="gap:4px;">
+            <button id="btn-anim-play" title="Play Animation" style="padding:4px 6px; font-size:0.75rem;">▶</button>
+            <button id="btn-anim-pause" title="Pause Animation" style="padding:4px 6px; font-size:0.75rem;">⏸</button>
+            <button id="btn-anim-reverse" title="Reverse Direction" style="padding:4px 6px; font-size:0.75rem;">⟲</button>
+            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed" style="width:50px;">
+            <label class="topbar-chk" title="Ping-pong animation" style="font-size:0.7rem;"><input type="checkbox" id="chk-anim-pingpong-top" style="margin-right:2px;"> Loop</label>
+            <input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:35px; font-size:0.7rem; padding:2px;" title="Close limit">
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-sun" title="Sun Position">
-            <span style="font-size:0.9rem;">☀️</span>
-            <input type="range" id="sl-sun-azimuth-top" min="0" max="360" value="135" step="5" title="Sun Azimuth" style="width:50px;">
-            <input type="range" id="sl-sun-elevation-top" min="5" max="90" value="45" step="5" title="Sun Elevation" style="width:50px;">
+        <div class="topbar-sun" title="Time of Day" style="gap:4px; align-items:center;">
+            <span style="font-size:0.8rem;">☀️</span>
+            <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of Day (Sunrise to Sunset)" style="width:100px;">
+            <span id="sun-time-display" style="font-size:0.7rem; color:var(--text-muted); min-width:50px; text-align:center;">12:00</span>
+            <label class="topbar-chk" title="Enable Shadows" style="font-size:0.7rem; margin-left:4px;">
+                <input type="checkbox" id="chk-shadows" style="margin-right:2px;"> Shadows
+            </label>
         </div>
     </div>
     <div class="topbar-right">
-        <button class="topbar-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)">💾 Save</button>
-        <button class="topbar-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)">📂 Load</button>
+        <button class="topbar-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)" style="padding:4px 8px; font-size:0.75rem;">💾</button>
+        <button class="topbar-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)" style="padding:4px 8px; font-size:0.75rem;">📂</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)">⬇️ Export</button>
-        <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)">⬆️ Import</button>
+        <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)" style="padding:4px 8px; font-size:0.75rem;">⬇️</button>
+        <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)" style="padding:4px 8px; font-size:0.75rem;">⬆️</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)">📏 <span id="unit-system-label">Imperial</span></button>
+        <button class="topbar-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)" style="padding:4px 8px; font-size:0.75rem;">📏</button>
         <div class="topbar-divider"></div>
-        <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide">📋 Guide</button>
+        <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide" style="padding:4px 8px; font-size:0.75rem;">📋</button>
     </div>
 </div>
 
@@ -112,13 +115,13 @@
         </div>
         
         <div class="group">
-            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Global Rotation</div>
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Structure Rotation</div>
             <div class="group-content">
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-global-rotation" min="-180" max="180" step="0.25" value="0">
-                        <input type="number" id="nb-global-rotation" min="-180" max="180" step="0.25" value="0">
+                        <input type="range" id="sl-structure-rotation" min="-180" max="180" step="0.25" value="0">
+                        <input type="number" id="nb-structure-rotation" min="-180" max="180" step="0.25" value="0">
                     </div>
                 </div>
                 <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
@@ -184,24 +187,47 @@
                         <input type="number" id="nb-vlen" min="2" max="24" step="0.1">
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <div class="group collapsed">
-            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Pivot Extensions</div>
-            <div class="group-content">
                 <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Top Extension</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="ctrl-head"><span>Horiz Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-off-top" min="0" max="48" step="0.1">
-                        <input type="number" id="nb-off-top" min="0" max="48" step="0.1">
+                        <input type="number" id="nb-hbeam-w" value="3.5" step="0.25" style="width:50px;" title="Width">
+                        <span style="color:#666">x</span>
+                        <input type="number" id="nb-hbeam-t" value="1.5" step="0.25" style="width:50px;" title="Thick">
                     </div>
                 </div>
                 <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Bottom Extension</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="ctrl-head"><span>Vert Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-off-bot" min="0" max="48" step="0.1">
-                        <input type="number" id="nb-off-bot" min="0" max="48" step="0.1">
+                        <input type="number" id="nb-vbeam-w" value="1.5" step="0.25" style="width:50px;" title="Width">
+                        <span style="color:#666">x</span>
+                        <input type="number" id="nb-vbeam-t" value="3.5" step="0.25" style="width:50px;" title="Thick">
+                    </div>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Pivot Extensions</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Beam Top Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-off-top" min="0" max="48" step="0.1">
+                            <input type="number" id="nb-off-top" min="0" max="48" step="0.1">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Beam Bot Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-off-bot" min="0" max="48" step="0.1">
+                            <input type="number" id="nb-off-bot" min="0" max="48" step="0.1">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Beam End Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-vert-end" min="0.5" max="12" step="0.1" value="1.5">
+                            <input type="number" id="nb-vert-end" min="0.5" max="24" step="0.1" value="1.5">
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#8899a6; margin-top:4px;">
+                        V-Beam End Offset: Distance from beam ends to bolt hole centers
                     </div>
                 </div>
             </div>
@@ -249,21 +275,67 @@
                         <input type="number" id="nb-brack" min="0" max="12" step="0.1">
                     </div>
                 </div>
-                <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Horiz Beam (W x T)</span></div>
-                    <div class="input-wrap">
-                        <input type="number" id="nb-hbeam-w" value="3.5" title="Width">
-                        <span style="color:#666">x</span>
-                        <input type="number" id="nb-hbeam-t" value="1.5" title="Thick">
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bracket Dimensions</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-bracket-width" min="0.5" max="6" step="0.25" value="2.0" style="width:60px;">
+                        </div>
                     </div>
-                </div>
-                <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Vert Beam (W x T)</span></div>
-                    <div class="input-wrap">
-                        <input type="number" id="nb-vbeam-w" value="1.5" title="Width">
-                        <span style="color:#666">x</span>
-                        <input type="number" id="nb-vbeam-t" value="3.5" title="Thick">
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Depth</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-bracket-depth" min="0.5" max="6" step="0.25" value="3.0" style="width:60px;">
+                        </div>
                     </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Height</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-bracket-height" min="1" max="12" step="0.25" value="3.0" style="width:60px;">
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px; margin-bottom:4px;">Height auto-adjusts if side holes exceed it</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Wall Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-bracket-wall" min="0.1" max="1" step="0.05" value="0.25" style="width:60px;">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Inner Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-bracket-inner" min="0.5" max="5" step="0.25" value="1.5" style="width:60px;">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Hole Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-bracket-hole-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                                <option value="0.25">1/4"</option>
+                                <option value="0.3125">5/16"</option>
+                                <option value="0.375" selected>3/8"</option>
+                                <option value="0.5">1/2"</option>
+                                <option value="0.625">5/8"</option>
+                                <option value="0.75">3/4"</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Hole Distance</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="text" id="nb-bracket-hole-distance" readonly style="width:60px; background:var(--bg-secondary); color:var(--text-muted);" value="0.00">
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Distance from bracket bottom to side hole centers</div>
+                    <div class="ctrl-row" style="margin-top:8px;">
+                        <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-bracket-z-rotation" min="-180" max="180" step="1" value="0">
+                            <input type="number" id="nb-bracket-z-rotation" min="-180" max="180" step="1" value="0" style="width:60px;">
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Rotates bracket around vertical axis</div>
                 </div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
@@ -271,6 +343,41 @@
                         <input type="range" id="sl-vgap" min="-2" max="1" step="0.05">
                         <input type="number" id="nb-vgap" value="0.0" step="0.05">
                     </div>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bolt Configuration</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Bolt Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-bolt-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                                <option value="0.25">1/4"</option>
+                                <option value="0.3125">5/16"</option>
+                                <option value="0.375" selected>3/8"</option>
+                                <option value="0.5">1/2"</option>
+                                <option value="0.625">5/8"</option>
+                                <option value="0.75">3/4"</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Stack Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbolt-length" min="1" max="12" step="0.25" value="3" style="width:60px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-vbolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Stack Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-hbolt-length" min="1" max="12" step="0.25" value="3" style="width:60px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-hbolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <div id="bolt-auto-info" style="font-size:0.65rem; color:#8899a6; margin-top:4px;"></div>
                 </div>
             </div>
         </div>
@@ -800,6 +907,32 @@
         <label class="chk-label" style="margin-top:6px;">
             <input type="checkbox" id="chk-high-contrast"> High Contrast
         </label>
+        
+        <!-- Actuator Analysis Group -->
+        <div class="group" style="margin-top: 12px;">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Actuator Analysis</div>
+            <div class="group-content">
+                <div id="actuator-recommendations-content" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto; margin-bottom: 8px;">
+                    <div style="color: var(--text-muted); padding: 8px; text-align: center;">
+                        Click "Analyze" to calculate optimal actuator placement
+                    </div>
+                </div>
+                <button id="btn-analyze-actuators" style="width: 100%; margin-top: 8px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                    Analyze Actuators
+                </button>
+                <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-actuator-open" style="padding: 6px; background: rgba(46,204,113,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                        Open
+                    </button>
+                    <button id="btn-actuator-close" style="padding: 6px; background: rgba(231,76,60,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                        Close
+                    </button>
+                </div>
+                <button id="btn-actuator-stop" style="width: 100%; margin-top: 6px; padding: 4px; background: rgba(149,165,166,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem; display: none;">
+                    Stop Animation
+                </button>
+            </div>
+        </div>
     </div>
     
     <!-- Solar Design Sidebar (hidden by default) -->
@@ -1181,40 +1314,48 @@
     <div id="stats-panel">
         <div id="hud-panel">
             <div class="hud-sec">
-                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 8px;">Structure Dimensions</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px;">
-                    <div class="hud-row"><span>Height</span> <span class="hud-val" id="stat-h" style="font-size: 1rem; font-weight: 600;"></span></div>
-                    <div class="hud-row"><span>Diameter</span> <span class="hud-val" id="stat-d" style="font-size: 1rem; font-weight: 600;"></span></div>
-                    <div class="hud-row" style="grid-column: span 2;"><span>Actuator Stroke</span> <span class="hud-val" id="stat-stroke" style="font-size: 1rem; font-weight: 600;"></span></div>
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 6px;">Dimensions & Weight</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 0.8rem;">
+                    <div class="hud-row"><span>Height</span> <span class="hud-val" id="stat-h" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>Diameter</span> <span class="hud-val" id="stat-d" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>Structure</span> <span class="hud-val" id="stat-weight-structure" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>System</span> <span class="hud-val" id="stat-weight-system" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row" style="grid-column: span 2; border-top: 1px solid var(--border-light); padding-top: 4px; margin-top: 2px;"><span>Total Weight</span> <span class="hud-val" id="stat-weight-total" style="font-size: 0.95rem; font-weight: 600; color: var(--accent);"></span></div>
                 </div>
             </div>
             <div class="hud-sec">
-                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 8px;">Bill of Materials</div>
-                <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 6px 12px; font-size: 0.8rem;">
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 6px;">Bill of Materials</div>
+                <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 8px; font-size: 0.75rem;">
                     <span style="color: var(--text-muted);">Qty</span>
                     <span style="color: var(--text-muted);">Item</span>
-                    <span style="color: var(--text-muted); text-align: right;">Cost</span>
+                    <span style="color: var(--text-muted); text-align: right;">Unit</span>
+                    <span style="color: var(--text-muted); text-align: right;">Total</span>
                     
                     <span class="hud-val" id="bom-h">0</span>
                     <span>Horizontal Beams</span>
+                    <span id="bom-h-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-h-cost" style="text-align: right;">$0</span>
                     
                     <span class="hud-val" id="bom-v">0</span>
                     <span>Vertical Beams</span>
+                    <span id="bom-v-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-v-cost" style="text-align: right;">$0</span>
                     
                     <span class="hud-val" id="bom-u">0</span>
                     <span>Brackets</span>
+                    <span id="bom-u-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-u-cost" style="text-align: right;">$0</span>
                     
                     <span class="hud-val" id="bom-b">0</span>
-                    <span>Bolts</span>
+                    <span>Bolts <span id="bom-b-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-b-cost" style="text-align: right;">$0</span>
                 </div>
                 <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
-                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 6px 12px; font-size: 0.8rem;">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
                         <span class="hud-val" id="bom-solar">0</span>
                         <span>Solar Panels</span>
+                        <span id="bom-solar-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                         <span id="bom-solar-cost" style="text-align: right;">$0</span>
                     </div>
                 </div>
@@ -1230,10 +1371,60 @@
                         <span class="hud-val" id="bom-solar-subtotal">$0</span>
                     </div>
                 </div>
-                <div style="padding: 10px 0; border-top: 2px solid var(--accent); margin-top: 4px;">
+                <div style="padding: 8px 0; border-top: 2px solid var(--accent); margin-top: 4px;">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Cost</span>
-                        <span style="font-size: 1.4rem; font-weight: 700; color: var(--accent);">$<span id="bom-total">0.00</span></span>
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Cost</span>
+                        <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent);">$<span id="bom-total">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="hud-sec" style="margin-top: 12px;">
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 8px;">Weight</div>
+                <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                    <span style="color: var(--text-muted);">Qty</span>
+                    <span style="color: var(--text-muted);">Item</span>
+                    <span style="color: var(--text-muted); text-align: right;">Unit</span>
+                    <span style="color: var(--text-muted); text-align: right;">Total</span>
+                    
+                    <span class="hud-val" id="bom-weight-h">0</span>
+                    <span>Horizontal Beams</span>
+                    <span id="bom-weight-h-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-h-val" style="text-align: right;">0 lbs</span>
+                    
+                    <span class="hud-val" id="bom-weight-v">0</span>
+                    <span>Vertical Beams</span>
+                    <span id="bom-weight-v-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-v-val" style="text-align: right;">0 lbs</span>
+                    
+                    <span class="hud-val" id="bom-weight-u">0</span>
+                    <span>Brackets</span>
+                    <span id="bom-weight-u-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-u-val" style="text-align: right;">0 lbs</span>
+                </div>
+                <div id="bom-weight-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-weight-solar">0</span>
+                        <span>Solar Panels</span>
+                        <span id="bom-weight-solar-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                        <span id="bom-weight-solar-val" style="text-align: right;">0 lbs</span>
+                    </div>
+                </div>
+                <div style="border: none; margin: 0; padding: 0;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--border-light); font-size: 0.8rem;">
+                        <span style="color: var(--text-muted);">Structure</span>
+                        <span class="hud-val" id="bom-weight-structure-subtotal">0 lbs</span>
+                    </div>
+                    <div id="bom-weight-system-row" style="display:none; padding-bottom: 8px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-muted);">System</span>
+                            <span class="hud-val" id="bom-weight-system-subtotal">0 lbs</span>
+                        </div>
+                    </div>
+                    <div style="padding: 8px 0; border-top: 2px solid var(--accent); margin-top: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Weight</span>
+                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--accent);"><span id="bom-weight-total">0</span> lbs</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1284,10 +1475,69 @@ const BRACKET_SIZE_MULT = 1.2;
 /** Bracket depth */
 const BRACKET_DEPTH = 2.5;
 
-/** Bolt radius multiplier for rendering */
-const BOLT_RADIUS = 0.25; // Bolt radius in inches (1/4 inch bolt)
-const BOLT_HEAD_RADIUS = 0.4; // Bolt head radius
-const BOLT_HEAD_HEIGHT = 0.15; // Bolt head thickness
+/** Bolt radius multiplier for rendering (fallback - prefer state.boltDiameter) */
+const BOLT_RADIUS = 0.25; // Bolt radius in inches (1/4 inch bolt) - legacy fallback
+const BOLT_HEAD_RADIUS = 0.4; // Bolt head radius - legacy fallback
+const BOLT_HEAD_HEIGHT = 0.15; // Bolt head thickness - legacy fallback
+
+/** Get current bolt radius from state */
+function getBoltRadius() {
+    return (state.boltDiameter || 0.375) / 2;
+}
+
+/** Format bolt diameter as fraction string */
+function formatBoltDiameter(diameter) {
+    const fractions = {
+        0.25: '1/4',
+        0.3125: '5/16',
+        0.375: '3/8',
+        0.5: '1/2',
+        0.625: '5/8',
+        0.75: '3/4'
+    };
+    return fractions[diameter] || diameter.toFixed(3);
+}
+
+/** Calculate auto bolt length for vertical stack */
+function calculateVStackBoltLength() {
+    const stackCount = state.vStackCount || 3;
+    const beamWidth = state.vBeamW || 1.5;
+    const stackGap = state.stackGap || 0;
+    // Total thickness + 2x gap (for head/nut clearance)
+    return (stackCount * beamWidth) + (Math.max(0, stackGap) * 2) + 1;
+}
+
+/** Calculate auto bolt length for horizontal stack */
+function calculateHStackBoltLength() {
+    const stackCount = state.hStackCount || 2;
+    const beamThickness = state.hBeamT || 1.5;
+    const stackGap = state.stackGap || 0;
+    // Total thickness + extra for head/nut
+    return (stackCount * beamThickness) + (Math.max(0, stackGap) * 2) + 1;
+}
+
+/** Update auto bolt lengths based on stack configuration */
+function updateAutoBoltLengths() {
+    const infoEl = document.getElementById('bolt-auto-info');
+    let infoText = '';
+    
+    if (state.vBoltAuto) {
+        state.vBoltLength = calculateVStackBoltLength();
+        const vLengthInput = document.getElementById('nb-vbolt-length');
+        if (vLengthInput) vLengthInput.value = state.vBoltLength.toFixed(2);
+        infoText += `V-Stack: ${state.vStackCount} × ${state.vBeamW}" = ${state.vBoltLength.toFixed(2)}" bolt`;
+    }
+    
+    if (state.hBoltAuto) {
+        state.hBoltLength = calculateHStackBoltLength();
+        const hLengthInput = document.getElementById('nb-hbolt-length');
+        if (hLengthInput) hLengthInput.value = state.hBoltLength.toFixed(2);
+        if (infoText) infoText += ' | ';
+        infoText += `H-Stack: ${state.hStackCount} × ${state.hBeamT}" = ${state.hBoltLength.toFixed(2)}" bolt`;
+    }
+    
+    if (infoEl) infoEl.textContent = infoText;
+}
 
 /** Minimum safe height/width to prevent division by zero */
 const MIN_SAFE_DIMENSION = 1;
@@ -1332,7 +1582,9 @@ const threeRenderer = {
     panelGroup: null,      // Group for panel meshes
     bracketGroup: null,    // Group for bracket meshes
     boltGroup: null,       // Group for bolt meshes
-    structureGroup: null,  // Wrapper group for all structure meshes (for global rotation)
+    structureGroup: null,  // Wrapper group for structure meshes (beams, brackets, bolts - for structure rotation)
+    panelGroupRoot: null,  // Root group for panels (separate from structure rotation)
+    actuatorLineGroup: null,  // Group for actuator visualization lines
     gridHelper: null       // Grid helper mesh
 };
 
@@ -1366,6 +1618,8 @@ function initThreeJS() {
         threeRenderer.main.setPixelRatio(window.devicePixelRatio);
         threeRenderer.main.setClearColor(0x15202b); // Match background color
         threeRenderer.main.sortObjects = true;  // Ensure objects are sorted by depth
+        threeRenderer.main.shadowMap.enabled = true;
+        threeRenderer.main.shadowMap.type = THREE.PCFSoftShadowMap;
         
         // Create WebGL renderer for top view
         const topWebGLCanvas = document.getElementById('canvas-top-webgl');
@@ -1421,25 +1675,41 @@ function initThreeJS() {
     threeRenderer.bracketGroup = new THREE.Group();
     threeRenderer.boltGroup = new THREE.Group();
     
-    // Create wrapper group for global rotation
+    // Create wrapper group for structure rotation (beams, brackets, bolts only - not panels)
     threeRenderer.structureGroup = new THREE.Group();
     threeRenderer.structureGroup.add(threeRenderer.beamGroup);
-    threeRenderer.structureGroup.add(threeRenderer.panelGroup);
     threeRenderer.structureGroup.add(threeRenderer.bracketGroup);
     threeRenderer.structureGroup.add(threeRenderer.boltGroup);
     
-    threeRenderer.mainScene.add(threeRenderer.structureGroup);
+    // Create separate root group for panels (not affected by structure rotation)
+    threeRenderer.panelGroupRoot = new THREE.Group();
+    threeRenderer.panelGroupRoot.add(threeRenderer.panelGroup);
     
-    // Create wrapper groups for ortho scenes (for global rotation)
+    // Create group for actuator visualization lines
+    threeRenderer.actuatorLineGroup = new THREE.Group();
+    
+    threeRenderer.mainScene.add(threeRenderer.structureGroup);
+    threeRenderer.mainScene.add(threeRenderer.panelGroupRoot);
+    threeRenderer.mainScene.add(threeRenderer.actuatorLineGroup);
+    
+    // Create wrapper groups for ortho scenes (structure rotation for beams/brackets/bolts only)
     threeRenderer.topStructureGroup = new THREE.Group();
     threeRenderer.topStructureGroup.add(new THREE.Group()); // beams
-    threeRenderer.topStructureGroup.add(new THREE.Group()); // panels
+    threeRenderer.topStructureGroup.add(new THREE.Group()); // brackets
+    threeRenderer.topStructureGroup.add(new THREE.Group()); // bolts
     threeRenderer.topScene.add(threeRenderer.topStructureGroup);
+    
+    threeRenderer.topPanelGroup = new THREE.Group();
+    threeRenderer.topScene.add(threeRenderer.topPanelGroup);
     
     threeRenderer.sideStructureGroup = new THREE.Group();
     threeRenderer.sideStructureGroup.add(new THREE.Group()); // beams
-    threeRenderer.sideStructureGroup.add(new THREE.Group()); // panels
+    threeRenderer.sideStructureGroup.add(new THREE.Group()); // brackets
+    threeRenderer.sideStructureGroup.add(new THREE.Group()); // bolts
     threeRenderer.sideScene.add(threeRenderer.sideStructureGroup);
+    
+    threeRenderer.sidePanelGroup = new THREE.Group();
+    threeRenderer.sideScene.add(threeRenderer.sidePanelGroup);
     
     // Setup cameras
     createMainCamera();
@@ -1633,7 +1903,17 @@ function setupThreeJSLighting() {
     // === MAIN SUN LIGHT - user controllable ===
     // Bright directional light simulating the sun
     threeRenderer.sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    updateSunPosition(); // Set initial position based on state.sunAzimuth/sunElevation
+    threeRenderer.sunLight.castShadow = false; // Will be enabled when shadows toggle is on
+    threeRenderer.sunLight.shadow.camera.left = -200;
+    threeRenderer.sunLight.shadow.camera.right = 200;
+    threeRenderer.sunLight.shadow.camera.top = 200;
+    threeRenderer.sunLight.shadow.camera.bottom = -200;
+    threeRenderer.sunLight.shadow.camera.near = 0.1;
+    threeRenderer.sunLight.shadow.camera.far = 2000;
+    threeRenderer.sunLight.shadow.mapSize.width = 2048;
+    threeRenderer.sunLight.shadow.mapSize.height = 2048;
+    threeRenderer.sunLight.shadow.bias = -0.0001;
+    updateSunPosition(); // Set initial position based on time
     
     // Fill light - cooler, softer from opposite side (sky bounce)
     const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.4);
@@ -1659,13 +1939,111 @@ function setupThreeJSLighting() {
 }
 
 /**
- * Updates sun light position based on azimuth and elevation angles
+ * Calculate daylight hours based on latitude and day of year
+ */
+function getDaylightHours(latitude, dayOfYear) {
+    // Solar declination angle (simplified equation)
+    const declination = 23.45 * Math.sin((360/365) * (dayOfYear - 81) * Math.PI / 180);
+    const latRad = latitude * Math.PI / 180;
+    const decRad = declination * Math.PI / 180;
+    
+    // Hour angle at sunrise/sunset
+    const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
+    
+    // Handle polar regions
+    if (cosHourAngle > 1) return 0;   // Polar night
+    if (cosHourAngle < -1) return 24; // Midnight sun
+    
+    const hourAngle = Math.acos(cosHourAngle) * 180 / Math.PI;
+    const daylightHours = 2 * hourAngle / 15;
+    
+    return daylightHours;
+}
+
+/**
+ * Get sunrise and sunset times
+ */
+function getSunriseSunset(latitude, dayOfYear) {
+    const daylight = getDaylightHours(latitude, dayOfYear);
+    const solarNoon = 12; // Simplified (ignores longitude/timezone)
+    
+    return {
+        sunrise: Math.max(0, solarNoon - daylight / 2),
+        sunset: Math.min(24, solarNoon + daylight / 2),
+        daylight: daylight
+    };
+}
+
+/**
+ * Calculate solar position from time of day
+ */
+function calculateSolarPosition(latitude, dayOfYear, hourOfDay) {
+    const declination = 23.45 * Math.sin((360/365) * (dayOfYear - 81) * Math.PI / 180);
+    const latRad = latitude * Math.PI / 180;
+    const decRad = declination * Math.PI / 180;
+    
+    // Hour angle (15 degrees per hour from solar noon)
+    const hourAngle = (hourOfDay - 12) * 15 * Math.PI / 180;
+    
+    // Solar elevation angle
+    const sinElevation = Math.sin(latRad) * Math.sin(decRad) + 
+                         Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
+    
+    // Return default if sun is below horizon
+    if (sinElevation <= 0) {
+        return { elevation: 0, azimuth: 180 };
+    }
+    
+    const elevation = Math.asin(sinElevation) * 180 / Math.PI;
+    
+    // Solar azimuth angle (0 = North, 90 = East, 180 = South, 270 = West)
+    const sinAzimuth = Math.sin(hourAngle) * Math.cos(decRad) / Math.cos(Math.asin(sinElevation));
+    const cosAzimuth = (Math.sin(decRad) - Math.sin(latRad) * sinElevation) / 
+                       (Math.cos(latRad) * Math.cos(Math.asin(sinElevation)));
+    
+    // Calculate azimuth using atan2 for proper quadrant handling
+    let azimuth = Math.atan2(sinAzimuth, cosAzimuth) * 180 / Math.PI;
+    
+    // Convert from -180 to 180 range to 0 to 360 range
+    if (azimuth < 0) {
+        azimuth += 360;
+    }
+    
+    return { elevation, azimuth };
+}
+
+/**
+ * Updates sun light position based on time of day
  */
 function updateSunPosition() {
     if (!threeRenderer.sunLight) return;
     
-    const azimuth = state.sunAzimuth || 135;     // Degrees from north (0=N, 90=E, 180=S, 270=W)
-    const elevation = state.sunElevation || 45;  // Degrees above horizon
+    // Get time from slider (0-100 maps to sunrise-sunset)
+    const timePercent = state.sunTime || 50;
+    const latitude = state.simulationLatitude || 35;
+    const dayOfYear = state.simulationDayOfYear || 172;
+    
+    // Get sunrise and sunset times
+    const { sunrise, sunset } = getSunriseSunset(latitude, dayOfYear);
+    const dayLength = sunset - sunrise;
+    
+    // Map slider (0-100) to hour of day
+    const hourOfDay = sunrise + (timePercent / 100) * dayLength;
+    
+    // Calculate solar position
+    const solarPos = calculateSolarPosition(latitude, dayOfYear, hourOfDay);
+    const azimuth = solarPos.azimuth;     // Degrees from north (0=N, 90=E, 180=S, 270=W)
+    const elevation = solarPos.elevation; // Degrees above horizon
+    
+    // Update time display
+    const timeDisplay = document.getElementById('sun-time-display');
+    if (timeDisplay) {
+        const hours = Math.floor(hourOfDay);
+        const minutes = Math.floor((hourOfDay - hours) * 60);
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
+        timeDisplay.textContent = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
+    }
     
     // Convert to radians
     const azRad = (azimuth - 90) * Math.PI / 180;  // Adjust so 0 = East
@@ -1693,6 +2071,189 @@ function updateSunPosition() {
     } else {
         threeRenderer.sunLight.color.setHex(0xffffff);
     }
+    
+    // Update shadows if enabled
+    if (state.shadowsEnabled && threeRenderer.sunLight) {
+        threeRenderer.sunLight.castShadow = true;
+        // Update shadow camera to follow sun
+        if (threeRenderer.sunLight.shadow) {
+            threeRenderer.sunLight.shadow.camera.left = -200;
+            threeRenderer.sunLight.shadow.camera.right = 200;
+            threeRenderer.sunLight.shadow.camera.top = 200;
+            threeRenderer.sunLight.shadow.camera.bottom = -200;
+            threeRenderer.sunLight.shadow.camera.near = 0.1;
+            threeRenderer.sunLight.shadow.camera.far = 2000;
+            threeRenderer.sunLight.shadow.mapSize.width = 2048;
+            threeRenderer.sunLight.shadow.mapSize.height = 2048;
+            threeRenderer.sunLight.shadow.bias = -0.0001;
+        }
+    } else if (threeRenderer.sunLight) {
+        threeRenderer.sunLight.castShadow = false;
+    }
+    
+    // Update sky color based on time of day
+    updateSkyColor(elevation, hourOfDay);
+}
+
+/**
+ * Updates the scene background color based on sun elevation and time
+ */
+function updateSkyColor(elevation, hourOfDay) {
+    if (!threeRenderer.mainScene) return;
+    
+    if (state.shadowsEnabled) {
+        // Realistic sky colors based on sun elevation
+        let r, g, b;
+        
+        if (elevation > 45) {
+            // Midday - bright blue sky
+            r = 135;
+            g = 206;
+            b = 250; // Sky blue
+        } else if (elevation > 20) {
+            // Morning/afternoon - lighter blue
+            const factor = (elevation - 20) / 25;
+            r = Math.floor(135 + (255 - 135) * (1 - factor));
+            g = Math.floor(206 + (200 - 206) * (1 - factor));
+            b = Math.floor(250 + (100 - 250) * (1 - factor));
+        } else if (elevation > 5) {
+            // Sunrise/sunset - warm colors
+            const factor = (elevation - 5) / 15;
+            r = Math.floor(255 - (255 - 135) * factor);
+            g = Math.floor(200 - (200 - 100) * factor);
+            b = Math.floor(100 - (100 - 50) * factor);
+        } else {
+            // Below horizon - dark blue/purple
+            r = 25;
+            g = 25;
+            b = 50;
+        }
+        
+        threeRenderer.mainScene.background = new THREE.Color(r / 255, g / 255, b / 255);
+    } else {
+        // Default dark background when shadows are off
+        threeRenderer.mainScene.background = new THREE.Color(0x15202b);
+    }
+}
+
+/**
+ * Creates a grass texture using canvas
+ */
+function createGrassTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    
+    // Base grass color
+    ctx.fillStyle = '#2d5016';
+    ctx.fillRect(0, 0, 512, 512);
+    
+    // Add texture variation with darker and lighter patches
+    for (let i = 0; i < 200; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const size = 20 + Math.random() * 40;
+        const brightness = 0.7 + Math.random() * 0.3;
+        
+        ctx.fillStyle = `rgba(${Math.floor(45 * brightness)}, ${Math.floor(80 * brightness)}, ${Math.floor(22 * brightness)}, 0.3)`;
+        ctx.beginPath();
+        ctx.arc(x, y, size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    // Add fine grass blade texture
+    ctx.strokeStyle = 'rgba(34, 68, 17, 0.4)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 500; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const length = 5 + Math.random() * 10;
+        const angle = Math.random() * Math.PI * 2;
+        
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(
+            x + Math.cos(angle) * length,
+            y + Math.sin(angle) * length
+        );
+        ctx.stroke();
+    }
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(4, 4);
+    
+    return texture;
+}
+
+/**
+ * Creates an octagon shape for the ground plane
+ */
+function createOctagonGeometry(size) {
+    const shape = new THREE.Shape();
+    const radius = size / 2;
+    const segments = 8;
+    
+    // Start at first point
+    const firstAngle = -Math.PI / 2; // Start at top
+    const firstX = radius * Math.cos(firstAngle);
+    const firstY = radius * Math.sin(firstAngle);
+    shape.moveTo(firstX, firstY);
+    
+    // Create octagon points
+    for (let i = 1; i <= segments; i++) {
+        const angle = firstAngle + (i * 2 * Math.PI / segments);
+        const x = radius * Math.cos(angle);
+        const y = radius * Math.sin(angle);
+        shape.lineTo(x, y);
+    }
+    
+    return new THREE.ShapeGeometry(shape);
+}
+
+/**
+ * Creates or updates the ground plane for shadows
+ */
+function updateGroundPlane() {
+    if (!threeRenderer.mainScene) return;
+    
+    // Remove existing ground plane if it exists
+    if (threeRenderer.groundPlane) {
+        threeRenderer.mainScene.remove(threeRenderer.groundPlane);
+        if (threeRenderer.groundPlane.geometry) threeRenderer.groundPlane.geometry.dispose();
+        if (threeRenderer.groundPlane.material) {
+            if (threeRenderer.groundPlane.material.map) {
+                threeRenderer.groundPlane.material.map.dispose();
+            }
+            threeRenderer.groundPlane.material.dispose();
+        }
+        threeRenderer.groundPlane = null;
+    }
+    
+    // Create ground plane if shadows are enabled
+    if (state.shadowsEnabled) {
+        const groundSize = 2000;
+        const groundGeometry = createOctagonGeometry(groundSize);
+        const grassTexture = createGrassTexture();
+        
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            map: grassTexture,
+            color: 0x2d5016, // Base grass color
+            roughness: 0.9,
+            metalness: 0.0
+        });
+        
+        threeRenderer.groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
+        threeRenderer.groundPlane.rotation.x = -Math.PI / 2; // Rotate to horizontal
+        // Position at -1.5" (beam thickness) to account for structure resting on beam bottom faces
+        const beamThickness = state.hBeamT || 1.5;
+        threeRenderer.groundPlane.position.y = -beamThickness;
+        threeRenderer.groundPlane.receiveShadow = true;
+        
+        threeRenderer.mainScene.add(threeRenderer.groundPlane);
+    }
 }
 
 /**
@@ -1714,6 +2275,18 @@ function createGridMesh() {
     threeRenderer.gridHelper.renderOrder = -1; // Render grid first (behind everything)
     
     threeRenderer.mainScene.add(threeRenderer.gridHelper);
+    
+    // Update grid visibility based on shadows
+    updateGridVisibility();
+}
+
+/**
+ * Updates grid visibility based on shadows setting
+ */
+function updateGridVisibility() {
+    if (threeRenderer.gridHelper) {
+        threeRenderer.gridHelper.visible = !state.shadowsEnabled;
+    }
 }
 
 /**
@@ -1827,6 +2400,8 @@ function createBeamMesh(beam, isColliding = false) {
     mesh.userData.beam = beam;
     mesh.userData.type = 'beam';
     mesh.renderOrder = 1;
+    mesh.castShadow = state.shadowsEnabled || false;
+    mesh.receiveShadow = state.shadowsEnabled || false;
     
     return mesh;
 }
@@ -2021,6 +2596,14 @@ function createPanelMesh(panel) {
     group.userData.type = 'panel';
     group.renderOrder = 2;
     
+    // Enable shadows on all meshes in the group
+    group.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = state.shadowsEnabled || false;
+            child.receiveShadow = state.shadowsEnabled || false;
+        }
+    });
+    
     return group;
 }
 
@@ -2091,62 +2674,209 @@ function createCellGridLines(p0, p1, p2, p3, panel) {
  * Creates a Three.js mesh for a bracket
  */
 function createBracketMesh(bracket) {
-    const geometry = new THREE.BoxGeometry(bracket.w, bracket.h, bracket.d);
     const material = new THREE.MeshLambertMaterial({
-        color: 0x909090,
+        color: 0x1a1a1a, // Black hardware
     });
-    
     material.polygonOffset = true;
     material.polygonOffsetFactor = 0.5;
     material.polygonOffsetUnits = 0.5;
     
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.position.set(bracket.pos.x, bracket.pos.y, bracket.pos.z);
-    mesh.userData.bracket = bracket;
-    mesh.userData.type = 'bracket';
-    mesh.renderOrder = 0;
+    // Get bracket dimensions
+    const width = bracket.width || state.bracketWidth || 2.0;
+    const depth = bracket.depth || state.bracketDepth || 3.0;
+    const height = bracket.actualHeight || bracket.height || state.bracketHeight || 3.0;
+    const wallThickness = bracket.wallThickness || state.bracketWallThickness || 0.25;
+    const innerWidth = bracket.innerWidth || state.bracketInnerWidth || 1.5;
+    const holeDiameter = bracket.holeDiameter || state.bracketHoleDiameter || 0.375;
+    const holeDistance = bracket.holeDistance || state.bracketOffset || 0;
     
-    return mesh;
+    // Create a group to hold all bracket parts
+    const bracketGroup = new THREE.Group();
+    
+    // Calculate leg positions (left and right legs of U)
+    const legWidth = (width - innerWidth) / 2;
+    
+    // Build geometry with U opening facing +Y (upward in local coords)
+    // Width (X) is the span between legs, Depth (Z) is the length of the channel
+    
+    // 1. Bottom plate (width × wallThickness × depth) - the base of the U
+    const bottomPlate = new THREE.BoxGeometry(width, wallThickness, depth);
+    const bottomMesh = new THREE.Mesh(bottomPlate, material);
+    bottomMesh.position.y = wallThickness / 2; // Bottom of plate at y=0
+    bracketGroup.add(bottomMesh);
+    
+    // 2. Left leg (legWidth × height × depth)
+    const leftLeg = new THREE.BoxGeometry(legWidth, height, depth);
+    const leftMesh = new THREE.Mesh(leftLeg, material);
+    leftMesh.position.set(-(width - legWidth) / 2, height / 2 + wallThickness, 0);
+    bracketGroup.add(leftMesh);
+    
+    // 3. Right leg (legWidth × height × depth)
+    const rightLeg = new THREE.BoxGeometry(legWidth, height, depth);
+    const rightMesh = new THREE.Mesh(rightLeg, material);
+    rightMesh.position.set((width - legWidth) / 2, height / 2 + wallThickness, 0);
+    bracketGroup.add(rightMesh);
+    
+    // Note: Holes would require CSG (Constructive Solid Geometry) operations to properly subtract
+    // For now, the bracket structure (U-shape) is correctly represented
+    
+    // Position the bracket group
+    // The bracket should rest on the beam, so we need to position it correctly
+    // The pivot is at the center between two crossing beams
+    // For bottom ring: bracket bottom should be at pivot.y + hT/2 (top of upper beam)
+    // For top ring: bracket bottom should be at pivot.y - hT/2 (top of upper beam, but inverted)
+    const hT = state.hBeamT || 1.5;
+    let bracketY = bracket.bottomY || bracket.pos.y;
+    
+    // The bracket's local origin is at the bottom center of the bottom plate
+    // Position it so the bottom plate sits on top of the horizontal beam
+    // The bracket should be centered on the pivot point in X and Z
+    // Note: After rotation, the bracket's depth (local Z) will align with the vertical beam direction
+    // We may need to offset along the depth axis to properly center on the beam, but for now
+    // we'll position at the pivot and let the user adjust with the Z rotation slider
+    bracketGroup.position.set(bracket.pos.x, bracketY, bracket.pos.z);
+    
+    // Orient bracket:
+    // 1. Use beamDir (the actual vertical beam direction) for bracket orientation
+    // 2. beamDir is the average direction of the scissor beams in this module
+    // 3. Project onto XZ plane to get horizontal angle
+    // 4. For top ring, flip 180° so U opening faces down
+    // 5. Apply manual Y-axis rotation adjustment for fine-tuning
+    
+    // Orient bracket based on the beam direction (patternA_dir or patternB_dir)
+    // The bracket's U-channel should align with the vertical beam direction
+    // so it can capture the beams that run through this pivot point
+    
+    let yRotation = 0;
+    
+    if (bracket.beamDir) {
+        // Project beam direction onto XZ plane (horizontal component)
+        const beamX = bracket.beamDir.x;
+        const beamZ = bracket.beamDir.z;
+        const beamHorizLength = Math.sqrt(beamX * beamX + beamZ * beamZ);
+        
+        if (beamHorizLength > 0.001) {
+            // Calculate angle from the beam's horizontal direction
+            // atan2(x, z) gives angle from +Z toward +X
+            yRotation = Math.atan2(beamX, beamZ);
+            
+            // The bracket's depth (local Z) should align with the beam direction
+            // At yRotation=0, bracket depth points along +Z
+            // By setting yRotation to beam angle, depth aligns with beam direction
+        }
+    }
+    
+    // Apply Y rotation - bracket depth now aligns with beam direction
+    bracketGroup.rotation.y = yRotation;
+    
+    // Apply manual Y-axis rotation adjustment (around local Y-axis)
+    // This rotates the bracket around its up/down axis for fine-tuning
+    const manualYRot = (state.bracketZRotation || 0) * (Math.PI / 180);
+    if (Math.abs(manualYRot) > 0.001) {
+        bracketGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), manualYRot);
+    }
+    
+    // For top ring brackets, flip the bracket upside down (rotate 180° around local X)
+    // This keeps the U-channel facing the same direction but opens downward
+    if (!bracket.isBottom) {
+        bracketGroup.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI);
+    }
+    
+    bracketGroup.userData.bracket = bracket;
+    bracketGroup.userData.type = 'bracket';
+    bracketGroup.renderOrder = 0;
+    
+    // Set shadow properties on all child meshes
+    bracketGroup.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = state.shadowsEnabled || false;
+            child.receiveShadow = state.shadowsEnabled || false;
+        }
+    });
+    
+    return bracketGroup;
 }
 
 /**
  * Creates a Three.js mesh for a bolt
  */
 function createBoltMesh(bolt) {
-    // Create cylinder for shaft
-    const shaftGeometry = new THREE.CylinderGeometry(
-        bolt.radius,
-        bolt.radius,
-        bolt.length,
-        8
-    );
+    const boltRadius = bolt.radius || state.boltDiameter / 2;
+    const boltLength = bolt.length;
     
+    // Material for black hardware
     const material = new THREE.MeshLambertMaterial({
-        color: 0x505050,
+        color: 0x1a1a1a, // Black hardware
     });
-    
     material.polygonOffset = true;
     material.polygonOffsetFactor = -1;
     material.polygonOffsetUnits = -1;
     
-    const mesh = new THREE.Mesh(shaftGeometry, material);
+    // Create a group to hold the shaft and hex head
+    const boltGroup = new THREE.Group();
     
-    // Position and orient the bolt
-    mesh.position.set(bolt.center.x, bolt.center.y, bolt.center.z);
+    // Create cylinder for shaft
+    const shaftGeometry = new THREE.CylinderGeometry(
+        boltRadius,
+        boltRadius,
+        boltLength,
+        12
+    );
+    const shaftMesh = new THREE.Mesh(shaftGeometry, material);
+    shaftMesh.position.y = 0; // Centered
+    boltGroup.add(shaftMesh);
+    
+    // Create hex head (hexagonal prism)
+    const hexRadius = boltRadius * 1.8; // Hex head is wider than shaft
+    const hexHeight = boltRadius * 1.2; // Head height
+    const hexShape = new THREE.Shape();
+    for (let i = 0; i < 6; i++) {
+        const angle = (i / 6) * Math.PI * 2;
+        const x = hexRadius * Math.cos(angle);
+        const y = hexRadius * Math.sin(angle);
+        if (i === 0) {
+            hexShape.moveTo(x, y);
+        } else {
+            hexShape.lineTo(x, y);
+        }
+    }
+    hexShape.closePath();
+    
+    const hexGeometry = new THREE.ExtrudeGeometry(hexShape, {
+        depth: hexHeight,
+        bevelEnabled: false
+    });
+    // Rotate and position the hex head
+    hexGeometry.rotateX(Math.PI / 2);
+    
+    const hexMesh = new THREE.Mesh(hexGeometry, material);
+    hexMesh.position.y = boltLength / 2 + hexHeight / 2; // Position at top of shaft
+    boltGroup.add(hexMesh);
+    
+    // Position and orient the bolt group
+    boltGroup.position.set(bolt.center.x, bolt.center.y, bolt.center.z);
     
     // Orient along bolt direction
     if (bolt.dir) {
         const dir = new THREE.Vector3(bolt.dir.x, bolt.dir.y, bolt.dir.z);
         const up = new THREE.Vector3(0, 1, 0);
         const quaternion = new THREE.Quaternion().setFromUnitVectors(up, dir.normalize());
-        mesh.quaternion.copy(quaternion);
+        boltGroup.quaternion.copy(quaternion);
     }
     
-    mesh.userData.bolt = bolt;
-    mesh.userData.type = 'bolt';
-    mesh.renderOrder = 3;
+    boltGroup.userData.bolt = bolt;
+    boltGroup.userData.type = 'bolt';
+    boltGroup.renderOrder = 3;
     
-    return mesh;
+    // Set shadow properties on child meshes
+    boltGroup.traverse((child) => {
+        if (child.isMesh) {
+            child.castShadow = state.shadowsEnabled || false;
+            child.receiveShadow = state.shadowsEnabled || false;
+        }
+    });
+    
+    return boltGroup;
 }
 
 /**
@@ -2180,13 +2910,19 @@ function updateThreeJSScenes(data, structureCenter) {
     if (!threeRenderer.initialized) return;
     
     const sc = structureCenter || { x: 0, y: 0, z: 0 };
-    const globalRotRad = (state.globalRotation || 0) * Math.PI / 180;
+    const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
     
-    // Apply global rotation around structure center
+    // Apply structure rotation around structure center (beams, brackets, bolts only - not panels)
     // To rotate around a point: position group at that point, offset children by -point
     if (threeRenderer.structureGroup) {
         threeRenderer.structureGroup.position.set(sc.x, sc.y, sc.z);
-        threeRenderer.structureGroup.rotation.y = globalRotRad;
+        threeRenderer.structureGroup.rotation.y = structureRotRad;
+    }
+    
+    // Panels are in separate group - position them but don't rotate with structure
+    if (threeRenderer.panelGroupRoot) {
+        threeRenderer.panelGroupRoot.position.set(sc.x, sc.y, sc.z);
+        threeRenderer.panelGroupRoot.rotation.y = 0; // Panels don't rotate with structure
     }
     
     // Clear existing meshes
@@ -2242,8 +2978,120 @@ function updateThreeJSScenes(data, structureCenter) {
         });
     }
     
+    // Render actuator visualization lines if one is selected
+    if (state.selectedActuator) {
+        renderActuatorLine(state.selectedActuator, data, sc);
+    } else {
+        // Clear actuator lines if none selected
+        if (threeRenderer.actuatorLineGroup) {
+            clearGroup(threeRenderer.actuatorLineGroup);
+        }
+    }
+    
+    // Update ground plane for shadows
+    updateGroundPlane();
+    
     // Update top and side scenes (simplified - just clone beam/panel geometry)
     updateOrthoScenes(data, sc);
+}
+
+/**
+ * Renders a visual line representing an actuator between two points
+ * @param {Object} actuator - Actuator recommendation object with position1 and position2
+ * @param {Object} data - Linkage geometry data
+ * @param {{x: number, y: number, z: number}} structureCenter - Structure center point
+ */
+function renderActuatorLine(actuator, data, structureCenter) {
+    if (!threeRenderer.actuatorLineGroup || !actuator.position1 || !actuator.position2) return;
+    
+    clearGroup(threeRenderer.actuatorLineGroup);
+    
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Get current positions (they may change with fold angle for joint-based actuators)
+    let pos1 = actuator.position1;
+    let pos2 = actuator.position2;
+    
+    // If positions track joints, recalculate at current angle
+    if (actuator.tracksJoints || actuator.type === 'pivot' || actuator.type === 'intersection') {
+        const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
+        const jointResult = calculateJointPositions(state.foldAngle, {
+            hActiveIn: hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const loc = jointResult.joints;
+        
+        if (actuator.name.includes('Diagonal')) {
+            pos1 = { x: loc.bl.x + sc.x, y: 0, z: loc.bl.y + sc.z };
+            pos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
+        } else if (actuator.name.includes('Inner-Outer')) {
+            pos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
+            pos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
+        } else if (actuator.type === 'intersection') {
+            pos1 = {
+                x: (loc.bl.x + loc.tl.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (loc.bl.y + loc.tl.y) / 2 + sc.z
+            };
+            pos2 = {
+                x: (loc.br.x + loc.tr.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (loc.br.y + loc.tr.y) / 2 + sc.z
+            };
+        } else if (actuator.type === 'vertical') {
+            pos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
+            pos2 = { x: loc.br.x + sc.x, y: state.vLengthFt * INCHES_PER_FOOT / 2, z: loc.br.y + sc.z };
+        }
+    }
+    
+    // Offset positions relative to structure center (for rotation)
+    const offsetPos1 = {
+        x: pos1.x - sc.x,
+        y: pos1.y - sc.y,
+        z: pos1.z - sc.z
+    };
+    const offsetPos2 = {
+        x: pos2.x - sc.x,
+        y: pos2.y - sc.y,
+        z: pos2.z - sc.z
+    };
+    
+    // Create line geometry
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array([
+        offsetPos1.x, offsetPos1.y, offsetPos1.z,
+        offsetPos2.x, offsetPos2.y, offsetPos2.z
+    ]);
+    geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    // Create bright colored material for visibility
+    const material = new THREE.LineBasicMaterial({
+        color: 0x00ff00, // Bright green
+        linewidth: 3,
+        transparent: true,
+        opacity: 0.9
+    });
+    
+    const line = new THREE.Line(geometry, material);
+    
+    // Position the line group at structure center (for rotation)
+    threeRenderer.actuatorLineGroup.position.set(sc.x, sc.y, sc.z);
+    threeRenderer.actuatorLineGroup.rotation.y = (state.structureRotation || 0) * Math.PI / 180;
+    threeRenderer.actuatorLineGroup.add(line);
+    
+    // Add small spheres at attachment points for better visibility
+    const sphereGeometry = new THREE.SphereGeometry(0.5, 8, 8);
+    const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red spheres
+    
+    const sphere1 = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere1.position.set(offsetPos1.x, offsetPos1.y, offsetPos1.z);
+    threeRenderer.actuatorLineGroup.add(sphere1);
+    
+    const sphere2 = new THREE.Mesh(sphereGeometry, sphereMaterial);
+    sphere2.position.set(offsetPos2.x, offsetPos2.y, offsetPos2.z);
+    threeRenderer.actuatorLineGroup.add(sphere2);
 }
 
 /**
@@ -2251,16 +3099,26 @@ function updateThreeJSScenes(data, structureCenter) {
  */
 function updateOrthoScenes(data, structureCenter) {
     const sc = structureCenter || { x: 0, y: 0, z: 0 };
-    const globalRotRad = (state.globalRotation || 0) * Math.PI / 180;
+    const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
     
-    // Apply global rotation around structure center for ortho views
+    // Apply structure rotation around structure center for ortho views (structure only, not panels)
     if (threeRenderer.topStructureGroup) {
         threeRenderer.topStructureGroup.position.set(sc.x, sc.y, sc.z);
-        threeRenderer.topStructureGroup.rotation.y = globalRotRad;
+        threeRenderer.topStructureGroup.rotation.y = structureRotRad;
     }
     if (threeRenderer.sideStructureGroup) {
         threeRenderer.sideStructureGroup.position.set(sc.x, sc.y, sc.z);
-        threeRenderer.sideStructureGroup.rotation.y = globalRotRad;
+        threeRenderer.sideStructureGroup.rotation.y = structureRotRad;
+    }
+    
+    // Panels in separate groups - position but don't rotate with structure
+    if (threeRenderer.topPanelGroup) {
+        threeRenderer.topPanelGroup.position.set(sc.x, sc.y, sc.z);
+        threeRenderer.topPanelGroup.rotation.y = 0;
+    }
+    if (threeRenderer.sidePanelGroup) {
+        threeRenderer.sidePanelGroup.position.set(sc.x, sc.y, sc.z);
+        threeRenderer.sidePanelGroup.rotation.y = 0;
     }
     
     // Helper to offset mesh position by -structureCenter
@@ -2271,16 +3129,22 @@ function updateOrthoScenes(data, structureCenter) {
         return mesh;
     };
     
-    // Get groups from wrapper groups
+    // Get groups from wrapper groups (structure groups now have beams, brackets, bolts)
     const topBeamGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[0] : null;
-    const topPanelGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[1] : null;
+    const topBracketGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[1] : null;
+    const topBoltGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[2] : null;
     const sideBeamGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[0] : null;
-    const sidePanelGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[1] : null;
+    const sideBracketGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[1] : null;
+    const sideBoltGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[2] : null;
     
     if (topBeamGroup) clearGroup(topBeamGroup);
-    if (topPanelGroup) clearGroup(topPanelGroup);
+    if (topBracketGroup) clearGroup(topBracketGroup);
+    if (topBoltGroup) clearGroup(topBoltGroup);
     if (sideBeamGroup) clearGroup(sideBeamGroup);
-    if (sidePanelGroup) clearGroup(sidePanelGroup);
+    if (sideBracketGroup) clearGroup(sideBracketGroup);
+    if (sideBoltGroup) clearGroup(sideBoltGroup);
+    if (threeRenderer.topPanelGroup) clearGroup(threeRenderer.topPanelGroup);
+    if (threeRenderer.sidePanelGroup) clearGroup(threeRenderer.sidePanelGroup);
     
     // Add beams to ortho views
     if (data.beams) {
@@ -2294,15 +3158,38 @@ function updateOrthoScenes(data, structureCenter) {
         });
     }
     
-    // Add panels to ortho views
+    // Add panels to ortho views (separate from structure rotation)
     if (data.panels && data.panels.length > 0) {
         data.panels.forEach(panel => {
             const topMesh = createPanelMesh(panel);
             const sideMesh = createPanelMesh(panel);
             offsetMesh(topMesh);
             offsetMesh(sideMesh);
-            if (topPanelGroup) topPanelGroup.add(topMesh);
-            if (sidePanelGroup) sidePanelGroup.add(sideMesh);
+            if (threeRenderer.topPanelGroup) threeRenderer.topPanelGroup.add(topMesh);
+            if (threeRenderer.sidePanelGroup) threeRenderer.sidePanelGroup.add(sideMesh);
+        });
+    }
+    
+    // Add brackets and bolts to ortho views (if enabled)
+    if (state.showBrackets && data.brackets) {
+        data.brackets.forEach(bracket => {
+            const topMesh = createBracketMesh(bracket);
+            const sideMesh = createBracketMesh(bracket);
+            offsetMesh(topMesh);
+            offsetMesh(sideMesh);
+            if (topBracketGroup) topBracketGroup.add(topMesh);
+            if (sideBracketGroup) sideBracketGroup.add(sideMesh);
+        });
+    }
+    
+    if (state.showBolts && data.bolts) {
+        data.bolts.forEach(bolt => {
+            const topMesh = createBoltMesh(bolt);
+            const sideMesh = createBoltMesh(bolt);
+            offsetMesh(topMesh);
+            offsetMesh(sideMesh);
+            if (topBoltGroup) topBoltGroup.add(topMesh);
+            if (sideBoltGroup) sideBoltGroup.add(sideMesh);
         });
     }
 }
@@ -2482,19 +3369,40 @@ const state = {
     offsetTopIn: 1.5,
     offsetBotIn: 1.5,
     vertEndOffset: 1.5, 
-    bracketOffset: 3.0, 
+    bracketOffset: 3.0,      // Renamed to bracketGap in UI, but keeping for backward compatibility
     stackGap: 0.0,
     
     hBeamW: 3.5, 
     hBeamT: 1.5,
     vBeamW: 1.5,
     vBeamT: 3.5,
+    
+    // Bracket configuration
+    bracketWidth: 2.0,         // Width of U-bracket (inches)
+    bracketDepth: 3.0,        // Depth of U-bracket (inches)
+    bracketHeight: 3.0,       // Height of U-bracket (inches, auto-adjusts if needed)
+    bracketWallThickness: 0.25, // Wall thickness (inches)
+    bracketInnerWidth: 1.5,   // Inner width between legs (inches)
+    bracketHoleDiameter: 0.375, // Hole diameter (inches, 3/8" default)
+    bracketZRotation: 0,        // Manual Z-axis rotation adjustment (degrees)
+    
+    // Bolt configuration
+    boltDiameter: 0.375,      // 3/8" default
+    vBoltLength: 3.0,         // V-stack bolt length (auto-calculated if vBoltAuto is true)
+    hBoltLength: 3.0,         // H-stack bolt length (auto-calculated if hBoltAuto is true)
+    vBoltAuto: true,          // Auto-calculate V-stack bolt length based on stack
+    hBoltAuto: true,          // Auto-calculate H-stack bolt length based on stack
 
     costHBeam: 12.00,      // Cost per horizontal beam (based on length)
     costVBeam: 10.00,      // Cost per vertical beam (based on length)
     costBolt: 0.75,
     costBracket: 5.00,
     costSolarPanel: 150.00,
+
+    // Weight constants (lbs)
+    woodDensity: 0.018,     // Wood density in lbs per cubic inch (typical softwood: ~30-35 lbs/ft³ = ~0.017-0.020 lbs/in³)
+    weightBracket: 0.5,     // Weight per bracket (estimated)
+    weightBolt: 0.01,       // Weight per bolt (negligible, but included for completeness)
 
     foldAngle: 135.4 * Math.PI / 180,
     isRing: false,
@@ -2516,8 +3424,12 @@ const state = {
     fixedBeamLength: null,  // Calculated at reference angle, null = auto-calculate
     fixedBeamHeight: null,  // Constant height when using fixed beams, null = auto-calculate
     
-    // Global rotation (applies to all modes, rotates entire structure)
-    globalRotation: 0,          // Rotation around vertical Y-axis (degrees)
+    // Structure rotation (rotates structure only, not solar panels)
+    structureRotation: 0,       // Rotation around vertical Y-axis (degrees)
+    
+    // Actuator selection for visualization
+    selectedActuator: null,      // Currently selected actuator recommendation
+    actuatorRecommendations: [], // List of actuator recommendations from analysis
     
     // Arch orientation controls
     archFlipVertical: false,    // Flip the arch upside down
@@ -2525,6 +3437,17 @@ const state = {
     
     // Array duplication for tunnel/tube mode
     arrayCount: 1,              // Number of structure copies in array (1 = single structure)
+    
+    // Actuator animation state
+    actuatorAnimation: {
+        enabled: false,
+        type: 'piston', // 'piston' or 'actuator'
+        speed: 1.0, // Animation speed multiplier
+        isPlaying: false,
+        currentAngle: null,
+        targetAngle: null,
+        direction: 1 // 1 = opening, -1 = closing
+    },
     
     light: {x: 0.4, y: -0.8, z: 0.5},
     cam: { yaw: 0.4, pitch: 0.14, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 },
@@ -2572,7 +3495,8 @@ const state = {
             paddingY: 2,             // inches between panels (Y direction)
             gridRows: 2,             // rows for top panels
             gridCols: 2,             // columns for top panels
-            panelLift: 0             // inches above closed structure
+            panelLift: 0,            // inches above closed structure
+            weight: 45.0             // Weight per panel in lbs (typical 250W panel)
         },
         
         // Side/Arch panel configuration (arch mode or cylinder side walls)
@@ -2589,7 +3513,8 @@ const state = {
             paddingX: 2,             // inches between panels (X direction)
             paddingY: 2,             // inches between panels (Y direction)
             gridRows: 2,             // rows for side/arch panels
-            gridCols: 2              // columns for side/arch panels
+            gridCols: 2,             // columns for side/arch panels
+            weight: 45.0             // Weight per panel in lbs (typical 250W panel)
         },
         
         // Layout mode for top surface panels (cylinder mode)
@@ -2659,6 +3584,13 @@ const VALIDATION_RULES = {
     offsetBotIn: { min: 0, max: 48 },
     bracketOffset: { min: 0, max: 12 },
     stackGap: { min: -2.0, max: 1 },
+    bracketWidth: { min: 0.5, max: 6 },
+    bracketDepth: { min: 0.5, max: 6 },
+    bracketHeight: { min: 1, max: 12 },
+    bracketWallThickness: { min: 0.1, max: 1 },
+    bracketInnerWidth: { min: 0.5, max: 5 },
+    bracketHoleDiameter: { min: 0.25, max: 0.75 },
+    bracketZRotation: { min: -180, max: 180 },
     hBeamW: { min: 0.5, max: 12 },
     hBeamT: { min: 0.5, max: 12 },
     vBeamW: { min: 0.5, max: 12 },
@@ -2728,7 +3660,9 @@ const idMap = {
     'hstack': 'hStackCount', 'vstack': 'vStackCount',
     'hbeam-w': 'hBeamW', 'hbeam-t': 'hBeamT', 'vbeam-w': 'vBeamW', 'vbeam-t': 'vBeamT',
     'len': 'hLengthFt', 'vlen': 'vLengthFt',
-    'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn',
+    'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn', 'vert-end': 'vertEndOffset',
+    'bracket-width': 'bracketWidth', 'bracket-depth': 'bracketDepth', 'bracket-height': 'bracketHeight',
+    'bracket-wall': 'bracketWallThickness', 'bracket-inner': 'bracketInnerWidth',
     'cost-hbeam': 'costHBeam', 'cost-vbeam': 'costVBeam', 'cost-bolt': 'costBolt', 'cost-brack': 'costBracket', 'cost-solar': 'costSolarPanel'
 };
 
@@ -2743,17 +3677,42 @@ const uiCol = document.getElementById('col-status');
 const uiStats = {
     h: document.getElementById('stat-h'),
     d: document.getElementById('stat-d'),
-    stroke: document.getElementById('stat-stroke'),
+    // Note: stroke, comHeight, and actuatorForce elements removed from HUD
+    // These stats are now only shown in the actuator analysis section
     bh: document.getElementById('bom-h'), bv: document.getElementById('bom-v'),
     bu: document.getElementById('bom-u'), bb: document.getElementById('bom-b'),
     bhCost: document.getElementById('bom-h-cost'), bvCost: document.getElementById('bom-v-cost'),
     buCost: document.getElementById('bom-u-cost'), bbCost: document.getElementById('bom-b-cost'),
+    bhCostUnit: document.getElementById('bom-h-cost-unit'), bvCostUnit: document.getElementById('bom-v-cost-unit'),
+    buCostUnit: document.getElementById('bom-u-cost-unit'), bbCostUnit: document.getElementById('bom-b-cost-unit'),
     bSolar: document.getElementById('bom-solar'), bSolarCost: document.getElementById('bom-solar-cost'),
+    bSolarCostUnit: document.getElementById('bom-solar-cost-unit'),
     bSolarRow: document.getElementById('bom-solar-row'),
     bStructureSubtotal: document.getElementById('bom-structure-subtotal'),
     bSolarSubtotal: document.getElementById('bom-solar-subtotal'),
     bSolarSubtotalRow: document.getElementById('bom-solar-subtotal-row'),
-    bt: document.getElementById('bom-total')
+    bt: document.getElementById('bom-total'),
+    // Weight display elements
+    weightStructure: document.getElementById('stat-weight-structure'),
+    weightSystem: document.getElementById('stat-weight-system'),
+    weightTotal: document.getElementById('stat-weight-total'),
+    weightH: document.getElementById('bom-weight-h'),
+    weightV: document.getElementById('bom-weight-v'),
+    weightU: document.getElementById('bom-weight-u'),
+    weightHVal: document.getElementById('bom-weight-h-val'),
+    weightVVal: document.getElementById('bom-weight-v-val'),
+    weightUVal: document.getElementById('bom-weight-u-val'),
+    weightHUnit: document.getElementById('bom-weight-h-unit'),
+    weightVUnit: document.getElementById('bom-weight-v-unit'),
+    weightUUnit: document.getElementById('bom-weight-u-unit'),
+    weightSolar: document.getElementById('bom-weight-solar'),
+    weightSolarVal: document.getElementById('bom-weight-solar-val'),
+    weightSolarUnit: document.getElementById('bom-weight-solar-unit'),
+    weightSolarRow: document.getElementById('bom-weight-solar-row'),
+    weightStructureSubtotal: document.getElementById('bom-weight-structure-subtotal'),
+    weightSystemSubtotal: document.getElementById('bom-weight-system-subtotal'),
+    weightSystemRow: document.getElementById('bom-weight-system-row'),
+    weightTotalBom: document.getElementById('bom-weight-total')
 };
 
 // ============================================================================
@@ -3879,6 +4838,620 @@ function calculateActuatorStroke() {
 }
 
 /**
+ * Calculates the center of mass (CoM) of the structure at a given fold angle
+ * Accounts for structure weight (beams, brackets, bolts) and optionally solar panel weight
+ * @param {Object} data - Linkage geometry data from solveLinkage()
+ * @param {number} foldAngle - Current fold angle in radians
+ * @param {boolean} includeSolarPanels - Whether to include solar panel weight (default: true)
+ * @returns {{x: number, y: number, z: number, totalWeight: number}} Center of mass position and total weight
+ */
+function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
+    const com = { x: 0, y: 0, z: 0 };
+    let totalWeight = 0;
+    
+    // Calculate structure weights
+    const moduleCount = state.modules;
+    const hBeams = moduleCount * 2 * state.hStackCount;
+    const vBeams = moduleCount * state.vStackCount;
+    const uBrackets = moduleCount * 4;
+    const nBolts = moduleCount * (4 + 2);
+    
+    const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
+    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
+    const hBeamWeightPerBeam = state.hLengthFt * hBeamWeightPerFoot;
+    const vBeamWeightPerBeam = state.vLengthFt * vBeamWeightPerFoot;
+    const bracketWeight = state.weightBracket;
+    const boltWeight = state.weightBolt;
+    
+    // Add beam weights to CoM calculation
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            let weight = 0;
+            if (beam.stackType && beam.stackType.startsWith('horizontal')) {
+                weight = hBeamWeightPerBeam;
+            } else if (beam.stackType && beam.stackType.startsWith('vertical')) {
+                weight = vBeamWeightPerBeam;
+            }
+            
+            if (weight > 0 && beam.center) {
+                com.x += beam.center.x * weight;
+                com.y += beam.center.y * weight;
+                com.z += beam.center.z * weight;
+                totalWeight += weight;
+            }
+        });
+    }
+    
+    // Add bracket weights
+    if (data.brackets) {
+        data.brackets.forEach(bracket => {
+            if (bracket.pos) {
+                com.x += bracket.pos.x * bracketWeight;
+                com.y += bracket.pos.y * bracketWeight;
+                com.z += bracket.pos.z * bracketWeight;
+                totalWeight += bracketWeight;
+            }
+        });
+    }
+    
+    // Add bolt weights (negligible but included for completeness)
+    if (data.bolts) {
+        data.bolts.forEach(bolt => {
+            if (bolt.pos) {
+                com.x += bolt.pos.x * boltWeight;
+                com.y += bolt.pos.y * boltWeight;
+                com.z += bolt.pos.z * boltWeight;
+                totalWeight += boltWeight;
+            }
+        });
+    }
+    
+    // Add solar panel weights (only if includeSolarPanels is true)
+    // Note: For actuator analysis, panels are added after unfolding, so exclude them
+    if (includeSolarPanels && data.panels && data.panels.length > 0) {
+        const panelConfig = getActivePanelConfig();
+        const panelWeight = panelConfig.weight || 0;
+        
+        data.panels.forEach(panel => {
+            if (panel.center) {
+                com.x += panel.center.x * panelWeight;
+                com.y += panel.center.y * panelWeight;
+                com.z += panel.center.z * panelWeight;
+                totalWeight += panelWeight;
+            }
+        });
+    }
+    
+    // Calculate weighted average (CoM)
+    if (totalWeight > 0) {
+        com.x /= totalWeight;
+        com.y /= totalWeight;
+        com.z /= totalWeight;
+    }
+    
+    return { ...com, totalWeight };
+}
+
+/**
+ * Calculates the mechanical advantage of the scissor mechanism at a given fold angle
+ * The scissor mechanism provides leverage based on the angle between the beams
+ * @param {number} foldAngle - Current fold angle in radians
+ * @param {Object} jointResult - Result from calculateJointPositions
+ * @returns {number} Mechanical advantage factor (>1 means force is amplified)
+ */
+function calculateScissorMechanicalAdvantage(foldAngle, jointResult) {
+    const loc = jointResult.joints;
+    
+    // Calculate the angle between the two scissor arms
+    // This is the key to mechanical advantage in scissor mechanisms
+    const arm1Angle = Math.atan2(loc.tl.y - loc.bl.y, loc.tl.x - loc.bl.x);
+    const arm2Angle = Math.atan2(loc.tr.y - loc.br.y, loc.tr.x - loc.br.x);
+    const scissorAngle = Math.abs(arm2Angle - arm1Angle);
+    
+    // Mechanical advantage in a scissor mechanism is related to the angle between arms
+    // When arms are nearly parallel (small angle), mechanical advantage is high
+    // When arms are spread wide (large angle), mechanical advantage is lower
+    // MA ≈ 1 / (2 * sin(θ/2)) where θ is the angle between arms
+    const halfAngle = scissorAngle / 2;
+    const mechanicalAdvantage = 1 / (2 * Math.sin(Math.max(0.01, halfAngle)));
+    
+    return mechanicalAdvantage;
+}
+
+/**
+ * Calculates the required actuator force at a given fold angle and actuator position
+ * Accounts for scissor mechanism leverage and mechanical advantage
+ * @param {{x: number, y: number, z: number}} actuatorPos1 - First attachment point (on structure)
+ * @param {{x: number, y: number, z: number}} actuatorPos2 - Second attachment point (on structure)
+ * @param {number} foldAngle - Current fold angle in radians
+ * @param {Object} data - Linkage geometry data
+ * @param {number} frictionCoefficient - Friction coefficient (default 0.1)
+ * @returns {{force: number, angle: number, mechanicalAdvantage: number, stroke: number, minStroke: number, maxStroke: number}} Required force and analysis
+ */
+function calculateRequiredActuatorForce(actuatorPos1, actuatorPos2, foldAngle, data, frictionCoefficient = 0.1) {
+    // Calculate center of mass (exclude solar panels - they're added after unfolding)
+    const com = calculateCenterOfMass(data, foldAngle, false);
+    
+    // Get joint positions to calculate scissor mechanical advantage
+    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
+    const jointResult = calculateJointPositions(foldAngle, {
+        hActiveIn: hActiveIn,
+        pivotPct: state.pivotPct,
+        hobermanAng: state.hobermanAng,
+        pivotAng: state.pivotAng
+    });
+    
+    // Calculate scissor mechanism mechanical advantage
+    const scissorMA = calculateScissorMechanicalAdvantage(foldAngle, jointResult);
+    
+    // Calculate actuator vector
+    const actuatorVec = {
+        x: actuatorPos2.x - actuatorPos1.x,
+        y: actuatorPos2.y - actuatorPos1.y,
+        z: actuatorPos2.z - actuatorPos1.z
+    };
+    const actuatorLength = Math.sqrt(
+        actuatorVec.x * actuatorVec.x + 
+        actuatorVec.y * actuatorVec.y + 
+        actuatorVec.z * actuatorVec.z
+    );
+    
+    if (actuatorLength === 0) return { force: Infinity, angle: 0, mechanicalAdvantage: 0, stroke: 0, minStroke: 0, maxStroke: 0 };
+    
+    // Normalize actuator vector
+    const actuatorDir = {
+        x: actuatorVec.x / actuatorLength,
+        y: actuatorVec.y / actuatorLength,
+        z: actuatorVec.z / actuatorLength
+    };
+    
+    // Calculate angle between actuator and the direction of motion (radial for scissor)
+    // For scissor mechanisms, the effective force direction is along the radial span
+    const loc = jointResult.joints;
+    const radialVec = {
+        x: loc.tr.x - loc.br.x,
+        y: loc.tr.y - loc.br.y,
+        z: 0
+    };
+    const radialLength = Math.sqrt(radialVec.x * radialVec.x + radialVec.y * radialVec.y);
+    
+    if (radialLength === 0) {
+        return { force: Infinity, angle: 0, mechanicalAdvantage: 0, stroke: 0, minStroke: 0, maxStroke: 0 };
+    }
+    
+    // Normalize radial vector
+    const radialDir = {
+        x: radialVec.x / radialLength,
+        y: radialVec.y / radialLength,
+        z: 0
+    };
+    
+    // Calculate angle between actuator and radial direction
+    const dotProduct = actuatorDir.x * radialDir.x + actuatorDir.y * radialDir.y + actuatorDir.z * radialDir.z;
+    const angle = Math.acos(Math.max(-1, Math.min(1, dotProduct)));
+    
+    // The weight force needs to be lifted vertically, but actuator works in radial direction
+    // Account for the angle between actuator and the direction of motion
+    const weightForce = com.totalWeight; // lbs
+    
+    // Combined mechanical advantage: scissor mechanism × actuator angle efficiency
+    // Actuator efficiency decreases as angle from optimal direction increases
+    const actuatorEfficiency = Math.cos(angle);
+    const totalMechanicalAdvantage = scissorMA * actuatorEfficiency;
+    
+    // Required force = weight / (mechanical advantage) + friction
+    // Friction acts against motion, so it's added
+    const baseForce = weightForce / Math.max(0.01, totalMechanicalAdvantage);
+    const frictionForce = weightForce * frictionCoefficient;
+    const totalForce = baseForce + frictionForce;
+    
+    // Calculate stroke length range (min to max over full fold range)
+    // This calculates the actual distance change for these specific actuator positions
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    const openAngle = MIN_FOLD_ANGLE;
+    
+    // Helper function to get actuator positions at a specific fold angle
+    // We need to map the current positions to their corresponding positions at different angles
+    const getActuatorPositionsAtAngle = (angle, pos1Ref, pos2Ref) => {
+        const testJoint = calculateJointPositions(angle, {
+            hActiveIn: hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const testLoc = testJoint.joints;
+        const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
+        
+        // Get current joint positions to determine which joints these positions track
+        const currentJoint = calculateJointPositions(foldAngle, {
+            hActiveIn: hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const currentLoc = currentJoint.joints;
+        
+        // Find which joint each position is closest to (or if it's a fixed position)
+        const findClosestJoint = (pos) => {
+            const joints = ['bl', 'br', 'tl', 'tr'];
+            let closest = 'br';
+            let minDist = Infinity;
+            joints.forEach(j => {
+                const jointPos = { x: currentLoc[j].x + sc.x, y: 0, z: currentLoc[j].y + sc.z };
+                const dx = pos.x - jointPos.x;
+                const dz = pos.z - jointPos.z;
+                const dist = Math.sqrt(dx*dx + dz*dz);
+                if (dist < minDist) {
+                    minDist = dist;
+                    closest = j;
+                }
+            });
+            return { joint: closest, distance: minDist };
+        };
+        
+        const pos1Info = findClosestJoint(pos1Ref);
+        const pos2Info = findClosestJoint(pos2Ref);
+        
+        // Calculate positions at this angle
+        let testPos1, testPos2;
+        
+        // If position is close to a joint (< 2 inches), it tracks that joint
+        // Otherwise, it's a fixed position (like vertical actuators)
+        if (pos1Info.distance < 2) {
+            const joint = testLoc[pos1Info.joint];
+            const offsetX = pos1Ref.x - (currentLoc[pos1Info.joint].x + sc.x);
+            const offsetZ = pos1Ref.z - (currentLoc[pos1Info.joint].y + sc.z);
+            testPos1 = {
+                x: joint.x + sc.x + offsetX,
+                y: pos1Ref.y, // Y is typically fixed or follows joint
+                z: joint.y + sc.z + offsetZ
+            };
+        } else {
+            // Fixed position (e.g., vertical actuator)
+            testPos1 = pos1Ref;
+        }
+        
+        if (pos2Info.distance < 2) {
+            const joint = testLoc[pos2Info.joint];
+            const offsetX = pos2Ref.x - (currentLoc[pos2Info.joint].x + sc.x);
+            const offsetZ = pos2Ref.z - (currentLoc[pos2Info.joint].y + sc.z);
+            testPos2 = {
+                x: joint.x + sc.x + offsetX,
+                y: pos2Ref.y,
+                z: joint.y + sc.z + offsetZ
+            };
+        } else {
+            testPos2 = pos2Ref;
+        }
+        
+        return { pos1: testPos1, pos2: testPos2 };
+    };
+    
+    // Calculate lengths at open and closed positions
+    const openPos = getActuatorPositionsAtAngle(openAngle, actuatorPos1, actuatorPos2);
+    const closedPos = getActuatorPositionsAtAngle(closedAngle, actuatorPos1, actuatorPos2);
+    
+    const calcLength = (p1, p2) => {
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dz = p2.z - p1.z;
+        return Math.sqrt(dx*dx + dy*dy + dz*dz);
+    };
+    
+    const minLength = calcLength(openPos.pos1, openPos.pos2);
+    const maxLength = calcLength(closedPos.pos1, closedPos.pos2);
+    const stroke = Math.abs(maxLength - minLength);
+    
+    return {
+        force: totalForce,
+        angle: angle * 180 / Math.PI, // Convert to degrees
+        mechanicalAdvantage: totalMechanicalAdvantage,
+        scissorMechanicalAdvantage: scissorMA,
+        actuatorLength: actuatorLength,
+        stroke: stroke,
+        minStroke: Math.min(minLength, maxLength),
+        maxStroke: Math.max(minLength, maxLength),
+        minLength: minLength,
+        maxLength: maxLength
+    };
+}
+
+/**
+ * Finds optimal actuator placement positions for the structure
+ * Tests key leverage points in the scissor mechanism and ranks them by efficiency
+ * @param {Object} data - Linkage geometry data
+ * @param {Object} options - Configuration options
+ * @returns {Array} Array of recommended actuator placements, sorted by efficiency
+ */
+function findOptimalActuatorPlacements(data, options = {}) {
+    const {
+        maxActuators = 5,
+        maxForce = 2000, // lbs
+        preferredLocations = 'all', // 'pivot', 'ring', 'vertical', 'all'
+        testAngles = [MIN_FOLD_ANGLE, state.foldAngle, getOptimalClosedAngleForAnimation()]
+    } = options;
+    
+    const recommendations = [];
+    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
+    const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Candidate positions - key leverage points in scissor mechanism
+    const candidates = [];
+    
+    // Test at mid-angle to get representative positions
+    const midAngle = (MIN_FOLD_ANGLE + getOptimalClosedAngleForAnimation()) / 2;
+    const midJointResult = calculateJointPositions(midAngle, {
+        hActiveIn: hActiveIn,
+        pivotPct: state.pivotPct,
+        hobermanAng: state.hobermanAng,
+        pivotAng: state.pivotAng
+    });
+    const midLoc = midJointResult.joints;
+    
+    if (preferredLocations === 'pivot' || preferredLocations === 'all') {
+        // 1. Between inner and outer pivots (br and tr) - PRIMARY LEVERAGE POINT
+        // This is the most efficient location for scissor mechanisms
+        candidates.push({
+            name: 'Inner-Outer Pivot (Primary)',
+            description: 'Between inner pivot (br) and outer pivot (tr) - optimal leverage',
+            pos1: { x: midLoc.br.x + sc.x, y: 0, z: midLoc.br.y + sc.z },
+            pos2: { x: midLoc.tr.x + sc.x, y: 0, z: midLoc.tr.y + sc.z },
+            type: 'pivot',
+            priority: 1
+        });
+        
+        // 2. Between bottom-left and top-right (bl and tr) - alternative pivot
+        candidates.push({
+            name: 'Diagonal Pivot',
+            description: 'Between bottom-left (bl) and top-right (tr) pivots',
+            pos1: { x: midLoc.bl.x + sc.x, y: 0, z: midLoc.bl.y + sc.z },
+            pos2: { x: midLoc.tr.x + sc.x, y: 0, z: midLoc.tr.y + sc.z },
+            type: 'pivot',
+            priority: 2
+        });
+    }
+    
+    if (preferredLocations === 'ring' || preferredLocations === 'all') {
+        // 3. Between scissor intersection points (midpoints of arms)
+        const intersection1 = {
+            x: (midLoc.bl.x + midLoc.tl.x) / 2 + sc.x,
+            y: state.vLengthFt * INCHES_PER_FOOT / 4,
+            z: (midLoc.bl.y + midLoc.tl.y) / 2 + sc.z
+        };
+        const intersection2 = {
+            x: (midLoc.br.x + midLoc.tr.x) / 2 + sc.x,
+            y: state.vLengthFt * INCHES_PER_FOOT / 4,
+            z: (midLoc.br.y + midLoc.tr.y) / 2 + sc.z
+        };
+        candidates.push({
+            name: 'Scissor Intersection',
+            description: 'Between scissor arm intersection points',
+            pos1: intersection1,
+            pos2: intersection2,
+            type: 'intersection',
+            priority: 3
+        });
+    }
+    
+    if (preferredLocations === 'vertical' || preferredLocations === 'all') {
+        // 4. Vertical actuator between horizontal rings
+        const vHeight = state.vLengthFt * INCHES_PER_FOOT / 2;
+        candidates.push({
+            name: 'Vertical Ring',
+            description: 'Vertical actuator between top and bottom horizontal rings',
+            pos1: { x: midLoc.br.x + sc.x, y: 0, z: midLoc.br.y + sc.z },
+            pos2: { x: midLoc.br.x + sc.x, y: vHeight, z: midLoc.br.y + sc.z },
+            type: 'vertical',
+            priority: 4
+        });
+    }
+    
+    // Test each candidate at different fold angles
+    candidates.forEach(candidate => {
+        let maxForce = 0;
+        let minForce = Infinity;
+        let avgForce = 0;
+        let maxStroke = 0;
+        let minStroke = Infinity;
+        const forces = [];
+        const strokes = [];
+        let totalMA = 0;
+        
+        testAngles.forEach(angle => {
+            const testData = solveLinkage(angle);
+            
+            // Recalculate positions at this angle
+            const testJoint = calculateJointPositions(angle, {
+                hActiveIn: hActiveIn,
+                pivotPct: state.pivotPct,
+                hobermanAng: state.hobermanAng,
+                pivotAng: state.pivotAng
+            });
+            const testLoc = testJoint.joints;
+            
+            // Map candidate positions to this angle
+            let testPos1, testPos2;
+            if (candidate.type === 'pivot') {
+                if (candidate.name.includes('Diagonal')) {
+                    testPos1 = { x: testLoc.bl.x + sc.x, y: 0, z: testLoc.bl.y + sc.z };
+                    testPos2 = { x: testLoc.tr.x + sc.x, y: 0, z: testLoc.tr.y + sc.z };
+                } else {
+                    testPos1 = { x: testLoc.br.x + sc.x, y: 0, z: testLoc.br.y + sc.z };
+                    testPos2 = { x: testLoc.tr.x + sc.x, y: 0, z: testLoc.tr.y + sc.z };
+                }
+            } else if (candidate.type === 'intersection') {
+                const i1 = {
+                    x: (testLoc.bl.x + testLoc.tl.x) / 2 + sc.x,
+                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                    z: (testLoc.bl.y + testLoc.tl.y) / 2 + sc.z
+                };
+                const i2 = {
+                    x: (testLoc.br.x + testLoc.tr.x) / 2 + sc.x,
+                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                    z: (testLoc.br.y + testLoc.tr.y) / 2 + sc.z
+                };
+                testPos1 = i1;
+                testPos2 = i2;
+            } else if (candidate.type === 'vertical') {
+                testPos1 = { x: testLoc.br.x + sc.x, y: 0, z: testLoc.br.y + sc.z };
+                testPos2 = { x: testLoc.br.x + sc.x, y: state.vLengthFt * INCHES_PER_FOOT / 2, z: testLoc.br.y + sc.z };
+            } else {
+                testPos1 = candidate.pos1;
+                testPos2 = candidate.pos2;
+            }
+            
+            const forceResult = calculateRequiredActuatorForce(
+                testPos1, 
+                testPos2, 
+                angle, 
+                testData
+            );
+            
+            if (forceResult.force && isFinite(forceResult.force)) {
+                forces.push(forceResult.force);
+                maxForce = Math.max(maxForce, forceResult.force);
+                minForce = Math.min(minForce, forceResult.force);
+                avgForce += forceResult.force;
+                
+                if (forceResult.stroke) {
+                    strokes.push(forceResult.stroke);
+                    maxStroke = Math.max(maxStroke, forceResult.stroke);
+                    minStroke = Math.min(minStroke, forceResult.stroke);
+                }
+                
+                totalMA += forceResult.mechanicalAdvantage || 0;
+            }
+        });
+        
+        if (forces.length === 0) return; // Skip invalid candidates
+        
+        avgForce /= forces.length;
+        const avgMA = totalMA / testAngles.length;
+        
+        // Calculate stroke length over full fold range (open to closed)
+        // This is specific to each actuator position, not a fixed value
+        const openAngle = MIN_FOLD_ANGLE;
+        const closedAngle = getOptimalClosedAngleForAnimation();
+        
+        // Get positions at open and closed angles
+        const openJoint = calculateJointPositions(openAngle, {
+            hActiveIn: hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const closedJoint = calculateJointPositions(closedAngle, {
+            hActiveIn: hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const openLoc = openJoint.joints;
+        const closedLoc = closedJoint.joints;
+        
+        // Calculate positions at open and closed based on candidate type
+        let openPos1, openPos2, closedPos1, closedPos2;
+        if (candidate.type === 'pivot') {
+            if (candidate.name.includes('Diagonal')) {
+                openPos1 = { x: openLoc.bl.x + sc.x, y: 0, z: openLoc.bl.y + sc.z };
+                openPos2 = { x: openLoc.tr.x + sc.x, y: 0, z: openLoc.tr.y + sc.z };
+                closedPos1 = { x: closedLoc.bl.x + sc.x, y: 0, z: closedLoc.bl.y + sc.z };
+                closedPos2 = { x: closedLoc.tr.x + sc.x, y: 0, z: closedLoc.tr.y + sc.z };
+            } else {
+                openPos1 = { x: openLoc.br.x + sc.x, y: 0, z: openLoc.br.y + sc.z };
+                openPos2 = { x: openLoc.tr.x + sc.x, y: 0, z: openLoc.tr.y + sc.z };
+                closedPos1 = { x: closedLoc.br.x + sc.x, y: 0, z: closedLoc.br.y + sc.z };
+                closedPos2 = { x: closedLoc.tr.x + sc.x, y: 0, z: closedLoc.tr.y + sc.z };
+            }
+        } else if (candidate.type === 'intersection') {
+            openPos1 = {
+                x: (openLoc.bl.x + openLoc.tl.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (openLoc.bl.y + openLoc.tl.y) / 2 + sc.z
+            };
+            openPos2 = {
+                x: (openLoc.br.x + openLoc.tr.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (openLoc.br.y + openLoc.tr.y) / 2 + sc.z
+            };
+            closedPos1 = {
+                x: (closedLoc.bl.x + closedLoc.tl.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (closedLoc.bl.y + closedLoc.tl.y) / 2 + sc.z
+            };
+            closedPos2 = {
+                x: (closedLoc.br.x + closedLoc.tr.x) / 2 + sc.x,
+                y: state.vLengthFt * INCHES_PER_FOOT / 4,
+                z: (closedLoc.br.y + closedLoc.tr.y) / 2 + sc.z
+            };
+        } else if (candidate.type === 'vertical') {
+            const vHeight = state.vLengthFt * INCHES_PER_FOOT / 2;
+            openPos1 = { x: openLoc.br.x + sc.x, y: 0, z: openLoc.br.y + sc.z };
+            openPos2 = { x: openLoc.br.x + sc.x, y: vHeight, z: openLoc.br.y + sc.z };
+            closedPos1 = { x: closedLoc.br.x + sc.x, y: 0, z: closedLoc.br.y + sc.z };
+            closedPos2 = { x: closedLoc.br.x + sc.x, y: vHeight, z: closedLoc.br.y + sc.z };
+        } else {
+            // Fixed positions (shouldn't change)
+            openPos1 = candidate.pos1;
+            openPos2 = candidate.pos2;
+            closedPos1 = candidate.pos1;
+            closedPos2 = candidate.pos2;
+        }
+        
+        // Calculate stroke length (difference between open and closed positions)
+        const calcLength = (p1, p2) => {
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const dz = p2.z - p1.z;
+            return Math.sqrt(dx*dx + dy*dy + dz*dz);
+        };
+        
+        const openLength = calcLength(openPos1, openPos2);
+        const closedLength = calcLength(closedPos1, closedPos2);
+        const actualStroke = Math.abs(closedLength - openLength);
+        const actualMinLength = Math.min(openLength, closedLength);
+        const actualMaxLength = Math.max(openLength, closedLength);
+        
+        // Calculate efficiency score
+        // Lower force and stroke = better, higher mechanical advantage = better
+        // Efficiency = (MA / force) / stroke (normalized)
+        const forcePenalty = avgForce / 1000; // Normalize to reasonable range
+        const strokePenalty = actualStroke / 100; // Normalize to reasonable range
+        const efficiency = (avgMA / (forcePenalty * strokePenalty + 1)) * 100;
+        
+        recommendations.push({
+            name: candidate.name,
+            description: candidate.description,
+            type: candidate.type,
+            priority: candidate.priority,
+            position1: candidate.pos1,
+            position2: candidate.pos2,
+            tracksJoints: candidate.type === 'pivot' || candidate.type === 'intersection',
+            maxForce: maxForce,
+            minForce: minForce,
+            avgForce: avgForce,
+            maxStroke: actualMaxLength,
+            minStroke: actualMinLength,
+            stroke: actualStroke,
+            mechanicalAdvantage: avgMA,
+            efficiency: efficiency,
+            recommended: maxForce <= options.maxForce && maxForce > 0,
+            forceRating: Math.ceil(maxForce * 1.5) // Recommend 50% safety margin
+        });
+    });
+    
+    // Sort by efficiency (best first), then by priority
+    recommendations.sort((a, b) => {
+        if (Math.abs(a.efficiency - b.efficiency) < 0.1) {
+            return a.priority - b.priority;
+        }
+        return b.efficiency - a.efficiency;
+    });
+    
+    return recommendations.slice(0, maxActuators);
+}
+
+/**
  * Extends a point outward by a given distance
  * @param {{x: number, y: number}} p - Point to extend
  * @param {number} dist - Distance to extend
@@ -4041,11 +5614,12 @@ function solveLinkage(foldAngle) {
             i, 'horizontal-bottom', i * 2  // moduleIndex, stackType, stackId
         );
         
-        // Top horizontal ring
+        // Top horizontal ring (inverted/mirrored - stacks downward, same pattern)
+        const hDown = {x:0, y:-1, z:0}; // Invert stacking direction for mirror effect
         createStack(
-            map(visLoc.bl, topH), map(visLoc.tr, topH), 
-            map(visLoc.br, topH), map(visLoc.tl, topH),
-            state.hStackCount, hW, hT, woodColor, hUp,
+            map(visLoc.bl, topH), map(visLoc.tr, topH), // Same Pattern A as bottom
+            map(visLoc.br, topH), map(visLoc.tl, topH), // Same Pattern B as bottom
+            state.hStackCount, hW, hT, woodColor, hDown,
             i, 'horizontal-top', i * 2 + 1  // moduleIndex, stackType, stackId
         );
 
@@ -4349,76 +5923,103 @@ function solveLinkage(foldAngle) {
                 // Vertical beam direction (for bracket orientation)
                 const vBeamDir = avgPatternDir;
                 
-                // Calculate bracket dimensions
-                const bracketWidth = Math.max(vW * 1.2, 2.5);
-                const bracketDepth = Math.max(vT * 1.2, 2.5);
-                const bracketHeight = state.bracketOffset;
-                const bracketThickness = 0.25;
+                // Bracket dimensions now come from state (bracketWidth, bracketDepth, etc.)
                 
                 // Vertical stack bolt direction (horizontal, through the stack)
                 const vBoltDir = stackDirNorm;
-                const vBoltLength = totalThick + 1;
+                // Use state bolt length (auto-calculated or user-defined)
+                const vBoltLength = state.vBoltLength || (totalThick + 1);
                 
                 // Helper to create a 3D bracket at a pivot point
-                const createBracket = (pivotPos, isBottom, beamDir) => {
-                    const baseY = isBottom ? 0 : topH;
-                    const extendDir = isBottom ? 1 : -1;
+                // moduleRotation: the angular position of this module around the ring (curRot)
+                // moduleIndex: the index of this module (0 to modules-1)
+                const createBracket = (pivotPos, isBottom, beamDir, moduleRotation, moduleIndex) => {
+                    // Bracket bottom face sits on top of upper horizontal beam
+                    // The pivot is at the center between two crossing horizontal beams
+                    // For bottom ring: pivotY is at 0, top of upper beam is at hT/2, then +0.75" offset
+                    // For top ring: pivotY is at topH, bottom of lower beam is at topH - hT/2, then -0.75" offset
+                    const bracketBottomY = isBottom ? (hT / 2 + 0.75) : (topH - hT / 2 - 0.75);
+                    
+                    // Side hole position: bracketGap measures from bracket bottom face upward
+                    const bracketGap = state.bracketOffset;
+                    const sideHoleY = bracketBottomY + bracketGap;
+                    
+                    // Calculate required height: side hole + 0.75" clearance above
+                    const minRequiredHeight = bracketGap + 0.75;
+                    const userHeight = state.bracketHeight || 3.0;
+                    const actualHeight = Math.max(userHeight, minRequiredHeight);
+                    
                     const right = vNorm(vCross(beamDir, {x:0, y:1, z:0}));
                     
                     return {
                         pos: pivotPos,
-                        baseY: baseY,
-                        height: bracketHeight * extendDir,
-                        width: bracketWidth,
-                        depth: bracketDepth,
-                        thickness: bracketThickness,
+                        bottomY: bracketBottomY,
+                        sideHoleY: sideHoleY,
+                        actualHeight: actualHeight,
+                        holeDistance: bracketGap, // Distance from bottom to side hole centers
+                        width: state.bracketWidth || 2.0,
+                        depth: state.bracketDepth || 3.0,
+                        wallThickness: state.bracketWallThickness || 0.25,
+                        innerWidth: state.bracketInnerWidth || 1.5,
+                        holeDiameter: state.bracketHoleDiameter || 0.375,
                         beamDir: beamDir,
                         right: right,
                         isBottom: isBottom,
                         boltDir: vBoltDir,
+                        moduleRotation: moduleRotation, // Store module's angular position for consistent orientation
+                        moduleIndex: moduleIndex, // Store module index for alternating rotation offset
                         z: pivotPos.y
                     };
                 };
                 
                 // Helper to create horizontal bolt (through vertical stack)
                 const createHorizontalBolt = (pos, dir, length) => {
+                    const boltRadius = getBoltRadius();
                     return {
                         start: vAdd(pos, vScale(dir, -length / 2)),
                         end: vAdd(pos, vScale(dir, length / 2)),
                         center: pos,
                         dir: dir,
-                        radius: BOLT_RADIUS,
-                        headRadius: BOLT_HEAD_RADIUS,
-                        headHeight: BOLT_HEAD_HEIGHT,
+                        length: length,
+                        radius: boltRadius,
+                        headRadius: boltRadius * 1.8,
+                        headHeight: boltRadius * 1.2,
+                        boltType: 'vstack',
                         z: pos.y
                     };
                 };
                 
                 // Helper to create vertical bolt (through horizontal stack)
                 const createVerticalBolt = (xzPos, yBottom, yTop) => {
+                    const boltRadius = getBoltRadius();
                     const boltStart = {x: xzPos.x, y: yBottom, z: xzPos.z};
                     const boltEnd = {x: xzPos.x, y: yTop, z: xzPos.z};
                     const boltCenter = {x: xzPos.x, y: (yBottom + yTop) / 2, z: xzPos.z};
+                    const length = yTop - yBottom;
                     return {
                         start: boltStart,
                         end: boltEnd,
                         center: boltCenter,
                         dir: {x: 0, y: 1, z: 0},
-                        radius: BOLT_RADIUS,
-                        headRadius: BOLT_HEAD_RADIUS,
-                        headHeight: BOLT_HEAD_HEIGHT,
+                        length: length,
+                        radius: boltRadius,
+                        headRadius: boltRadius * 1.8,
+                        headHeight: boltRadius * 1.2,
+                        boltType: 'hstack',
                         z: boltCenter.y
                     };
                 };
                 
                 if(state.showBrackets) {
-                    // Bottom ring brackets (extending upward)
-                    brackets.push(createBracket(hPivotBotInner, true, vBeamDir));
-                    brackets.push(createBracket(hPivotBotOuter, true, vBeamDir));
+                    // Bottom ring brackets (U opens upward)
+                    // Inner brackets sit on Pattern A beams, outer brackets sit on Pattern B beams
+                    // Pass the correct pattern direction for each bracket position
+                    brackets.push(createBracket(hPivotBotInner, true, patternA_dir, curRot, i));
+                    brackets.push(createBracket(hPivotBotOuter, true, patternB_dir, curRot, i));
                     
-                    // Top ring brackets (extending downward)
-                    brackets.push(createBracket(hPivotTopInner, false, vBeamDir));
-                    brackets.push(createBracket(hPivotTopOuter, false, vBeamDir));
+                    // Top ring brackets (U opens downward - handled by isBottom flag in createBracketMesh)
+                    brackets.push(createBracket(hPivotTopInner, false, patternA_dir, curRot, i));
+                    brackets.push(createBracket(hPivotTopOuter, false, patternB_dir, curRot, i));
                 }
                 
                 if(state.showBolts) {
@@ -4478,17 +6079,18 @@ function solveLinkage(foldAngle) {
                     const capTopInner = map(loc.bl, topH);
                     const capTopOuter = map(loc.tl, topH);
                     
+                    // Cap pattern directions (same logic as main vertical modules)
                     const capPatternA_dir = vNorm(vSub(capTopOuter, capBotInner));
                     const capPatternB_dir = vNorm(vSub(capTopInner, capBotOuter));
-                    const capAvgDir = vNorm(vScale(vAdd(capPatternA_dir, capPatternB_dir), 0.5));
                     
                     // Bottom ring brackets for cap uprights
-                    brackets.push(createBracket(capBotInner, true, capAvgDir));
-                    brackets.push(createBracket(capBotOuter, true, capAvgDir));
+                    // Inner brackets on Pattern A, outer brackets on Pattern B
+                    brackets.push(createBracket(capBotInner, true, capPatternA_dir, curRot, i));
+                    brackets.push(createBracket(capBotOuter, true, capPatternB_dir, curRot, i));
                     
                     // Top ring brackets for cap uprights
-                    brackets.push(createBracket(capTopInner, false, capAvgDir));
-                    brackets.push(createBracket(capTopOuter, false, capAvgDir));
+                    brackets.push(createBracket(capTopInner, false, capPatternA_dir, curRot, i));
+                    brackets.push(createBracket(capTopOuter, false, capPatternB_dir, curRot, i));
                 }
             }
         }
@@ -4598,9 +6200,9 @@ function solveLinkage(foldAngle) {
             const hCenterBot = map(hCenter2D, 0);
             const hCenterTop = map(hCenter2D, topH);
             
-            // Calculate horizontal stack thickness for bolt length
-            const hStackThick = state.hStackCount * hT + (state.hStackCount - 1) * state.stackGap;
-            const hBoltLength = hStackThick + 1; // Add extra for head/nut
+            // Use state bolt length (auto-calculated or user-defined)
+            const hBoltLength = state.hBoltLength || (state.hStackCount * hT + 1);
+            const boltRadius = getBoltRadius();
             
             // Bottom horizontal ring center bolt (vertical)
             bolts.push({
@@ -4608,9 +6210,11 @@ function solveLinkage(foldAngle) {
                 end: {x: hCenterBot.x, y: hBoltLength / 2, z: hCenterBot.z},
                 center: hCenterBot,
                 dir: {x: 0, y: 1, z: 0},
-                radius: BOLT_RADIUS,
-                headRadius: BOLT_HEAD_RADIUS,
-                headHeight: BOLT_HEAD_HEIGHT,
+                length: hBoltLength,
+                radius: boltRadius,
+                headRadius: boltRadius * 1.8,
+                headHeight: boltRadius * 1.2,
+                boltType: 'hstack',
                 z: hCenterBot.y
             });
             
@@ -4620,9 +6224,11 @@ function solveLinkage(foldAngle) {
                 end: {x: hCenterTop.x, y: topH + hBoltLength / 2, z: hCenterTop.z},
                 center: hCenterTop,
                 dir: {x: 0, y: 1, z: 0},
-                radius: BOLT_RADIUS,
-                headRadius: BOLT_HEAD_RADIUS,
-                headHeight: BOLT_HEAD_HEIGHT,
+                length: hBoltLength,
+                radius: boltRadius,
+                headRadius: boltRadius * 1.8,
+                headHeight: boltRadius * 1.2,
+                boltType: 'hstack',
                 z: hCenterTop.y
             });
         }
@@ -6628,10 +8234,21 @@ function updateHUD(data) {
     uiStats.bu.innerText = uBrackets;
     uiStats.bb.innerText = nBolts;
     
-    // Update individual costs
+    // Update bolt spec display
+    const boltSpecEl = document.getElementById('bom-b-spec');
+    if (boltSpecEl) {
+        const diameterFraction = formatBoltDiameter(state.boltDiameter);
+        boltSpecEl.textContent = `(${diameterFraction}")`;
+    }
+    
+    // Update individual costs (unit and total)
+    uiStats.bhCostUnit.innerText = '$' + formatNumber(state.costHBeam, 2);
     uiStats.bhCost.innerText = '$' + formatNumber(hBeamCost, 0);
+    uiStats.bvCostUnit.innerText = '$' + formatNumber(state.costVBeam, 2);
     uiStats.bvCost.innerText = '$' + formatNumber(vBeamCost, 0);
+    uiStats.buCostUnit.innerText = '$' + formatNumber(state.costBracket, 2);
     uiStats.buCost.innerText = '$' + formatNumber(bracketCost, 0);
+    uiStats.bbCostUnit.innerText = '$' + formatNumber(state.costBolt, 2);
     uiStats.bbCost.innerText = '$' + formatNumber(boltCost, 0);
     
     // Update structure subtotal
@@ -6645,6 +8262,7 @@ function updateHUD(data) {
         solarCost = solarPanelCount * state.costSolarPanel;
         
         uiStats.bSolar.innerText = solarPanelCount;
+        uiStats.bSolarCostUnit.innerText = '$' + formatNumber(state.costSolarPanel, 2);
         uiStats.bSolarCost.innerText = '$' + formatNumber(solarCost, 0);
         uiStats.bSolarRow.style.display = 'flex';
         uiStats.bSolarSubtotal.innerText = '$' + formatNumber(solarCost, 2);
@@ -6658,15 +8276,153 @@ function updateHUD(data) {
     const totalCost = structureSubtotal + solarCost;
     uiStats.bt.innerText = formatNumber(totalCost, 2);
 
+    // Calculate structure weight (lbs) based on volume and density
+    // Volume = width × thickness × length (all in inches)
+    // Weight = volume × density
+    const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
+    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
+    const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
+    const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
+    const bracketWeight = uBrackets * state.weightBracket;
+    const boltWeight = nBolts * state.weightBolt;
+    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
+    
+    // Update weight section (unit and total)
+    uiStats.weightH.innerText = hBeams;
+    uiStats.weightV.innerText = vBeams;
+    uiStats.weightU.innerText = uBrackets;
+    // Calculate unit weights
+    const hBeamWeightPerBeam = state.hLengthFt * hBeamWeightPerFoot;
+    const vBeamWeightPerBeam = state.vLengthFt * vBeamWeightPerFoot;
+    uiStats.weightHUnit.innerText = formatNumber(hBeamWeightPerBeam, 1) + ' lbs';
+    uiStats.weightHVal.innerText = formatNumber(hBeamWeight, 1) + ' lbs';
+    uiStats.weightVUnit.innerText = formatNumber(vBeamWeightPerBeam, 1) + ' lbs';
+    uiStats.weightVVal.innerText = formatNumber(vBeamWeight, 1) + ' lbs';
+    uiStats.weightUUnit.innerText = formatNumber(state.weightBracket, 2) + ' lbs';
+    uiStats.weightUVal.innerText = formatNumber(bracketWeight, 1) + ' lbs';
+    uiStats.weightStructureSubtotal.innerText = formatNumber(structureWeight, 1) + ' lbs';
+    
+    // Calculate solar panel weight if panels are enabled
+    let solarPanelWeight = 0;
+    if (state.solarPanels.enabled && data.panels && data.panels.length > 0) {
+        const panelConfig = getActivePanelConfig();
+        const panelWeightPerUnit = panelConfig.weight || 0;
+        solarPanelWeight = solarPanelCount * panelWeightPerUnit;
+        
+        uiStats.weightSolar.innerText = solarPanelCount;
+        uiStats.weightSolarUnit.innerText = formatNumber(panelWeightPerUnit, 1) + ' lbs';
+        uiStats.weightSolarVal.innerText = formatNumber(solarPanelWeight, 1) + ' lbs';
+        uiStats.weightSolarRow.style.display = 'block';
+    } else {
+        uiStats.weightSolarRow.style.display = 'none';
+    }
+    
+    // Calculate system weight (structure + solar panels + batteries + controllers + loads)
+    // Get all items from solar designer if available
+    let batteryWeight = 0;
+    let controllerWeight = 0;
+    let loadWeight = 0;
+    
+    // Try to get items from solar designer if it exists
+    // SolarDesigner is a singleton, so we can access it directly if initialized
+    let allItems = [];
+    try {
+        // Try to get the instance from the solar designer module
+        if (typeof SolarDesigner !== 'undefined' && SolarDesigner && typeof SolarDesigner.getItems === 'function') {
+            allItems = SolarDesigner.getItems();
+        } else if (typeof window.solarDesignerInstance !== 'undefined' && window.solarDesignerInstance) {
+            allItems = window.solarDesignerInstance.getItems ? window.solarDesignerInstance.getItems() : [];
+        }
+    } catch (e) {
+        // Silently fail if solar designer not available
+        console.debug('Solar designer not available for weight calculation:', e);
+    }
+    
+    if (allItems.length > 0) {
+        try {
+            
+            // Calculate battery weights (estimate ~30 lbs per kWh for typical lithium batteries)
+            const batteries = allItems.filter(item => item.type === 'battery' || item.type === 'smartbattery');
+            batteries.forEach(battery => {
+                let capacityKwh = 0;
+                if (battery.type === 'smartbattery' && battery.specs && battery.specs.capacityWh) {
+                    capacityKwh = battery.specs.capacityWh / 1000;
+                } else if (battery.specs && battery.specs.voltage && battery.specs.ah) {
+                    capacityKwh = (battery.specs.voltage * battery.specs.ah) / 1000;
+                }
+                // Estimate: ~30 lbs per kWh for lithium batteries
+                batteryWeight += capacityKwh * 30;
+            });
+            
+            // Calculate controller/inverter weights (estimate: ~5-10 lbs each)
+            const controllers = allItems.filter(item => item.type === 'controller' || item.type === 'inverter');
+            controllers.forEach(() => {
+                controllerWeight += 7; // Average ~7 lbs per controller/inverter
+            });
+            
+            // Calculate load weights (estimate: ~2-5 lbs per load depending on type)
+            const loads = allItems.filter(item => item.type === 'acload' || item.type === 'dcload');
+            loads.forEach(load => {
+                // Heavier loads (like appliances) might be 5-10 lbs, lighter ones 1-2 lbs
+                // For simplicity, estimate 3 lbs average per load
+                loadWeight += 3;
+            });
+        } catch (e) {
+            // Silently fail if solar designer not available
+            console.debug('Error calculating component weights:', e);
+        }
+    }
+    
+    const systemWeight = solarPanelWeight + batteryWeight + controllerWeight + loadWeight;
+    const totalWeight = structureWeight + systemWeight;
+    
+    if (systemWeight > 0) {
+        uiStats.weightSystemSubtotal.innerText = formatNumber(systemWeight, 1) + ' lbs';
+        uiStats.weightSystemRow.style.display = 'block';
+    } else {
+        uiStats.weightSystemRow.style.display = 'none';
+    }
+    
+    uiStats.weightTotalBom.innerText = formatNumber(totalWeight, 1);
+    
+    // Update stats panel (top section)
     const heightFt = unitConverter.inchesToFeet(data.maxHeight);
     const diameterFt = unitConverter.inchesToFeet(data.maxRad * 2);
-    // Update stats panel
     uiStats.h.innerText = formatNumber(heightFt, 2) + "'";
     uiStats.d.innerText = formatNumber(diameterFt, 2) + "'";
     
-    // Calculate and display actuator stroke length
+    // Calculate actuator stroke length (for internal use, not displayed in HUD anymore)
     const actuatorInfo = calculateActuatorStroke();
-    uiStats.stroke.innerText = formatNumber(actuatorInfo.stroke, 2) + '"';
+    
+    // Calculate center of mass and actuator requirements
+    // For actuator analysis, exclude solar panels (they're added after unfolding)
+    const com = calculateCenterOfMass(data, state.foldAngle, false);
+    const comHeightFt = unitConverter.inchesToFeet(com.y);
+    
+    // Calculate actuator force requirement at current fold angle
+    // Use the pivot span positions for force calculation
+    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
+    const jointResult = calculateJointPositions(state.foldAngle, {
+        hActiveIn: hActiveIn,
+        pivotPct: state.pivotPct,
+        hobermanAng: state.hobermanAng,
+        pivotAng: state.pivotAng
+    });
+    const loc = jointResult.joints;
+    const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Calculate force at pivot positions (inner-outer pivot)
+    const pivotPos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
+    const pivotPos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
+    const forceResult = calculateRequiredActuatorForce(pivotPos1, pivotPos2, state.foldAngle, data);
+    
+    // Note: Actuator stats (stroke, CoM height, force) are now only shown in the actuator analysis section
+    // These calculations are kept for internal use but not displayed in the main HUD
+    
+    // Update weight in stats panel (top section)
+    uiStats.weightStructure.innerText = formatNumber(structureWeight, 1) + ' lbs';
+    uiStats.weightSystem.innerText = formatNumber(systemWeight, 1) + ' lbs';
+    uiStats.weightTotal.innerText = formatNumber(totalWeight, 1) + ' lbs';
     
     // Update collision status
     if (state.enforceCollision) {
@@ -6824,11 +8580,12 @@ function drawScene(c, data, view, cx, cy, vw, vh, customScale = null, structureC
         // Offset by structure center to center the view on the structure
         let x = v.x - sc.x, y = v.y - sc.y, z = v.z - sc.z;
         
-        // Apply global rotation around Y-axis (for all views)
-        const globalRotRad = (state.globalRotation || 0) * Math.PI / 180;
-        if (globalRotRad !== 0) {
-            const cosR = Math.cos(globalRotRad);
-            const sinR = Math.sin(globalRotRad);
+        // Apply structure rotation around Y-axis (for structure elements only, not panels)
+        // Note: Panels are handled separately in Three.js scene, so this only affects 2D canvas rendering
+        const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
+        if (structureRotRad !== 0) {
+            const cosR = Math.cos(structureRotRad);
+            const sinR = Math.sin(structureRotRad);
             const xRot = x * cosR - z * sinR;
             const zRot = x * sinR + z * cosR;
             x = xRot;
@@ -7038,9 +8795,27 @@ function drawScene(c, data, view, cx, cy, vw, vh, customScale = null, structureC
     const panelGridLines = [];
     
     // Process solar panels if present
+    // Panels should NOT rotate with structure, so apply inverse structure rotation to their corners
+    const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
+    const cosInvR = Math.cos(-structureRotRad);
+    const sinInvR = Math.sin(-structureRotRad);
+    
     if (data.panels && data.panels.length > 0) {
         data.panels.forEach(panel => {
-            const pts = panel.corners.map(p => project(p));
+            // Apply inverse structure rotation to panel corners so panels don't rotate with structure
+            const panelCorners = panel.corners.map(corner => {
+                if (structureRotRad !== 0) {
+                    // Rotate corner position relative to structure center by inverse rotation
+                    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+                    const relX = corner.x - sc.x;
+                    const relZ = corner.z - sc.z;
+                    const rotX = relX * cosInvR - relZ * sinInvR;
+                    const rotZ = relX * sinInvR + relZ * cosInvR;
+                    return { x: sc.x + rotX, y: corner.y, z: sc.z + rotZ };
+                }
+                return corner;
+            });
+            const pts = panelCorners.map(p => project(p));
             if (pts.some(p => p.s <= 0)) return;
             
             panel.faces.forEach((f, faceIdx) => {
@@ -7053,7 +8828,7 @@ function drawScene(c, data, view, cx, cy, vw, vh, customScale = null, structureC
                 if (cross < 0) {
                     const faceCenter3D = {x: 0, y: 0, z: 0};
                     f.idx.forEach(idx => {
-                        const corner3D = panel.corners[idx];
+                        const corner3D = panelCorners[idx]; // Use rotated corners
                         faceCenter3D.x += corner3D.x;
                         faceCenter3D.y += corner3D.y;
                         faceCenter3D.z += corner3D.z;
@@ -7660,11 +9435,11 @@ function drawGrid3D(c, view, cx, cy, vw, structureCenter = null) {
         // Offset grid by structure center to keep it aligned with the view
         let gx = x - sc.x, gz = z - sc.z;
         
-        // Apply global rotation around Y-axis
-        const globalRotRad = (state.globalRotation || 0) * Math.PI / 180;
-        if (globalRotRad !== 0) {
-            const cosR = Math.cos(globalRotRad);
-            const sinR = Math.sin(globalRotRad);
+        // Apply structure rotation around Y-axis (structure only, not panels)
+        const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
+        if (structureRotRad !== 0) {
+            const cosR = Math.cos(structureRotRad);
+            const sinR = Math.sin(structureRotRad);
             const gxRot = gx * cosR - gz * sinR;
             const gzRot = gx * sinR + gz * cosR;
             gx = gxRot;
@@ -8299,7 +10074,7 @@ function serializeGeometry(data) {
         mode: isArchMode ? 'arch' : 'cylinder',
         beamCount: data.beams?.length || 0,
         panelCount: data.panels?.length || 0,
-        globalRotation: state.globalRotation || 0
+        structureRotation: state.structureRotation || 0
     });
     
     const geometry = {
@@ -8506,7 +10281,7 @@ function exportToSolarSimulator() {
             yaw: state.cam.yaw,
             pitch: state.cam.pitch,
             dist: state.cam.dist,
-            globalRotation: state.globalRotation || 0
+            structureRotation: state.structureRotation || 0
         }
     };
     
@@ -8556,6 +10331,22 @@ function showBuildGuide() {
     const totalKw = totalWatts / 1000;
     
     const totalCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + solarPanelCost;
+    
+    // Calculate weight (lbs) based on volume and density
+    // Volume = width × thickness × length (all in inches)
+    // Weight = volume × density
+    const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
+    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
+    const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
+    const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
+    const bracketWeight = uBrackets * state.weightBracket;
+    const boltWeight = nBolts * state.weightBolt;
+    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
+    
+    // Get active panel configuration for weight
+    const panelConfig = getActivePanelConfig();
+    const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
+    const totalWeight = structureWeight + solarPanelWeight;
     
     // Calculate dimensions
     const heightFt = unitConverter.inchesToFeet(data.maxHeight);
@@ -8618,6 +10409,10 @@ function showBuildGuide() {
             <div class="guide-stat">
                 <span class="guide-stat-label">Est. Total</span>
                 <span class="guide-stat-value highlight">$${formatNumber(totalCost, 2)}</span>
+            </div>
+            <div class="guide-stat">
+                <span class="guide-stat-label">Total Weight</span>
+                <span class="guide-stat-value highlight" style="color: #3498db;">${formatNumber(totalWeight, 1)} lbs</span>
             </div>
         </div>
         
@@ -8686,6 +10481,25 @@ function showBuildGuide() {
                         <span class="guide-total-label">Estimated Total</span>
                         <span class="guide-total-value">$${formatNumber(totalCost, 2)}</span>
                     </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e0e0e0;">
+                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px; font-size: 0.9rem;">Weight Breakdown</div>
+                        <div style="display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 0.85rem; color: #555;">
+                            <span>Horizontal Beams</span>
+                            <span style="text-align: right;">${formatNumber(hBeamWeight, 1)} lbs</span>
+                            <span>Vertical Beams</span>
+                            <span style="text-align: right;">${formatNumber(vBeamWeight, 1)} lbs</span>
+                            <span>Brackets</span>
+                            <span style="text-align: right;">${formatNumber(bracketWeight, 1)} lbs</span>
+                            ${solarEnabled && solarPanelWeight > 0 ? `
+                            <span>Solar Panels</span>
+                            <span style="text-align: right;">${formatNumber(solarPanelWeight, 1)} lbs</span>
+                            ` : ''}
+                            <div style="grid-column: span 2; margin-top: 8px; padding-top: 8px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-weight: 600; color: #3498db;">
+                                <span>Total Weight</span>
+                                <span>${formatNumber(totalWeight, 1)} lbs</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -8717,6 +10531,62 @@ function showBuildGuide() {
                             <span class="guide-spec-label">Stack Gap</span>
                             <span class="guide-spec-value">${formatNumber(state.stackGap, 2)}"</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="guide-card">
+                <div class="guide-card-header">Hardware</div>
+                <div class="guide-card-content">
+                    <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Bolts</div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Diameter</span>
+                        <span class="guide-spec-value">${formatBoltDiameter(state.boltDiameter)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">V-Stack Bolt Length</span>
+                        <span class="guide-spec-value">${formatNumber(state.vBoltLength, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">H-Stack Bolt Length</span>
+                        <span class="guide-spec-value">${formatNumber(state.hBoltLength, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Total Bolts</span>
+                        <span class="guide-spec-value">${nBolts}</span>
+                    </div>
+                    <div style="margin-top: 15px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Brackets (U-Shape)</div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Total Brackets</span>
+                        <span class="guide-spec-value">${uBrackets}</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Width</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketWidth || 2.0, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Depth</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketDepth || 3.0, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Height (Set)</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketHeight || 3.0, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Wall Thickness</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketWallThickness || 0.25, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Inner Width</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketInnerWidth || 1.5, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Hole Diameter</span>
+                        <span class="guide-spec-value">${formatBoltDiameter(state.bracketHoleDiameter || 0.375)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Hole Distance (from bottom)</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketOffset || 0, 2)}"</span>
                     </div>
                 </div>
             </div>
@@ -8755,6 +10625,10 @@ function showBuildGuide() {
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">Bottom Extension</span>
                         <span class="guide-spec-value">${formatNumber(state.offsetBotIn, 2)}"</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">V-Beam End Offset</span>
+                        <span class="guide-spec-value">${formatNumber(state.vertEndOffset, 2)}"</span>
                     </div>
                 </div>
             </div>
@@ -9169,6 +11043,22 @@ function applyV30Config(config) {
             if (s.offsets.bracket !== undefined) state.bracketOffset = s.offsets.bracket;
             if (s.offsets.stackGap !== undefined) state.stackGap = s.offsets.stackGap;
         }
+        if (s.brackets) {
+            if (s.brackets.width !== undefined) state.bracketWidth = s.brackets.width;
+            if (s.brackets.depth !== undefined) state.bracketDepth = s.brackets.depth;
+            if (s.brackets.height !== undefined) state.bracketHeight = s.brackets.height;
+            if (s.brackets.wallThickness !== undefined) state.bracketWallThickness = s.brackets.wallThickness;
+            if (s.brackets.innerWidth !== undefined) state.bracketInnerWidth = s.brackets.innerWidth;
+            if (s.brackets.holeDiameter !== undefined) state.bracketHoleDiameter = s.brackets.holeDiameter;
+            if (s.brackets.zRotation !== undefined) state.bracketZRotation = s.brackets.zRotation;
+        }
+        if (s.bolts) {
+            if (s.bolts.diameter !== undefined) state.boltDiameter = s.bolts.diameter;
+            if (s.bolts.vStackLength !== undefined) state.vBoltLength = s.bolts.vStackLength;
+            if (s.bolts.hStackLength !== undefined) state.hBoltLength = s.bolts.hStackLength;
+            if (s.bolts.vStackAuto !== undefined) state.vBoltAuto = s.bolts.vStackAuto;
+            if (s.bolts.hStackAuto !== undefined) state.hBoltAuto = s.bolts.hStackAuto;
+        }
         if (s.hobermanAngle !== undefined) state.hobermanAng = s.hobermanAngle;
         if (s.pivotAngle !== undefined) state.pivotAng = s.pivotAngle;
         if (s.vStackReverse !== undefined) state.vStackReverse = s.vStackReverse;
@@ -9353,6 +11243,22 @@ function getConfigSnapshot(includeMetadata = false) {
                 bracket: state.bracketOffset,
                 stackGap: state.stackGap
             },
+            brackets: {
+                width: state.bracketWidth,
+                depth: state.bracketDepth,
+                height: state.bracketHeight,
+                wallThickness: state.bracketWallThickness,
+                innerWidth: state.bracketInnerWidth,
+                holeDiameter: state.bracketHoleDiameter,
+                zRotation: state.bracketZRotation
+            },
+            bolts: {
+                diameter: state.boltDiameter,
+                vStackLength: state.vBoltLength,
+                hStackLength: state.hBoltLength,
+                vStackAuto: state.vBoltAuto,
+                hStackAuto: state.hBoltAuto
+            },
             hobermanAngle: state.hobermanAng,
             pivotAngle: state.pivotAng,
             vStackReverse: state.vStackReverse
@@ -9475,7 +11381,7 @@ function getConfigSnapshot(includeMetadata = false) {
             dist: state.cam.dist,
             panX: state.cam.panX,
             panY: state.cam.panY,
-            globalRotation: state.globalRotation || 0
+            structureRotation: state.structureRotation || 0
         }
     };
     
@@ -9587,7 +11493,9 @@ function applyConfig(config, updateUI = true) {
         if (typeof config.cameraState.dist === 'number') state.cam.dist = config.cameraState.dist;
         if (typeof config.cameraState.panX === 'number') state.cam.panX = config.cameraState.panX;
         if (typeof config.cameraState.panY === 'number') state.cam.panY = config.cameraState.panY;
-        if (typeof config.cameraState.globalRotation === 'number') state.globalRotation = config.cameraState.globalRotation;
+        if (typeof config.cameraState.structureRotation === 'number') state.structureRotation = config.cameraState.structureRotation;
+        // Backward compatibility: also check for old globalRotation name
+        if (typeof config.cameraState.globalRotation === 'number') state.structureRotation = config.cameraState.globalRotation;
         
         // Update camera position if renderer is initialized
         if (threeRenderer && threeRenderer.mainCamera) {
@@ -10884,9 +12792,15 @@ function updateState(key, val) {
         const geometryKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
                               'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
                               'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
-                              'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount'];
+                              'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount',
+                              'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 'bracketHoleDiameter'];
         if (geometryKeys.includes(key)) {
             invalidateGeometryCache();
+            
+            // Update auto bolt lengths when relevant parameters change
+            if (['hStackCount', 'vStackCount', 'hBeamT', 'vBeamW', 'stackGap'].includes(key)) {
+                updateAutoBoltLengths();
+            }
             
             // Regenerate roof face buttons when module count changes
             if (key === 'modules' && state.orientation === 'vertical' && state.solarPanels.enabled) {
@@ -11422,17 +13336,148 @@ document.getElementById('chk-bolts').onchange = e => {
 };
 
 // Sun position controls (topbar)
-document.getElementById('sl-sun-azimuth-top').oninput = e => {
+// Time of day slider
+document.getElementById('sl-sun-time').oninput = e => {
     const val = parseFloat(e.target.value);
-    state.sunAzimuth = val;
-    updateSunPosition();
+    state.sunTime = val;
+    updateSunPosition(); // This will also call updateSkyColor
     requestRender();
 };
-document.getElementById('sl-sun-elevation-top').oninput = e => {
-    const val = parseFloat(e.target.value);
-    state.sunElevation = val;
+
+// Shadows toggle
+document.getElementById('chk-shadows').onchange = e => {
+    state.shadowsEnabled = e.target.checked;
     updateSunPosition();
+    updateGroundPlane();
+    updateGridVisibility();
+    
+    // Enable/disable shadows on all meshes
+    if (threeRenderer.beamGroup) {
+        threeRenderer.beamGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
+    if (threeRenderer.panelGroup) {
+        threeRenderer.panelGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
+    if (threeRenderer.bracketGroup) {
+        threeRenderer.bracketGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
+    if (threeRenderer.boltGroup) {
+        threeRenderer.boltGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
+    
     requestRender();
+};
+
+// Bracket configuration event handlers
+document.getElementById('sel-bracket-hole-diameter').onchange = e => {
+    state.bracketHoleDiameter = parseFloat(e.target.value) || 0.375;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Bracket Z-axis rotation handlers
+const slBracketZRot = document.getElementById('sl-bracket-z-rotation');
+const nbBracketZRot = document.getElementById('nb-bracket-z-rotation');
+if (slBracketZRot && nbBracketZRot) {
+    slBracketZRot.oninput = e => {
+        const value = parseFloat(e.target.value) || 0;
+        state.bracketZRotation = value;
+        nbBracketZRot.value = value;
+        invalidateGeometryCache();
+        requestRender();
+    };
+    nbBracketZRot.onchange = e => {
+        const value = parseFloat(e.target.value) || 0;
+        state.bracketZRotation = Math.max(-180, Math.min(180, value));
+        slBracketZRot.value = state.bracketZRotation;
+        invalidateGeometryCache();
+        requestRender();
+    };
+}
+
+// Update hole distance display when bracket gap changes (wrapped around existing handler)
+(function() {
+    const slBrack = document.getElementById('sl-brack');
+    const nbBrack = document.getElementById('nb-brack');
+    if (slBrack && slBrack.oninput) {
+        const originalHandler = slBrack.oninput;
+        slBrack.oninput = function(e) {
+            originalHandler.call(this, e);
+            updateBracketHoleDistance();
+        };
+    }
+    if (nbBrack && nbBrack.onchange) {
+        const originalHandler = nbBrack.onchange;
+        nbBrack.onchange = function(e) {
+            originalHandler.call(this, e);
+            updateBracketHoleDistance();
+        };
+    }
+})();
+
+// Bolt configuration event handlers
+document.getElementById('sel-bolt-diameter').onchange = e => {
+    state.boltDiameter = parseFloat(e.target.value) || 0.375;
+    invalidateGeometryCache();
+    requestRender();
+};
+
+document.getElementById('nb-vbolt-length').onchange = e => {
+    if (!state.vBoltAuto) {
+        state.vBoltLength = parseFloat(e.target.value) || 3;
+        invalidateGeometryCache();
+        requestRender();
+    }
+};
+
+document.getElementById('nb-hbolt-length').onchange = e => {
+    if (!state.hBoltAuto) {
+        state.hBoltLength = parseFloat(e.target.value) || 3;
+        invalidateGeometryCache();
+        requestRender();
+    }
+};
+
+document.getElementById('chk-vbolt-auto').onchange = e => {
+    state.vBoltAuto = e.target.checked;
+    const input = document.getElementById('nb-vbolt-length');
+    if (input) input.disabled = state.vBoltAuto;
+    if (state.vBoltAuto) {
+        updateAutoBoltLengths();
+        invalidateGeometryCache();
+        requestRender();
+    }
+};
+
+document.getElementById('chk-hbolt-auto').onchange = e => {
+    state.hBoltAuto = e.target.checked;
+    const input = document.getElementById('nb-hbolt-length');
+    if (input) input.disabled = state.hBoltAuto;
+    if (state.hBoltAuto) {
+        updateAutoBoltLengths();
+        invalidateGeometryCache();
+        requestRender();
+    }
 };
 
 document.getElementById('sel-orientation').onchange = e => {
@@ -11484,20 +13529,233 @@ document.getElementById('nb-arch-rotation').onchange = e => {
     requestRender();
 };
 
-// Global rotation event handlers
-document.getElementById('sl-global-rotation').oninput = e => {
+// Structure rotation event handlers
+document.getElementById('sl-structure-rotation').oninput = e => {
     const val = parseFloat(e.target.value) || 0;
-    state.globalRotation = val;
-    document.getElementById('nb-global-rotation').value = val;
+    state.structureRotation = val;
+    document.getElementById('nb-structure-rotation').value = val;
     requestRender(); // No geometry invalidation needed - rotation applied at render time
 };
-document.getElementById('nb-global-rotation').onchange = e => {
+document.getElementById('nb-structure-rotation').onchange = e => {
     let val = parseFloat(e.target.value) || 0;
     val = Math.max(-180, Math.min(180, val));
-    state.globalRotation = val;
-    document.getElementById('sl-global-rotation').value = val;
+    state.structureRotation = val;
+    document.getElementById('sl-structure-rotation').value = val;
     e.target.value = val;
     requestRender();
+};
+
+// Actuator analysis button
+document.getElementById('btn-analyze-actuators').onclick = () => {
+    const data = solveLinkage(state.foldAngle);
+    
+    // Calculate solar panels if enabled
+    if (state.solarPanels.enabled) {
+        const solarData = calculateSolarPanels(data);
+        data.panels = solarData.panels;
+        data.supportBeams = solarData.supportBeams;
+        data.canopy = solarData.canopy;
+    } else {
+        data.panels = [];
+    }
+    
+    // Get structure center
+    const geometry = buildStructureGeometry(data.beams, data.brackets, data.bolts, data.maxRad, data.maxHeight);
+    data.structureCenter = geometry.structureCenter || { x: 0, y: 0, z: 0 };
+    
+    // Find optimal actuator placements
+    const recommendations = findOptimalActuatorPlacements(data, {
+        maxActuators: 5,
+        maxForce: 2000,
+        preferredLocations: 'all'
+    });
+    
+    // Display recommendations
+    const contentEl = document.getElementById('actuator-recommendations-content');
+    if (recommendations.length === 0) {
+        contentEl.innerHTML = '<div style="color: var(--text-muted); padding: 8px; text-align: center;">No suitable actuator placements found</div>';
+        return;
+    }
+    
+    // Store recommendations in state for visualization
+    state.actuatorRecommendations = recommendations;
+    
+    let html = '';
+    recommendations.forEach((rec, idx) => {
+        const statusClass = rec.recommended ? 'style="color: #2ecc71;"' : 'style="color: #e74c3c;"';
+        const statusText = rec.recommended ? '✓ Recommended' : '⚠ High Force';
+        const badge = idx === 0 ? '<span style="background: #f39c12; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 6px;">BEST</span>' : '';
+        const isSelected = state.selectedActuator && state.selectedActuator.name === rec.name;
+        const selectedStyle = isSelected ? 'background: rgba(0,255,0,0.1); border-left: 3px solid #00ff00;' : '';
+        
+        html += `
+            <div class="actuator-recommendation-item" data-actuator-index="${idx}" style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid ${idx === 0 ? '#f39c12' : rec.recommended ? '#2ecc71' : '#e74c3c'}; cursor: pointer; ${selectedStyle}" onclick="selectActuator(${idx})">
+                <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">
+                    ${rec.name}${badge} ${isSelected ? '<span style="color: #00ff00;">●</span>' : ''}
+                </div>
+                <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; font-style: italic;">
+                    ${rec.description || ''}
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
+                        <div>Force Rating:</div>
+                        <div style="color: white; font-weight: 600;">${formatNumber(rec.forceRating || rec.maxForce, 0)} lbs</div>
+                        <div>Max Force:</div>
+                        <div style="color: white;">${formatNumber(rec.maxForce, 0)} lbs</div>
+                        <div>Min Force:</div>
+                        <div style="color: white;">${formatNumber(rec.minForce, 0)} lbs</div>
+                        <div>Avg Force:</div>
+                        <div style="color: white;">${formatNumber(rec.avgForce, 0)} lbs</div>
+                        <div>Stroke Length:</div>
+                        <div style="color: white;">${formatNumber(rec.stroke || rec.maxStroke, 1)}"</div>
+                        <div>Min Length:</div>
+                        <div style="color: white;">${formatNumber(rec.minStroke, 1)}"</div>
+                        <div>Max Length:</div>
+                        <div style="color: white;">${formatNumber(rec.maxStroke, 1)}"</div>
+                        <div>Mech. Advantage:</div>
+                        <div style="color: white;">${formatNumber(rec.mechanicalAdvantage, 2)}x</div>
+                    </div>
+                </div>
+                <div style="font-size: 0.7rem; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);" ${statusClass}>
+                    ${statusText} • Efficiency: ${formatNumber(rec.efficiency, 1)}%
+                </div>
+            </div>
+        `;
+    });
+    
+    contentEl.innerHTML = html;
+    
+    showToast(`Found ${recommendations.length} actuator placement option${recommendations.length !== 1 ? 's' : ''}`, 'info');
+};
+
+/**
+ * Selects an actuator recommendation and highlights it in the 3D view
+ * @param {number} index - Index of the actuator recommendation to select
+ */
+function selectActuator(index) {
+    if (!state.actuatorRecommendations || index >= state.actuatorRecommendations.length) {
+        state.selectedActuator = null;
+        if (threeRenderer.actuatorLineGroup) {
+            clearGroup(threeRenderer.actuatorLineGroup);
+        }
+        requestRender();
+        return;
+    }
+    
+    state.selectedActuator = state.actuatorRecommendations[index];
+    
+    // Update UI to show selection
+    const items = document.querySelectorAll('.actuator-recommendation-item');
+    items.forEach((item, idx) => {
+        if (idx === index) {
+            item.style.background = 'rgba(0,255,0,0.1)';
+            item.style.borderLeft = '3px solid #00ff00';
+        } else {
+            item.style.background = 'rgba(255,255,255,0.05)';
+            const rec = state.actuatorRecommendations[idx];
+            item.style.borderLeft = `3px solid ${idx === 0 ? '#f39c12' : rec.recommended ? '#2ecc71' : '#e74c3c'}`;
+        }
+    });
+    
+    // Trigger render to show actuator line
+    const data = solveLinkage(state.foldAngle);
+    if (state.solarPanels.enabled) {
+        const solarData = calculateSolarPanels(data);
+        data.panels = solarData.panels;
+        data.supportBeams = solarData.supportBeams;
+        data.canopy = solarData.canopy;
+    }
+    const geometry = buildStructureGeometry(data.beams, data.brackets, data.bolts, data.maxRad, data.maxHeight);
+    data.structureCenter = geometry.structureCenter || { x: 0, y: 0, z: 0 };
+    
+    updateThreeJSScenes(data, data.structureCenter);
+    requestRender();
+    
+    showToast(`Selected: ${state.selectedActuator.name}`, 'info');
+}
+
+/**
+ * Animates the structure folding/unfolding with actuator simulation
+ * Uses basic physics to smoothly transition between fold angles
+ * @param {number} targetAngle - Target fold angle in radians
+ * @param {number} duration - Animation duration in milliseconds
+ */
+function animateActuatorFold(targetAngle, duration = 3000) {
+    if (state.actuatorAnimation.isPlaying) {
+        return; // Already animating
+    }
+    
+    state.actuatorAnimation.isPlaying = true;
+    state.actuatorAnimation.currentAngle = state.foldAngle;
+    state.actuatorAnimation.targetAngle = targetAngle;
+    state.actuatorAnimation.direction = targetAngle > state.foldAngle ? 1 : -1;
+    
+    const startAngle = state.foldAngle;
+    const startTime = Date.now();
+    const speed = state.actuatorAnimation.speed || 1.0;
+    const adjustedDuration = duration / speed;
+    
+    function animate() {
+        if (!state.actuatorAnimation.isPlaying) {
+            return;
+        }
+        
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / adjustedDuration, 1);
+        
+        // Ease in-out curve for smooth animation
+        const eased = progress < 0.5 
+            ? 2 * progress * progress 
+            : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+        
+        // Interpolate angle
+        const currentAngle = startAngle + (targetAngle - startAngle) * eased;
+        state.foldAngle = currentAngle;
+        
+        // Invalidate cache and render
+        invalidateGeometryCache();
+        requestRender();
+        
+        if (progress < 1) {
+            requestAnimationFrame(animate);
+        } else {
+            state.foldAngle = targetAngle;
+            state.actuatorAnimation.isPlaying = false;
+            invalidateGeometryCache();
+            requestRender();
+            const stopBtn = document.getElementById('btn-actuator-stop');
+            if (stopBtn) stopBtn.style.display = 'none';
+        }
+    }
+    
+    animate();
+}
+
+/**
+ * Stops the actuator animation
+ */
+function stopActuatorAnimation() {
+    state.actuatorAnimation.isPlaying = false;
+    const stopBtn = document.getElementById('btn-actuator-stop');
+    if (stopBtn) stopBtn.style.display = 'none';
+}
+
+// Actuator animation controls
+document.getElementById('btn-actuator-open').onclick = () => {
+    const openAngle = MIN_FOLD_ANGLE;
+    animateActuatorFold(openAngle, 3000);
+    document.getElementById('btn-actuator-stop').style.display = 'block';
+};
+
+document.getElementById('btn-actuator-close').onclick = () => {
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    animateActuatorFold(closedAngle, 3000);
+    document.getElementById('btn-actuator-stop').style.display = 'block';
+};
+
+document.getElementById('btn-actuator-stop').onclick = () => {
+    stopActuatorAnimation();
+    document.getElementById('btn-actuator-stop').style.display = 'none';
 };
 
 document.getElementById('btn-arch-reset').onclick = () => {
@@ -12764,6 +15022,59 @@ Object.keys(idMap).forEach(k => {
 
 // Initialize UI
 Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+
+// Update bracket hole distance display
+function updateBracketHoleDistance() {
+    const holeDistanceEl = document.getElementById('nb-bracket-hole-distance');
+    if (holeDistanceEl) {
+        holeDistanceEl.value = formatNumber(state.bracketOffset || 0, 2);
+    }
+}
+
+// Initialize bracket configuration UI
+(function initBracketConfig() {
+    // Set initial values from state
+    const widthInput = document.getElementById('nb-bracket-width');
+    const depthInput = document.getElementById('nb-bracket-depth');
+    const heightInput = document.getElementById('nb-bracket-height');
+    const wallInput = document.getElementById('nb-bracket-wall');
+    const innerInput = document.getElementById('nb-bracket-inner');
+    const holeDiameterSelect = document.getElementById('sel-bracket-hole-diameter');
+    const zRotSlider = document.getElementById('sl-bracket-z-rotation');
+    const zRotNumber = document.getElementById('nb-bracket-z-rotation');
+    
+    if (widthInput) widthInput.value = state.bracketWidth || 2.0;
+    if (depthInput) depthInput.value = state.bracketDepth || 3.0;
+    if (heightInput) heightInput.value = state.bracketHeight || 3.0;
+    if (wallInput) wallInput.value = state.bracketWallThickness || 0.25;
+    if (innerInput) innerInput.value = state.bracketInnerWidth || 1.5;
+    if (holeDiameterSelect) holeDiameterSelect.value = state.bracketHoleDiameter || 0.375;
+    if (zRotSlider) zRotSlider.value = state.bracketZRotation || 0;
+    if (zRotNumber) zRotNumber.value = state.bracketZRotation || 0;
+    
+    // Update hole distance display
+    updateBracketHoleDistance();
+})();
+
+// Initialize bolt configuration UI
+(function initBoltConfig() {
+    // Set initial values from state
+    const diameterSelect = document.getElementById('sel-bolt-diameter');
+    if (diameterSelect) diameterSelect.value = state.boltDiameter;
+    
+    const vBoltLengthInput = document.getElementById('nb-vbolt-length');
+    const hBoltLengthInput = document.getElementById('nb-hbolt-length');
+    const vBoltAutoChk = document.getElementById('chk-vbolt-auto');
+    const hBoltAutoChk = document.getElementById('chk-hbolt-auto');
+    
+    if (vBoltAutoChk) vBoltAutoChk.checked = state.vBoltAuto;
+    if (hBoltAutoChk) hBoltAutoChk.checked = state.hBoltAuto;
+    if (vBoltLengthInput) vBoltLengthInput.disabled = state.vBoltAuto;
+    if (hBoltLengthInput) hBoltLengthInput.disabled = state.hBoltAuto;
+    
+    // Calculate initial auto bolt lengths
+    updateAutoBoltLengths();
+})();
 
 // Initialize solar panel arch mode UI
 updateArchWallFacesUI();

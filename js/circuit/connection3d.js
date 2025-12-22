@@ -423,25 +423,13 @@ export class Connection3D {
             return new THREE.Vector3(0, 0, 0);
         }
         
-        // Check if this is a PowerStation3D (has getHandlePosition3D method)
-        // PowerStation3D.getHandlePosition3D() will check for port handles first
+        // Check if this is a PowerStation3D or Panel3D (has getHandlePosition3D method)
+        // These methods return world positions directly
         if (node3D && typeof node3D.getHandlePosition3D === 'function') {
-            const pos = node3D.getHandlePosition3D(handleId);
-            // Debug: check if returning origin (indicating a problem)
-            if (pos && pos.x === 0 && pos.y === 0 && pos.z === 0) {
-                const nodeType = node3D.node2D?.type || 'unknown';
-                console.warn(`[Connection3D.getHandlePosition3D] Node ${nodeType} returned origin for handle ${handleId}`);
-            }
-            return pos;
+            return node3D.getHandlePosition3D(handleId);
         }
         
         if (!node3D || !node3D.node2D || !node3D.mesh) {
-            console.warn('[Connection3D.getHandlePosition3D] Missing node3D, node2D, or mesh:', {
-                hasNode3D: !!node3D,
-                hasNode2D: !!(node3D?.node2D),
-                hasMesh: !!(node3D?.mesh),
-                handleId: handleId
-            });
             return new THREE.Vector3(0, 0, 0);
         }
         
@@ -784,11 +772,11 @@ export class Connection3D {
             const sourceType = this.sourceNode3D?.node2D?.type;
             const targetType = this.targetNode3D?.node2D?.type;
             if (sourceType === 'panel' && targetType === 'panel') {
-                // Panel-to-panel: add a small waypoint to make wire visible
+                // Panel-to-panel: add a small waypoint to make wire visible with natural sag
                 const midPoint = new THREE.Vector3();
                 midPoint.lerpVectors(sourceHandle3D, targetHandle3D, 0.5);
-                // Slightly raise the midpoint to create a visible arc
-                midPoint.y += 0.1; // 10cm above the direct line
+                // Lower the midpoint to create a natural sag (gravity pulls wire down)
+                midPoint.y -= 0.1; // 10cm below the direct line (natural sag)
                 points.push(midPoint);
             } else {
                 // Add waypoints if they exist

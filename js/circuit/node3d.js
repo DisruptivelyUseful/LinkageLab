@@ -39,7 +39,9 @@ export class Node3D {
         // We just need to update their relative positions if handle positions changed
         this.portHandles.forEach(handleGroup => {
             if (handleGroup && handleGroup.userData && handleGroup.userData.handleId) {
-                const handleRelPos = this.getHandlePosition3D(handleGroup.userData.handleId);
+                // Use relative position method for child objects
+                const getRelPos = this.getHandleRelativePosition3D || this.getHandlePosition3D;
+                const handleRelPos = getRelPos.call(this, handleGroup.userData.handleId);
                 if (handleRelPos) {
                     // Update relative position (handle groups are children of node mesh)
                     handleGroup.position.copy(handleRelPos);
@@ -139,7 +141,9 @@ export class Node3D {
         // Create a handle for each port
         Object.values(this.node2D.handles).forEach(handle => {
             // Get handle position relative to node first (before creating meshes)
-            const handleRelPos = this.getHandlePosition3D(handle.id);
+            // Use relative position method if available (for Panel3D), otherwise use world position
+            const getRelPos = this.getHandleRelativePosition3D || this.getHandlePosition3D;
+            const handleRelPos = getRelPos.call(this, handle.id);
             if (!handleRelPos) return; // Skip this handle if position can't be calculated
             
             // Determine handle color based on polarity
@@ -586,10 +590,10 @@ export class Panel3D extends Node3D {
     }
     
     /**
-     * Get 3D position of a port handle for panels (override base class)
-     * Panels are horizontal (XZ plane), so handles are positioned differently
+     * Get RELATIVE position of a port handle (relative to panel center)
+     * Used for positioning port handle meshes which are children of the panel mesh
      */
-    getHandlePosition3D(handleId) {
+    getHandleRelativePosition3D(handleId) {
         if (!this.node2D || !this.node2D.handles) return null;
         
         const handle = Object.values(this.node2D.handles).find(h => h.id === handleId);
@@ -646,8 +650,37 @@ export class Panel3D extends Node3D {
             handleZ = -((handle.y || 0) - nodeHeightPx / 2) / 1000; // Invert Y (2D Y down = 3D Z)
         }
         
-        // Return relative position (not world position)
         return new THREE.Vector3(handleX, handleY, handleZ);
+    }
+    
+    /**
+     * Get WORLD position of a port handle (for wire connections)
+     * Returns the handle position transformed to world coordinates
+     */
+    getHandlePosition3D(handleId) {
+        // Get relative position first
+        const relPos = this.getHandleRelativePosition3D(handleId);
+        if (!relPos) return null;
+        
+        // Transform relative position to world position
+        if (this.mesh) {
+            const panelWorldPos = new THREE.Vector3();
+            const panelWorldQuat = new THREE.Quaternion();
+            this.mesh.getWorldPosition(panelWorldPos);
+            this.mesh.getWorldQuaternion(panelWorldQuat);
+            
+            // Clone to avoid modifying original
+            const worldPos = relPos.clone();
+            
+            // Transform by rotation, then add world position
+            worldPos.applyQuaternion(panelWorldQuat);
+            worldPos.add(panelWorldPos);
+            
+            return worldPos;
+        }
+        
+        // Fallback: return relative position if no mesh
+        return relPos;
     }
     
     /**

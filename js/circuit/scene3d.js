@@ -74,7 +74,9 @@ export class Scene3D {
             this.canvas.style.left = '0';
             this.canvas.style.width = '100%';
             this.canvas.style.height = '100%';
-            this.canvas.style.pointerEvents = 'auto';
+            // In split mode, allow pointer events to pass through to SVG for 2D interactions
+            // Only capture events when actually interacting with 3D (e.g., orbit controls)
+            this.canvas.style.pointerEvents = this.viewMode === 'split' ? 'none' : 'auto';
             this.canvas.style.zIndex = '2';
             this.canvas.style.display = this.viewMode === '3d' || this.viewMode === 'split' ? 'block' : 'none';
             this.container.appendChild(this.canvas);
@@ -1003,13 +1005,18 @@ export class Scene3D {
                 this.canvas.style.display = 'block';
                 this.canvas.style.width = '100%';
                 this.canvas.style.left = '0';
+                this.canvas.style.pointerEvents = 'auto'; // Allow 3D interactions
             } else if (mode === 'split') {
                 this.canvas.style.display = 'block';
                 // In split mode, 3D canvas is full screen (2D overlays on top)
                 this.canvas.style.width = '100%';
                 this.canvas.style.left = '0';
+                // In split mode, keep pointer events enabled for orbit controls
+                // SVG will be on top and handle 2D interactions, but empty space clicks will pass through
+                this.canvas.style.pointerEvents = 'auto';
             } else {
                 this.canvas.style.display = 'none';
+                this.canvas.style.pointerEvents = 'auto';
             }
         }
         
@@ -1041,8 +1048,8 @@ export class Scene3D {
         this.overlayCanvas.style.left = '0'; // Full width overlay
         this.overlayCanvas.style.width = '100%';
         this.overlayCanvas.style.height = '100%';
-        this.overlayCanvas.style.pointerEvents = 'auto'; // Allow 2D interactions
-        this.overlayCanvas.style.zIndex = '3'; // Above 3D canvas
+        this.overlayCanvas.style.pointerEvents = 'none'; // Don't block 3D interactions, but allow SVG to handle them
+        this.overlayCanvas.style.zIndex = '2'; // Above 3D canvas, below SVG
         this.overlayCanvas.style.backgroundColor = 'transparent'; // Transparent so 3D shows through
         this.container.appendChild(this.overlayCanvas);
         
@@ -1079,8 +1086,9 @@ export class Scene3D {
     /**
      * Render 2D overlay (called from main render loop)
      * @param {Array} allItems - Array of all 2D nodes and connections
+     * @param {Object} zoomTransform - D3 zoom transform object with x, y, k properties
      */
-    render2DOverlay(allItems) {
+    render2DOverlay(allItems, zoomTransform) {
         if (!this.overlayContext || !this.overlayCanvas || this.viewMode !== 'split') {
             return;
         }
@@ -1089,12 +1097,15 @@ export class Scene3D {
         const width = this.overlayCanvas.width;
         const height = this.overlayCanvas.height;
         
-        // Clear canvas
-        ctx.fillStyle = '#15202b';
-        ctx.fillRect(0, 0, width, height);
+        // Clear canvas with transparent background (3D shows through)
+        ctx.clearRect(0, 0, width, height);
         
-        // Draw grid background
-        this.drawOverlayGrid(ctx, width, height);
+        // Apply zoom transform
+        if (zoomTransform) {
+            ctx.save();
+            ctx.translate(zoomTransform.x, zoomTransform.y);
+            ctx.scale(zoomTransform.k, zoomTransform.k);
+        }
         
         // Draw nodes and connections
         if (allItems && allItems.length > 0) {
@@ -1111,6 +1122,11 @@ export class Scene3D {
                     this.drawOverlayNode(ctx, item);
                 }
             });
+        }
+        
+        // Restore transform
+        if (zoomTransform) {
+            ctx.restore();
         }
     }
     
