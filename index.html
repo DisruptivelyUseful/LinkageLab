@@ -49,28 +49,30 @@
         </div>
     </div>
     <div class="topbar-center">
-        <div style="display:flex; align-items:center; gap:4px; font-size:0.7rem;">
-            <span style="color:var(--text-muted);">Fold:</span>
-            <input type="range" id="sl-fold" min="5" max="175" step="0.1" style="width:80px;" title="Fold Angle">
-            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:45px; font-size:0.75rem;" title="Fold Angle (degrees)">
-            <span style="color:#8899a6; font-size:0.7rem;">°</span>
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span style="color:var(--text-secondary); font-weight:600; font-size:0.85rem; letter-spacing:0.5px;">FOLD:</span>
+            <input type="range" id="sl-fold" min="5" max="175" step="0.1" title="Fold Angle">
+            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:75px; font-size:0.85rem; font-weight:600;" title="Fold Angle (degrees)">
+            <span style="color:var(--text-muted); font-size:0.85rem; font-weight:600;">°</span>
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-anim" style="gap:4px;">
-            <button id="btn-anim-play" title="Play Animation" style="padding:4px 6px; font-size:0.75rem;">▶</button>
-            <button id="btn-anim-pause" title="Pause Animation" style="padding:4px 6px; font-size:0.75rem;">⏸</button>
-            <button id="btn-anim-reverse" title="Reverse Direction" style="padding:4px 6px; font-size:0.75rem;">⟲</button>
-            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed" style="width:50px;">
-            <label class="topbar-chk" title="Ping-pong animation" style="font-size:0.7rem;"><input type="checkbox" id="chk-anim-pingpong-top" style="margin-right:2px;"> Loop</label>
-            <input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:35px; font-size:0.7rem; padding:2px;" title="Close limit">
+        <div class="topbar-anim">
+            <button id="btn-anim-fold" title="Fold to Closed Position" style="padding:6px 12px; background:rgba(231,76,60,0.8); color:white; border:none; border-radius:4px; font-weight:600;">FOLD</button>
+            <button id="btn-anim-unfold" title="Unfold to Open Position" style="padding:6px 12px; background:rgba(46,204,113,0.8); color:white; border:none; border-radius:4px; font-weight:600;">UNFOLD</button>
+            <button id="btn-anim-play" title="Play Animation">▶</button>
+            <button id="btn-anim-pause" title="Pause Animation">⏸</button>
+            <button id="btn-anim-reverse" title="Reverse Direction">⟲</button>
+            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed">
+            <label class="topbar-chk" title="Ping-pong animation" style="font-size:0.8rem; font-weight:600;"><input type="checkbox" id="chk-anim-pingpong-top" style="margin-right:4px;"> Loop</label>
+            <input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:65px; font-size:0.8rem; font-weight:600; padding:4px 6px;" title="Close limit">
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-sun" title="Time of Day" style="gap:4px; align-items:center;">
-            <span style="font-size:0.8rem;">☀️</span>
-            <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of Day (Sunrise to Sunset)" style="width:100px;">
-            <span id="sun-time-display" style="font-size:0.7rem; color:var(--text-muted); min-width:50px; text-align:center;">12:00</span>
-            <label class="topbar-chk" title="Enable Shadows" style="font-size:0.7rem; margin-left:4px;">
-                <input type="checkbox" id="chk-shadows" style="margin-right:2px;"> Shadows
+        <div class="topbar-sun" title="Time of Day">
+            <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); letter-spacing:0.5px; margin-right:4px;">SUN:</span>
+            <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of Day (Sunrise to Sunset)">
+            <span id="sun-time-display" style="font-size:0.85rem; color:var(--text-primary); min-width:60px; text-align:center; font-weight:600; font-family:var(--font-mono);">12:00</span>
+            <label class="topbar-chk" title="Enable Shadows" style="font-size:0.8rem; font-weight:600; margin-left:6px;">
+                <input type="checkbox" id="chk-shadows" style="margin-right:4px;"> Shadows
             </label>
         </div>
     </div>
@@ -127,7 +129,7 @@
                 <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
                     Rotate entire structure around vertical axis
                 </div>
-            </div>
+            </div>  
         </div>
         
         <div id="arch-orientation-group" class="group" style="display:none;">
@@ -190,17 +192,17 @@
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Horiz Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="number" id="nb-hbeam-w" value="3.5" step="0.25" style="width:50px;" title="Width">
+                        <input type="number" id="nb-hbeam-w" value="3.5" step="0.25" style="width:90px;" title="Width">
                         <span style="color:#666">x</span>
-                        <input type="number" id="nb-hbeam-t" value="1.5" step="0.25" style="width:50px;" title="Thick">
+                        <input type="number" id="nb-hbeam-t" value="1.5" step="0.25" style="width:90px;" title="Thick">
                     </div>
                 </div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Vert Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="number" id="nb-vbeam-w" value="1.5" step="0.25" style="width:50px;" title="Width">
+                        <input type="number" id="nb-vbeam-w" value="1.5" step="0.25" style="width:90px;" title="Width">
                         <span style="color:#666">x</span>
-                        <input type="number" id="nb-vbeam-t" value="3.5" step="0.25" style="width:50px;" title="Thick">
+                        <input type="number" id="nb-vbeam-t" value="3.5" step="0.25" style="width:90px;" title="Thick">
                     </div>
                 </div>
                 <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
@@ -858,6 +860,14 @@
                 </label>
                 <div id="support-beam-controls" style="display:none; margin-top:12px;">
                     <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Dimensions</span><span style="font-size:0.75rem; color:#8899a6;">W×T</span></div>
+                        <div class="input-wrap" style="display:flex; gap:4px; align-items:center;">
+                            <input type="number" id="nb-support-w" min="0.5" max="12" step="0.25" value="3.5" style="width:60px;">
+                            <span style="color:#8899a6;">×</span>
+                            <input type="number" id="nb-support-t" min="0.5" max="12" step="0.25" value="1.5" style="width:60px;">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
                         <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
                             <input type="range" id="sl-support-length" min="24" max="240" step="1" value="96">
@@ -1350,6 +1360,14 @@
                     <span>Bolts <span id="bom-b-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
                     <span id="bom-b-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-b-cost" style="text-align: right;">$0</span>
+                </div>
+                <div id="bom-support-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-support">0</span>
+                        <span>Support Beams <span id="bom-support-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                        <span id="bom-support-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-support-cost" style="text-align: right;">$0</span>
+                    </div>
                 </div>
                 <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
                     <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
@@ -3542,6 +3560,8 @@ const state = {
         
         // Support beams
         showSupportBeams: false,
+        supportBeamW: 3.5,        // width in inches (default 3.5")
+        supportBeamT: 1.5,        // thickness in inches (default 1.5")
         supportBeamRotation: 0,   // degrees, 0 = aligned with vertical uprights
         supportBeamLength: 96,    // inches (8 feet default)
         supportBeamFoldAngle: 0,  // degrees from vertical (0 = horizontal, 90 = pointing down)
@@ -3688,6 +3708,10 @@ const uiStats = {
     bSolar: document.getElementById('bom-solar'), bSolarCost: document.getElementById('bom-solar-cost'),
     bSolarCostUnit: document.getElementById('bom-solar-cost-unit'),
     bSolarRow: document.getElementById('bom-solar-row'),
+    bSupport: document.getElementById('bom-support'), bSupportCost: document.getElementById('bom-support-cost'),
+    bSupportCostUnit: document.getElementById('bom-support-cost-unit'),
+    bSupportRow: document.getElementById('bom-support-row'),
+    bSupportSpec: document.getElementById('bom-support-spec'),
     bStructureSubtotal: document.getElementById('bom-structure-subtotal'),
     bSolarSubtotal: document.getElementById('bom-solar-subtotal'),
     bSolarSubtotalRow: document.getElementById('bom-solar-subtotal-row'),
@@ -5624,16 +5648,18 @@ function solveLinkage(foldAngle) {
         );
 
         // --- VERTICAL UPRIGHTS (scissor cross-beams) ---
+        // Calculate pivot points for both vertical uprights and fixed straight beams
+        const yMin = state.bracketOffset;
+        const yMax = topH - state.bracketOffset;
+        
+        // Define the four corner pivot points (used by both vertical uprights and fixed beams)
+        const pBotInner = map(loc.br, yMin);
+        const pTopOuter = map(loc.tr, yMax);
+        const pBotOuter = map(loc.tr, yMin);
+        const pTopInner = map(loc.br, yMax);
+        
         // Skip when using fixed straight beams (they replace the scissor uprights)
         if (zHeight > 1 && !state.useFixedBeams) {
-            const yMin = state.bracketOffset;
-            const yMax = topH - state.bracketOffset;
-            
-            // Define the four corner pivot points
-            const pBotInner = map(loc.br, yMin);
-            const pTopOuter = map(loc.tr, yMax);
-            const pBotOuter = map(loc.tr, yMin);
-            const pTopInner = map(loc.br, yMax);
             
             // Calculate CENTER pivot points that all beams in the stack should pass through
             // These are the midpoints between the inner and outer pivot points
@@ -5910,30 +5936,144 @@ function solveLinkage(foldAngle) {
                     }));
                 }
             }
+        }
+        
+        // --- FIXED STRAIGHT BEAMS (non-folding, constant spacing) ---
+        // These are STRAIGHT vertical beams (not crossing like scissor uprights)
+        // Each beam goes straight up from bottom to top at the same radial position
+        if (state.useFixedBeams && zHeight > 1) {
+            const vW = state.vBeamW;
+            const vT = state.vBeamT;
+            const hT = state.hBeamT; // Horizontal beam thickness for offset
             
-            // Place brackets and bolts at pivot points
-            // Brackets are 3D boxes that connect horizontal beams to vertical beams
-            if(state.showBrackets || state.showBolts) {
-                // The horizontal pivot points where vertical beams connect
-                const hPivotBotInner = map(loc.br, 0);  // Bottom ring, inner pivot
-                const hPivotBotOuter = map(loc.tr, 0);  // Bottom ring, outer pivot
-                const hPivotTopInner = map(loc.br, topH); // Top ring, inner pivot
-                const hPivotTopOuter = map(loc.tr, topH); // Top ring, outer pivot
+            // Calculate Y positions for flush alignment with horizontal beams
+            // Bottom horizontal beam top surface is at y = hT/2
+            // Top horizontal beam bottom surface is at y = topH - hT/2
+            const bottomFlushY = hT / 2;
+            const topFlushY = topH - hT / 2;
+            
+            // STRAIGHT beams: each beam goes straight up at the same X/Z position
+            // Inner beam: straight up at inner pivot position (br)
+            const innerBeamStart = {x: pBotInner.x, y: bottomFlushY, z: pBotInner.z};
+            const innerBeamEnd = {x: pTopInner.x, y: topFlushY, z: pTopInner.z};
+            
+            const innerBeamLen = vMag(vSub(innerBeamEnd, innerBeamStart));
+            if (innerBeamLen > 0.1) {
+                beams.push(new Beam3D(innerBeamStart, innerBeamEnd, vW, vT, woodColor, {
+                    moduleIndex: i,
+                    stackType: 'fixed-beam',
+                    stackId: i * 2 + 0
+                }));
+            }
+            
+            // Outer beam: straight up at outer pivot position (tr)
+            const outerBeamStart = {x: pBotOuter.x, y: bottomFlushY, z: pBotOuter.z};
+            const outerBeamEnd = {x: pTopOuter.x, y: topFlushY, z: pTopOuter.z};
+            
+            const outerBeamLen = vMag(vSub(outerBeamEnd, outerBeamStart));
+            if (outerBeamLen > 0.1) {
+                beams.push(new Beam3D(outerBeamStart, outerBeamEnd, vW, vT, woodColor, {
+                    moduleIndex: i,
+                    stackType: 'fixed-beam',
+                    stackId: i * 2 + 1
+                }));
+            }
+            
+            // --- FIXED CAP BEAMS (for arch mode with cap uprights) ---
+            if (i === 0 && state.archCapUprights) {
+                // Cap beams use LEFT side pivot points (bl/tl) instead of right side (br/tr)
+                const capBotInner = map(loc.bl, yMin);
+                const capTopInner = map(loc.bl, yMax);
+                const capBotOuter = map(loc.tl, yMin);
+                const capTopOuter = map(loc.tl, yMax);
                 
-                // Vertical beam direction (for bracket orientation)
-                const vBeamDir = avgPatternDir;
+                // Cap inner beam: straight up at inner position (bl)
+                const capInnerStart = {x: capBotInner.x, y: bottomFlushY, z: capBotInner.z};
+                const capInnerEnd = {x: capTopInner.x, y: topFlushY, z: capTopInner.z};
                 
-                // Bracket dimensions now come from state (bracketWidth, bracketDepth, etc.)
+                const capInnerLen = vMag(vSub(capInnerEnd, capInnerStart));
+                if (capInnerLen > 0.1) {
+                    beams.push(new Beam3D(capInnerStart, capInnerEnd, vW, vT, woodColor, {
+                        moduleIndex: i,
+                        stackType: 'fixed-beam-cap',
+                        stackId: -2
+                    }));
+                }
                 
-                // Vertical stack bolt direction (horizontal, through the stack)
-                const vBoltDir = stackDirNorm;
-                // Use state bolt length (auto-calculated or user-defined)
-                const vBoltLength = state.vBoltLength || (totalThick + 1);
+                // Cap outer beam: straight up at outer position (tl)
+                const capOuterStart = {x: capBotOuter.x, y: bottomFlushY, z: capBotOuter.z};
+                const capOuterEnd = {x: capTopOuter.x, y: topFlushY, z: capTopOuter.z};
                 
-                // Helper to create a 3D bracket at a pivot point
-                // moduleRotation: the angular position of this module around the ring (curRot)
-                // moduleIndex: the index of this module (0 to modules-1)
-                const createBracket = (pivotPos, isBottom, beamDir, moduleRotation, moduleIndex) => {
+                const capOuterLen = vMag(vSub(capOuterEnd, capOuterStart));
+                if (capOuterLen > 0.1) {
+                    beams.push(new Beam3D(capOuterStart, capOuterEnd, vW, vT, woodColor, {
+                        moduleIndex: i,
+                        stackType: 'fixed-beam-cap',
+                        stackId: -3
+                    }));
+                }
+            }
+        }
+        
+        // Place brackets and bolts at pivot points
+        // Brackets are 3D boxes that connect horizontal beams to vertical beams
+        // Only create brackets/bolts if we have vertical elements (uprights or fixed beams)
+        if((state.showBrackets || state.showBolts) && zHeight > 1) {
+            // The horizontal pivot points where vertical beams connect
+            const hPivotBotInner = map(loc.br, 0);  // Bottom ring, inner pivot
+            const hPivotBotOuter = map(loc.tr, 0);  // Bottom ring, outer pivot
+            const hPivotTopInner = map(loc.br, topH); // Top ring, inner pivot
+            const hPivotTopOuter = map(loc.tr, topH); // Top ring, outer pivot
+            
+            // Calculate pattern directions (needed for brackets/bolts)
+            // These are the same for both vertical uprights and fixed beams
+            const patternA_dir = vNorm(vSub(pTopOuter, pBotInner));
+            const patternB_dir = vNorm(vSub(pTopInner, pBotOuter));
+            const avgPatternDir = vNorm(vScale(vAdd(patternA_dir, patternB_dir), 0.5));
+            
+            // Calculate stack direction and total thickness
+            let stackDirNorm, totalThick, centerMid;
+            if (state.useFixedBeams) {
+                // For fixed beams, use a simple stack direction (perpendicular to average pattern)
+                const up = {x: 0, y: 1, z: 0};
+                stackDirNorm = vNorm(vCross(avgPatternDir, up));
+                if (vMag(stackDirNorm) < 0.1) {
+                    stackDirNorm = vNorm(vCross(patternA_dir, up));
+                }
+                totalThick = state.vBeamW; // Single beam thickness for fixed beams
+                // Center mid point for fixed beams (midpoint between bottom and top center pivots)
+                const pivotBotCenter = vScale(vAdd(pBotInner, pBotOuter), 0.5);
+                const pivotTopCenter = vScale(vAdd(pTopOuter, pTopInner), 0.5);
+                centerMid = vScale(vAdd(pivotBotCenter, pivotTopCenter), 0.5);
+            } else {
+                // Use values from vertical uprights block if available
+                // Otherwise calculate defaults
+                const up = {x: 0, y: 1, z: 0};
+                stackDirNorm = vNorm(vCross(avgPatternDir, up));
+                if (vMag(stackDirNorm) < 0.1) {
+                    stackDirNorm = vNorm(vCross(patternA_dir, up));
+                }
+                totalThick = state.vStackCount * state.vBeamW + (state.vStackCount - 1) * state.stackGap;
+                // Center mid point (midpoint between bottom and top center pivots)
+                const pivotBotCenter = vScale(vAdd(pBotInner, pBotOuter), 0.5);
+                const pivotTopCenter = vScale(vAdd(pTopOuter, pTopInner), 0.5);
+                centerMid = vScale(vAdd(pivotBotCenter, pivotTopCenter), 0.5);
+            }
+            
+            // Vertical beam direction (for bracket orientation)
+            const vBeamDir = avgPatternDir;
+            
+            // Bracket dimensions now come from state (bracketWidth, bracketDepth, etc.)
+            
+            // Vertical stack bolt direction (horizontal, through the stack)
+            const vBoltDir = stackDirNorm;
+            // Use state bolt length (auto-calculated or user-defined)
+            const vBoltLength = state.vBoltLength || (totalThick + 1);
+            
+            // Helper to create a 3D bracket at a pivot point
+            // moduleRotation: the angular position of this module around the ring (curRot)
+            // moduleIndex: the index of this module (0 to modules-1)
+            const createBracket = (pivotPos, isBottom, beamDir, moduleRotation, moduleIndex) => {
                     // Bracket bottom face sits on top of upper horizontal beam
                     // The pivot is at the center between two crossing horizontal beams
                     // For bottom ring: pivotY is at 0, top of upper beam is at hT/2, then +0.75" offset
@@ -5987,10 +6127,10 @@ function solveLinkage(foldAngle) {
                         boltType: 'vstack',
                         z: pos.y
                     };
-                };
-                
-                // Helper to create vertical bolt (through horizontal stack)
-                const createVerticalBolt = (xzPos, yBottom, yTop) => {
+            };
+            
+            // Helper to create vertical bolt (through horizontal stack)
+            const createVerticalBolt = (xzPos, yBottom, yTop) => {
                     const boltRadius = getBoltRadius();
                     const boltStart = {x: xzPos.x, y: yBottom, z: xzPos.z};
                     const boltEnd = {x: xzPos.x, y: yTop, z: xzPos.z};
@@ -6008,37 +6148,37 @@ function solveLinkage(foldAngle) {
                         boltType: 'hstack',
                         z: boltCenter.y
                     };
-                };
+            };
+            
+            if(state.showBrackets) {
+                // Bottom ring brackets (U opens upward)
+                // Inner brackets sit on Pattern A beams, outer brackets sit on Pattern B beams
+                // Pass the correct pattern direction for each bracket position
+                brackets.push(createBracket(hPivotBotInner, true, patternA_dir, curRot, i));
+                brackets.push(createBracket(hPivotBotOuter, true, patternB_dir, curRot, i));
                 
-                if(state.showBrackets) {
-                    // Bottom ring brackets (U opens upward)
-                    // Inner brackets sit on Pattern A beams, outer brackets sit on Pattern B beams
-                    // Pass the correct pattern direction for each bracket position
-                    brackets.push(createBracket(hPivotBotInner, true, patternA_dir, curRot, i));
-                    brackets.push(createBracket(hPivotBotOuter, true, patternB_dir, curRot, i));
-                    
-                    // Top ring brackets (U opens downward - handled by isBottom flag in createBracketMesh)
-                    brackets.push(createBracket(hPivotTopInner, false, patternA_dir, curRot, i));
-                    brackets.push(createBracket(hPivotTopOuter, false, patternB_dir, curRot, i));
-                }
+                // Top ring brackets (U opens downward - handled by isBottom flag in createBracketMesh)
+                brackets.push(createBracket(hPivotTopInner, false, patternA_dir, curRot, i));
+                brackets.push(createBracket(hPivotTopOuter, false, patternB_dir, curRot, i));
+            }
+            
+            if(state.showBolts) {
+                // === VERTICAL MODULE BOLTS (horizontal orientation) ===
+                // These go through the vertical beam stack at the actual pivot points
                 
-                if(state.showBolts) {
-                    // === VERTICAL MODULE BOLTS (horizontal orientation) ===
-                    // These go through the vertical beam stack at the actual pivot points
-                    
-                    // 1. Bottom pivot bolts - at yMin (where vertical beams attach to bottom ring)
-                    bolts.push(createHorizontalBolt(pBotInner, vBoltDir, vBoltLength));
-                    bolts.push(createHorizontalBolt(pBotOuter, vBoltDir, vBoltLength));
-                    
-                    // 2. Top pivot bolts - at yMax (where vertical beams attach to top ring)
-                    bolts.push(createHorizontalBolt(pTopOuter, vBoltDir, vBoltLength));
-                    bolts.push(createHorizontalBolt(pTopInner, vBoltDir, vBoltLength));
-                    
-                    // 3. CENTER pivot bolt (horizontal, where the two X beams cross)
-                    bolts.push(createHorizontalBolt(centerMid, vBoltDir, vBoltLength));
-                    
-                    // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
-                    if (i === 0 && state.archCapUprights) {
+                // 1. Bottom pivot bolts - at yMin (where vertical beams attach to bottom ring)
+                bolts.push(createHorizontalBolt(pBotInner, vBoltDir, vBoltLength));
+                bolts.push(createHorizontalBolt(pBotOuter, vBoltDir, vBoltLength));
+                
+                // 2. Top pivot bolts - at yMax (where vertical beams attach to top ring)
+                bolts.push(createHorizontalBolt(pTopOuter, vBoltDir, vBoltLength));
+                bolts.push(createHorizontalBolt(pTopInner, vBoltDir, vBoltLength));
+                
+                // 3. CENTER pivot bolt (horizontal, where the two X beams cross)
+                bolts.push(createHorizontalBolt(centerMid, vBoltDir, vBoltLength));
+                
+                // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
+                if (i === 0 && state.archCapUprights) {
                         // Cap upright pivot positions (using bl/tl instead of br/tr)
                         const capBotInner = map(loc.bl, yMin);
                         const capTopOuter = map(loc.tl, yMax);
@@ -6067,13 +6207,13 @@ function solveLinkage(foldAngle) {
                         bolts.push(createHorizontalBolt(capTopOuter, capBoltDir, vBoltLength));
                         bolts.push(createHorizontalBolt(capTopInner, capBoltDir, vBoltLength));
                         
-                        // Center pivot bolt for cap uprights
-                        bolts.push(createHorizontalBolt(capCenterMid, capBoltDir, vBoltLength));
-                    }
+                    // Center pivot bolt for cap uprights
+                    bolts.push(createHorizontalBolt(capCenterMid, capBoltDir, vBoltLength));
                 }
-                
-                // CAP UPRIGHT brackets (for first module when cap uprights enabled)
-                if (i === 0 && state.archCapUprights && state.showBrackets) {
+            }
+            
+            // CAP UPRIGHT brackets (for first module when cap uprights enabled)
+            if (i === 0 && state.archCapUprights && state.showBrackets) {
                     const capBotInner = map(loc.bl, 0);
                     const capBotOuter = map(loc.tl, 0);
                     const capTopInner = map(loc.bl, topH);
@@ -6091,86 +6231,6 @@ function solveLinkage(foldAngle) {
                     // Top ring brackets for cap uprights
                     brackets.push(createBracket(capTopInner, false, capPatternA_dir, curRot, i));
                     brackets.push(createBracket(capTopOuter, false, capPatternB_dir, curRot, i));
-                }
-            }
-        }
-        
-        // --- FIXED STRAIGHT BEAMS (non-folding, constant spacing) ---
-        // Create beams regardless of zHeight - they connect bottom ring to top ring
-        // This block is OUTSIDE the scissor uprights block
-        if (state.useFixedBeams) {
-            // Use vLengthFt for fixed beam length (convert to inches)
-            const fixedBeamLengthInches = state.vLengthFt * INCHES_PER_FOOT;
-            state.fixedBeamLength = fixedBeamLengthInches;
-            
-            // Fixed beam dimensions - use vertical beam dimensions
-            const fixedBeamWidth = state.vBeamW;
-            const fixedBeamThick = state.vBeamT;
-            
-            // Get pivot points at the horizontal ring level (not offset by bracketOffset)
-            // Bottom ring points
-            const bottomInner = map(loc.br, 0);
-            const bottomOuter = map(loc.tr, 0);
-            // Top ring points (at fixed height above bottom)
-            const topInner = map(loc.br, topH);
-            const topOuter = map(loc.tr, topH);
-            
-            // Create fixed straight beams connecting bottom to top
-            // Beam 1: Inner pivot - straight vertical beam
-            const beam1Start = bottomInner;
-            const beam1End = topInner;
-            
-            // Only create if start and end are different
-            const beam1Len = vMag(vSub(beam1End, beam1Start));
-            if (beam1Len > 0.1) {
-                beams.push(new Beam3D(beam1Start, beam1End, fixedBeamWidth, fixedBeamThick, woodColor, {
-                    moduleIndex: i,
-                    stackType: 'fixed-beam',
-                    stackId: i * 2 + 0
-                }));
-            }
-            
-            // Beam 2: Outer pivot - straight vertical beam
-            const beam2Start = bottomOuter;
-            const beam2End = topOuter;
-            
-            const beam2Len = vMag(vSub(beam2End, beam2Start));
-            if (beam2Len > 0.1) {
-                beams.push(new Beam3D(beam2Start, beam2End, fixedBeamWidth, fixedBeamThick, woodColor, {
-                    moduleIndex: i,
-                    stackType: 'fixed-beam',
-                    stackId: i * 2 + 1
-                }));
-            }
-            
-            // --- FIXED CAP BEAMS (for arch mode with cap uprights) ---
-            // Add fixed straight beams at the cap position (first module, left side)
-            if (i === 0 && state.archCapUprights) {
-                // Cap beams use LEFT side pivot points (bl/tl) instead of right side (br/tr)
-                const capBottomInner = map(loc.bl, 0);
-                const capBottomOuter = map(loc.tl, 0);
-                const capTopInner = map(loc.bl, topH);
-                const capTopOuter = map(loc.tl, topH);
-                
-                // Cap Beam 1: Inner pivot (bl)
-                const capBeam1Len = vMag(vSub(capTopInner, capBottomInner));
-                if (capBeam1Len > 0.1) {
-                    beams.push(new Beam3D(capBottomInner, capTopInner, fixedBeamWidth, fixedBeamThick, woodColor, {
-                        moduleIndex: i,
-                        stackType: 'fixed-beam-cap',
-                        stackId: -2  // Special ID for cap beams
-                    }));
-                }
-                
-                // Cap Beam 2: Outer pivot (tl)
-                const capBeam2Len = vMag(vSub(capTopOuter, capBottomOuter));
-                if (capBeam2Len > 0.1) {
-                    beams.push(new Beam3D(capBottomOuter, capTopOuter, fixedBeamWidth, fixedBeamThick, woodColor, {
-                        moduleIndex: i,
-                        stackType: 'fixed-beam-cap',
-                        stackId: -3  // Special ID for cap beams
-                    }));
-                }
             }
         }
         
@@ -6478,7 +6538,7 @@ function solveLinkage(foldAngle) {
         
         maxHeight = maxY > 0 ? maxY : 0;
         maxRad = maxAbsX;
-    }
+    } // End of arch mode transformation block
     
     // Duplicate structure for array mode (tunnel/tube)
     if (state.arrayCount > 1 && state.orientation === 'vertical') {
@@ -6598,11 +6658,7 @@ function solveLinkage(foldAngle) {
                 bolts.push(newBolt);
             });
         }
-        
-        // Update maxRad to account for array depth if needed
-        const arrayDepth = (state.arrayCount - 1) * spacing + structureDepth;
-        // maxRad is for X direction, so we don't need to update it for Z depth
-    }
+    } // End of array duplication block
 
     // Build StructureGeometry from the generated beams for panel placement
     const structureGeometry = buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight);
@@ -7794,76 +7850,264 @@ function calculateArchLayout(canopy, config, data) {
 }
 
 /**
- * Generates support beams from the outer upper vertical pivot points
- * Support beams extend outward from the pivot, aligned with the vertical upright axis
+ * Generates support beams from the outer upper (TOP ring) pivot points
+ * Support beams extend outward from the pivot, with fold angle pivoting around the connection point
+ * These beams follow the structure as it folds by using actual pivot positions from structure data
+ * Handles both regular modules AND cap uprights when enabled
  * @param {Object} canopy - Canopy area information
  * @param {Object} config - Solar panel configuration
+ * @param {Object} data - Structure data containing beams with actual positions
  * @returns {Beam3D[]} Array of support beams
  */
-function generateSupportBeams(canopy, config) {
-    const beams = [];
+function generateSupportBeams(canopy, config, data) {
+    const supportBeams = [];
     
-    if (!canopy || !canopy.center) return beams;
+    if (!data || !data.beams || data.beams.length === 0) return supportBeams;
     
-    // Support beam dimensions (smaller than main beams)
-    const beamWidth = 1.5;
-    const beamThickness = 1.5;
-    const supportColor = {r: 90, g: 90, b: 95}; // Gray for steel/aluminum
+    // Support beam dimensions from config (user-editable)
+    const beamWidth = config.supportBeamW || 3.5;
+    const beamThickness = config.supportBeamT || 1.5;
+    const woodColor = WOOD_COLOR; // Same color as other beams
     
     // Get configuration values
     const beamLength = config.supportBeamLength || 96;  // 8 feet default
     const foldAngle = degToRad(config.supportBeamFoldAngle || 0);  // 0 = horizontal
     const rotationOffset = degToRad(config.supportBeamRotation || 0);
-    const offsetH = config.supportBeamOffsetH !== undefined ? config.supportBeamOffsetH : -120;  // Horizontal offset from pivot
-    const offsetV = config.supportBeamOffsetV || 0;  // Vertical offset from pivot
+    const offsetH = config.supportBeamOffsetH !== undefined ? config.supportBeamOffsetH : -120;
+    const offsetV = config.supportBeamOffsetV || 0;
     
-    // Number of supports based on module count
-    const numSupports = state.modules;
-    const angleStep = (2 * Math.PI) / numSupports;
+    // Collect all pivot points we need support beams for
+    const pivotPoints = [];
     
-    // Default offset: align with vertical uprights (half module offset from center pivots)
-    const verticalAlignOffset = angleStep / 2;
+    // Find max Y (top height) from all beams, excluding support beams from previous calculations
+    let maxY = 0;
+    const structureBeams = data.beams.filter(b => b.stackType !== 'support-beam');
     
-    // Find the outer upper pivot positions from the structure
-    const outerRadius = canopy.maxRadius || 100;
-    const pivotHeight = canopy.topHeight || 50;
+    structureBeams.forEach(beam => {
+        if (beam.p1 && beam.p1.y > maxY) maxY = beam.p1.y;
+        if (beam.p2 && beam.p2.y > maxY) maxY = beam.p2.y;
+    });
     
-    // Create support beams radiating from each pivot point
-    for (let i = 0; i < numSupports; i++) {
-        // Calculate angle for this support (aligned with vertical uprights)
-        const baseAngle = i * angleStep + verticalAlignOffset + rotationOffset;
+    // Strategy 1: Get outer pivots from horizontal-top beams (most reliable)
+    const topBeams = structureBeams.filter(b => b.stackType && b.stackType.startsWith('horizontal-top'));
+    const moduleOuterPivots = new Map();
+    
+    topBeams.forEach(beam => {
+        const modIdx = beam.moduleIndex;
+        if (modIdx === undefined || modIdx < 0) return;
         
-        // Pivot point position (outer upper pivot)
-        // Apply horizontal offset radially outward
-        const pivotX = canopy.center.x + (outerRadius + offsetH) * Math.cos(baseAngle);
-        const pivotY = pivotHeight + offsetV;
-        const pivotZ = canopy.center.z + (outerRadius + offsetH) * Math.sin(baseAngle);
+        [beam.p1, beam.p2].forEach(p => {
+            if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+            const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+            if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
+                moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
+            }
+        });
+    });
+    
+    // Strategy 2: If no/few top beams, also try vertical/fixed beams - find TOP outer points
+    // This helps when structure is at different fold angles
+    if (moduleOuterPivots.size < state.modules) {
+        const vertBeams = structureBeams.filter(b => 
+            b.stackType === 'vertical' || b.stackType === 'fixed-beam'
+        );
         
-        // Calculate beam direction based on fold angle
-        // Fold angle: 0 = horizontal outward, positive = tilting down, negative = tilting up
-        const outwardDirX = Math.cos(baseAngle);
-        const outwardDirZ = Math.sin(baseAngle);
+        vertBeams.forEach(beam => {
+            const modIdx = beam.moduleIndex;
+            if (modIdx === undefined || modIdx < 0) return;
+            
+            [beam.p1, beam.p2].forEach(p => {
+                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+                const current = moduleOuterPivots.get(modIdx);
+                // Prioritize top Y, then outer radius
+                if (!current || p.y > current.y || (Math.abs(p.y - current.y) < 1 && radius > current.radius)) {
+                    moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
+                }
+            });
+        });
+    }
+    
+    // Strategy 3: If still not enough, use horizontal-bottom beams projected to top
+    if (moduleOuterPivots.size < state.modules) {
+        const bottomBeams = structureBeams.filter(b => b.stackType && b.stackType.startsWith('horizontal-bottom'));
+        
+        bottomBeams.forEach(beam => {
+            const modIdx = beam.moduleIndex;
+            if (modIdx === undefined || modIdx < 0) return;
+            if (moduleOuterPivots.has(modIdx)) return; // Don't overwrite existing
+            
+            [beam.p1, beam.p2].forEach(p => {
+                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+                if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
+                    // Project to top Y
+                    moduleOuterPivots.set(modIdx, { x: p.x, y: maxY, z: p.z, radius, moduleIndex: modIdx, isCap: false });
+                }
+            });
+        });
+    }
+    
+    // Strategy 4: If still not enough, use ANY horizontal beams
+    if (moduleOuterPivots.size < state.modules) {
+        const anyHorizBeams = structureBeams.filter(b => 
+            b.stackType && b.stackType.startsWith('horizontal')
+        );
+        
+        anyHorizBeams.forEach(beam => {
+            const modIdx = beam.moduleIndex;
+            if (modIdx === undefined || modIdx < 0) return;
+            if (moduleOuterPivots.has(modIdx)) return; // Don't overwrite
+            
+            [beam.p1, beam.p2].forEach(p => {
+                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+                if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
+                    // Use actual Y, preferring higher positions
+                    const current = moduleOuterPivots.get(modIdx);
+                    if (!current || p.y > current.y || (Math.abs(p.y - current.y) < 1 && radius > current.radius)) {
+                        moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
+                    }
+                }
+            });
+        });
+    }
+    
+    // Add regular module pivots to the list
+    moduleOuterPivots.forEach(pivot => {
+        pivotPoints.push(pivot);
+    });
+    
+    // Handle CAP UPRIGHTS - these need a separate support beam
+    if (state.archCapUprights) {
+        const capBeams = structureBeams.filter(b => 
+            b.stackType === 'vertical-cap' || b.stackType === 'fixed-beam-cap'
+        );
+        
+        if (capBeams.length > 0) {
+            // Find the outer top point of cap beams
+            let capPivot = null;
+            let capMaxRadius = 0;
+            let capMaxY = 0;
+            
+            capBeams.forEach(beam => {
+                [beam.p1, beam.p2].forEach(p => {
+                    if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+                    const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+                    // Prioritize top Y, then outer radius
+                    if (p.y > capMaxY || (Math.abs(p.y - capMaxY) < 1 && radius > capMaxRadius)) {
+                        capMaxY = p.y;
+                        capMaxRadius = radius;
+                        capPivot = { ...p, radius, moduleIndex: -1, isCap: true };
+                    }
+                });
+            });
+            
+            if (capPivot && !isNaN(capPivot.x) && !isNaN(capPivot.y) && !isNaN(capPivot.z)) {
+                pivotPoints.push(capPivot);
+            }
+        } else {
+            // Fallback: if no cap beams found but cap uprights enabled, 
+            // look for beams at module 0 that are on the opposite side (negative angle)
+            // Cap modules are typically at the opposite end of module 0
+            const module0Pivots = Array.from(moduleOuterPivots.values()).filter(p => p.moduleIndex === 0);
+            if (module0Pivots.length > 0) {
+                const ref = module0Pivots[0];
+                // Find the opposite side - check all beams for the most negative angle from module 0's angle
+                const refAngle = Math.atan2(ref.z, ref.x);
+                let bestCapPivot = null;
+                let bestAngleDiff = 0;
+                
+                structureBeams.forEach(beam => {
+                    [beam.p1, beam.p2].forEach(p => {
+                        if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
+                        const angle = Math.atan2(p.z, p.x);
+                        let angleDiff = Math.abs(angle - refAngle);
+                        // Normalize to [0, PI]
+                        if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                        // We want positions close to PI away from module 0 (opposite side)
+                        if (angleDiff > Math.PI * 0.8 && p.y > maxY - 5) {
+                            const radius = Math.sqrt(p.x * p.x + p.z * p.z);
+                            if (!bestCapPivot || radius > bestCapPivot.radius) {
+                                bestCapPivot = { ...p, radius, moduleIndex: -1, isCap: true };
+                                bestAngleDiff = angleDiff;
+                            }
+                        }
+                    });
+                });
+                
+                if (bestCapPivot) {
+                    pivotPoints.push(bestCapPivot);
+                }
+            }
+        }
+    }
+    
+    // Calculate center point
+    let centerX = 0, centerZ = 0;
+    if (canopy && canopy.center) {
+        centerX = canopy.center.x;
+        centerZ = canopy.center.z;
+    } else if (pivotPoints.length > 0) {
+        pivotPoints.forEach(p => { centerX += p.x; centerZ += p.z; });
+        centerX /= pivotPoints.length;
+        centerZ /= pivotPoints.length;
+    }
+    
+    // Create support beams from each pivot point
+    pivotPoints.forEach((pivot, index) => {
+        // Validate pivot position
+        if (!pivot || isNaN(pivot.x) || isNaN(pivot.y) || isNaN(pivot.z)) return;
+        
+        // Calculate angle from center for this pivot
+        const dx = pivot.x - centerX;
+        const dz = pivot.z - centerZ;
+        const distFromCenter = Math.sqrt(dx * dx + dz * dz);
+        
+        // Skip if pivot is at the center (would cause division issues)
+        if (distFromCenter < 0.1) return;
+        
+        const baseAngle = Math.atan2(dz, dx);
+        const effectiveAngle = baseAngle + rotationOffset;
+        
+        // The PIVOT POINT is where the support beam connects to the structure
+        const pivotX = pivot.x;
+        const pivotY = pivot.y + offsetV;
+        const pivotZ = pivot.z;
+        
+        // Calculate beam direction - RADIALLY OUTWARD from center
+        const outwardDirX = Math.cos(effectiveAngle);
+        const outwardDirZ = Math.sin(effectiveAngle);
         
         // Apply fold angle - beam tilts in the vertical plane containing the radial direction
         const horizontalComponent = Math.cos(foldAngle);
-        const verticalComponent = -Math.sin(foldAngle);  // Negative so positive fold tilts down
+        const verticalComponent = -Math.sin(foldAngle);
         
-        // End point of support beam
-        const endX = pivotX + beamLength * outwardDirX * horizontalComponent;
-        const endY = pivotY + beamLength * verticalComponent;
-        const endZ = pivotZ + beamLength * outwardDirZ * horizontalComponent;
+        // Start point: pivot offset along beam direction by offsetH
+        const startX = pivotX + offsetH * outwardDirX * horizontalComponent;
+        const startY = pivotY + offsetH * verticalComponent;
+        const startZ = pivotZ + offsetH * outwardDirZ * horizontalComponent;
         
-        const start = { x: pivotX, y: pivotY, z: pivotZ };
+        // End point: start + beamLength along direction
+        const endX = startX + beamLength * outwardDirX * horizontalComponent;
+        const endY = startY + beamLength * verticalComponent;
+        const endZ = startZ + beamLength * outwardDirZ * horizontalComponent;
+        
+        // Validate calculated positions
+        if (isNaN(startX) || isNaN(startY) || isNaN(startZ) || 
+            isNaN(endX) || isNaN(endY) || isNaN(endZ)) return;
+        
+        const start = { x: startX, y: startY, z: startZ };
         const end = { x: endX, y: endY, z: endZ };
         
-        beams.push(new Beam3D(start, end, beamWidth, beamThickness, supportColor, {
-            moduleIndex: -1,
-            stackType: 'solar-support',
-            stackId: i
+        supportBeams.push(new Beam3D(start, end, beamWidth, beamThickness, woodColor, {
+            moduleIndex: pivot.isCap ? -1 : pivot.moduleIndex,
+            stackType: 'support-beam',
+            stackId: pivot.isCap ? -1 : index
         }));
-    }
+    });
     
-    return beams;
+    return supportBeams;
 }
 
 /**
@@ -7997,7 +8241,7 @@ function calculateSolarPanels(data) {
     // Generate support beams if enabled (horizontal mode only)
     let supportBeams = [];
     if (config.showSupportBeams && !isVertical) {
-        supportBeams = generateSupportBeams(canopy, config);
+        supportBeams = generateSupportBeams(canopy, config, data);
     }
     
     return { panels, supportBeams, canopy };
@@ -8251,8 +8495,31 @@ function updateHUD(data) {
     uiStats.bbCostUnit.innerText = '$' + formatNumber(state.costBolt, 2);
     uiStats.bbCost.innerText = '$' + formatNumber(boltCost, 0);
     
-    // Update structure subtotal
-    uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureSubtotal, 2);
+    // Update structure subtotal (will be updated again below if support beams are added)
+    let structureTotal = structureSubtotal;
+    uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureTotal, 2);
+    
+    // Calculate support beam cost if enabled
+    let supportBeamCount = 0;
+    let supportBeamCost = 0;
+    if (state.solarPanels.showSupportBeams && data.supportBeams && data.supportBeams.length > 0) {
+        supportBeamCount = data.supportBeams.length;
+        // Use vertical beam cost as base for support beams (similar lumber)
+        const supportCostPerBeam = state.costVBeam * (state.solarPanels.supportBeamLength / (state.vLengthFt * 12));
+        supportBeamCost = supportBeamCount * supportCostPerBeam;
+        
+        uiStats.bSupport.innerText = supportBeamCount;
+        uiStats.bSupportCostUnit.innerText = '$' + formatNumber(supportCostPerBeam, 2);
+        uiStats.bSupportCost.innerText = '$' + formatNumber(supportBeamCost, 0);
+        uiStats.bSupportSpec.textContent = `(${state.solarPanels.supportBeamW}×${state.solarPanels.supportBeamT}")`;
+        uiStats.bSupportRow.style.display = 'block';
+        
+        // Add to structure total
+        structureTotal += supportBeamCost;
+        uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureTotal, 2);
+    } else {
+        uiStats.bSupportRow.style.display = 'none';
+    }
     
     // Calculate solar panel cost if panels are enabled
     let solarPanelCount = 0;
@@ -8272,8 +8539,8 @@ function updateHUD(data) {
         uiStats.bSolarSubtotalRow.style.display = 'none';
     }
     
-    // Calculate total cost
-    const totalCost = structureSubtotal + solarCost;
+    // Calculate total cost (structure + support beams + solar)
+    const totalCost = structureTotal + solarCost;
     uiStats.bt.innerText = formatNumber(totalCost, 2);
 
     // Calculate structure weight (lbs) based on volume and density
@@ -11006,7 +11273,7 @@ const SOLAR_PANEL_KEYS = [
     'radialRotation', 'radialLateralOffset', 'pinwheelAngle',
     'spiralArmCount', 'spiralSecondaryEnabled', 'spiralSecondaryRadialOffset', 'spiralSecondaryLateralOffset', 'spiralSecondaryPinwheel', 'spiralSecondaryRotation',
     'spiralArmRadialStep', 'spiralArmLateralStep', 'spiralArmPinwheelStep', 'spiralArmRotationStep',
-    'showSupportBeams', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
+    'showSupportBeams', 'supportBeamW', 'supportBeamT', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
     'supportBeamOffsetH', 'supportBeamOffsetV', 'panelLift',
     'archPanelOffset', 'archPanelSlide', 'archPanelSeparation',
     'archWallFaces', 'sideWallPanels', 'topPanels', 'topPanelRows', 'topPanelCols'
@@ -11168,6 +11435,8 @@ function applyV30Config(config) {
         
         if (p.support) {
             if (p.support.show !== undefined) sp.showSupportBeams = p.support.show;
+            if (p.support.width !== undefined) sp.supportBeamW = p.support.width;
+            if (p.support.thickness !== undefined) sp.supportBeamT = p.support.thickness;
             if (p.support.rotation !== undefined) sp.supportBeamRotation = p.support.rotation;
             if (p.support.length !== undefined) sp.supportBeamLength = p.support.length;
             if (p.support.foldAngle !== undefined) sp.supportBeamFoldAngle = p.support.foldAngle;
@@ -11356,6 +11625,8 @@ function getConfigSnapshot(includeMetadata = false) {
             },
             support: {
                 show: state.solarPanels.showSupportBeams,
+                width: state.solarPanels.supportBeamW,
+                thickness: state.solarPanels.supportBeamT,
                 rotation: state.solarPanels.supportBeamRotation,
                 length: state.solarPanels.supportBeamLength,
                 foldAngle: state.solarPanels.supportBeamFoldAngle,
@@ -11733,6 +12004,11 @@ function applyConfig(config, updateUI = true) {
         if (chkSupportBeams) chkSupportBeams.checked = sp.showSupportBeams;
         const supportBeamControls = document.getElementById('support-beam-controls');
         if (supportBeamControls) supportBeamControls.style.display = sp.showSupportBeams ? 'block' : 'none';
+        
+        const nbSupportW = document.getElementById('nb-support-w');
+        const nbSupportT = document.getElementById('nb-support-t');
+        if (nbSupportW) nbSupportW.value = sp.supportBeamW || 3.5;
+        if (nbSupportT) nbSupportT.value = sp.supportBeamT || 1.5;
         
         const slSupportLength = document.getElementById('sl-support-length');
         const nbSupportLength = document.getElementById('nb-support-length');
@@ -14431,6 +14707,24 @@ document.getElementById('chk-support-beams').onchange = e => {
     requestRender();
 };
 
+// Support beam dimension controls
+document.getElementById('nb-support-w').onchange = e => {
+    let val = parseFloat(e.target.value) || 3.5;
+    val = Math.max(0.5, Math.min(12, val));
+    state.solarPanels.supportBeamW = val;
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+document.getElementById('nb-support-t').onchange = e => {
+    let val = parseFloat(e.target.value) || 1.5;
+    val = Math.max(0.5, Math.min(12, val));
+    state.solarPanels.supportBeamT = val;
+    e.target.value = val;
+    invalidateGeometryCache();
+    requestRender();
+};
+
 // Support beam length controls
 document.getElementById('sl-support-length').oninput = e => {
     const val = parseFloat(e.target.value);
@@ -14779,6 +15073,18 @@ document.getElementById('btn-anim-reverse').onclick = () => {
     updateAnimationStatus();
     showToast(`Animation direction: ${state.animation.direction > 0 ? 'Expanding' : 'Collapsing'}`, 'info');
 };
+
+// Fold/Unfold buttons (similar to Actuator Open/Close)
+document.getElementById('btn-anim-fold').onclick = () => {
+    const closedAngle = getOptimalClosedAngleForAnimation();
+    animateActuatorFold(closedAngle, 3000);
+    showToast('Folding to closed position...', 'info');
+};
+document.getElementById('btn-anim-unfold').onclick = () => {
+    const openAngle = MIN_FOLD_ANGLE;
+    animateActuatorFold(openAngle, 3000);
+    showToast('Unfolding to open position...', 'info');
+};
 document.getElementById('sl-anim-speed').addEventListener('input', e => {
     state.animation.speed = parseFloat(e.target.value);
 });
@@ -15079,7 +15385,7 @@ function updateBracketHoleDistance() {
 // Initialize solar panel arch mode UI
 updateArchWallFacesUI();
 
-// Load saved configuration if available
+// Load configuration: localStorage first, then default JSON fallback
 const saved = localStorage.getItem('linkageLab_config');
 if (saved) {
     try {
@@ -15096,6 +15402,21 @@ if (saved) {
         // Clear corrupted config
         localStorage.removeItem('linkageLab_config');
     }
+} else {
+    // No localStorage - load default config from JSON file
+    fetch('configs/starshade-default.json')
+        .then(response => {
+            if (!response.ok) throw new Error('Default config not found');
+            return response.json();
+        })
+        .then(config => {
+            console.log('Loading default configuration from configs/starshade-default.json...');
+            applyConfig(config);
+            requestRender();
+        })
+        .catch(e => {
+            console.log('No default config found at configs/starshade-default.json, using hardcoded defaults');
+        });
 }
 
 // Emergency localStorage clear: Press Ctrl+Shift+Delete while focused on page
@@ -15168,6 +15489,124 @@ Object.keys(idMap).forEach(k => {
 window.addEventListener('resize', debounce(() => {
     requestRender();
 }, 100));
+
+// Custom number input spin buttons
+(function() {
+    function createSpinButtons(input) {
+        // Skip if already has custom buttons
+        if (input.parentElement.classList.contains('number-spin-wrapper')) {
+            return;
+        }
+
+        // Preserve inline width if present
+        const inlineWidth = input.style.width;
+        
+        // Determine button width based on input width
+        // Smaller inputs get smaller buttons
+        let buttonWidth = 50; // Default
+        if (inlineWidth) {
+            const widthMatch = inlineWidth.match(/(\d+)px/);
+            if (widthMatch) {
+                const widthValue = parseInt(widthMatch[1]);
+                if (widthValue <= 60) {
+                    buttonWidth = 24; // Very compact
+                } else if (widthValue <= 80) {
+                    buttonWidth = 28; // Compact
+                } else {
+                    buttonWidth = 50; // Normal
+                }
+            }
+        }
+        
+        // Create wrapper
+        const wrapper = document.createElement('div');
+        wrapper.className = 'number-spin-wrapper';
+        if (inlineWidth) {
+            wrapper.style.width = inlineWidth;
+            // Input should be full width, padding-right will prevent text from going under buttons
+            input.style.width = '100%';
+            input.style.paddingRight = buttonWidth + 'px';
+        } else {
+            // For inputs without explicit width, just set padding
+            input.style.paddingRight = buttonWidth + 'px';
+        }
+        
+        // Create buttons container
+        const buttonsContainer = document.createElement('div');
+        buttonsContainer.className = 'number-spin-buttons';
+        
+        // Create up button
+        const upBtn = document.createElement('button');
+        upBtn.type = 'button';
+        upBtn.className = 'number-spin-btn up';
+        upBtn.setAttribute('aria-label', 'Increase value');
+        upBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            input.stepUp();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        
+        // Create down button
+        const downBtn = document.createElement('button');
+        downBtn.type = 'button';
+        downBtn.className = 'number-spin-btn down';
+        downBtn.setAttribute('aria-label', 'Decrease value');
+        downBtn.onclick = function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            input.stepDown();
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        };
+        
+        // Assemble
+        buttonsContainer.appendChild(upBtn);
+        buttonsContainer.appendChild(downBtn);
+        
+        // Wrap the input
+        input.parentNode.insertBefore(wrapper, input);
+        wrapper.appendChild(input);
+        wrapper.appendChild(buttonsContainer);
+    }
+    
+    // Initialize all existing number inputs
+    function initSpinButtons() {
+        const numberInputs = document.querySelectorAll('input[type="number"]:not(.number-spin-wrapper input)');
+        numberInputs.forEach(createSpinButtons);
+    }
+    
+    // Run on DOM ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSpinButtons);
+    } else {
+        initSpinButtons();
+    }
+    
+    // Also handle dynamically added inputs (MutationObserver)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            mutation.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1) { // Element node
+                    if (node.tagName === 'INPUT' && node.type === 'number') {
+                        createSpinButtons(node);
+                    } else {
+                        const numberInputs = node.querySelectorAll && node.querySelectorAll('input[type="number"]:not(.number-spin-wrapper input)');
+                        if (numberInputs) {
+                            numberInputs.forEach(createSpinButtons);
+                        }
+                    }
+                }
+            });
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+})();
 
 </script>
 

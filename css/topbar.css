@@ -81,11 +81,11 @@
 .topbar .app-title,
 .toolbar .app-title {
     margin: 0;
-    font-size: 0.85rem;
+    font-size: 1.1rem;
     font-weight: 700;
     font-family: var(--font-display);
     color: var(--clr-primary);
-    letter-spacing: 0.5px;
+    letter-spacing: 1px;
     white-space: nowrap;
     text-shadow: var(--glow-primary);
 }
@@ -179,34 +179,46 @@
 .topbar-anim {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 .topbar-anim button {
-    padding: 4px 8px;
-    font-size: 0.75rem;
+    padding: 6px 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
     background: var(--bg-input);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
     border-radius: var(--radius-sm);
     cursor: pointer;
     transition: all var(--transition-fast);
+    font-family: var(--font-display);
+    letter-spacing: 0.5px;
 }
 
 .topbar-anim button:hover {
     border-color: var(--clr-primary);
     color: var(--clr-primary);
+    background: var(--space-400);
+    box-shadow: var(--glow-subtle);
+}
+
+.topbar-anim button:active {
+    transform: translateY(1px);
 }
 
 .topbar-anim input[type="range"] {
-    width: 80px;
+    min-width: 80px;
+    flex: 1 1 auto;
+    max-width: 200px;
     height: 4px;
 }
 
 .topbar-anim-status {
-    font-size: 0.65rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
     min-width: 60px;
+    font-weight: 500;
 }
 
 /* Topbar checkboxes and number inputs */
@@ -226,23 +238,51 @@
 }
 
 .topbar-chk input[type="number"] {
-    width: 40px;
-    padding: 2px 4px;
-    font-size: 0.65rem;
+    width: 50px;
+    padding: 4px 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
     background: var(--bg-input);
     border: 1px solid var(--border-light);
     color: var(--text-primary);
     border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
 }
 
 /* Sun position controls */
 .topbar-sun {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
 }
 
 .topbar-sun input[type="range"] {
-    width: 50px;
+    min-width: 80px;
+    flex: 1 1 auto;
+    max-width: 200px;
     height: 4px;
+}
+
+/* Topbar labels and text */
+.topbar-center > div > span,
+.topbar-center label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    font-family: var(--font-display);
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+/* Fold angle section */
+.topbar-center > div:first-child {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topbar-center > div:first-child input[type="range"] {
+    min-width: 100px;
+    flex: 1 1 auto;
+    max-width: 250px;
 }

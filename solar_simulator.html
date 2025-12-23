@@ -25518,6 +25518,43 @@
             }
             
             if (!skipDefaultSetup) {
+                let configLoaded = false;
+                let attemptingDefaultLoad = false;
+                
+                // Check for saved unified config in localStorage first
+                const savedUnifiedConfig = localStorage.getItem('solarUnifiedConfig');
+                if (savedUnifiedConfig) {
+                    try {
+                        const config = JSON.parse(savedUnifiedConfig);
+                        applyUnifiedConfig(config);
+                        console.log('Loaded saved unified config from localStorage');
+                        configLoaded = true;
+                    } catch (e) {
+                        console.error('Failed to load saved unified config:', e);
+                    }
+                }
+                
+                // If no localStorage config, try to load default config from JSON file (async)
+                if (!configLoaded) {
+                    attemptingDefaultLoad = true;
+                    fetch('configs/simulator-default.json')
+                        .then(response => {
+                            if (!response.ok) throw new Error('Default config not found');
+                            return response.json();
+                        })
+                        .then(config => {
+                            console.log('Loading default configuration from configs/simulator-default.json...');
+                            applyUnifiedConfig(config);
+                            render();
+                            configLoaded = true;
+                            attemptingDefaultLoad = false;
+                        })
+                        .catch(e => {
+                            console.log('No default config found at configs/simulator-default.json');
+                            attemptingDefaultLoad = false;
+                        });
+                }
+                
                 // Check if returning from simulator with saved state (legacy)
                 const savedState = localStorage.getItem('solarBuilderState');
                 if (savedState) {
@@ -25552,17 +25589,24 @@
                         systemValidated = true;
                         
                         render();
+                        configLoaded = true;
                         // Don't remove state - keep it for future returns
                     } catch (e) {
                         console.error('Failed to restore builder state:', e);
                         setupDefaultLayout();
                     }
-                } else {
-                    // No circuit loaded - show message to import from designer
-                    showHint("📥 No Circuit Loaded", 
-                        "This simulator requires a circuit design. " +
-                        "Open the Solar Circuit Designer to create a circuit, then click 'Simulate' to export it here.");
                 }
+                
+                // Only show "No Circuit Loaded" message if nothing was loaded
+                // Wait a bit for async default config load to complete
+                setTimeout(() => {
+                    if (!configLoaded && !savedState && !attemptingDefaultLoad) {
+                        // No circuit loaded - show message to import from designer
+                        showHint("📥 No Circuit Loaded", 
+                            "This simulator requires a circuit design. " +
+                            "Open the Solar Circuit Designer to create a circuit, then click 'Simulate' to export it here.");
+                    }
+                }, 500); // Give async fetch 500ms to complete
             }
             
             // Show right sidebar (library/inspector) - open by default in simulator
