@@ -414,11 +414,49 @@
         <div class="group collapsed">
             <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Material Costs</div>
             <div class="group-content">
-                <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">Per-beam pricing (based on current lengths)</div>
+                <!-- Auto Lumber Pricing Toggle -->
+                <div style="margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border-light);">
+                    <label class="chk-label" style="font-size:0.75rem; font-weight:600;">
+                        <input type="checkbox" id="chk-auto-lumber-pricing" checked> Auto-scale lumber by volume
+                    </label>
+                    <div style="font-size:0.65rem; color:var(--text-muted); margin-top:4px;">
+                        When enabled, beam costs scale proportionally based on volume
+                    </div>
+                </div>
+                
+                <!-- Reference Beam Pricing (for auto mode) -->
+                <div id="ref-beam-pricing" style="margin-bottom:10px; padding:8px; background:var(--bg-input); border-radius:4px;">
+                    <div style="font-size:0.7rem; color:var(--text-secondary); margin-bottom:6px; font-weight:600;">Reference Beam (for volume scaling)</div>
+                    <div style="display:grid; grid-template-columns: auto 1fr auto 1fr; gap:4px 6px; align-items:center; font-size:0.68rem;">
+                        <span>W×T:</span>
+                        <div style="display:flex; gap:2px; align-items:center;">
+                            <input type="number" id="nb-ref-beam-w" value="3.5" step="0.25" min="0.5" max="12" style="width:42px; font-size:0.7rem;" title="Reference beam width">
+                            <span style="color:var(--text-muted);">×</span>
+                            <input type="number" id="nb-ref-beam-t" value="1.5" step="0.25" min="0.5" max="12" style="width:42px; font-size:0.7rem;" title="Reference beam thickness">
+                            <span style="color:var(--text-muted);">"</span>
+                        </div>
+                        <span>Len:</span>
+                        <div style="display:flex; gap:2px; align-items:center;">
+                            <input type="number" id="nb-ref-beam-len" value="8" step="1" min="1" max="24" style="width:38px; font-size:0.7rem;" title="Reference beam length">
+                            <span style="color:var(--text-muted);">'</span>
+                        </div>
+                        <span>Price:</span>
+                        <div style="display:flex; gap:2px; align-items:center;">
+                            <span style="color:var(--text-muted);">$</span>
+                            <input type="number" id="nb-ref-beam-price" value="5.48" step="0.01" min="0.01" style="width:52px; font-size:0.7rem;" title="Reference beam price">
+                        </div>
+                        <span style="grid-column: span 2; font-size:0.6rem; color:var(--text-muted); text-align:right;" id="ref-price-per-cu-in"></span>
+                    </div>
+                </div>
+                
+                <!-- Per-beam pricing (calculated or manual) -->
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px;">
+                    Per-beam pricing <span id="pricing-mode-label">(auto-calculated)</span>
+                </div>
                 <div style="display:grid; grid-template-columns: auto 1fr; gap:4px 8px; align-items:center; margin-bottom:8px;">
-                    <span style="font-size:0.7rem;">H-Beam (<span id="cost-h-length">8</span>')</span>
+                    <span style="font-size:0.7rem;">H-Beam (<span id="cost-h-length">8</span>' × <span id="cost-h-dims">3.5×1.5</span>")</span>
                     <label style="font-size:0.7rem">$ <input type="number" id="nb-cost-hbeam" value="12.00" step="0.01" style="width:60px"></label>
-                    <span style="font-size:0.7rem;">V-Beam (<span id="cost-v-length">8</span>')</span>
+                    <span style="font-size:0.7rem;">V-Beam (<span id="cost-v-length">8</span>' × <span id="cost-v-dims">1.5×2.5</span>")</span>
                     <label style="font-size:0.7rem">$ <input type="number" id="nb-cost-vbeam" value="10.00" step="0.01" style="width:60px"></label>
                 </div>
                 <div class="input-wrap" style="justify-content: space-between; flex-wrap: wrap; gap: 8px;">
@@ -471,6 +509,9 @@
             <div class="group-content">
                 <label class="chk-label">
                     <input type="checkbox" id="chk-measure"> Show Live Measurements
+                </label>
+                <label class="chk-label" style="margin-top:4px;">
+                    <input type="checkbox" id="chk-human-scale"> Show Human for Scale (6')
                 </label>
                 <div id="measure-display" style="margin-top:8px; font-size:0.85rem; color:#a8b9c9; display:none;">
                     <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
@@ -859,14 +900,6 @@
                     <input type="checkbox" id="chk-support-beams"> Enable Support Beams
                 </label>
                 <div id="support-beam-controls" style="display:none; margin-top:12px;">
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Dimensions</span><span style="font-size:0.75rem; color:#8899a6;">W×T</span></div>
-                        <div class="input-wrap" style="display:flex; gap:4px; align-items:center;">
-                            <input type="number" id="nb-support-w" min="0.5" max="12" step="0.25" value="3.5" style="width:60px;">
-                            <span style="color:#8899a6;">×</span>
-                            <input type="number" id="nb-support-t" min="0.5" max="12" step="0.25" value="1.5" style="width:60px;">
-                        </div>
-                    </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
@@ -1361,14 +1394,6 @@
                     <span id="bom-b-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-b-cost" style="text-align: right;">$0</span>
                 </div>
-                <div id="bom-support-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
-                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
-                        <span class="hud-val" id="bom-support">0</span>
-                        <span>Support Beams <span id="bom-support-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
-                        <span id="bom-support-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
-                        <span id="bom-support-cost" style="text-align: right;">$0</span>
-                    </div>
-                </div>
                 <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
                     <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
                         <span class="hud-val" id="bom-solar">0</span>
@@ -1603,6 +1628,8 @@ const threeRenderer = {
     structureGroup: null,  // Wrapper group for structure meshes (beams, brackets, bolts - for structure rotation)
     panelGroupRoot: null,  // Root group for panels (separate from structure rotation)
     actuatorLineGroup: null,  // Group for actuator visualization lines
+    humanScaleGroup: null,    // Group for human scale reference figure
+    measurementGroup: null,   // Group for 3D measurement lines
     gridHelper: null       // Grid helper mesh
 };
 
@@ -1706,9 +1733,17 @@ function initThreeJS() {
     // Create group for actuator visualization lines
     threeRenderer.actuatorLineGroup = new THREE.Group();
     
+    // Create group for human scale reference figure
+    threeRenderer.humanScaleGroup = new THREE.Group();
+    
+    // Create group for 3D measurement lines
+    threeRenderer.measurementGroup = new THREE.Group();
+    
     threeRenderer.mainScene.add(threeRenderer.structureGroup);
     threeRenderer.mainScene.add(threeRenderer.panelGroupRoot);
     threeRenderer.mainScene.add(threeRenderer.actuatorLineGroup);
+    threeRenderer.mainScene.add(threeRenderer.humanScaleGroup);
+    threeRenderer.mainScene.add(threeRenderer.measurementGroup);
     
     // Create wrapper groups for ortho scenes (structure rotation for beams/brackets/bolts only)
     threeRenderer.topStructureGroup = new THREE.Group();
@@ -1767,15 +1802,24 @@ function updateMainCamera(structureCenter = null) {
     const y = cam.dist * Math.sin(cam.pitch);
     const z = cam.dist * Math.cos(cam.yaw) * Math.cos(cam.pitch);
     
-    // Position camera relative to structure center
+    // Pan offsets - use same calculation as original for backward compatibility
+    const panOffsetX = cam.panX * 0.5;
+    const panOffsetY = cam.panY * 0.5;
+    
+    // Position camera relative to structure center with pan applied
     threeRenderer.mainCamera.position.set(
-        sc.x + x - cam.panX * 0.5,
-        sc.y + y + cam.panY * 0.5,
+        sc.x + x - panOffsetX,
+        sc.y + y + panOffsetY,
         sc.z + z
     );
     
-    // Look at structure center
-    threeRenderer.mainCamera.lookAt(sc.x, sc.y, sc.z);
+    // Apply same pan offset to lookAt target so view doesn't rotate when zooming
+    // This is the key fix - both camera and target shift together when panning
+    threeRenderer.mainCamera.lookAt(
+        sc.x - panOffsetX,
+        sc.y + panOffsetY,
+        sc.z
+    );
     
     // Update aspect ratio
     const viewport = document.getElementById('viewport');
@@ -2739,20 +2783,23 @@ function createBracketMesh(bracket) {
     // For now, the bracket structure (U-shape) is correctly represented
     
     // Position the bracket group
-    // The bracket should rest on the beam, so we need to position it correctly
-    // The pivot is at the center between two crossing beams
-    // For bottom ring: bracket bottom should be at pivot.y + hT/2 (top of upper beam)
-    // For top ring: bracket bottom should be at pivot.y - hT/2 (top of upper beam, but inverted)
-    const hT = state.hBeamT || 1.5;
-    let bracketY = bracket.bottomY || bracket.pos.y;
+    // For arch mode, use bottomPos if available (transformed position with proper offset)
+    // For cylinder mode, use the original bottomY calculation
+    let bracketX, bracketY, bracketZ;
     
-    // The bracket's local origin is at the bottom center of the bottom plate
-    // Position it so the bottom plate sits on top of the horizontal beam
-    // The bracket should be centered on the pivot point in X and Z
-    // Note: After rotation, the bracket's depth (local Z) will align with the vertical beam direction
-    // We may need to offset along the depth axis to properly center on the beam, but for now
-    // we'll position at the pivot and let the user adjust with the Z rotation slider
-    bracketGroup.position.set(bracket.pos.x, bracketY, bracket.pos.z);
+    if (bracket.bottomPos) {
+        // Arch mode: use the transformed bottom position directly
+        bracketX = bracket.bottomPos.x;
+        bracketY = bracket.bottomPos.y;
+        bracketZ = bracket.bottomPos.z;
+    } else {
+        // Cylinder mode: use pivot position with Y offset
+        bracketX = bracket.pos.x;
+        bracketY = bracket.bottomY || bracket.pos.y;
+        bracketZ = bracket.pos.z;
+    }
+    
+    bracketGroup.position.set(bracketX, bracketY, bracketZ);
     
     // Orient bracket:
     // 1. Use beamDir (the actual vertical beam direction) for bracket orientation
@@ -2762,12 +2809,66 @@ function createBracketMesh(bracket) {
     // 5. Apply manual Y-axis rotation adjustment for fine-tuning
     
     // Orient bracket based on the beam direction (patternA_dir or patternB_dir)
-    // The bracket's U-channel should align with the vertical beam direction
+    // The bracket's U-channel should align with the beam direction
     // so it can capture the beams that run through this pivot point
+    //
+    // Use different orientation strategies:
+    // - Arch mode (bottomPos exists): Use full 3D rotation matrix from transformed vectors
+    // - Cylinder mode: Use XZ plane projection with world Y as up
     
-    let yRotation = 0;
+    const isArchMode = !!bracket.bottomPos;
     
-    if (bracket.beamDir) {
+    if (isArchMode && bracket.beamDir && bracket.right) {
+        // ARCH MODE: Use full 3D rotation matrix from transformed vectors
+        // Check for valid vectors (non-zero length)
+        const beamDirMag = vMag(bracket.beamDir);
+        const rightMag = vMag(bracket.right);
+        
+        if (beamDirMag > 0.001 && rightMag > 0.001) {
+            // Normalize vectors
+            const beamDir = vNorm(bracket.beamDir);
+            const right = vNorm(bracket.right);
+            
+            // For bottom brackets: U opens "up" (away from beam stack center)
+            // For top brackets: U opens "down" (toward beam stack center)
+            // The "up" vector is cross(right, beamDir)
+            let up = vCross(right, beamDir);
+            const upMag = vMag(up);
+            
+            if (upMag > 0.001) {
+                up = vScale(up, 1/upMag); // Normalize
+                
+                // Flip up direction for top brackets
+                if (!bracket.isBottom) {
+                    up = vScale(up, -1);
+                }
+                
+                // Construct rotation matrix:
+                // Local X (width) = right
+                // Local Y (up) = up
+                // Local Z (depth) = beamDir
+                const matrix = new THREE.Matrix4();
+                matrix.set(
+                    right.x, up.x, beamDir.x, 0,
+                    right.y, up.y, beamDir.y, 0,
+                    right.z, up.z, beamDir.z, 0,
+                    0, 0, 0, 1
+                );
+                
+                // Apply the rotation from the matrix
+                bracketGroup.setRotationFromMatrix(matrix);
+                
+                // Apply manual rotation adjustment (around local Y-axis)
+                const manualYRot = (state.bracketZRotation || 0) * (Math.PI / 180);
+                if (Math.abs(manualYRot) > 0.001) {
+                    bracketGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), manualYRot);
+                }
+            }
+        }
+    } else if (bracket.beamDir) {
+        // CYLINDER MODE: Use XZ plane projection with world Y as up
+        let yRotation = 0;
+        
         // Project beam direction onto XZ plane (horizontal component)
         const beamX = bracket.beamDir.x;
         const beamZ = bracket.beamDir.z;
@@ -2777,27 +2878,21 @@ function createBracketMesh(bracket) {
             // Calculate angle from the beam's horizontal direction
             // atan2(x, z) gives angle from +Z toward +X
             yRotation = Math.atan2(beamX, beamZ);
-            
-            // The bracket's depth (local Z) should align with the beam direction
-            // At yRotation=0, bracket depth points along +Z
-            // By setting yRotation to beam angle, depth aligns with beam direction
         }
-    }
-    
-    // Apply Y rotation - bracket depth now aligns with beam direction
-    bracketGroup.rotation.y = yRotation;
-    
-    // Apply manual Y-axis rotation adjustment (around local Y-axis)
-    // This rotates the bracket around its up/down axis for fine-tuning
-    const manualYRot = (state.bracketZRotation || 0) * (Math.PI / 180);
-    if (Math.abs(manualYRot) > 0.001) {
-        bracketGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), manualYRot);
-    }
-    
-    // For top ring brackets, flip the bracket upside down (rotate 180° around local X)
-    // This keeps the U-channel facing the same direction but opens downward
-    if (!bracket.isBottom) {
-        bracketGroup.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI);
+        
+        // Apply Y rotation - bracket depth now aligns with beam direction
+        bracketGroup.rotation.y = yRotation;
+        
+        // Apply manual Y-axis rotation adjustment (around local Y-axis)
+        const manualYRot = (state.bracketZRotation || 0) * (Math.PI / 180);
+        if (Math.abs(manualYRot) > 0.001) {
+            bracketGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), manualYRot);
+        }
+        
+        // For top ring brackets, flip the bracket upside down (rotate 180° around local X)
+        if (!bracket.isBottom) {
+            bracketGroup.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI);
+        }
     }
     
     bracketGroup.userData.bracket = bracket;
@@ -3005,6 +3100,9 @@ function updateThreeJSScenes(data, structureCenter) {
             clearGroup(threeRenderer.actuatorLineGroup);
         }
     }
+    
+    // Update human scale reference figure
+    updateHumanScaleFigure(data, sc);
     
     // Update ground plane for shadows
     updateGroundPlane();
@@ -3411,8 +3509,16 @@ const state = {
     vBoltAuto: true,          // Auto-calculate V-stack bolt length based on stack
     hBoltAuto: true,          // Auto-calculate H-stack bolt length based on stack
 
-    costHBeam: 12.00,      // Cost per horizontal beam (based on length)
-    costVBeam: 10.00,      // Cost per vertical beam (based on length)
+    // Lumber pricing - volume-based auto calculation
+    autoLumberPricing: true,      // When true, beam costs scale by volume automatically
+    // Reference beam for pricing: 2"x4" nominal (1.5"x3.5" actual) x 8' at typical price
+    refBeamWidth: 3.5,            // Reference beam width (inches)
+    refBeamThick: 1.5,            // Reference beam thickness (inches)
+    refBeamLength: 8,             // Reference beam length (feet)
+    refBeamPrice: 5.48,           // Reference beam price ($)
+    
+    costHBeam: 12.00,      // Cost per horizontal beam (manual override or calculated)
+    costVBeam: 10.00,      // Cost per vertical beam (manual override or calculated)
     costBolt: 0.75,
     costBracket: 5.00,
     costSolarPanel: 150.00,
@@ -3477,6 +3583,7 @@ const state = {
     
     // New state properties
     measureMode: false,
+    showHumanScale: false,
     measurePoints: [],
     collisions: [],
     animation: {
@@ -3560,8 +3667,6 @@ const state = {
         
         // Support beams
         showSupportBeams: false,
-        supportBeamW: 3.5,        // width in inches (default 3.5")
-        supportBeamT: 1.5,        // thickness in inches (default 1.5")
         supportBeamRotation: 0,   // degrees, 0 = aligned with vertical uprights
         supportBeamLength: 96,    // inches (8 feet default)
         supportBeamFoldAngle: 0,  // degrees from vertical (0 = horizontal, 90 = pointing down)
@@ -3620,6 +3725,10 @@ const VALIDATION_RULES = {
     costBolt: { min: 0, max: 1000 },
     costBracket: { min: 0, max: 1000 },
     costSolarPanel: { min: 0, max: 10000 },
+    refBeamWidth: { min: 0.5, max: 12 },
+    refBeamThick: { min: 0.5, max: 12 },
+    refBeamLength: { min: 1, max: 24 },
+    refBeamPrice: { min: 0.01, max: 1000 },
     foldAngle: { min: 5, max: 175 }
 };
 
@@ -3708,10 +3817,6 @@ const uiStats = {
     bSolar: document.getElementById('bom-solar'), bSolarCost: document.getElementById('bom-solar-cost'),
     bSolarCostUnit: document.getElementById('bom-solar-cost-unit'),
     bSolarRow: document.getElementById('bom-solar-row'),
-    bSupport: document.getElementById('bom-support'), bSupportCost: document.getElementById('bom-support-cost'),
-    bSupportCostUnit: document.getElementById('bom-support-cost-unit'),
-    bSupportRow: document.getElementById('bom-support-row'),
-    bSupportSpec: document.getElementById('bom-support-spec'),
     bStructureSubtotal: document.getElementById('bom-structure-subtotal'),
     bSolarSubtotal: document.getElementById('bom-solar-subtotal'),
     bSolarSubtotalRow: document.getElementById('bom-solar-subtotal-row'),
@@ -4498,14 +4603,37 @@ class StructureGeometry {
             }
         });
         
-        // Transform brackets
+        // Transform brackets - position AND direction vectors
         this.brackets.forEach(bracket => {
+            // Store offset from pivot to bracket bottom BEFORE transformation
+            let bottomOffset = null;
+            if (bracket.pos && typeof bracket.bottomY === 'number') {
+                bottomOffset = { x: 0, y: bracket.bottomY - bracket.pos.y, z: 0 };
+            }
+            
+            // Transform position and directions
             if (bracket.pos) bracket.pos = transformPoint(bracket.pos);
+            if (bracket.beamDir) bracket.beamDir = transformDir(bracket.beamDir);
+            if (bracket.right) bracket.right = transformDir(bracket.right);
+            
+            // Apply transformed offset to get new bottomPos
+            if (bottomOffset && bracket.pos) {
+                const transformedOffset = transformDir(bottomOffset);
+                bracket.bottomPos = {
+                    x: bracket.pos.x + transformedOffset.x,
+                    y: bracket.pos.y + transformedOffset.y,
+                    z: bracket.pos.z + transformedOffset.z
+                };
+                bracket.bottomY = bracket.pos.y;
+            }
         });
         
-        // Transform bolts
+        // Transform bolts - position, center, start, end, AND direction
         this.bolts.forEach(bolt => {
             if (bolt.pos) bolt.pos = transformPoint(bolt.pos);
+            if (bolt.center) bolt.center = transformPoint(bolt.center);
+            if (bolt.start) bolt.start = transformPoint(bolt.start);
+            if (bolt.end) bolt.end = transformPoint(bolt.end);
             if (bolt.dir) bolt.dir = transformDir(bolt.dir);
         });
         
@@ -4833,6 +4961,61 @@ function calculatePivotSpan(foldAngle) {
     const pivotSpan = Math.sqrt(dx * dx + dy * dy);
     
     return pivotSpan;
+}
+
+/**
+ * Calculates the volume of a beam in cubic inches
+ * @param {number} width - Beam width in inches
+ * @param {number} thickness - Beam thickness in inches  
+ * @param {number} lengthFt - Beam length in feet
+ * @returns {number} Volume in cubic inches
+ */
+function calculateBeamVolume(width, thickness, lengthFt) {
+    return width * thickness * (lengthFt * INCHES_PER_FOOT);
+}
+
+/**
+ * Calculates the price per cubic inch based on reference beam
+ * @returns {number} Price per cubic inch
+ */
+function getRefPricePerCubicInch() {
+    const refVolume = calculateBeamVolume(state.refBeamWidth, state.refBeamThick, state.refBeamLength);
+    return state.refBeamPrice / refVolume;
+}
+
+/**
+ * Calculates the cost of a beam based on volume scaling from reference beam
+ * @param {number} width - Beam width in inches
+ * @param {number} thickness - Beam thickness in inches
+ * @param {number} lengthFt - Beam length in feet
+ * @returns {number} Calculated cost
+ */
+function calculateBeamCostByVolume(width, thickness, lengthFt) {
+    const beamVolume = calculateBeamVolume(width, thickness, lengthFt);
+    const pricePerCuIn = getRefPricePerCubicInch();
+    return beamVolume * pricePerCuIn;
+}
+
+/**
+ * Updates the auto-calculated beam costs if auto-pricing is enabled
+ * Called when beam dimensions or reference pricing changes
+ */
+function updateAutoBeamPricing() {
+    if (!state.autoLumberPricing) return;
+    
+    // Calculate costs based on current beam dimensions
+    const hCost = calculateBeamCostByVolume(state.hBeamW, state.hBeamT, state.hLengthFt);
+    const vCost = calculateBeamCostByVolume(state.vBeamW, state.vBeamT, state.vLengthFt);
+    
+    // Update state
+    state.costHBeam = hCost;
+    state.costVBeam = vCost;
+    
+    // Update UI inputs
+    const hInput = document.getElementById('nb-cost-hbeam');
+    const vInput = document.getElementById('nb-cost-vbeam');
+    if (hInput) hInput.value = formatNumber(hCost, 2);
+    if (vInput) vInput.value = formatNumber(vCost, 2);
 }
 
 /**
@@ -6093,6 +6276,7 @@ function solveLinkage(foldAngle) {
                     
                     return {
                         pos: pivotPos,
+                        originalPosY: pivotPos.y, // Store original Y for transformation reference
                         bottomY: bracketBottomY,
                         sideHoleY: sideHoleY,
                         actualHeight: actualHeight,
@@ -6469,11 +6653,36 @@ function solveLinkage(foldAngle) {
         });
         
         brackets.forEach(bracket => {
+            // Store the original offset from pivot to bracket bottom BEFORE transformation
+            // This offset is in the local "up" direction of the bracket
+            let bottomOffset = null;
+            if (bracket.pos && typeof bracket.bottomY === 'number') {
+                // The offset vector points from pivot to bracket bottom
+                // In cylinder mode, this is purely along the Y axis
+                bottomOffset = { x: 0, y: bracket.bottomY - bracket.pos.y, z: 0 };
+            }
+            
+            // Transform position and direction vectors
             if (bracket.pos) bracket.pos = transformPoint(bracket.pos);
             if (bracket.baseY !== undefined && bracket.pos) bracket.baseY = bracket.pos.y;
             if (bracket.beamDir) bracket.beamDir = transformDir(bracket.beamDir);
             if (bracket.right) bracket.right = transformDir(bracket.right);
             if (bracket.boltDir) bracket.boltDir = transformDir(bracket.boltDir);
+            
+            // After transformation, compute the bracket bottom position
+            // by adding the transformed offset to the transformed pos
+            if (bottomOffset && bracket.pos) {
+                const transformedOffset = transformDir(bottomOffset);
+                const bottomPos = {
+                    x: bracket.pos.x + transformedOffset.x,
+                    y: bracket.pos.y + transformedOffset.y,
+                    z: bracket.pos.z + transformedOffset.z
+                };
+                // Store as a full position, not just Y
+                bracket.bottomPos = bottomPos;
+                // Keep bottomY for backward compatibility (now represents offset along local up)
+                bracket.bottomY = bracket.pos.y; // Use pos.y as base; offset handled via bottomPos
+            }
         });
         
         bolts.forEach(bolt => {
@@ -6514,6 +6723,8 @@ function solveLinkage(foldAngle) {
         brackets.forEach(bracket => {
             if (bracket.pos) bracket.pos = groundPoint(bracket.pos);
             if (bracket.baseY !== undefined) bracket.baseY -= feetY;
+            if (typeof bracket.bottomY === 'number') bracket.bottomY -= feetY;
+            if (bracket.bottomPos) bracket.bottomPos = groundPoint(bracket.bottomPos);
         });
         
         bolts.forEach(bolt => {
@@ -6639,6 +6850,9 @@ function solveLinkage(foldAngle) {
                 const newBracket = {...bracket};
                 if (newBracket.pos) {
                     newBracket.pos = {x: bracket.pos.x, y: bracket.pos.y, z: bracket.pos.z + offsetZ};
+                }
+                if (newBracket.bottomPos) {
+                    newBracket.bottomPos = {x: bracket.bottomPos.x, y: bracket.bottomPos.y, z: bracket.bottomPos.z + offsetZ};
                 }
                 brackets.push(newBracket);
             });
@@ -7850,264 +8064,76 @@ function calculateArchLayout(canopy, config, data) {
 }
 
 /**
- * Generates support beams from the outer upper (TOP ring) pivot points
- * Support beams extend outward from the pivot, with fold angle pivoting around the connection point
- * These beams follow the structure as it folds by using actual pivot positions from structure data
- * Handles both regular modules AND cap uprights when enabled
+ * Generates support beams from the outer upper vertical pivot points
+ * Support beams extend outward from the pivot, aligned with the vertical upright axis
  * @param {Object} canopy - Canopy area information
  * @param {Object} config - Solar panel configuration
- * @param {Object} data - Structure data containing beams with actual positions
  * @returns {Beam3D[]} Array of support beams
  */
-function generateSupportBeams(canopy, config, data) {
-    const supportBeams = [];
+function generateSupportBeams(canopy, config) {
+    const beams = [];
     
-    if (!data || !data.beams || data.beams.length === 0) return supportBeams;
+    if (!canopy || !canopy.center) return beams;
     
-    // Support beam dimensions from config (user-editable)
-    const beamWidth = config.supportBeamW || 3.5;
-    const beamThickness = config.supportBeamT || 1.5;
-    const woodColor = WOOD_COLOR; // Same color as other beams
+    // Support beam dimensions (smaller than main beams)
+    const beamWidth = 1.5;
+    const beamThickness = 1.5;
+    const supportColor = {r: 90, g: 90, b: 95}; // Gray for steel/aluminum
     
     // Get configuration values
     const beamLength = config.supportBeamLength || 96;  // 8 feet default
     const foldAngle = degToRad(config.supportBeamFoldAngle || 0);  // 0 = horizontal
     const rotationOffset = degToRad(config.supportBeamRotation || 0);
-    const offsetH = config.supportBeamOffsetH !== undefined ? config.supportBeamOffsetH : -120;
-    const offsetV = config.supportBeamOffsetV || 0;
+    const offsetH = config.supportBeamOffsetH !== undefined ? config.supportBeamOffsetH : -120;  // Horizontal offset from pivot
+    const offsetV = config.supportBeamOffsetV || 0;  // Vertical offset from pivot
     
-    // Collect all pivot points we need support beams for
-    const pivotPoints = [];
+    // Number of supports based on module count
+    const numSupports = state.modules;
+    const angleStep = (2 * Math.PI) / numSupports;
     
-    // Find max Y (top height) from all beams, excluding support beams from previous calculations
-    let maxY = 0;
-    const structureBeams = data.beams.filter(b => b.stackType !== 'support-beam');
+    // Default offset: align with vertical uprights (half module offset from center pivots)
+    const verticalAlignOffset = angleStep / 2;
     
-    structureBeams.forEach(beam => {
-        if (beam.p1 && beam.p1.y > maxY) maxY = beam.p1.y;
-        if (beam.p2 && beam.p2.y > maxY) maxY = beam.p2.y;
-    });
+    // Find the outer upper pivot positions from the structure
+    const outerRadius = canopy.maxRadius || 100;
+    const pivotHeight = canopy.topHeight || 50;
     
-    // Strategy 1: Get outer pivots from horizontal-top beams (most reliable)
-    const topBeams = structureBeams.filter(b => b.stackType && b.stackType.startsWith('horizontal-top'));
-    const moduleOuterPivots = new Map();
-    
-    topBeams.forEach(beam => {
-        const modIdx = beam.moduleIndex;
-        if (modIdx === undefined || modIdx < 0) return;
+    // Create support beams radiating from each pivot point
+    for (let i = 0; i < numSupports; i++) {
+        // Calculate angle for this support (aligned with vertical uprights)
+        const baseAngle = i * angleStep + verticalAlignOffset + rotationOffset;
         
-        [beam.p1, beam.p2].forEach(p => {
-            if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-            const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-            if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
-                moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
-            }
-        });
-    });
-    
-    // Strategy 2: If no/few top beams, also try vertical/fixed beams - find TOP outer points
-    // This helps when structure is at different fold angles
-    if (moduleOuterPivots.size < state.modules) {
-        const vertBeams = structureBeams.filter(b => 
-            b.stackType === 'vertical' || b.stackType === 'fixed-beam'
-        );
+        // Pivot point position (outer upper pivot)
+        // Apply horizontal offset radially outward
+        const pivotX = canopy.center.x + (outerRadius + offsetH) * Math.cos(baseAngle);
+        const pivotY = pivotHeight + offsetV;
+        const pivotZ = canopy.center.z + (outerRadius + offsetH) * Math.sin(baseAngle);
         
-        vertBeams.forEach(beam => {
-            const modIdx = beam.moduleIndex;
-            if (modIdx === undefined || modIdx < 0) return;
-            
-            [beam.p1, beam.p2].forEach(p => {
-                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-                const current = moduleOuterPivots.get(modIdx);
-                // Prioritize top Y, then outer radius
-                if (!current || p.y > current.y || (Math.abs(p.y - current.y) < 1 && radius > current.radius)) {
-                    moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
-                }
-            });
-        });
-    }
-    
-    // Strategy 3: If still not enough, use horizontal-bottom beams projected to top
-    if (moduleOuterPivots.size < state.modules) {
-        const bottomBeams = structureBeams.filter(b => b.stackType && b.stackType.startsWith('horizontal-bottom'));
-        
-        bottomBeams.forEach(beam => {
-            const modIdx = beam.moduleIndex;
-            if (modIdx === undefined || modIdx < 0) return;
-            if (moduleOuterPivots.has(modIdx)) return; // Don't overwrite existing
-            
-            [beam.p1, beam.p2].forEach(p => {
-                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-                if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
-                    // Project to top Y
-                    moduleOuterPivots.set(modIdx, { x: p.x, y: maxY, z: p.z, radius, moduleIndex: modIdx, isCap: false });
-                }
-            });
-        });
-    }
-    
-    // Strategy 4: If still not enough, use ANY horizontal beams
-    if (moduleOuterPivots.size < state.modules) {
-        const anyHorizBeams = structureBeams.filter(b => 
-            b.stackType && b.stackType.startsWith('horizontal')
-        );
-        
-        anyHorizBeams.forEach(beam => {
-            const modIdx = beam.moduleIndex;
-            if (modIdx === undefined || modIdx < 0) return;
-            if (moduleOuterPivots.has(modIdx)) return; // Don't overwrite
-            
-            [beam.p1, beam.p2].forEach(p => {
-                if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-                const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-                if (!moduleOuterPivots.has(modIdx) || radius > moduleOuterPivots.get(modIdx).radius) {
-                    // Use actual Y, preferring higher positions
-                    const current = moduleOuterPivots.get(modIdx);
-                    if (!current || p.y > current.y || (Math.abs(p.y - current.y) < 1 && radius > current.radius)) {
-                        moduleOuterPivots.set(modIdx, { ...p, radius, moduleIndex: modIdx, isCap: false });
-                    }
-                }
-            });
-        });
-    }
-    
-    // Add regular module pivots to the list
-    moduleOuterPivots.forEach(pivot => {
-        pivotPoints.push(pivot);
-    });
-    
-    // Handle CAP UPRIGHTS - these need a separate support beam
-    if (state.archCapUprights) {
-        const capBeams = structureBeams.filter(b => 
-            b.stackType === 'vertical-cap' || b.stackType === 'fixed-beam-cap'
-        );
-        
-        if (capBeams.length > 0) {
-            // Find the outer top point of cap beams
-            let capPivot = null;
-            let capMaxRadius = 0;
-            let capMaxY = 0;
-            
-            capBeams.forEach(beam => {
-                [beam.p1, beam.p2].forEach(p => {
-                    if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-                    const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-                    // Prioritize top Y, then outer radius
-                    if (p.y > capMaxY || (Math.abs(p.y - capMaxY) < 1 && radius > capMaxRadius)) {
-                        capMaxY = p.y;
-                        capMaxRadius = radius;
-                        capPivot = { ...p, radius, moduleIndex: -1, isCap: true };
-                    }
-                });
-            });
-            
-            if (capPivot && !isNaN(capPivot.x) && !isNaN(capPivot.y) && !isNaN(capPivot.z)) {
-                pivotPoints.push(capPivot);
-            }
-        } else {
-            // Fallback: if no cap beams found but cap uprights enabled, 
-            // look for beams at module 0 that are on the opposite side (negative angle)
-            // Cap modules are typically at the opposite end of module 0
-            const module0Pivots = Array.from(moduleOuterPivots.values()).filter(p => p.moduleIndex === 0);
-            if (module0Pivots.length > 0) {
-                const ref = module0Pivots[0];
-                // Find the opposite side - check all beams for the most negative angle from module 0's angle
-                const refAngle = Math.atan2(ref.z, ref.x);
-                let bestCapPivot = null;
-                let bestAngleDiff = 0;
-                
-                structureBeams.forEach(beam => {
-                    [beam.p1, beam.p2].forEach(p => {
-                        if (!p || isNaN(p.x) || isNaN(p.y) || isNaN(p.z)) return;
-                        const angle = Math.atan2(p.z, p.x);
-                        let angleDiff = Math.abs(angle - refAngle);
-                        // Normalize to [0, PI]
-                        if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                        // We want positions close to PI away from module 0 (opposite side)
-                        if (angleDiff > Math.PI * 0.8 && p.y > maxY - 5) {
-                            const radius = Math.sqrt(p.x * p.x + p.z * p.z);
-                            if (!bestCapPivot || radius > bestCapPivot.radius) {
-                                bestCapPivot = { ...p, radius, moduleIndex: -1, isCap: true };
-                                bestAngleDiff = angleDiff;
-                            }
-                        }
-                    });
-                });
-                
-                if (bestCapPivot) {
-                    pivotPoints.push(bestCapPivot);
-                }
-            }
-        }
-    }
-    
-    // Calculate center point
-    let centerX = 0, centerZ = 0;
-    if (canopy && canopy.center) {
-        centerX = canopy.center.x;
-        centerZ = canopy.center.z;
-    } else if (pivotPoints.length > 0) {
-        pivotPoints.forEach(p => { centerX += p.x; centerZ += p.z; });
-        centerX /= pivotPoints.length;
-        centerZ /= pivotPoints.length;
-    }
-    
-    // Create support beams from each pivot point
-    pivotPoints.forEach((pivot, index) => {
-        // Validate pivot position
-        if (!pivot || isNaN(pivot.x) || isNaN(pivot.y) || isNaN(pivot.z)) return;
-        
-        // Calculate angle from center for this pivot
-        const dx = pivot.x - centerX;
-        const dz = pivot.z - centerZ;
-        const distFromCenter = Math.sqrt(dx * dx + dz * dz);
-        
-        // Skip if pivot is at the center (would cause division issues)
-        if (distFromCenter < 0.1) return;
-        
-        const baseAngle = Math.atan2(dz, dx);
-        const effectiveAngle = baseAngle + rotationOffset;
-        
-        // The PIVOT POINT is where the support beam connects to the structure
-        const pivotX = pivot.x;
-        const pivotY = pivot.y + offsetV;
-        const pivotZ = pivot.z;
-        
-        // Calculate beam direction - RADIALLY OUTWARD from center
-        const outwardDirX = Math.cos(effectiveAngle);
-        const outwardDirZ = Math.sin(effectiveAngle);
+        // Calculate beam direction based on fold angle
+        // Fold angle: 0 = horizontal outward, positive = tilting down, negative = tilting up
+        const outwardDirX = Math.cos(baseAngle);
+        const outwardDirZ = Math.sin(baseAngle);
         
         // Apply fold angle - beam tilts in the vertical plane containing the radial direction
         const horizontalComponent = Math.cos(foldAngle);
-        const verticalComponent = -Math.sin(foldAngle);
+        const verticalComponent = -Math.sin(foldAngle);  // Negative so positive fold tilts down
         
-        // Start point: pivot offset along beam direction by offsetH
-        const startX = pivotX + offsetH * outwardDirX * horizontalComponent;
-        const startY = pivotY + offsetH * verticalComponent;
-        const startZ = pivotZ + offsetH * outwardDirZ * horizontalComponent;
+        // End point of support beam
+        const endX = pivotX + beamLength * outwardDirX * horizontalComponent;
+        const endY = pivotY + beamLength * verticalComponent;
+        const endZ = pivotZ + beamLength * outwardDirZ * horizontalComponent;
         
-        // End point: start + beamLength along direction
-        const endX = startX + beamLength * outwardDirX * horizontalComponent;
-        const endY = startY + beamLength * verticalComponent;
-        const endZ = startZ + beamLength * outwardDirZ * horizontalComponent;
-        
-        // Validate calculated positions
-        if (isNaN(startX) || isNaN(startY) || isNaN(startZ) || 
-            isNaN(endX) || isNaN(endY) || isNaN(endZ)) return;
-        
-        const start = { x: startX, y: startY, z: startZ };
+        const start = { x: pivotX, y: pivotY, z: pivotZ };
         const end = { x: endX, y: endY, z: endZ };
         
-        supportBeams.push(new Beam3D(start, end, beamWidth, beamThickness, woodColor, {
-            moduleIndex: pivot.isCap ? -1 : pivot.moduleIndex,
-            stackType: 'support-beam',
-            stackId: pivot.isCap ? -1 : index
+        beams.push(new Beam3D(start, end, beamWidth, beamThickness, supportColor, {
+            moduleIndex: -1,
+            stackType: 'solar-support',
+            stackId: i
         }));
-    });
+    }
     
-    return supportBeams;
+    return beams;
 }
 
 /**
@@ -8241,7 +8267,7 @@ function calculateSolarPanels(data) {
     // Generate support beams if enabled (horizontal mode only)
     let supportBeams = [];
     if (config.showSupportBeams && !isVertical) {
-        supportBeams = generateSupportBeams(canopy, config, data);
+        supportBeams = generateSupportBeams(canopy, config);
     }
     
     return { panels, supportBeams, canopy };
@@ -8357,6 +8383,9 @@ function render() {
             mainViewCenter = currentCenter;
         }
 
+        // Update 3D measurement lines BEFORE rendering (so they're in the scene when rendered)
+        update3DMeasurementLines(data);
+        
         // Try Three.js WebGL rendering, with 2D canvas fallback
         const threeJsSuccess = renderThreeJS(data, mainViewCenter);
         
@@ -8423,22 +8452,10 @@ function render() {
             }
         }
 
-        // Draw live measurements if in measure mode (2D overlay)
-        if (state.measureMode) {
-            // Create a 2D overlay canvas for measurements
-            // Use viewport dimensions since the 2D canvas may be hidden
-            const viewport = document.getElementById('viewport');
-            const w = viewport.clientWidth;
-            const h = viewport.clientHeight;
-            if (w > 0 && h > 0) {
-                drawMeasurementsOverlay(data, mainViewCenter, w, h);
-            }
-        } else {
-            // Remove measurement overlay when not in measure mode
-            const overlay = document.getElementById('measurement-overlay');
-            if (overlay) {
-                overlay.remove();
-            }
+        // Remove old 2D measurement overlay if present
+        const overlay = document.getElementById('measurement-overlay');
+        if (overlay) {
+            overlay.remove();
         }
     } catch (error) {
         console.error('Render error:', error);
@@ -8466,11 +8483,22 @@ function updateHUD(data) {
     const boltCost = nBolts * state.costBolt;
     const structureSubtotal = hBeamCost + vBeamCost + bracketCost + boltCost;
     
-    // Update cost section beam length displays
+    // Update cost section beam length and dimension displays
     const costHLength = document.getElementById('cost-h-length');
     const costVLength = document.getElementById('cost-v-length');
+    const costHDims = document.getElementById('cost-h-dims');
+    const costVDims = document.getElementById('cost-v-dims');
     if (costHLength) costHLength.textContent = state.hLengthFt;
     if (costVLength) costVLength.textContent = state.vLengthFt;
+    if (costHDims) costHDims.textContent = `${state.hBeamW}×${state.hBeamT}`;
+    if (costVDims) costVDims.textContent = `${state.vBeamW}×${state.vBeamT}`;
+    
+    // Update reference price per cubic inch display
+    const refPriceDisplay = document.getElementById('ref-price-per-cu-in');
+    if (refPriceDisplay && state.autoLumberPricing) {
+        const pricePerCuIn = getRefPricePerCubicInch();
+        refPriceDisplay.textContent = `(≈ $${formatNumber(pricePerCuIn * 1000, 3)}/1000 cu.in.)`;
+    }
 
     // Update quantities
     uiStats.bh.innerText = hBeams;
@@ -8495,31 +8523,8 @@ function updateHUD(data) {
     uiStats.bbCostUnit.innerText = '$' + formatNumber(state.costBolt, 2);
     uiStats.bbCost.innerText = '$' + formatNumber(boltCost, 0);
     
-    // Update structure subtotal (will be updated again below if support beams are added)
-    let structureTotal = structureSubtotal;
-    uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureTotal, 2);
-    
-    // Calculate support beam cost if enabled
-    let supportBeamCount = 0;
-    let supportBeamCost = 0;
-    if (state.solarPanels.showSupportBeams && data.supportBeams && data.supportBeams.length > 0) {
-        supportBeamCount = data.supportBeams.length;
-        // Use vertical beam cost as base for support beams (similar lumber)
-        const supportCostPerBeam = state.costVBeam * (state.solarPanels.supportBeamLength / (state.vLengthFt * 12));
-        supportBeamCost = supportBeamCount * supportCostPerBeam;
-        
-        uiStats.bSupport.innerText = supportBeamCount;
-        uiStats.bSupportCostUnit.innerText = '$' + formatNumber(supportCostPerBeam, 2);
-        uiStats.bSupportCost.innerText = '$' + formatNumber(supportBeamCost, 0);
-        uiStats.bSupportSpec.textContent = `(${state.solarPanels.supportBeamW}×${state.solarPanels.supportBeamT}")`;
-        uiStats.bSupportRow.style.display = 'block';
-        
-        // Add to structure total
-        structureTotal += supportBeamCost;
-        uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureTotal, 2);
-    } else {
-        uiStats.bSupportRow.style.display = 'none';
-    }
+    // Update structure subtotal
+    uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureSubtotal, 2);
     
     // Calculate solar panel cost if panels are enabled
     let solarPanelCount = 0;
@@ -8539,8 +8544,8 @@ function updateHUD(data) {
         uiStats.bSolarSubtotalRow.style.display = 'none';
     }
     
-    // Calculate total cost (structure + support beams + solar)
-    const totalCost = structureTotal + solarCost;
+    // Calculate total cost
+    const totalCost = structureSubtotal + solarCost;
     uiStats.bt.innerText = formatNumber(totalCost, 2);
 
     // Calculate structure weight (lbs) based on volume and density
@@ -10590,11 +10595,12 @@ function showBuildGuide() {
     const bracketCost = uBrackets * state.costBracket;
     const boltCost = nBolts * state.costBolt;
     
-    // Solar panel calculations
+    // Solar panel calculations - get active panel config first
     const solarEnabled = state.solarPanels.enabled;
+    const panelConfig = getActivePanelConfig();
     const solarPanelCount = solarEnabled && data.panels ? data.panels.length : 0;
     const solarPanelCost = solarPanelCount * state.costSolarPanel;
-    const totalWatts = solarPanelCount * state.solarPanels.ratedWatts;
+    const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
     const totalKw = totalWatts / 1000;
     
     const totalCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + solarPanelCost;
@@ -10610,8 +10616,7 @@ function showBuildGuide() {
     const boltWeight = nBolts * state.weightBolt;
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
     
-    // Get active panel configuration for weight
-    const panelConfig = getActivePanelConfig();
+    // Calculate solar panel weight
     const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
     const totalWeight = structureWeight + solarPanelWeight;
     
@@ -10627,9 +10632,18 @@ function showBuildGuide() {
     const pivotDistFromBottom = state.offsetBotIn + (hActiveIn * pivotRatio);
     
     const vTotIn = state.vLengthFt * INCHES_PER_FOOT;
-    const vBottomPivot = state.bracketOffset;
-    const vTopPivot = vTotIn - state.bracketOffset;
-    const vCenterPivot = vTotIn / 2;
+    // Vertical beam hole positions based on end offset
+    // The beams extend vertEndOffset beyond each pivot point, so:
+    // - BOT pivot is vertEndOffset from the bottom of the beam
+    // - TOP pivot is vertEndOffset from the top of the beam
+    // - CTR pivot is at the center where the two scissor beams cross
+    const vEndOffset = state.vertEndOffset || 1.5;
+    // BOT hole: vertEndOffset from bottom end
+    const vBottomPivot = vEndOffset;
+    // TOP hole: vertEndOffset from top end  
+    const vTopPivot = vTotIn - vEndOffset;
+    // CTR hole: midpoint between BOT and TOP pivots (center of the active beam span)
+    const vCenterPivot = (vBottomPivot + vTopPivot) / 2;
     
     // Calculate proportional beam widths (scale to same reference)
     const maxBeamLength = Math.max(hTotIn, vTotIn);
@@ -10714,13 +10728,13 @@ function showBuildGuide() {
                         <tbody>
                             <tr>
                                 <td class="qty">${hBeams}×</td>
-                                <td class="item">H-Beams (${state.hLengthFt}')</td>
+                                <td class="item">H-Beams (${state.hBeamW}"×${state.hBeamT}"×${state.hLengthFt}')</td>
                                 <td class="price">$${formatNumber(state.costHBeam, 2)}</td>
                                 <td class="total">$${formatNumber(hBeamsCost, 2)}</td>
                             </tr>
                             <tr>
                                 <td class="qty">${vBeams}×</td>
-                                <td class="item">V-Beams (${state.vLengthFt}')</td>
+                                <td class="item">V-Beams (${state.vBeamW}"×${state.vBeamT}"×${state.vLengthFt}')</td>
                                 <td class="price">$${formatNumber(state.costVBeam, 2)}</td>
                                 <td class="total">$${formatNumber(vBeamsCost, 2)}</td>
                             </tr>
@@ -10738,7 +10752,7 @@ function showBuildGuide() {
                             </tr>
                             ${solarEnabled ? `<tr>
                                 <td class="qty">${solarPanelCount}×</td>
-                                <td class="item">Solar Panels (${state.solarPanels.ratedWatts}W)</td>
+                                <td class="item">Solar Panels (${panelConfig.ratedWatts || 0}W)</td>
                                 <td class="price">$${formatNumber(state.costSolarPanel, 2)}</td>
                                 <td class="total">$${formatNumber(solarPanelCost, 2)}</td>
                             </tr>` : ''}
@@ -10773,8 +10787,8 @@ function showBuildGuide() {
             <div class="guide-card">
                 <div class="guide-card-header">Beam Specifications</div>
                 <div class="guide-card-content">
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Horizontal Beams</div>
+                    <div class="guide-subsection">
+                        <div class="guide-subsection-title">Horizontal Beams</div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Dimensions</span>
                             <span class="guide-spec-value">${state.hBeamW}" × ${state.hBeamT}" × ${state.hLengthFt * 12}"</span>
@@ -10784,8 +10798,8 @@ function showBuildGuide() {
                             <span class="guide-spec-value">${state.hStackCount}</span>
                         </div>
                     </div>
-                    <div>
-                        <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Vertical Beams</div>
+                    <div class="guide-subsection">
+                        <div class="guide-subsection-title">Vertical Beams</div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Dimensions</span>
                             <span class="guide-spec-value">${state.vBeamW}" × ${state.vBeamT}" × ${state.vLengthFt * 12}"</span>
@@ -10805,55 +10819,59 @@ function showBuildGuide() {
             <div class="guide-card">
                 <div class="guide-card-header">Hardware</div>
                 <div class="guide-card-content">
-                    <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Bolts</div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Diameter</span>
-                        <span class="guide-spec-value">${formatBoltDiameter(state.boltDiameter)}"</span>
+                    <div class="guide-subsection">
+                        <div class="guide-subsection-title">Bolts</div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Diameter</span>
+                            <span class="guide-spec-value">${formatBoltDiameter(state.boltDiameter)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">V-Stack Bolt Length</span>
+                            <span class="guide-spec-value">${formatNumber(state.vBoltLength, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">H-Stack Bolt Length</span>
+                            <span class="guide-spec-value">${formatNumber(state.hBoltLength, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Total Bolts</span>
+                            <span class="guide-spec-value">${nBolts}</span>
+                        </div>
                     </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">V-Stack Bolt Length</span>
-                        <span class="guide-spec-value">${formatNumber(state.vBoltLength, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">H-Stack Bolt Length</span>
-                        <span class="guide-spec-value">${formatNumber(state.hBoltLength, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Total Bolts</span>
-                        <span class="guide-spec-value">${nBolts}</span>
-                    </div>
-                    <div style="margin-top: 15px; font-weight: 600; color: #2c3e50; margin-bottom: 8px;">Brackets (U-Shape)</div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Total Brackets</span>
-                        <span class="guide-spec-value">${uBrackets}</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Width</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketWidth || 2.0, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Depth</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketDepth || 3.0, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Height (Set)</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketHeight || 3.0, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Wall Thickness</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketWallThickness || 0.25, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Inner Width</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketInnerWidth || 1.5, 2)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Hole Diameter</span>
-                        <span class="guide-spec-value">${formatBoltDiameter(state.bracketHoleDiameter || 0.375)}"</span>
-                    </div>
-                    <div class="guide-spec-row">
-                        <span class="guide-spec-label">Hole Distance (from bottom)</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketOffset || 0, 2)}"</span>
+                    <div class="guide-subsection">
+                        <div class="guide-subsection-title">Brackets (U-Shape)</div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Total Brackets</span>
+                            <span class="guide-spec-value">${uBrackets}</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Width</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketWidth || 2.0, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Depth</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketDepth || 3.0, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Height (Set)</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketHeight || 3.0, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Wall Thickness</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketWallThickness || 0.25, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Inner Width</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketInnerWidth || 1.5, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Hole Diameter</span>
+                            <span class="guide-spec-value">${formatBoltDiameter(state.bracketHoleDiameter || 0.375)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Hole Distance (from bottom)</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketOffset || 0, 2)}"</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -10909,27 +10927,27 @@ function showBuildGuide() {
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">Dimensions</span>
-                        <span class="guide-spec-value">${state.solarPanels.panelLength}" × ${state.solarPanels.panelWidth}" × ${state.solarPanels.panelThickness}"</span>
+                        <span class="guide-spec-value">${formatNumber(panelConfig.panelLength || 0, 1)}" × ${formatNumber(panelConfig.panelWidth || 0, 1)}" × ${formatNumber(panelConfig.panelThickness || 0, 2)}"</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">Rated Power (Wmp)</span>
-                        <span class="guide-spec-value">${state.solarPanels.ratedWatts} W</span>
+                        <span class="guide-spec-value">${panelConfig.ratedWatts || 0} W</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">VOC</span>
-                        <span class="guide-spec-value">${state.solarPanels.voc} V</span>
+                        <span class="guide-spec-value">${formatNumber(panelConfig.voc || 0, 1)} V</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">VMP</span>
-                        <span class="guide-spec-value">${state.solarPanels.vmp} V</span>
+                        <span class="guide-spec-value">${formatNumber(panelConfig.vmp || 0, 1)} V</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">ISC</span>
-                        <span class="guide-spec-value">${state.solarPanels.isc} A</span>
+                        <span class="guide-spec-value">${formatNumber(panelConfig.isc || 0, 2)} A</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">IMP</span>
-                        <span class="guide-spec-value">${state.solarPanels.imp} A</span>
+                        <span class="guide-spec-value">${formatNumber(panelConfig.imp || 0, 2)} A</span>
                     </div>
                     <div class="guide-spec-row" style="margin-top: 10px; padding-top: 10px; border-top: 2px solid #e0d8cc;">
                         <span class="guide-spec-label" style="font-weight: 600;">Total Array Capacity</span>
@@ -10997,12 +11015,12 @@ function showBuildGuide() {
             </div>
         </div>
         
-        <div style="background: #fff; border: 1px solid #e0d8cc; border-radius: 6px; padding: 15px; margin-top: 10px;">
-            <div style="font-weight: 600; color: #2c3e50; margin-bottom: 8px;">📝 Notes</div>
-            <ul style="margin: 0; padding-left: 20px; color: #666; font-size: 0.9rem; line-height: 1.6;">
+        <div class="guide-notes">
+            <div class="guide-notes-title">📝 Notes</div>
+            <ul class="guide-notes-list">
                 <li>All measurements are from beam end</li>
                 <li>Drill holes 3/8" diameter, centered on beam width</li>
-                <li>Red circles indicate pivot hole locations</li>
+                <li>Red circles indicate end bracket holes, orange indicates center pivot</li>
                 <li>BOT = Bottom bracket connection, CTR = Center pivot, TOP = Top bracket connection</li>
             </ul>
         </div>
@@ -11273,7 +11291,7 @@ const SOLAR_PANEL_KEYS = [
     'radialRotation', 'radialLateralOffset', 'pinwheelAngle',
     'spiralArmCount', 'spiralSecondaryEnabled', 'spiralSecondaryRadialOffset', 'spiralSecondaryLateralOffset', 'spiralSecondaryPinwheel', 'spiralSecondaryRotation',
     'spiralArmRadialStep', 'spiralArmLateralStep', 'spiralArmPinwheelStep', 'spiralArmRotationStep',
-    'showSupportBeams', 'supportBeamW', 'supportBeamT', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
+    'showSupportBeams', 'supportBeamRotation', 'supportBeamLength', 'supportBeamFoldAngle',
     'supportBeamOffsetH', 'supportBeamOffsetV', 'panelLift',
     'archPanelOffset', 'archPanelSlide', 'archPanelSeparation',
     'archWallFaces', 'sideWallPanels', 'topPanels', 'topPanelRows', 'topPanelCols'
@@ -11435,8 +11453,6 @@ function applyV30Config(config) {
         
         if (p.support) {
             if (p.support.show !== undefined) sp.showSupportBeams = p.support.show;
-            if (p.support.width !== undefined) sp.supportBeamW = p.support.width;
-            if (p.support.thickness !== undefined) sp.supportBeamT = p.support.thickness;
             if (p.support.rotation !== undefined) sp.supportBeamRotation = p.support.rotation;
             if (p.support.length !== undefined) sp.supportBeamLength = p.support.length;
             if (p.support.foldAngle !== undefined) sp.supportBeamFoldAngle = p.support.foldAngle;
@@ -11455,6 +11471,14 @@ function applyV30Config(config) {
         if (c.bolt !== undefined) state.costBolt = c.bolt;
         if (c.bracket !== undefined) state.costBracket = c.bracket;
         if (c.solarPanel !== undefined) state.costSolarPanel = c.solarPanel;
+        // Volume-based auto pricing settings
+        if (c.autoLumber !== undefined) state.autoLumberPricing = c.autoLumber;
+        if (c.refBeam) {
+            if (c.refBeam.width !== undefined) state.refBeamWidth = c.refBeam.width;
+            if (c.refBeam.thickness !== undefined) state.refBeamThick = c.refBeam.thickness;
+            if (c.refBeam.length !== undefined) state.refBeamLength = c.refBeam.length;
+            if (c.refBeam.price !== undefined) state.refBeamPrice = c.refBeam.price;
+        }
     }
 }
 
@@ -11625,8 +11649,6 @@ function getConfigSnapshot(includeMetadata = false) {
             },
             support: {
                 show: state.solarPanels.showSupportBeams,
-                width: state.solarPanels.supportBeamW,
-                thickness: state.solarPanels.supportBeamT,
                 rotation: state.solarPanels.supportBeamRotation,
                 length: state.solarPanels.supportBeamLength,
                 foldAngle: state.solarPanels.supportBeamFoldAngle,
@@ -11642,7 +11664,15 @@ function getConfigSnapshot(includeMetadata = false) {
             vBeam: state.costVBeam,
             bolt: state.costBolt,
             bracket: state.costBracket,
-            solarPanel: state.costSolarPanel
+            solarPanel: state.costSolarPanel,
+            // Volume-based auto pricing settings
+            autoLumber: state.autoLumberPricing,
+            refBeam: {
+                width: state.refBeamWidth,
+                thickness: state.refBeamThick,
+                length: state.refBeamLength,
+                price: state.refBeamPrice
+            }
         },
         
         // Camera/viewport state for debugging and default view in simulate mode
@@ -11762,8 +11792,9 @@ function applyConfig(config, updateUI = true) {
         if (typeof config.cameraState.yaw === 'number') state.cam.yaw = config.cameraState.yaw;
         if (typeof config.cameraState.pitch === 'number') state.cam.pitch = config.cameraState.pitch;
         if (typeof config.cameraState.dist === 'number') state.cam.dist = config.cameraState.dist;
-        if (typeof config.cameraState.panX === 'number') state.cam.panX = config.cameraState.panX;
-        if (typeof config.cameraState.panY === 'number') state.cam.panY = config.cameraState.panY;
+        // Reset pan to 0 so structures always start centered (pan values are not restored from config)
+        state.cam.panX = 0;
+        state.cam.panY = 0;
         if (typeof config.cameraState.structureRotation === 'number') state.structureRotation = config.cameraState.structureRotation;
         // Backward compatibility: also check for old globalRotation name
         if (typeof config.cameraState.globalRotation === 'number') state.structureRotation = config.cameraState.globalRotation;
@@ -12005,11 +12036,6 @@ function applyConfig(config, updateUI = true) {
         const supportBeamControls = document.getElementById('support-beam-controls');
         if (supportBeamControls) supportBeamControls.style.display = sp.showSupportBeams ? 'block' : 'none';
         
-        const nbSupportW = document.getElementById('nb-support-w');
-        const nbSupportT = document.getElementById('nb-support-t');
-        if (nbSupportW) nbSupportW.value = sp.supportBeamW || 3.5;
-        if (nbSupportT) nbSupportT.value = sp.supportBeamT || 1.5;
-        
         const slSupportLength = document.getElementById('sl-support-length');
         const nbSupportLength = document.getElementById('nb-support-length');
         if (slSupportLength) slSupportLength.value = Math.min(240, sp.supportBeamLength || 96);
@@ -12059,6 +12085,29 @@ function applyConfig(config, updateUI = true) {
         
         // Update arch/side wall panel controls visibility
         updateArchWallFacesUI();
+        
+        // Sync auto lumber pricing UI
+        const autoLumberChk = document.getElementById('chk-auto-lumber-pricing');
+        const refPricingDiv = document.getElementById('ref-beam-pricing');
+        const pricingLabel = document.getElementById('pricing-mode-label');
+        const hCostInput = document.getElementById('nb-cost-hbeam');
+        const vCostInput = document.getElementById('nb-cost-vbeam');
+        if (autoLumberChk) autoLumberChk.checked = state.autoLumberPricing;
+        if (refPricingDiv) refPricingDiv.style.display = state.autoLumberPricing ? 'block' : 'none';
+        if (pricingLabel) pricingLabel.textContent = state.autoLumberPricing ? '(auto-calculated)' : '(manual)';
+        if (hCostInput) { hCostInput.readOnly = state.autoLumberPricing; hCostInput.style.opacity = state.autoLumberPricing ? '0.7' : '1'; }
+        if (vCostInput) { vCostInput.readOnly = state.autoLumberPricing; vCostInput.style.opacity = state.autoLumberPricing ? '0.7' : '1'; }
+        // Sync reference beam inputs
+        const refWidthInput = document.getElementById('nb-ref-beam-w');
+        const refThickInput = document.getElementById('nb-ref-beam-t');
+        const refLengthInput = document.getElementById('nb-ref-beam-len');
+        const refPriceInput = document.getElementById('nb-ref-beam-price');
+        if (refWidthInput) refWidthInput.value = state.refBeamWidth;
+        if (refThickInput) refThickInput.value = state.refBeamThick;
+        if (refLengthInput) refLengthInput.value = state.refBeamLength;
+        if (refPriceInput) refPriceInput.value = state.refBeamPrice;
+        // Update auto-calculated prices
+        if (state.autoLumberPricing) updateAutoBeamPricing();
         
         requestRender();
     }
@@ -12438,117 +12487,205 @@ function calculateMeasurements(data) {
         return { innerDia: 0, outerDia: 0, height: 0, span: 0, innerPoints: null, outerPoints: null };
     }
     
-    const hBeams = data.beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
+    const isArchMode = state.orientation === 'vertical';
     
-    // Find inner pivots (smallest radius) and outer pivots (largest radius)
-    let minRad = Infinity, maxRad = -Infinity;
-    let innerPoint1 = null, innerPoint2 = null;
-    let outerPoint1 = null, outerPoint2 = null;
-    let minY = Infinity, maxY = -Infinity;
+    // Calculate bounding box from all beam corners
     let minX = Infinity, maxX = -Infinity;
+    let minY = Infinity, maxY = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
     
-    // Collect all pivot points from horizontal beams
-    const pivotPoints = [];
-    hBeams.forEach(beam => {
-        if (beam.p1) pivotPoints.push({...beam.p1, moduleIndex: beam.moduleIndex});
-        if (beam.p2) pivotPoints.push({...beam.p2, moduleIndex: beam.moduleIndex});
-    });
-    
-    // Also check corners for more accurate measurements
     data.beams.forEach(beam => {
         if (beam.corners) {
             beam.corners.forEach(c => {
                 if (c) {
-                    if (c.y < minY) minY = c.y;
-                    if (c.y > maxY) maxY = c.y;
                     if (c.x < minX) minX = c.x;
                     if (c.x > maxX) maxX = c.x;
+                    if (c.y < minY) minY = c.y;
+                    if (c.y > maxY) maxY = c.y;
+                    if ((c.z || 0) < minZ) minZ = c.z || 0;
+                    if ((c.z || 0) > maxZ) maxZ = c.z || 0;
                 }
             });
         }
     });
     
-    // For each pivot point, calculate radius from center
-    pivotPoints.forEach(p => {
-        const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
-        
-        // Track inner (smallest radius) points
-        if (rad < minRad) {
-            minRad = rad;
-            innerPoint1 = p;
-        }
-        
-        // Track outer (largest radius) points  
-        if (rad > maxRad) {
-            maxRad = rad;
-            outerPoint1 = p;
-        }
-    });
-    
-    // Find the point on the opposite side for inner diameter (opposite X sign)
-    if (innerPoint1) {
-        let bestDist = -Infinity;
-        pivotPoints.forEach(p => {
-            // Must be on opposite side (different X sign or far apart)
-            const dist = Math.sqrt(Math.pow(p.x - innerPoint1.x, 2) + Math.pow((p.z || 0) - (innerPoint1.z || 0), 2));
-            if (dist > bestDist && p !== innerPoint1) {
-                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
-                // Only consider inner points (within 20% of min radius)
-                if (rad < minRad * 1.2) {
-                    bestDist = dist;
-                    innerPoint2 = p;
-                }
-            }
-        });
-    }
-    
-    // Find the point on the opposite side for outer diameter
-    if (outerPoint1) {
-        let bestDist = -Infinity;
-        pivotPoints.forEach(p => {
-            const dist = Math.sqrt(Math.pow(p.x - outerPoint1.x, 2) + Math.pow((p.z || 0) - (outerPoint1.z || 0), 2));
-            if (dist > bestDist && p !== outerPoint1) {
-                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
-                // Only consider outer points (within 20% of max radius)
-                if (rad > maxRad * 0.8) {
-                    bestDist = dist;
-                    outerPoint2 = p;
-                }
-            }
-        });
-    }
-    
-    // Calculate measurements
-    let innerDia = 0, outerDia = 0;
-    
-    if (innerPoint1 && innerPoint2) {
-        innerDia = Math.sqrt(
-            Math.pow(innerPoint2.x - innerPoint1.x, 2) +
-            Math.pow((innerPoint2.y || 0) - (innerPoint1.y || 0), 2) +
-            Math.pow((innerPoint2.z || 0) - (innerPoint1.z || 0), 2)
-        );
-    }
-    
-    if (outerPoint1 && outerPoint2) {
-        outerDia = Math.sqrt(
-            Math.pow(outerPoint2.x - outerPoint1.x, 2) +
-            Math.pow((outerPoint2.y || 0) - (outerPoint1.y || 0), 2) +
-            Math.pow((outerPoint2.z || 0) - (outerPoint1.z || 0), 2)
-        );
+    // Default values if no geometry found
+    if (!isFinite(minX)) {
+        return { innerDia: 0, outerDia: 0, height: 0, span: 0, innerPoints: null, outerPoints: null };
     }
     
     const height = maxY - minY;
     const span = maxX - minX;
+    const depth = maxZ - minZ;
+    
+    // Calculate center points
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    
+    let innerDia = 0, outerDia = 0;
+    let innerPoints = null, outerPoints = null;
+    let heightPoints, spanPoints;
+    
+    if (isArchMode) {
+        // ARCH MODE: Measure span at ground level and apex height
+        // Span is horizontal distance between feet
+        innerDia = 0; // No inner diameter in arch mode
+        outerDia = span; // Outer is the full span
+        
+        // Span line at the base of the arch
+        spanPoints = [
+            { x: minX, y: minY, z: centerZ },
+            { x: maxX, y: minY, z: centerZ }
+        ];
+        outerPoints = spanPoints;
+        
+        // Height line from ground to apex
+        heightPoints = [
+            { x: centerX, y: minY, z: centerZ },
+            { x: centerX, y: maxY, z: centerZ }
+        ];
+        
+        // Depth line (along Z axis)
+        const depthPoints = [
+            { x: centerX, y: centerY, z: minZ },
+            { x: centerX, y: centerY, z: maxZ }
+        ];
+        
+        return {
+            innerDia: depth, // Show depth as "inner" measurement
+            outerDia: span,
+            height,
+            span,
+            innerPoints: depthPoints, // Depth line
+            outerPoints: spanPoints, // Span at ground level
+            heightPoints,
+            spanPoints
+        };
+    } else {
+        // CYLINDER MODE: Measure inner and outer diameter at same height level
+        const hBeams = data.beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
+        
+        // Group beams by ring type (top or bottom)
+        const topBeams = hBeams.filter(b => b.stackType === 'horizontal-top');
+        const botBeams = hBeams.filter(b => b.stackType === 'horizontal-bottom');
+        
+        // Use bottom ring for diameter measurements (more consistent)
+        const measureBeams = botBeams.length > 0 ? botBeams : hBeams;
+        
+        // Collect pivot points
+        const pivotPoints = [];
+        measureBeams.forEach(beam => {
+            if (beam.p1) pivotPoints.push({...beam.p1, moduleIndex: beam.moduleIndex});
+            if (beam.p2) pivotPoints.push({...beam.p2, moduleIndex: beam.moduleIndex});
+        });
+        
+        // Find inner and outer radii
+        let minRad = Infinity, maxRad = -Infinity;
+        let innerPoint1 = null, outerPoint1 = null;
+        
+        pivotPoints.forEach(p => {
+            const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+            if (rad < minRad) {
+                minRad = rad;
+                innerPoint1 = p;
+            }
+            if (rad > maxRad) {
+                maxRad = rad;
+                outerPoint1 = p;
+            }
+        });
+        
+        // Find opposite point for inner diameter (180° away)
+        if (innerPoint1) {
+            const angle1 = Math.atan2(innerPoint1.z || 0, innerPoint1.x);
+            let bestAngleDiff = 0;
+            let bestPoint = null;
+            
+            pivotPoints.forEach(p => {
+                if (p === innerPoint1) return;
+                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+                // Only consider inner points (within 20% of min radius)
+                if (rad > minRad * 1.2) return;
+                
+                const angle2 = Math.atan2(p.z || 0, p.x);
+                let angleDiff = Math.abs(angle2 - angle1);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
+                if (angleDiff > bestAngleDiff) {
+                    bestAngleDiff = angleDiff;
+                    bestPoint = p;
+                }
+            });
+            
+            if (bestPoint) {
+                innerPoints = [
+                    { x: innerPoint1.x, y: innerPoint1.y, z: innerPoint1.z || 0 },
+                    { x: bestPoint.x, y: bestPoint.y, z: bestPoint.z || 0 }
+                ];
+                innerDia = Math.sqrt(
+                    Math.pow(bestPoint.x - innerPoint1.x, 2) +
+                    Math.pow((bestPoint.z || 0) - (innerPoint1.z || 0), 2)
+                );
+            }
+        }
+        
+        // Find opposite point for outer diameter (180° away)
+        if (outerPoint1) {
+            const angle1 = Math.atan2(outerPoint1.z || 0, outerPoint1.x);
+            let bestAngleDiff = 0;
+            let bestPoint = null;
+            
+            pivotPoints.forEach(p => {
+                if (p === outerPoint1) return;
+                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
+                // Only consider outer points (within 20% of max radius)
+                if (rad < maxRad * 0.8) return;
+                
+                const angle2 = Math.atan2(p.z || 0, p.x);
+                let angleDiff = Math.abs(angle2 - angle1);
+                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
+                
+                if (angleDiff > bestAngleDiff) {
+                    bestAngleDiff = angleDiff;
+                    bestPoint = p;
+                }
+            });
+            
+            if (bestPoint) {
+                outerPoints = [
+                    { x: outerPoint1.x, y: outerPoint1.y, z: outerPoint1.z || 0 },
+                    { x: bestPoint.x, y: bestPoint.y, z: bestPoint.z || 0 }
+                ];
+                outerDia = Math.sqrt(
+                    Math.pow(bestPoint.x - outerPoint1.x, 2) +
+                    Math.pow((bestPoint.z || 0) - (outerPoint1.z || 0), 2)
+                );
+            }
+        }
+        
+        // Height line along the side of the structure
+        heightPoints = [
+            { x: maxX + 10, y: minY, z: centerZ },
+            { x: maxX + 10, y: maxY, z: centerZ }
+        ];
+        
+        // Span line at the bottom
+        spanPoints = [
+            { x: minX, y: minY - 10, z: centerZ },
+            { x: maxX, y: minY - 10, z: centerZ }
+        ];
+    }
     
     return {
         innerDia,
         outerDia,
         height,
         span,
-        innerPoints: innerPoint1 && innerPoint2 ? [innerPoint1, innerPoint2] : null,
-        outerPoints: outerPoint1 && outerPoint2 ? [outerPoint1, outerPoint2] : null,
-        heightPoints: [{x: 0, y: minY, z: 0}, {x: 0, y: maxY, z: 0}],
-        spanPoints: [{x: minX, y: minY, z: 0}, {x: maxX, y: minY, z: 0}]
+        innerPoints,
+        outerPoints,
+        heightPoints,
+        spanPoints
     };
 }
 
@@ -12756,14 +12893,32 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
     // Draw measurements using the projection logic
     const measurements = calculateMeasurements(data);
     
-    // Update sidebar display
+    // Update sidebar display (labels change based on mode)
     const innerEl = document.getElementById('meas-inner-dia');
     const outerEl = document.getElementById('meas-outer-dia');
     const heightEl = document.getElementById('meas-height');
     const spanEl = document.getElementById('meas-span');
     
-    if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
-    if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    const isArchModeDisplay = state.orientation === 'vertical';
+    
+    // Update sidebar labels based on mode
+    const innerLabelEl = innerEl ? innerEl.previousElementSibling : null;
+    const outerLabelEl = outerEl ? outerEl.previousElementSibling : null;
+    
+    if (isArchModeDisplay) {
+        // Arch mode: show Depth, Span, Height
+        if (innerLabelEl) innerLabelEl.textContent = 'Depth:';
+        if (outerLabelEl) outerLabelEl.textContent = 'Span:';
+        if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
+        if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    } else {
+        // Cylinder mode: show Inner Ø, Outer Ø, Height
+        if (innerLabelEl) innerLabelEl.textContent = 'Inner Ø:';
+        if (outerLabelEl) outerLabelEl.textContent = 'Outer Ø:';
+        if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
+        if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    }
+    
     if (heightEl) heightEl.textContent = `${formatNumber(measurements.height / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.height, 1)}")`;
     if (spanEl) spanEl.textContent = `${formatNumber(measurements.span / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.span, 1)}")`;
     
@@ -12845,35 +13000,394 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
         overlayCtx.textBaseline = 'alphabetic';
     };
     
-    // Draw measurements
-    if (measurements.innerPoints) {
-        const label = `Inner: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
-        drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
+    const isArchMode = state.orientation === 'vertical';
+    const system = unitConverter.getPreferredUnitSystem();
+    
+    // Draw measurements based on mode
+    if (isArchMode) {
+        // ARCH MODE: Show span at ground, height, and depth
+        
+        // Span line (horizontal at ground level)
+        if (measurements.outerPoints && measurements.outerDia > 0) {
+            const label = system === 'metric'
+                ? `Span: ${unitConverter.formatLength(measurements.outerDia, 'in', 1)}`
+                : `Span: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
+        }
+        
+        // Height line (vertical from ground to apex)
+        if (measurements.heightPoints && measurements.height > 0) {
+            const label = system === 'metric'
+                ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+                : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.heightPoints[0], measurements.heightPoints[1], label, '#2ecc71', 0);
+        }
+        
+        // Depth line (along Z axis - shows tunnel depth)
+        if (measurements.innerPoints && measurements.innerDia > 0) {
+            const label = system === 'metric'
+                ? `Depth: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Depth: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
+        }
+    } else {
+        // CYLINDER MODE: Show inner/outer diameter and height
+        
+        // Inner diameter
+        if (measurements.innerPoints && measurements.innerDia > 0) {
+            const label = system === 'metric'
+                ? `Inner Ø: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Inner Ø: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
+        }
+        
+        // Outer diameter
+        if (measurements.outerPoints && measurements.outerDia > 0) {
+            const label = system === 'metric'
+                ? `Outer Ø: ${unitConverter.formatLength(measurements.outerDia, 'in', 1)}`
+                : `Outer Ø: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
+        }
+        
+        // Height line
+        if (measurements.heightPoints && measurements.height > 0) {
+            const label = system === 'metric'
+                ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+                : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+            drawMeasurementLine(measurements.heightPoints[0], measurements.heightPoints[1], label, '#2ecc71', 0);
+        }
+    }
+}
+
+/**
+ * Creates or updates the human scale reference figure (6' tall person)
+ * @param {Object} data - Linkage data with structure dimensions
+ * @param {{x,y,z}} structureCenter - Center of the structure
+ */
+function updateHumanScaleFigure(data, structureCenter) {
+    if (!threeRenderer.humanScaleGroup) return;
+    
+    // Clear existing human figure
+    while (threeRenderer.humanScaleGroup.children.length > 0) {
+        const child = threeRenderer.humanScaleGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) child.material.dispose();
+        threeRenderer.humanScaleGroup.remove(child);
     }
     
-    if (measurements.outerPoints) {
-        const label = `Outer: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
-        drawMeasurementLine(measurements.outerPoints[0], measurements.outerPoints[1], label, '#f0ad4e', 20);
+    if (!state.showHumanScale) return;
+    
+    const humanHeight = 72; // 6 feet in inches
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    const isArchMode = state.orientation === 'vertical';
+    
+    // Create a stylized human silhouette using basic shapes
+    const humanGroup = new THREE.Group();
+    
+    // Semi-transparent blue material for the silhouette
+    const silhouetteMaterial = new THREE.MeshBasicMaterial({
+        color: 0x4a90d9,
+        transparent: true,
+        opacity: 0.7,
+        side: THREE.DoubleSide
+    });
+    
+    // Outline material
+    const outlineMaterial = new THREE.LineBasicMaterial({
+        color: 0x2171c9,
+        linewidth: 2
+    });
+    
+    // Human proportions (in inches)
+    const headRadius = 4.5;      // ~9" head diameter
+    const neckHeight = 2;
+    const torsoHeight = 24;
+    const torsoWidth = 16;
+    const legHeight = 32;
+    const legWidth = 5;
+    const armLength = 24;
+    const armWidth = 3;
+    const shoulderY = humanHeight - headRadius * 2 - neckHeight - 4;
+    
+    // Head (sphere)
+    const headGeom = new THREE.SphereGeometry(headRadius, 16, 12);
+    const headMesh = new THREE.Mesh(headGeom, silhouetteMaterial);
+    headMesh.position.y = humanHeight - headRadius;
+    humanGroup.add(headMesh);
+    
+    // Torso (box)
+    const torsoGeom = new THREE.BoxGeometry(torsoWidth, torsoHeight, 6);
+    const torsoMesh = new THREE.Mesh(torsoGeom, silhouetteMaterial);
+    torsoMesh.position.y = shoulderY - torsoHeight / 2;
+    humanGroup.add(torsoMesh);
+    
+    // Left leg
+    const legGeom = new THREE.BoxGeometry(legWidth, legHeight, 5);
+    const leftLegMesh = new THREE.Mesh(legGeom, silhouetteMaterial);
+    leftLegMesh.position.set(-4, legHeight / 2, 0);
+    humanGroup.add(leftLegMesh);
+    
+    // Right leg
+    const rightLegMesh = new THREE.Mesh(legGeom.clone(), silhouetteMaterial);
+    rightLegMesh.position.set(4, legHeight / 2, 0);
+    humanGroup.add(rightLegMesh);
+    
+    // Left arm
+    const armGeom = new THREE.BoxGeometry(armWidth, armLength, 4);
+    const leftArmMesh = new THREE.Mesh(armGeom, silhouetteMaterial);
+    leftArmMesh.position.set(-torsoWidth / 2 - armWidth / 2, shoulderY - armLength / 2 - 2, 0);
+    humanGroup.add(leftArmMesh);
+    
+    // Right arm
+    const rightArmMesh = new THREE.Mesh(armGeom.clone(), silhouetteMaterial);
+    rightArmMesh.position.set(torsoWidth / 2 + armWidth / 2, shoulderY - armLength / 2 - 2, 0);
+    humanGroup.add(rightArmMesh);
+    
+    // Add height label above head
+    const labelCanvas = document.createElement('canvas');
+    labelCanvas.width = 128;
+    labelCanvas.height = 48;
+    const labelCtx = labelCanvas.getContext('2d');
+    labelCtx.fillStyle = 'rgba(21, 32, 43, 0.9)';
+    labelCtx.roundRect(4, 4, 120, 40, 6);
+    labelCtx.fill();
+    labelCtx.strokeStyle = '#4a90d9';
+    labelCtx.lineWidth = 2;
+    labelCtx.roundRect(4, 4, 120, 40, 6);
+    labelCtx.stroke();
+    labelCtx.font = 'bold 20px Arial';
+    labelCtx.fillStyle = '#4a90d9';
+    labelCtx.textAlign = 'center';
+    labelCtx.textBaseline = 'middle';
+    labelCtx.fillText("6' (72\")", 64, 24);
+    
+    const labelTexture = new THREE.CanvasTexture(labelCanvas);
+    const labelMaterial = new THREE.SpriteMaterial({ map: labelTexture, transparent: true });
+    const labelSprite = new THREE.Sprite(labelMaterial);
+    labelSprite.position.y = humanHeight + 12;
+    labelSprite.scale.set(24, 9, 1);
+    humanGroup.add(labelSprite);
+    
+    // Position the human figure at the center of the structure
+    // Calculate structure bounds
+    let minX = Infinity, maxX = -Infinity;
+    let minZ = Infinity, maxZ = -Infinity;
+    let minY = Infinity;
+    
+    if (data && data.beams) {
+        data.beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c) {
+                        minX = Math.min(minX, c.x);
+                        maxX = Math.max(maxX, c.x);
+                        minZ = Math.min(minZ, c.z || 0);
+                        maxZ = Math.max(maxZ, c.z || 0);
+                        minY = Math.min(minY, c.y);
+                    }
+                });
+            }
+        });
     }
     
-    if (measurements.height > 0 && measurements.spanPoints && measurements.heightPoints) {
-        const heightPoint1 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[0].y, z: 0};
-        const heightPoint2 = {x: measurements.spanPoints[1].x + 10, y: measurements.heightPoints[1].y, z: 0};
-        const system = unitConverter.getPreferredUnitSystem();
-        const label = system === 'metric'
-            ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
-            : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
-        drawMeasurementLine(heightPoint1, heightPoint2, label, '#2ecc71', 0);
+    // Default position if no data
+    if (!isFinite(minX)) {
+        minX = -50; maxX = 50; minZ = -50; maxZ = 50; minY = 0;
     }
     
-    if (measurements.span > 0 && measurements.spanPoints) {
-        const spanPoint1 = {x: measurements.spanPoints[0].x, y: measurements.spanPoints[0].y - 10, z: 0};
-        const spanPoint2 = {x: measurements.spanPoints[1].x, y: measurements.spanPoints[0].y - 10, z: 0};
-        const system = unitConverter.getPreferredUnitSystem();
-        const label = system === 'metric'
-            ? `Span: ${unitConverter.formatLength(measurements.span, 'in', 1)}`
-            : `Span: ${formatNumber(measurements.span / INCHES_PER_FOOT, 1)}'`;
-        drawMeasurementLine(spanPoint1, spanPoint2, label, '#9b59b6', 0);
+    // Position human at the center of the structure
+    const centerX = (minX + maxX) / 2;
+    const centerZ = (minZ + maxZ) / 2;
+    humanGroup.position.set(centerX, minY, centerZ);
+    
+    // No rotation needed - human will be visible from all angles
+    humanGroup.rotation.y = 0;
+    
+    threeRenderer.humanScaleGroup.add(humanGroup);
+}
+
+/**
+ * Creates or updates the 3D measurement lines
+ * @param {Object} data - Linkage data with structure dimensions
+ */
+function update3DMeasurementLines(data) {
+    if (!threeRenderer.measurementGroup) return;
+    
+    // Clear existing measurement lines
+    while (threeRenderer.measurementGroup.children.length > 0) {
+        const child = threeRenderer.measurementGroup.children[0];
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+            if (child.material.map) child.material.map.dispose();
+            child.material.dispose();
+        }
+        threeRenderer.measurementGroup.remove(child);
+    }
+    
+    if (!state.measureMode) return;
+    
+    const measurements = calculateMeasurements(data);
+    const isArchMode = state.orientation === 'vertical';
+    const system = unitConverter.getPreferredUnitSystem();
+    
+    // Helper to create a 3D measurement line with endpoints and label
+    const createMeasurementLine3D = (point1, point2, label, color) => {
+        if (!point1 || !point2) return;
+        
+        const lineGroup = new THREE.Group();
+        
+        // Create the line
+        const lineMaterial = new THREE.LineBasicMaterial({ 
+            color: color,
+            linewidth: 2,
+            depthTest: true,
+            transparent: true,
+            opacity: 0.9
+        });
+        
+        const lineGeometry = new THREE.BufferGeometry().setFromPoints([
+            new THREE.Vector3(point1.x, point1.y, point1.z || 0),
+            new THREE.Vector3(point2.x, point2.y, point2.z || 0)
+        ]);
+        
+        const line = new THREE.Line(lineGeometry, lineMaterial);
+        lineGroup.add(line);
+        
+        // Create endpoint markers (small spheres)
+        const markerGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+        const markerMaterial = new THREE.MeshBasicMaterial({ color: color });
+        
+        const marker1 = new THREE.Mesh(markerGeometry, markerMaterial);
+        marker1.position.set(point1.x, point1.y, point1.z || 0);
+        lineGroup.add(marker1);
+        
+        const marker2 = new THREE.Mesh(markerGeometry.clone(), markerMaterial);
+        marker2.position.set(point2.x, point2.y, point2.z || 0);
+        lineGroup.add(marker2);
+        
+        // Create floating label at midpoint using a sprite
+        const midPoint = {
+            x: (point1.x + point2.x) / 2,
+            y: (point1.y + point2.y) / 2,
+            z: ((point1.z || 0) + (point2.z || 0)) / 2
+        };
+        
+        // Create canvas for label
+        const labelCanvas = document.createElement('canvas');
+        labelCanvas.width = 256;
+        labelCanvas.height = 64;
+        const ctx = labelCanvas.getContext('2d');
+        
+        // Background
+        ctx.fillStyle = 'rgba(21, 32, 43, 0.95)';
+        ctx.beginPath();
+        ctx.roundRect(4, 4, 248, 56, 8);
+        ctx.fill();
+        
+        // Border
+        ctx.strokeStyle = '#' + color.toString(16).padStart(6, '0');
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(4, 4, 248, 56, 8);
+        ctx.stroke();
+        
+        // Text
+        ctx.font = 'bold 28px Arial';
+        ctx.fillStyle = '#' + color.toString(16).padStart(6, '0');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, 128, 32);
+        
+        const labelTexture = new THREE.CanvasTexture(labelCanvas);
+        const labelMaterial = new THREE.SpriteMaterial({ 
+            map: labelTexture, 
+            transparent: true,
+            depthTest: false,  // Always visible
+            sizeAttenuation: true
+        });
+        const labelSprite = new THREE.Sprite(labelMaterial);
+        labelSprite.position.set(midPoint.x, midPoint.y + 8, midPoint.z);
+        labelSprite.scale.set(40, 10, 1);
+        lineGroup.add(labelSprite);
+        
+        threeRenderer.measurementGroup.add(lineGroup);
+    };
+    
+    // Update sidebar display
+    const innerEl = document.getElementById('meas-inner-dia');
+    const outerEl = document.getElementById('meas-outer-dia');
+    const heightEl = document.getElementById('meas-height');
+    const spanEl = document.getElementById('meas-span');
+    
+    const innerLabelEl = innerEl ? innerEl.previousElementSibling : null;
+    const outerLabelEl = outerEl ? outerEl.previousElementSibling : null;
+    
+    if (isArchMode) {
+        if (innerLabelEl) innerLabelEl.textContent = 'Depth:';
+        if (outerLabelEl) outerLabelEl.textContent = 'Span:';
+    } else {
+        if (innerLabelEl) innerLabelEl.textContent = 'Inner Ø:';
+        if (outerLabelEl) outerLabelEl.textContent = 'Outer Ø:';
+    }
+    
+    if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
+    if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
+    if (heightEl) heightEl.textContent = `${formatNumber(measurements.height / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.height, 1)}")`;
+    if (spanEl) spanEl.textContent = `${formatNumber(measurements.span / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.span, 1)}")`;
+    
+    // Draw 3D measurements based on mode
+    if (isArchMode) {
+        // ARCH MODE: Show span at ground, height, and depth
+        
+        // Span line (horizontal at ground level) - Orange
+        if (measurements.outerPoints && measurements.outerDia > 0) {
+            const label = system === 'metric'
+                ? `Span: ${unitConverter.formatLength(measurements.outerDia, 'in', 1)}`
+                : `Span: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.outerPoints[0], measurements.outerPoints[1], label, 0xf0ad4e);
+        }
+        
+        // Height line (vertical from ground to apex) - Green
+        if (measurements.heightPoints && measurements.height > 0) {
+            const label = system === 'metric'
+                ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+                : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.heightPoints[0], measurements.heightPoints[1], label, 0x2ecc71);
+        }
+        
+        // Depth line (along Z axis) - Cyan
+        if (measurements.innerPoints && measurements.innerDia > 0) {
+            const label = system === 'metric'
+                ? `Depth: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Depth: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.innerPoints[0], measurements.innerPoints[1], label, 0x00d2d3);
+        }
+    } else {
+        // CYLINDER MODE: Show inner/outer diameter and height
+        
+        // Inner diameter - Cyan
+        if (measurements.innerPoints && measurements.innerDia > 0) {
+            const label = system === 'metric'
+                ? `Inner: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Inner: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.innerPoints[0], measurements.innerPoints[1], label, 0x00d2d3);
+        }
+        
+        // Outer diameter - Orange
+        if (measurements.outerPoints && measurements.outerDia > 0) {
+            const label = system === 'metric'
+                ? `Outer: ${unitConverter.formatLength(measurements.outerDia, 'in', 1)}`
+                : `Outer: ${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.outerPoints[0], measurements.outerPoints[1], label, 0xf0ad4e);
+        }
+        
+        // Height line - Green
+        if (measurements.heightPoints && measurements.height > 0) {
+            const label = system === 'metric'
+                ? `Height: ${unitConverter.formatLength(measurements.height, 'in', 1)}`
+                : `Height: ${formatNumber(measurements.height / INCHES_PER_FOOT, 1)}'`;
+            createMeasurementLine3D(measurements.heightPoints[0], measurements.heightPoints[1], label, 0x2ecc71);
+        }
     }
 }
 
@@ -13116,6 +13630,12 @@ function updateState(key, val) {
             }
         }
         
+        // Update auto beam pricing when relevant dimensions change
+        const beamPricingKeys = ['hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'hLengthFt', 'vLengthFt'];
+        if (beamPricingKeys.includes(key) && state.autoLumberPricing) {
+            updateAutoBeamPricing();
+        }
+        
         saveStateToHistory();
         requestRender();
     } catch (error) {
@@ -13150,6 +13670,86 @@ Object.keys(idMap).forEach(k => {
         inputs[k].nb.addEventListener('change', e => updateState(key, e.target.value));
     }
 });
+
+// Auto lumber pricing controls
+(function initAutoLumberPricing() {
+    const autoCheckbox = document.getElementById('chk-auto-lumber-pricing');
+    const refPricingDiv = document.getElementById('ref-beam-pricing');
+    const pricingLabel = document.getElementById('pricing-mode-label');
+    const hCostInput = document.getElementById('nb-cost-hbeam');
+    const vCostInput = document.getElementById('nb-cost-vbeam');
+    const refWidthInput = document.getElementById('nb-ref-beam-w');
+    const refThickInput = document.getElementById('nb-ref-beam-t');
+    const refLengthInput = document.getElementById('nb-ref-beam-len');
+    const refPriceInput = document.getElementById('nb-ref-beam-price');
+    
+    // Toggle auto-pricing mode
+    function updatePricingMode() {
+        const isAuto = state.autoLumberPricing;
+        if (refPricingDiv) refPricingDiv.style.display = isAuto ? 'block' : 'none';
+        if (pricingLabel) pricingLabel.textContent = isAuto ? '(auto-calculated)' : '(manual)';
+        if (hCostInput) hCostInput.readOnly = isAuto;
+        if (vCostInput) vCostInput.readOnly = isAuto;
+        // Style read-only inputs
+        if (hCostInput) hCostInput.style.opacity = isAuto ? '0.7' : '1';
+        if (vCostInput) vCostInput.style.opacity = isAuto ? '0.7' : '1';
+        if (isAuto) updateAutoBeamPricing();
+    }
+    
+    // Handle auto checkbox change
+    if (autoCheckbox) {
+        autoCheckbox.checked = state.autoLumberPricing;
+        autoCheckbox.addEventListener('change', e => {
+            state.autoLumberPricing = e.target.checked;
+            updatePricingMode();
+            requestRender();
+        });
+    }
+    
+    // Handle reference beam changes
+    function handleRefChange() {
+        if (refWidthInput) state.refBeamWidth = parseFloat(refWidthInput.value) || 3.5;
+        if (refThickInput) state.refBeamThick = parseFloat(refThickInput.value) || 1.5;
+        if (refLengthInput) state.refBeamLength = parseFloat(refLengthInput.value) || 8;
+        if (refPriceInput) state.refBeamPrice = parseFloat(refPriceInput.value) || 5.48;
+        if (state.autoLumberPricing) {
+            updateAutoBeamPricing();
+            requestRender();
+        }
+    }
+    
+    if (refWidthInput) refWidthInput.addEventListener('change', handleRefChange);
+    if (refThickInput) refThickInput.addEventListener('change', handleRefChange);
+    if (refLengthInput) refLengthInput.addEventListener('change', handleRefChange);
+    if (refPriceInput) refPriceInput.addEventListener('change', handleRefChange);
+    
+    // Initialize reference inputs from state
+    if (refWidthInput) refWidthInput.value = state.refBeamWidth;
+    if (refThickInput) refThickInput.value = state.refBeamThick;
+    if (refLengthInput) refLengthInput.value = state.refBeamLength;
+    if (refPriceInput) refPriceInput.value = state.refBeamPrice;
+    
+    // Handle manual cost input - disable auto mode when user manually edits
+    if (hCostInput) {
+        hCostInput.addEventListener('change', e => {
+            if (!state.autoLumberPricing) {
+                state.costHBeam = parseFloat(e.target.value) || 0;
+                requestRender();
+            }
+        });
+    }
+    if (vCostInput) {
+        vCostInput.addEventListener('change', e => {
+            if (!state.autoLumberPricing) {
+                state.costVBeam = parseFloat(e.target.value) || 0;
+                requestRender();
+            }
+        });
+    }
+    
+    // Initial setup
+    updatePricingMode();
+})();
 
 // Prevent sidebar interactions from affecting canvas
 const sidebar = document.getElementById('sidebar');
@@ -14067,7 +14667,15 @@ document.getElementById('chk-vstack-reverse').onchange = e => {
 document.getElementById('chk-measure').onchange = e => {
     state.measureMode = e.target.checked;
     document.getElementById('measure-display').style.display = state.measureMode ? 'block' : 'none';
-    requestRender();
+    // Force immediate render for instant feedback
+    renderPending = false;
+    render();
+};
+document.getElementById('chk-human-scale').onchange = e => {
+    state.showHumanScale = e.target.checked;
+    // Force immediate render for instant feedback
+    renderPending = false;
+    render();
 };
 
 // === SOLAR PANEL EVENT HANDLERS ===
@@ -14707,24 +15315,6 @@ document.getElementById('chk-support-beams').onchange = e => {
     requestRender();
 };
 
-// Support beam dimension controls
-document.getElementById('nb-support-w').onchange = e => {
-    let val = parseFloat(e.target.value) || 3.5;
-    val = Math.max(0.5, Math.min(12, val));
-    state.solarPanels.supportBeamW = val;
-    e.target.value = val;
-    invalidateGeometryCache();
-    requestRender();
-};
-document.getElementById('nb-support-t').onchange = e => {
-    let val = parseFloat(e.target.value) || 1.5;
-    val = Math.max(0.5, Math.min(12, val));
-    state.solarPanels.supportBeamT = val;
-    e.target.value = val;
-    invalidateGeometryCache();
-    requestRender();
-};
-
 // Support beam length controls
 document.getElementById('sl-support-length').oninput = e => {
     const val = parseFloat(e.target.value);
@@ -14898,9 +15488,10 @@ document.getElementById('btn-unit-system').onclick = () => {
     // Show toast notification
     showToast(`Unit system changed to ${newSystem}`, 'info');
     
-    // Trigger UI update if needed (measurements, etc.)
-    if (typeof requestRender === 'function') {
-        requestRender();
+    // Force immediate render for instant feedback
+    if (typeof render === 'function') {
+        renderPending = false;
+        render();
     }
 };
 

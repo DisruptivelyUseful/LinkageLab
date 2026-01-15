@@ -600,3 +600,456 @@ input.error {
         flex-direction: column;
     }
 }
+
+/* Specification rows inside cards */
+.guide-spec-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.guide-spec-row:last-child {
+    border-bottom: none;
+}
+
+.guide-spec-label {
+    color: #666;
+    font-size: 0.85rem;
+}
+
+.guide-spec-value {
+    font-weight: 600;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+/* Beam Drill Template Diagrams */
+.guide-beam-diagram {
+    background: #fff;
+    border: 1px solid #d4c4a8;
+    border-radius: var(--radius-md);
+    padding: 20px 25px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.guide-beam-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid #e0d8cc;
+}
+
+.guide-beam-visual {
+    position: relative;
+    height: 120px;
+    margin: 25px 0 15px 0;
+}
+
+/* The beam bar itself - looks like wood */
+.guide-beam-bar {
+    position: absolute;
+    top: 35px;
+    /* left and right set via inline style for proportional sizing */
+    height: 50px;
+    background: linear-gradient(to bottom, 
+        #dcc8a8 0%, 
+        #c9b896 15%,
+        #d4c4a8 25%,
+        #c9b896 50%,
+        #d4c4a8 75%,
+        #c9b896 85%,
+        #dcc8a8 100%
+    );
+    border: 2px solid #5a4632;
+    border-radius: 4px;
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        inset 0 -2px 4px rgba(0, 0, 0, 0.1),
+        0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+/* Wood grain effect */
+.guide-beam-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 40px,
+        rgba(139, 90, 43, 0.08) 40px,
+        rgba(139, 90, 43, 0.08) 42px
+    );
+    border-radius: 2px;
+}
+
+/* Drill hole markers */
+.guide-beam-hole {
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 20px;
+    height: 20px;
+    background: radial-gradient(circle at 40% 40%, 
+        #ff4444 0%, 
+        #cc0000 50%, 
+        #990000 100%
+    );
+    border: 2px solid #1a1a1a;
+    border-radius: 50%;
+    z-index: 2;
+    box-shadow: 
+        inset 0 2px 4px rgba(255, 255, 255, 0.3),
+        0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Center drill hole - slightly different style */
+.guide-beam-hole:nth-child(2) {
+    background: radial-gradient(circle at 40% 40%, 
+        #ffaa44 0%, 
+        #ff8800 50%, 
+        #cc6600 100%
+    );
+}
+
+/* Label below each hole */
+.guide-beam-label {
+    position: absolute;
+    top: 32px;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.guide-beam-label-name {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.guide-beam-label-value {
+    color: #555;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+
+/* Dimension line above beam */
+.guide-beam-dimension {
+    position: absolute;
+    top: 0;
+    /* left and right set via inline style for proportional sizing */
+    height: 25px;
+    border-left: 2px solid #666;
+    border-right: 2px solid #666;
+    border-top: 2px solid #666;
+}
+
+/* Dimension arrows */
+.guide-beam-dimension::before,
+.guide-beam-dimension::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    width: 0;
+    height: 0;
+    border-style: solid;
+}
+
+.guide-beam-dimension::before {
+    left: -6px;
+    border-width: 5px 5px 0 5px;
+    border-color: #666 transparent transparent transparent;
+}
+
+.guide-beam-dimension::after {
+    right: -6px;
+    border-width: 5px 5px 0 5px;
+    border-color: #666 transparent transparent transparent;
+}
+
+.guide-beam-dimension-label {
+    position: absolute;
+    top: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #f8f6f2;
+    padding: 2px 12px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #2c3e50;
+    border: 1px solid #d4c4a8;
+    border-radius: 4px;
+    white-space: nowrap;
+}
+
+/* Footer styling */
+.guide-footer {
+    background: linear-gradient(135deg, #e8e4dc 0%, #d8d4cc 100%);
+    padding: 15px 30px;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+    color: #666;
+    border-top: 1px solid #d4c4a8;
+}
+
+/* Sub-section headers within cards */
+.guide-subsection-title {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    padding-bottom: 6px;
+    border-bottom: 1px dashed #d4c4a8;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.guide-subsection {
+    margin-bottom: 18px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.guide-subsection:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+/* Notes section */
+.guide-notes {
+    background: linear-gradient(135deg, #fff 0%, #fafafa 100%);
+    border: 1px solid #e0d8cc;
+    border-left: 4px solid #3498db;
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    margin-top: 15px;
+}
+
+.guide-notes-title {
+    font-weight: 700;
+    color: #2c3e50;
+    margin-bottom: 12px;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.guide-notes-list {
+    margin: 0;
+    padding-left: 22px;
+    color: #555;
+    font-size: 0.88rem;
+    line-height: 1.8;
+}
+
+.guide-notes-list li {
+    margin-bottom: 4px;
+}
+
+.guide-notes-list li::marker {
+    color: #3498db;
+}
+
+/* Improved stat bar styling */
+.guide-stats-bar {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: linear-gradient(135deg, #fff 0%, #fefefe 100%);
+    padding: 18px 24px;
+    border-radius: var(--radius-md);
+    border: 1px solid #e0d8cc;
+    margin-bottom: 25px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.guide-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 90px;
+}
+
+.guide-stat-label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #888;
+    font-weight: 600;
+}
+
+.guide-stat-value {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.guide-stat-value.highlight {
+    color: #006600;
+    font-size: 1.3rem;
+}
+
+/* Card refinements */
+.guide-card {
+    background: #fff;
+    border-radius: var(--radius-md);
+    border: 1px solid #e0d8cc;
+    overflow: hidden;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s ease;
+}
+
+.guide-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.guide-card-header {
+    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+    color: white;
+    padding: 12px 18px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+}
+
+.guide-card-content {
+    padding: 18px;
+}
+
+/* Table refinements */
+.guide-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.guide-table th {
+    text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid #d4c4a8;
+    font-weight: 700;
+    color: #444;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: #f8f6f2;
+}
+
+.guide-table td {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.guide-table tr:hover td {
+    background: #fafafa;
+}
+
+.guide-table tr:last-child td {
+    border-bottom: none;
+}
+
+.guide-table .qty {
+    font-weight: 700;
+    color: #2c3e50;
+    width: 50px;
+}
+
+.guide-table .price {
+    text-align: right;
+    color: #666;
+    font-family: var(--font-mono);
+}
+
+.guide-table .total {
+    text-align: right;
+    font-weight: 700;
+    color: #2c3e50;
+    font-family: var(--font-mono);
+}
+
+.guide-table .item {
+    color: #2c3e50;
+}
+
+/* Total row refinement */
+.guide-total-row {
+    background: linear-gradient(135deg, #f0f0f0 0%, #e8e8e8 100%);
+    margin-top: 15px;
+    padding: 14px 18px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: 1px solid #ddd;
+}
+
+.guide-total-label {
+    font-weight: 700;
+    color: #333;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.guide-total-value {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: #006600;
+}
+
+/* Print styles */
+@media print {
+    #build-guide-modal {
+        position: static;
+        background: white;
+        padding: 0;
+    }
+    .guide-container {
+        box-shadow: none;
+        margin: 0;
+    }
+    .guide-header-actions, .guide-close {
+        display: none;
+    }
+    .guide-beam-bar {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .guide-beam-hole {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    .guide-card {
+        box-shadow: none;
+        break-inside: avoid;
+    }
+    .guide-notes {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
