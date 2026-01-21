@@ -874,6 +874,53 @@ input.error {
     color: #3498db;
 }
 
+/* Bracket Detail Section */
+.guide-bracket-section {
+    margin-bottom: 25px;
+}
+
+.guide-bracket-views {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.guide-bracket-view {
+    flex: 0 0 auto;
+    background: #f8f8f8;
+    border: 1px solid #e0d8cc;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.guide-bracket-view canvas {
+    display: block;
+    background: #ffffff;
+}
+
+.guide-bracket-specs {
+    flex: 1;
+    min-width: 200px;
+    padding: 10px 0;
+}
+
+@media (max-width: 768px) {
+    .guide-bracket-views {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .guide-bracket-view {
+        width: 100%;
+    }
+    
+    .guide-bracket-view canvas {
+        width: 100%;
+        height: auto;
+    }
+}
+
 /* Improved stat bar styling */
 .guide-stats-bar {
     display: flex;
