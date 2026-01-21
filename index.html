@@ -397,7 +397,7 @@
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>H-Stack Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="ctrl-head"><span>H-Center Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
                             <input type="number" id="nb-hbolt-length" min="1" max="12" step="0.25" value="3" style="width:60px;">
                             <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
@@ -405,6 +405,16 @@
                             </label>
                         </div>
                     </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Pivot Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-hpivot-bolt-length" min="1" max="12" step="0.25" value="4" style="width:60px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-hpivot-bolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <div style="font-size:0.6rem; color:#8899a6; margin-top:2px;">H-Pivot: Bolts at inner/outer horizontal pivots (through beams into brackets)</div>
                     <div id="bolt-auto-info" style="font-size:0.65rem; color:#8899a6; margin-top:4px;"></div>
                 </div>
             </div>
@@ -495,14 +505,16 @@
                     <!-- Single bolt pricing (when stack is even or <=2) -->
                     <div id="bolt-cost-single" style="display:grid; grid-template-columns: 1fr 1fr; gap:4px 8px;">
                         <label style="font-size:0.7rem">V-Stack Bolt $ <input type="number" id="nb-cost-bolt-v" value="0.75" step="0.01" style="width:50px"></label>
-                        <label style="font-size:0.7rem">H-Stack Bolt $ <input type="number" id="nb-cost-bolt-h" value="0.75" step="0.01" style="width:50px"></label>
+                        <label style="font-size:0.7rem">H-Center Bolt $ <input type="number" id="nb-cost-bolt-h" value="0.75" step="0.01" style="width:50px"></label>
+                        <label style="font-size:0.7rem">H-Pivot Bolt $ <input type="number" id="nb-cost-bolt-hpivot" value="0.75" step="0.01" style="width:50px"></label>
                     </div>
                     <!-- Split bolt pricing (when V-stack > 2 and odd) -->
                     <div id="bolt-cost-split" style="display:none;">
                         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:4px 8px;">
                             <label style="font-size:0.7rem">Inner Bolt (Long) $ <input type="number" id="nb-cost-bolt-vinner" value="0.75" step="0.01" style="width:50px"></label>
                             <label style="font-size:0.7rem">Outer Bolt (Short) $ <input type="number" id="nb-cost-bolt-vouter" value="0.50" step="0.01" style="width:50px"></label>
-                            <label style="font-size:0.7rem">H-Stack Bolt $ <input type="number" id="nb-cost-bolt-h2" value="0.75" step="0.01" style="width:50px"></label>
+                            <label style="font-size:0.7rem">H-Center Bolt $ <input type="number" id="nb-cost-bolt-h2" value="0.75" step="0.01" style="width:50px"></label>
+                            <label style="font-size:0.7rem">H-Pivot Bolt $ <input type="number" id="nb-cost-bolt-hpivot2" value="0.75" step="0.01" style="width:50px"></label>
                         </div>
                     </div>
                     <div id="bolt-cost-info" style="font-size:0.6rem; color:#8899a6; margin-top:4px;"></div>
@@ -558,10 +570,9 @@
                 </label>
                 <div id="measure-display" style="margin-top:8px; font-size:0.85rem; color:#a8b9c9; display:none;">
                     <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
-                        <span style="color:#8899a6;">Inner Ø:</span><span id="meas-inner-dia">--</span>
+                        <span style="color:#8899a6;">Diameter:</span><span id="meas-inner-dia">--</span>
                         <span style="color:#8899a6;">Outer Ø:</span><span id="meas-outer-dia">--</span>
                         <span style="color:#8899a6;">Height:</span><span id="meas-height">--</span>
-                        <span style="color:#8899a6;">Span:</span><span id="meas-span">--</span>
                     </div>
                 </div>
             </div>
@@ -1449,10 +1460,20 @@
                     <span id="bom-b-vouter-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-b-vouter-cost" style="display:none; text-align: right;">$0</span>
                     
+                    <span class="hud-val" id="bom-b-vcenter" style="display:none;">0</span>
+                    <span id="bom-b-vcenter-label" style="display:none;">Center Bolts (Full) <span id="bom-b-vcenter-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-vcenter-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-vcenter-cost" style="display:none; text-align: right;">$0</span>
+                    
                     <span class="hud-val" id="bom-b-h">0</span>
-                    <span>H-Stack Bolts <span id="bom-b-h-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span>H-Center Bolts <span id="bom-b-h-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
                     <span id="bom-b-h-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-b-h-cost" style="text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-b-hpivot">0</span>
+                    <span>H-Pivot Bolts <span id="bom-b-hpivot-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-hpivot-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-hpivot-cost" style="text-align: right;">$0</span>
                 </div>
                 <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
                     <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
@@ -1640,13 +1661,24 @@ function calculateVStackOuterBoltLength() {
     return (outerBeamCount * beamWidth) + (Math.max(0, stackGap)) + 1;
 }
 
-/** Calculate auto bolt length for horizontal stack */
+/** Calculate auto bolt length for horizontal stack center bolts */
 function calculateHStackBoltLength() {
     const stackCount = state.hStackCount || 2;
     const beamThickness = state.hBeamT || 1.5;
     const stackGap = state.hStackGap || 0;
     // Total thickness + extra for head/nut
     return (stackCount * beamThickness) + (Math.max(0, stackGap) * 2) + 1;
+}
+
+/** Calculate auto bolt length for horizontal pivot bolts (through H-beams into brackets) */
+function calculateHPivotBoltLength() {
+    const stackCount = state.hStackCount || 2;
+    const beamThickness = state.hBeamT || 1.5;
+    const stackGap = state.hStackGap || 0;
+    const bracketWallThickness = state.bracketWallThickness || 0.25;
+    // Through H-beam stack + bracket wall + extra for head/nut
+    const hStackTotal = (stackCount * beamThickness) + (Math.max(0, stackGap) * (stackCount - 1));
+    return hStackTotal + bracketWallThickness + 1;
 }
 
 /** Update UI visibility for split/single bolt controls */
@@ -1722,7 +1754,15 @@ function updateAutoBoltLengths() {
         const hLengthInput = document.getElementById('nb-hbolt-length');
         if (hLengthInput) hLengthInput.value = state.hBoltLength.toFixed(2);
         if (infoText) infoText += ' | ';
-        infoText += `H-Stack: ${state.hStackCount} × ${state.hBeamT}" = ${state.hBoltLength.toFixed(2)}" bolt`;
+        infoText += `H-Center: ${state.hStackCount} × ${state.hBeamT}" = ${state.hBoltLength.toFixed(2)}"`;
+    }
+    
+    if (state.hPivotBoltAuto) {
+        state.hPivotBoltLength = calculateHPivotBoltLength();
+        const hPivotInput = document.getElementById('nb-hpivot-bolt-length');
+        if (hPivotInput) hPivotInput.value = state.hPivotBoltLength.toFixed(2);
+        if (infoText) infoText += ' | ';
+        infoText += `H-Pivot: ${state.hPivotBoltLength.toFixed(2)}"`;
     }
     
     if (infoEl) infoEl.textContent = infoText;
@@ -4693,13 +4733,16 @@ const state = {
     vBoltLength: 3.0,         // V-stack bolt length - full stack (auto-calculated if vBoltAuto is true)
     vBoltInnerLength: 3.0,    // V-stack inner bolt length (for odd stacks > 2, holds more beams)
     vBoltOuterLength: 2.0,    // V-stack outer bolt length (for odd stacks > 2, holds fewer beams)
-    hBoltLength: 3.0,         // H-stack bolt length (auto-calculated if hBoltAuto is true)
+    hBoltLength: 3.0,         // H-stack center bolt length (auto-calculated if hBoltAuto is true)
+    hPivotBoltLength: 4.0,    // H-pivot bolt length (through H-beams into brackets)
     vBoltAuto: true,          // Auto-calculate V-stack bolt length based on stack
-    hBoltAuto: true,          // Auto-calculate H-stack bolt length based on stack
+    hBoltAuto: true,          // Auto-calculate H-stack center bolt length based on stack
+    hPivotBoltAuto: true,     // Auto-calculate H-pivot bolt length
     // Pricing per bolt size
     costBoltVInner: 0.75,     // Cost per inner V-stack bolt (longer)
     costBoltVOuter: 0.50,     // Cost per outer V-stack bolt (shorter)
-    costBoltH: 0.75,          // Cost per H-stack bolt
+    costBoltH: 0.75,          // Cost per H-stack center bolt
+    costBoltHPivot: 0.75,     // Cost per H-pivot bolt (through H-beams into brackets)
 
     // Lumber pricing - volume-based auto calculation
     autoLumberPricing: true,      // When true, beam costs scale by volume automatically
@@ -7573,7 +7616,7 @@ function solveLinkage(foldAngle) {
                     };
             };
             
-            // Helper to create vertical bolt (through horizontal stack)
+            // Helper to create vertical bolt (through horizontal stack at center)
             const createVerticalBolt = (xzPos, yBottom, yTop) => {
                     const boltRadius = getBoltRadius();
                     const boltStart = {x: xzPos.x, y: yBottom, z: xzPos.z};
@@ -7590,6 +7633,41 @@ function solveLinkage(foldAngle) {
                         headRadius: boltRadius * 1.8,
                         headHeight: boltRadius * 1.2,
                         boltType: 'hstack',
+                        boltSubType: 'center',
+                        z: boltCenter.y
+                    };
+            };
+            
+            // Helper to create H-pivot bolt (vertical, through H-beams into bracket)
+            // isBottom: true for bottom ring brackets, false for top ring
+            const createHPivotBolt = (pivotPos, isBottom) => {
+                    const boltRadius = getBoltRadius();
+                    const boltLength = state.hPivotBoltLength || calculateHPivotBoltLength();
+                    
+                    // Bolt goes vertically through horizontal beam stack
+                    // Center the bolt at the same Y level as H-center bolts:
+                    // - Bottom ring: Y=0 (center of bottom horizontal stack)
+                    // - Top ring: Y=topH (center of top horizontal stack)
+                    const centerY = isBottom ? 0 : topH;
+                    
+                    const yBottom = centerY - boltLength / 2;
+                    const yTop = centerY + boltLength / 2;
+                    
+                    const boltStart = {x: pivotPos.x, y: yBottom, z: pivotPos.z};
+                    const boltEnd = {x: pivotPos.x, y: yTop, z: pivotPos.z};
+                    const boltCenter = {x: pivotPos.x, y: centerY, z: pivotPos.z};
+                    
+                    return {
+                        start: boltStart,
+                        end: boltEnd,
+                        center: boltCenter,
+                        dir: {x: 0, y: 1, z: 0},
+                        length: boltLength,
+                        radius: boltRadius,
+                        headRadius: boltRadius * 1.8,
+                        headHeight: boltRadius * 1.2,
+                        boltType: 'hpivot',
+                        boltSubType: isBottom ? 'bottom' : 'top',
                         z: boltCenter.y
                     };
             };
@@ -7607,6 +7685,14 @@ function solveLinkage(foldAngle) {
             }
             
             if(state.showBolts) {
+                // === H-PIVOT BOLTS (vertical, through H-beams into brackets) ===
+                // These bolts pass through the horizontal beam stack and into the bracket base
+                // 4 per module: inner/outer × bottom/top
+                bolts.push(createHPivotBolt(hPivotBotInner, true));   // Bottom inner pivot
+                bolts.push(createHPivotBolt(hPivotBotOuter, true));   // Bottom outer pivot
+                bolts.push(createHPivotBolt(hPivotTopInner, false));  // Top inner pivot
+                bolts.push(createHPivotBolt(hPivotTopOuter, false));  // Top outer pivot
+                
                 // === VERTICAL MODULE BOLTS (horizontal orientation) ===
                 // These go through the vertical beam stack at the actual pivot points
                 // For odd stacks > 2: inner bolts are longer (more beams), outer bolts are shorter
@@ -9754,27 +9840,32 @@ function updateHUD(data) {
     
     // Calculate bolt counts by type
     // V-stack bolts: 4 per module (2 inner, 2 outer) + 1 center bolt = 5 per module
-    // H-stack bolts: 2 per module (top and bottom ring centers)
+    // H-center bolts: 2 per module (top and bottom ring centers)
+    // H-pivot bolts: 4 per module (inner/outer × top/bottom)
     const splitBolts = needsSplitVBolts();
     const vBoltsInner = moduleCount * 2;  // 2 inner bolts per module (bot-inner, top-inner)
     const vBoltsOuter = moduleCount * 2;  // 2 outer bolts per module (bot-outer, top-outer)
     const vBoltsCenter = moduleCount * 1; // 1 center bolt per module
-    const hBolts = moduleCount * 2;       // 2 H-stack bolts per module
+    const hCenterBolts = moduleCount * 2; // 2 H-center bolts per module
+    const hPivotBolts = moduleCount * 4;  // 4 H-pivot bolts per module (at bracket positions)
     const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-    const nBolts = totalVBolts + hBolts;
+    const totalHBolts = hCenterBolts + hPivotBolts;
+    const nBolts = totalVBolts + totalHBolts;
     
     // Get bolt costs based on mode
-    let costBoltVInner, costBoltVOuter, costBoltH;
+    let costBoltVInner, costBoltVOuter, costBoltH, costBoltHPivot;
     if (splitBolts) {
         costBoltVInner = state.costBoltVInner || 0.75;
         costBoltVOuter = state.costBoltVOuter || 0.50;
         costBoltH = state.costBoltH || 0.75;
+        costBoltHPivot = state.costBoltHPivot || 0.75;
     } else {
         // Single mode: use same price for all V-stack bolts
         const vBoltPrice = parseFloat(document.getElementById('nb-cost-bolt-v')?.value) || 0.75;
         costBoltVInner = vBoltPrice;
         costBoltVOuter = vBoltPrice;
         costBoltH = parseFloat(document.getElementById('nb-cost-bolt-h')?.value) || 0.75;
+        costBoltHPivot = state.costBoltHPivot || 0.75;
     }
 
     // Calculate individual costs (per-beam pricing)
@@ -9786,8 +9877,9 @@ function updateHUD(data) {
     const vBoltInnerCost = vBoltsInner * costBoltVInner;
     const vBoltOuterCost = vBoltsOuter * costBoltVOuter;
     const vBoltCenterCost = vBoltsCenter * (splitBolts ? costBoltVInner : costBoltVInner); // Center uses full length (inner price)
-    const hBoltCost = hBolts * costBoltH;
-    const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hBoltCost;
+    const hCenterBoltCost = hCenterBolts * costBoltH;
+    const hPivotBoltCost = hPivotBolts * costBoltHPivot;
+    const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hCenterBoltCost + hPivotBoltCost;
     const structureSubtotal = hBeamCost + vBeamCost + bracketCost + boltCost;
     
     // Update cost section beam length and dimension displays
@@ -9843,31 +9935,52 @@ function updateHUD(data) {
     const bomBVOuterCostUnit = document.getElementById('bom-b-vouter-cost-unit');
     const bomBVOuterCost = document.getElementById('bom-b-vouter-cost');
     
-    // H-stack bolts display
+    // V-center bolts display (separate from inner/outer)
+    const bomBVCenter = document.getElementById('bom-b-vcenter');
+    const bomBVCenterLabel = document.getElementById('bom-b-vcenter-label');
+    const bomBVCenterSpec = document.getElementById('bom-b-vcenter-spec');
+    const bomBVCenterCostUnit = document.getElementById('bom-b-vcenter-cost-unit');
+    const bomBVCenterCost = document.getElementById('bom-b-vcenter-cost');
+    
+    // H-center bolts display
     const bomBH = document.getElementById('bom-b-h');
     const bomBHSpec = document.getElementById('bom-b-h-spec');
     const bomBHCostUnit = document.getElementById('bom-b-h-cost-unit');
     const bomBHCost = document.getElementById('bom-b-h-cost');
     
+    // H-pivot bolts display
+    const bomBHPivot = document.getElementById('bom-b-hpivot');
+    const bomBHPivotSpec = document.getElementById('bom-b-hpivot-spec');
+    const bomBHPivotCostUnit = document.getElementById('bom-b-hpivot-cost-unit');
+    const bomBHPivotCost = document.getElementById('bom-b-hpivot-cost');
+    
     if (splitBolts) {
-        // Split mode: show inner and outer bolt rows, hide single V-stack row
+        // Split mode: show inner, outer, and center bolt rows separately, hide single V-stack row
         if (bomBV) bomBV.style.display = 'none';
         if (bomBVLabel) bomBVLabel.style.display = 'none';
         if (bomBVCostUnit) bomBVCostUnit.style.display = 'none';
         if (bomBVCost) bomBVCost.style.display = 'none';
         
-        // Show split rows
-        if (bomBVInner) { bomBVInner.style.display = ''; bomBVInner.innerText = vBoltsInner + vBoltsCenter; }
+        // Show inner bolts row
+        if (bomBVInner) { bomBVInner.style.display = ''; bomBVInner.innerText = vBoltsInner; }
         if (bomBVInnerLabel) bomBVInnerLabel.style.display = '';
         if (bomBVInnerSpec) bomBVInnerSpec.textContent = `(${diameterFraction}" × ${formatNumber(state.vBoltInnerLength, 2)}")`;
         if (bomBVInnerCostUnit) { bomBVInnerCostUnit.style.display = ''; bomBVInnerCostUnit.innerText = '$' + formatNumber(costBoltVInner, 2); }
-        if (bomBVInnerCost) { bomBVInnerCost.style.display = ''; bomBVInnerCost.innerText = '$' + formatNumber(vBoltInnerCost + vBoltCenterCost, 0); }
+        if (bomBVInnerCost) { bomBVInnerCost.style.display = ''; bomBVInnerCost.innerText = '$' + formatNumber(vBoltInnerCost, 0); }
         
+        // Show outer bolts row
         if (bomBVOuter) { bomBVOuter.style.display = ''; bomBVOuter.innerText = vBoltsOuter; }
         if (bomBVOuterLabel) bomBVOuterLabel.style.display = '';
         if (bomBVOuterSpec) bomBVOuterSpec.textContent = `(${diameterFraction}" × ${formatNumber(state.vBoltOuterLength, 2)}")`;
         if (bomBVOuterCostUnit) { bomBVOuterCostUnit.style.display = ''; bomBVOuterCostUnit.innerText = '$' + formatNumber(costBoltVOuter, 2); }
         if (bomBVOuterCost) { bomBVOuterCost.style.display = ''; bomBVOuterCost.innerText = '$' + formatNumber(vBoltOuterCost, 0); }
+        
+        // Show center bolts row (uses full stack length)
+        if (bomBVCenter) { bomBVCenter.style.display = ''; bomBVCenter.innerText = vBoltsCenter; }
+        if (bomBVCenterLabel) bomBVCenterLabel.style.display = '';
+        if (bomBVCenterSpec) bomBVCenterSpec.textContent = `(${diameterFraction}" × ${formatNumber(state.vBoltLength, 2)}")`;
+        if (bomBVCenterCostUnit) { bomBVCenterCostUnit.style.display = ''; bomBVCenterCostUnit.innerText = '$' + formatNumber(costBoltVInner, 2); }
+        if (bomBVCenterCost) { bomBVCenterCost.style.display = ''; bomBVCenterCost.innerText = '$' + formatNumber(vBoltCenterCost, 0); }
     } else {
         // Single mode: show combined V-stack row, hide split rows
         if (bomBV) { bomBV.style.display = ''; bomBV.innerText = totalVBolts; }
@@ -9886,13 +9999,24 @@ function updateHUD(data) {
         if (bomBVOuterLabel) bomBVOuterLabel.style.display = 'none';
         if (bomBVOuterCostUnit) bomBVOuterCostUnit.style.display = 'none';
         if (bomBVOuterCost) bomBVOuterCost.style.display = 'none';
+        
+        if (bomBVCenter) bomBVCenter.style.display = 'none';
+        if (bomBVCenterLabel) bomBVCenterLabel.style.display = 'none';
+        if (bomBVCenterCostUnit) bomBVCenterCostUnit.style.display = 'none';
+        if (bomBVCenterCost) bomBVCenterCost.style.display = 'none';
     }
     
-    // H-stack bolts (always shown)
-    if (bomBH) bomBH.innerText = hBolts;
+    // H-center bolts (always shown)
+    if (bomBH) bomBH.innerText = hCenterBolts;
     if (bomBHSpec) bomBHSpec.textContent = `(${diameterFraction}" × ${formatNumber(state.hBoltLength, 2)}")`;
     if (bomBHCostUnit) bomBHCostUnit.innerText = '$' + formatNumber(costBoltH, 2);
-    if (bomBHCost) bomBHCost.innerText = '$' + formatNumber(hBoltCost, 0);
+    if (bomBHCost) bomBHCost.innerText = '$' + formatNumber(hCenterBoltCost, 0);
+    
+    // H-pivot bolts (always shown)
+    if (bomBHPivot) bomBHPivot.innerText = hPivotBolts;
+    if (bomBHPivotSpec) bomBHPivotSpec.textContent = `(${diameterFraction}" × ${formatNumber(state.hPivotBoltLength, 2)}")`;
+    if (bomBHPivotCostUnit) bomBHPivotCostUnit.innerText = '$' + formatNumber(costBoltHPivot, 2);
+    if (bomBHPivotCost) bomBHPivotCost.innerText = '$' + formatNumber(hPivotBoltCost, 0);
     
     // Update structure subtotal
     uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureSubtotal, 2);
@@ -11879,17 +12003,19 @@ function exportToSolarSimulator() {
     const vBoltsInner = moduleCount * 2;
     const vBoltsOuter = moduleCount * 2;
     const vBoltsCenter = moduleCount * 1;
-    const hBolts = moduleCount * 2;
+    const hCenterBolts = moduleCount * 2;
+    const hPivotBolts = moduleCount * 4;
     
     // Get bolt costs
     const costVInner = splitBolts ? (state.costBoltVInner || 0.75) : (state.costBoltVInner || 0.75);
     const costVOuter = splitBolts ? (state.costBoltVOuter || 0.50) : costVInner;
     const costH = state.costBoltH || 0.75;
+    const costHPivot = state.costBoltHPivot || 0.75;
     
     const hBeamsCost = hBeams * state.costHBeam;
     const vBeamsCost = vBeams * state.costVBeam;
     const bracketCost = uBrackets * state.costBracket;
-    const boltCost = (vBoltsInner + vBoltsCenter) * costVInner + vBoltsOuter * costVOuter + hBolts * costH;
+    const boltCost = vBoltsInner * costVInner + vBoltsOuter * costVOuter + vBoltsCenter * costVInner + hCenterBolts * costH + hPivotBolts * costHPivot;
     const structureSubtotal = hBeamsCost + vBeamsCost + bracketCost + boltCost;
     const solarCost = panelCount * state.costSolarPanel;
     const totalCost = structureSubtotal + solarCost;
@@ -11978,9 +12104,11 @@ function showBuildGuide() {
     const vBoltsInner = moduleCount * 2;  // 2 inner bolts per module (bot-inner, top-inner)
     const vBoltsOuter = moduleCount * 2;  // 2 outer bolts per module (bot-outer, top-outer)
     const vBoltsCenter = moduleCount * 1; // 1 center bolt per module
-    const hBolts = moduleCount * 2;       // 2 H-stack bolts per module
+    const hCenterBolts = moduleCount * 2; // 2 H-center bolts per module
+    const hPivotBolts = moduleCount * 4;  // 4 H-pivot bolts per module
     const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-    const nBolts = totalVBolts + hBolts;
+    const totalHBolts = hCenterBolts + hPivotBolts;
+    const nBolts = totalVBolts + totalHBolts;
     
     // Get bolt costs based on mode
     let costBoltVInner, costBoltVOuter, costBoltH;
@@ -12000,10 +12128,12 @@ function showBuildGuide() {
     const bracketCost = uBrackets * state.costBracket;
     
     // Calculate bolt costs by type
-    const vBoltInnerCost = (vBoltsInner + vBoltsCenter) * costBoltVInner; // Center bolts use full/inner price
+    const vBoltInnerCost = vBoltsInner * costBoltVInner;
     const vBoltOuterCost = vBoltsOuter * costBoltVOuter;
-    const hBoltCost = hBolts * costBoltH;
-    const boltCost = vBoltInnerCost + vBoltOuterCost + hBoltCost;
+    const vBoltCenterCost = vBoltsCenter * costBoltVInner; // Center bolts use full/inner price
+    const hCenterBoltCost = hCenterBolts * costBoltH;
+    const hPivotBoltCost = hPivotBolts * costHPivot;
+    const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hCenterBoltCost + hPivotBoltCost;
     
     // Solar panel calculations - get active panel config first
     const solarEnabled = state.solarPanels.enabled;
@@ -12156,7 +12286,7 @@ function showBuildGuide() {
                             </tr>
                             ${splitBolts ? `
                             <tr>
-                                <td class="qty">${vBoltsInner + vBoltsCenter}×</td>
+                                <td class="qty">${vBoltsInner}×</td>
                                 <td class="item">Inner Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.vBoltInnerLength, 2)}")</td>
                                 <td class="price">$${formatNumber(costBoltVInner, 2)}</td>
                                 <td class="total">$${formatNumber(vBoltInnerCost, 2)}</td>
@@ -12167,19 +12297,31 @@ function showBuildGuide() {
                                 <td class="price">$${formatNumber(costBoltVOuter, 2)}</td>
                                 <td class="total">$${formatNumber(vBoltOuterCost, 2)}</td>
                             </tr>
+                            <tr>
+                                <td class="qty">${vBoltsCenter}×</td>
+                                <td class="item">Center Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.vBoltLength, 2)}")</td>
+                                <td class="price">$${formatNumber(costBoltVInner, 2)}</td>
+                                <td class="total">$${formatNumber(vBoltCenterCost, 2)}</td>
+                            </tr>
                             ` : `
                             <tr>
                                 <td class="qty">${totalVBolts}×</td>
                                 <td class="item">V-Stack Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.vBoltLength, 2)}")</td>
                                 <td class="price">$${formatNumber(costBoltVInner, 2)}</td>
-                                <td class="total">$${formatNumber(vBoltInnerCost + vBoltOuterCost, 2)}</td>
+                                <td class="total">$${formatNumber(vBoltInnerCost + vBoltOuterCost + vBoltCenterCost, 2)}</td>
                             </tr>
                             `}
                             <tr>
-                                <td class="qty">${hBolts}×</td>
-                                <td class="item">H-Stack Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.hBoltLength, 2)}")</td>
+                                <td class="qty">${hCenterBolts}×</td>
+                                <td class="item">H-Center Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.hBoltLength, 2)}")</td>
                                 <td class="price">$${formatNumber(costBoltH, 2)}</td>
-                                <td class="total">$${formatNumber(hBoltCost, 2)}</td>
+                                <td class="total">$${formatNumber(hCenterBoltCost, 2)}</td>
+                            </tr>
+                            <tr>
+                                <td class="qty">${hPivotBolts}×</td>
+                                <td class="item">H-Pivot Bolts (${formatBoltDiameter(state.boltDiameter)}" × ${formatNumber(state.hPivotBoltLength, 2)}")</td>
+                                <td class="price">$${formatNumber(costHPivot, 2)}</td>
+                                <td class="total">$${formatNumber(hPivotBoltCost, 2)}</td>
                             </tr>
                             ${solarEnabled ? `<tr>
                                 <td class="qty">${solarPanelCount}×</td>
@@ -12263,11 +12405,15 @@ function showBuildGuide() {
                         ${splitBolts ? `
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Inner Bolt Length</span>
-                            <span class="guide-spec-value">${formatNumber(state.vBoltInnerLength, 2)}" (${vBoltsInner + vBoltsCenter}×)</span>
+                            <span class="guide-spec-value">${formatNumber(state.vBoltInnerLength, 2)}" (${vBoltsInner}×)</span>
                         </div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Outer Bolt Length</span>
                             <span class="guide-spec-value">${formatNumber(state.vBoltOuterLength, 2)}" (${vBoltsOuter}×)</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">Center Bolt Length</span>
+                            <span class="guide-spec-value">${formatNumber(state.vBoltLength, 2)}" (${vBoltsCenter}×)</span>
                         </div>
                         ` : `
                         <div class="guide-spec-row">
@@ -12276,8 +12422,12 @@ function showBuildGuide() {
                         </div>
                         `}
                         <div class="guide-spec-row">
-                            <span class="guide-spec-label">H-Stack Bolt Length</span>
-                            <span class="guide-spec-value">${formatNumber(state.hBoltLength, 2)}" (${hBolts}×)</span>
+                            <span class="guide-spec-label">H-Center Bolt Length</span>
+                            <span class="guide-spec-value">${formatNumber(state.hBoltLength, 2)}" (${hCenterBolts}×)</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">H-Pivot Bolt Length</span>
+                            <span class="guide-spec-value">${formatNumber(state.hPivotBoltLength, 2)}" (${hPivotBolts}×)</span>
                         </div>
                         <div class="guide-spec-row" style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ddd;">
                             <span class="guide-spec-label" style="font-weight: 600;">Total Bolts</span>
@@ -12822,6 +12972,17 @@ function applyV30Config(config) {
         if (m.arrayCount !== undefined) state.arrayCount = m.arrayCount;
     }
     
+    // Visibility settings
+    if (config.visibility) {
+        const v = config.visibility;
+        if (v.brackets !== undefined) state.showBrackets = v.brackets;
+        if (v.bolts !== undefined) state.showBolts = v.bolts;
+        // Solar panels visibility is handled in the panels section
+    } else {
+        // Default: show bolts when loading a config (user preference)
+        state.showBolts = true;
+    }
+    
     // Solar panel configuration
     if (config.panels) {
         const p = config.panels;
@@ -13151,6 +13312,13 @@ function getConfigSnapshot(includeMetadata = false) {
             }
         },
         
+        // Visibility settings for components
+        visibility: {
+            brackets: state.showBrackets,
+            bolts: state.showBolts,
+            solarPanels: state.solarPanels.enabled
+        },
+        
         // Camera/viewport state for debugging and default view in simulate mode
         cameraState: {
             yaw: state.cam.yaw,
@@ -13289,6 +13457,13 @@ function applyConfig(config, updateUI = true) {
         // Sync checkbox states
         const vstackReverseChk = document.getElementById('chk-vstack-reverse');
         if (vstackReverseChk) vstackReverseChk.checked = state.vStackReverse;
+        
+        // Sync visibility checkboxes
+        const bracketsChk = document.getElementById('chk-brack');
+        if (bracketsChk) bracketsChk.checked = state.showBrackets;
+        const boltsChk = document.getElementById('chk-bolts');
+        if (boltsChk) boltsChk.checked = state.showBolts;
+        
         // Sync orientation dropdown
         const orientationSel = document.getElementById('sel-orientation');
         if (orientationSel) orientationSel.value = state.orientation || 'horizontal';
@@ -14039,7 +14214,7 @@ function calculateMeasurements(data) {
             spanPoints
         };
     } else {
-        // CYLINDER MODE: Measure inner and outer diameter at same height level
+        // CYLINDER MODE: Measure diameter across widest points and outer diameter
         const hBeams = data.beams.filter(b => b.stackType && b.stackType.startsWith('horizontal'));
         
         // Group beams by ring type (top or bottom)
@@ -14049,62 +14224,66 @@ function calculateMeasurements(data) {
         // Use bottom ring for diameter measurements (more consistent)
         const measureBeams = botBeams.length > 0 ? botBeams : hBeams;
         
-        // Collect pivot points
+        // Collect all corner points at ground level for diameter calculation
+        const groundPoints = [];
+        data.beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c && Math.abs(c.y - minY) < 1) { // Points near ground level
+                        groundPoints.push({x: c.x, y: minY, z: c.z || 0});
+                    }
+                });
+            }
+        });
+        
+        // Find the two points that are furthest apart on the ground plane (XZ)
+        // This gives us the true diameter across the widest points
+        let maxGroundDist = 0;
+        let diameterPoint1 = null, diameterPoint2 = null;
+        
+        for (let i = 0; i < groundPoints.length; i++) {
+            for (let j = i + 1; j < groundPoints.length; j++) {
+                const p1 = groundPoints[i];
+                const p2 = groundPoints[j];
+                const dist = Math.sqrt(
+                    Math.pow(p2.x - p1.x, 2) + 
+                    Math.pow(p2.z - p1.z, 2)
+                );
+                if (dist > maxGroundDist) {
+                    maxGroundDist = dist;
+                    diameterPoint1 = p1;
+                    diameterPoint2 = p2;
+                }
+            }
+        }
+        
+        // Set diameter measurement (replaces inner)
+        if (diameterPoint1 && diameterPoint2) {
+            innerDia = maxGroundDist;
+            innerPoints = [
+                { x: diameterPoint1.x, y: minY, z: diameterPoint1.z },
+                { x: diameterPoint2.x, y: minY, z: diameterPoint2.z }
+            ];
+        }
+        
+        // Collect pivot points for outer diameter
         const pivotPoints = [];
         measureBeams.forEach(beam => {
             if (beam.p1) pivotPoints.push({...beam.p1, moduleIndex: beam.moduleIndex});
             if (beam.p2) pivotPoints.push({...beam.p2, moduleIndex: beam.moduleIndex});
         });
         
-        // Find inner and outer radii
-        let minRad = Infinity, maxRad = -Infinity;
-        let innerPoint1 = null, outerPoint1 = null;
+        // Find outer radius
+        let maxRad = -Infinity;
+        let outerPoint1 = null;
         
         pivotPoints.forEach(p => {
             const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
-            if (rad < minRad) {
-                minRad = rad;
-                innerPoint1 = p;
-            }
             if (rad > maxRad) {
                 maxRad = rad;
                 outerPoint1 = p;
             }
         });
-        
-        // Find opposite point for inner diameter (180° away)
-        if (innerPoint1) {
-            const angle1 = Math.atan2(innerPoint1.z || 0, innerPoint1.x);
-            let bestAngleDiff = 0;
-            let bestPoint = null;
-            
-            pivotPoints.forEach(p => {
-                if (p === innerPoint1) return;
-                const rad = Math.sqrt(p.x * p.x + (p.z || 0) * (p.z || 0));
-                // Only consider inner points (within 20% of min radius)
-                if (rad > minRad * 1.2) return;
-                
-                const angle2 = Math.atan2(p.z || 0, p.x);
-                let angleDiff = Math.abs(angle2 - angle1);
-                if (angleDiff > Math.PI) angleDiff = 2 * Math.PI - angleDiff;
-                
-                if (angleDiff > bestAngleDiff) {
-                    bestAngleDiff = angleDiff;
-                    bestPoint = p;
-                }
-            });
-            
-            if (bestPoint) {
-                innerPoints = [
-                    { x: innerPoint1.x, y: innerPoint1.y, z: innerPoint1.z || 0 },
-                    { x: bestPoint.x, y: bestPoint.y, z: bestPoint.z || 0 }
-                ];
-                innerDia = Math.sqrt(
-                    Math.pow(bestPoint.x - innerPoint1.x, 2) +
-                    Math.pow((bestPoint.z || 0) - (innerPoint1.z || 0), 2)
-                );
-            }
-        }
         
         // Find opposite point for outer diameter (180° away)
         if (outerPoint1) {
@@ -14282,9 +14461,10 @@ function drawMeasurements(ctx, data) {
     };
     
     // Draw inner diameter measurement (cyan)
+    // Draw diameter measurement on ground plane (cyan)
     if (measurements.innerPoints) {
         const dist = measurements.innerDia;
-        const label = `Inner: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
+        const label = `Diameter: ${formatNumber(dist / INCHES_PER_FOOT, 1)}'`;
         drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
     }
     
@@ -14388,8 +14568,8 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
         if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
         if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
     } else {
-        // Cylinder mode: show Inner Ø, Outer Ø, Height
-        if (innerLabelEl) innerLabelEl.textContent = 'Inner Ø:';
+        // Cylinder mode: show Diameter, Outer Ø, Height
+        if (innerLabelEl) innerLabelEl.textContent = 'Diameter:';
         if (outerLabelEl) outerLabelEl.textContent = 'Outer Ø:';
         if (innerEl) innerEl.textContent = `${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.innerDia, 1)}")`;
         if (outerEl) outerEl.textContent = `${formatNumber(measurements.outerDia / INCHES_PER_FOOT, 2)}' (${formatNumber(measurements.outerDia, 1)}")`;
@@ -14509,11 +14689,11 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
     } else {
         // CYLINDER MODE: Show inner/outer diameter and height
         
-        // Inner diameter
+        // Diameter (ground plane - widest distance)
         if (measurements.innerPoints && measurements.innerDia > 0) {
             const label = system === 'metric'
-                ? `Inner Ø: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
-                : `Inner Ø: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+                ? `Diameter: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Diameter: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
             drawMeasurementLine(measurements.innerPoints[0], measurements.innerPoints[1], label, '#00d2d3', -20);
         }
         
@@ -14802,7 +14982,7 @@ function update3DMeasurementLines(data) {
         if (innerLabelEl) innerLabelEl.textContent = 'Depth:';
         if (outerLabelEl) outerLabelEl.textContent = 'Span:';
     } else {
-        if (innerLabelEl) innerLabelEl.textContent = 'Inner Ø:';
+        if (innerLabelEl) innerLabelEl.textContent = 'Diameter:';
         if (outerLabelEl) outerLabelEl.textContent = 'Outer Ø:';
     }
     
@@ -14841,11 +15021,11 @@ function update3DMeasurementLines(data) {
     } else {
         // CYLINDER MODE: Show inner/outer diameter and height
         
-        // Inner diameter - Cyan
+        // Diameter on ground plane - Cyan (widest distance across structure)
         if (measurements.innerPoints && measurements.innerDia > 0) {
             const label = system === 'metric'
-                ? `Inner: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
-                : `Inner: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
+                ? `Diameter: ${unitConverter.formatLength(measurements.innerDia, 'in', 1)}`
+                : `Diameter: ${formatNumber(measurements.innerDia / INCHES_PER_FOOT, 1)}'`;
             createMeasurementLine3D(measurements.innerPoints[0], measurements.innerPoints[1], label, 0x00d2d3);
         }
         
@@ -15380,10 +15560,10 @@ const spaceMouse = {
         tilt: 0.08      // Rotation around X (pitch) - increased for snappier response
     },
     // Dead zone to prevent drift
-    deadZone: 0.05,
+    deadZone: 0.04,
     // Inversion flags (set to -1 to invert, 1 for normal)
     invert: {
-        panX: 1,
+        panX: -1,
         panY: 1,
         zoom: -1,       // Inverted: push forward = zoom in
         orbit: 1,
@@ -16030,6 +16210,31 @@ document.getElementById('chk-hbolt-auto').onchange = e => {
     }
 };
 
+// H-pivot bolt length - support both input (arrows) and change (typing)
+const handleHPivotBoltLength = e => {
+    if (!state.hPivotBoltAuto) {
+        state.hPivotBoltLength = parseFloat(e.target.value) || 4;
+        invalidateGeometryCache();
+        requestRender();
+    }
+};
+const hPivotBoltLengthEl = document.getElementById('nb-hpivot-bolt-length');
+if (hPivotBoltLengthEl) {
+    hPivotBoltLengthEl.oninput = handleHPivotBoltLength;
+    hPivotBoltLengthEl.onchange = handleHPivotBoltLength;
+}
+
+document.getElementById('chk-hpivot-bolt-auto')?.addEventListener('change', e => {
+    state.hPivotBoltAuto = e.target.checked;
+    const input = document.getElementById('nb-hpivot-bolt-length');
+    if (input) input.disabled = state.hPivotBoltAuto;
+    if (state.hPivotBoltAuto) {
+        updateAutoBoltLengths();
+        invalidateGeometryCache();
+        requestRender();
+    }
+});
+
 // Inner/outer bolt length event handlers (for split mode)
 // Using 'input' event for real-time updates when using arrow buttons
 const handleVBoltInnerChange = e => {
@@ -16123,6 +16328,20 @@ const handleCostBoltH2 = e => {
 };
 document.getElementById('nb-cost-bolt-h2')?.addEventListener('input', handleCostBoltH2);
 document.getElementById('nb-cost-bolt-h2')?.addEventListener('change', handleCostBoltH2);
+
+const handleCostBoltHPivot = e => {
+    state.costBoltHPivot = parseFloat(e.target.value) || 0.75;
+    requestRender();
+};
+document.getElementById('nb-cost-bolt-hpivot')?.addEventListener('input', handleCostBoltHPivot);
+document.getElementById('nb-cost-bolt-hpivot')?.addEventListener('change', handleCostBoltHPivot);
+
+const handleCostBoltHPivot2 = e => {
+    state.costBoltHPivot = parseFloat(e.target.value) || 0.75;
+    requestRender();
+};
+document.getElementById('nb-cost-bolt-hpivot2')?.addEventListener('input', handleCostBoltHPivot2);
+document.getElementById('nb-cost-bolt-hpivot2')?.addEventListener('change', handleCostBoltHPivot2);
 
 document.getElementById('sel-orientation').onchange = e => {
     state.orientation = e.target.value;
@@ -17735,8 +17954,10 @@ function updateBracketHoleDistance() {
     
     const vBoltLengthInput = document.getElementById('nb-vbolt-length');
     const hBoltLengthInput = document.getElementById('nb-hbolt-length');
+    const hPivotBoltLengthInput = document.getElementById('nb-hpivot-bolt-length');
     const vBoltAutoChk = document.getElementById('chk-vbolt-auto');
     const hBoltAutoChk = document.getElementById('chk-hbolt-auto');
+    const hPivotBoltAutoChk = document.getElementById('chk-hpivot-bolt-auto');
     
     // Inner/outer bolt controls
     const vBoltInnerInput = document.getElementById('nb-vbolt-inner-length');
@@ -17753,8 +17974,10 @@ function updateBracketHoleDistance() {
     
     if (vBoltAutoChk) vBoltAutoChk.checked = state.vBoltAuto;
     if (hBoltAutoChk) hBoltAutoChk.checked = state.hBoltAuto;
+    if (hPivotBoltAutoChk) hPivotBoltAutoChk.checked = state.hPivotBoltAuto;
     if (vBoltLengthInput) vBoltLengthInput.disabled = state.vBoltAuto;
     if (hBoltLengthInput) hBoltLengthInput.disabled = state.hBoltAuto;
+    if (hPivotBoltLengthInput) hPivotBoltLengthInput.disabled = state.hPivotBoltAuto;
     
     // Initialize inner/outer auto checkboxes (default to true)
     if (vBoltInnerAutoChk) vBoltInnerAutoChk.checked = true;
@@ -17768,6 +17991,12 @@ function updateBracketHoleDistance() {
     if (costBoltVInner) costBoltVInner.value = state.costBoltVInner || 0.75;
     if (costBoltVOuter) costBoltVOuter.value = state.costBoltVOuter || 0.50;
     if (costBoltH2) costBoltH2.value = state.costBoltH || 0.75;
+    
+    // Initialize H-pivot bolt cost inputs
+    const costBoltHPivot = document.getElementById('nb-cost-bolt-hpivot');
+    const costBoltHPivot2 = document.getElementById('nb-cost-bolt-hpivot2');
+    if (costBoltHPivot) costBoltHPivot.value = state.costBoltHPivot || 0.75;
+    if (costBoltHPivot2) costBoltHPivot2.value = state.costBoltHPivot || 0.75;
     
     // Calculate initial auto bolt lengths and update UI visibility
     updateAutoBoltLengths();
