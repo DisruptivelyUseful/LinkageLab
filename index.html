@@ -21,6 +21,8 @@
     </style>
     <!-- Three.js for WebGL rendering - UMD build works with file:// protocol -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTFExporter for 3D model export -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     <!-- D3.js for Solar Simulator SVG rendering -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <!-- convert-units library for unit conversions -->
@@ -82,6 +84,7 @@
         <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)" style="padding:4px 8px; font-size:0.75rem;">⬇️</button>
         <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)" style="padding:4px 8px; font-size:0.75rem;">⬆️</button>
+        <button class="topbar-btn" id="btn-export-gltf" title="Export 3D Model (glTF/GLB)" style="padding:4px 8px; font-size:0.75rem;">🧊</button>
         <div class="topbar-divider"></div>
         <button class="topbar-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)" style="padding:4px 8px; font-size:0.75rem;">📏</button>
         <div class="topbar-divider"></div>
@@ -258,6 +261,20 @@
                     </label>
                 </div>
                 <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horizontal Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-hgap" min="-2" max="1" step="0.05">
+                        <input type="number" id="nb-hgap" value="0.0" step="0.05">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Vertical Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vgap" min="-2" max="1" step="0.05">
+                        <input type="number" id="nb-vgap" value="0.0" step="0.05">
+                    </div>
+                </div>
+                <div class="ctrl-row">
                     <div class="ctrl-head"><span>Module Count</span></div>
                     <div class="input-wrap">
                         <input type="range" id="sl-mod" min="3" max="40" step="1" value="8">
@@ -270,82 +287,66 @@
         <div class="group collapsed">
             <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Hardware Settings</div>
             <div class="group-content">
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bracket Dimensions</div>
                 <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Bracket Vertical Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-brack" min="0" max="12" step="0.1">
-                        <input type="number" id="nb-brack" min="0" max="12" step="0.1">
+                        <input type="number" id="nb-bracket-width" min="0.5" max="6" step="0.01" value="2.0" style="width:60px;">
                     </div>
-                </div>
-                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
-                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bracket Dimensions</div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="number" id="nb-bracket-width" min="0.5" max="6" step="0.25" value="2.0" style="width:60px;">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Depth</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="number" id="nb-bracket-depth" min="0.5" max="6" step="0.25" value="3.0" style="width:60px;">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Height</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="number" id="nb-bracket-height" min="1" max="12" step="0.25" value="3.0" style="width:60px;">
-                        </div>
-                    </div>
-                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px; margin-bottom:4px;">Height auto-adjusts if side holes exceed it</div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Wall Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="number" id="nb-bracket-wall" min="0.1" max="1" step="0.05" value="0.25" style="width:60px;">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Inner Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="number" id="nb-bracket-inner" min="0.5" max="5" step="0.25" value="1.5" style="width:60px;">
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Hole Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <select id="sel-bracket-hole-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
-                                <option value="0.25">1/4"</option>
-                                <option value="0.3125">5/16"</option>
-                                <option value="0.375" selected>3/8"</option>
-                                <option value="0.5">1/2"</option>
-                                <option value="0.625">5/8"</option>
-                                <option value="0.75">3/4"</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Hole Distance</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                        <div class="input-wrap">
-                            <input type="text" id="nb-bracket-hole-distance" readonly style="width:60px; background:var(--bg-secondary); color:var(--text-muted);" value="0.00">
-                        </div>
-                    </div>
-                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Distance from bracket bottom to side hole centers</div>
-                    <div class="ctrl-row" style="margin-top:8px;">
-                        <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-bracket-z-rotation" min="-180" max="180" step="1" value="0">
-                            <input type="number" id="nb-bracket-z-rotation" min="-180" max="180" step="1" value="0" style="width:60px;">
-                        </div>
-                    </div>
-                    <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Rotates bracket around vertical axis</div>
                 </div>
                 <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="ctrl-head"><span>Depth</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-vgap" min="-2" max="1" step="0.05">
-                        <input type="number" id="nb-vgap" value="0.0" step="0.05">
+                        <input type="number" id="nb-bracket-depth" min="0.5" max="6" step="0.01" value="3.0" style="width:60px;">
                     </div>
                 </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Height</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-height" min="0.5" max="12" step="0.01" value="3.0" style="width:60px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px; margin-bottom:4px;">Bracket sits flat on pivot; height = leg length</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Wall Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-wall" min="0.05" max="1" step="0.01" value="0.25" style="width:60px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Inner Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-inner" min="0.25" max="5" step="0.01" value="1.5" style="width:60px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hole Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <select id="sel-bracket-hole-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                            <option value="0.25">1/4"</option>
+                            <option value="0.3125">5/16"</option>
+                            <option value="0.375" selected>3/8"</option>
+                            <option value="0.5">1/2"</option>
+                            <option value="0.625">5/8"</option>
+                            <option value="0.75">3/4"</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hole Distance</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-hole-distance" min="0" max="12" step="0.01" value="0.00" style="width:60px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Distance from bracket base to side hole centers</div>
+                <div class="ctrl-row" style="margin-top:8px;">
+                    <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-bracket-z-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-bracket-z-rotation" min="-180" max="180" step="1" value="0" style="width:60px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Rotates bracket around vertical axis</div>
                 <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
                     <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bolt Configuration</div>
                     <div class="ctrl-row">
@@ -1545,7 +1546,7 @@ function formatBoltDiameter(diameter) {
 function calculateVStackBoltLength() {
     const stackCount = state.vStackCount || 3;
     const beamWidth = state.vBeamW || 1.5;
-    const stackGap = state.stackGap || 0;
+    const stackGap = state.vStackGap || 0;
     // Total thickness + 2x gap (for head/nut clearance)
     return (stackCount * beamWidth) + (Math.max(0, stackGap) * 2) + 1;
 }
@@ -1554,7 +1555,7 @@ function calculateVStackBoltLength() {
 function calculateHStackBoltLength() {
     const stackCount = state.hStackCount || 2;
     const beamThickness = state.hBeamT || 1.5;
-    const stackGap = state.stackGap || 0;
+    const stackGap = state.hStackGap || 0;
     // Total thickness + extra for head/nut
     return (stackCount * beamThickness) + (Math.max(0, stackGap) * 2) + 1;
 }
@@ -2750,7 +2751,7 @@ function createBracketMesh(bracket) {
     const wallThickness = bracket.wallThickness || state.bracketWallThickness || 0.25;
     const innerWidth = bracket.innerWidth || state.bracketInnerWidth || 1.5;
     const holeDiameter = bracket.holeDiameter || state.bracketHoleDiameter || 0.375;
-    const holeDistance = bracket.holeDistance || state.bracketOffset || 0;
+    const holeDistance = bracket.holeDistance || state.bracketHoleDistance || 0;
     
     // Create a group to hold all bracket parts
     const bracketGroup = new THREE.Group();
@@ -3014,6 +3015,1045 @@ function clearGroup(group) {
         }
         group.remove(child);
     }
+}
+
+// ============================================================================
+// GLTF EXPORT SYSTEM
+// ============================================================================
+
+/**
+ * Exports the current 3D model to glTF/GLB format with proper hierarchy.
+ * Creates a structured scene with modules as parent groups containing
+ * beams, brackets, and bolts as children for easy editing in SketchUp/other 3D apps.
+ * 
+ * Hierarchy structure:
+ * - Root (LinkageLab_Export)
+ *   - Module_0
+ *     - HorizontalBeams_Top
+ *     - HorizontalBeams_Bottom
+ *     - VerticalBeams
+ *     - Brackets
+ *     - Bolts
+ *   - Module_1
+ *     - ...
+ *   - Panels (if enabled)
+ */
+function exportToGLTF(format = 'glb', units = 'meters', coordSys = 'yup') {
+    // Check if GLTFExporter is available
+    if (typeof THREE === 'undefined' || typeof THREE.GLTFExporter === 'undefined') {
+        showToast('GLTFExporter not available. Please check your internet connection.', 'error');
+        console.error('THREE.GLTFExporter not loaded');
+        return;
+    }
+    
+    console.log('[GLTF Export] Starting export with units:', units, 'coordSys:', coordSys);
+    
+    // Calculate scale factor based on export units
+    // Internal model units are INCHES
+    // glTF standard is meters
+    let scaleFactor = 1;
+    switch (units) {
+        case 'meters':
+            // Convert inches to meters: 1 inch = 0.0254 meters
+            scaleFactor = 0.0254;
+            break;
+        case 'feet':
+            // Convert inches to feet: 1 inch = 1/12 feet
+            scaleFactor = 1 / 12;
+            break;
+        case 'inches':
+        default:
+            // Keep as inches (1:1)
+            scaleFactor = 1;
+            break;
+    }
+    
+    // Get current geometry data
+    const data = solveLinkage(state.foldAngle);
+    
+    if (!data || !data.beams || data.beams.length === 0) {
+        showToast('No geometry to export. Please create a structure first.', 'error');
+        return;
+    }
+    
+    // Calculate solar panels if enabled
+    if (state.solarPanels && state.solarPanels.enabled) {
+        try {
+            const solarData = calculateSolarPanels(data);
+            data.panels = solarData.panels;
+        } catch (e) {
+            console.warn('[GLTF Export] Could not calculate solar panels:', e);
+            data.panels = [];
+        }
+    }
+    
+    // Helper functions for coordinate transformation (Y-up to Z-up)
+    // Transform: Y → Z, Z → -Y (rotate 90° around X axis)
+    const transformPointYupToZup = (p) => {
+        if (!p) return p;
+        return { x: p.x, y: -p.z, z: p.y };
+    };
+    
+    const transformDirYupToZup = (v) => {
+        if (!v) return v;
+        return { x: v.x, y: -v.z, z: v.y };
+    };
+    
+    // Apply coordinate transformation to all geometry data if Z-up is selected
+    if (coordSys === 'zup') {
+        console.log('[GLTF Export] Transforming geometry data to Z-up...');
+        
+        // Transform beams
+        if (data.beams) {
+            data.beams.forEach(beam => {
+                // Transform corners
+                if (beam.corners) {
+                    beam.corners = beam.corners.map(c => transformPointYupToZup(c));
+                }
+                // Transform center
+                if (beam.center) {
+                    beam.center = transformPointYupToZup(beam.center);
+                }
+                // Transform axis vectors
+                if (beam.axisX) beam.axisX = transformDirYupToZup(beam.axisX);
+                if (beam.axisY) beam.axisY = transformDirYupToZup(beam.axisY);
+                if (beam.axisZ) beam.axisZ = transformDirYupToZup(beam.axisZ);
+            });
+        }
+        
+        // Transform brackets
+        if (data.brackets) {
+            data.brackets.forEach(bracket => {
+                // If bottomPos doesn't exist but pos and bottomY do, construct bottomPos first
+                if (!bracket.bottomPos && bracket.pos && bracket.bottomY !== undefined) {
+                    bracket.bottomPos = {
+                        x: bracket.pos.x,
+                        y: bracket.bottomY,
+                        z: bracket.pos.z
+                    };
+                }
+                
+                // Now transform positions
+                if (bracket.pos) bracket.pos = transformPointYupToZup(bracket.pos);
+                if (bracket.bottomPos) bracket.bottomPos = transformPointYupToZup(bracket.bottomPos);
+                if (bracket.beamDir) bracket.beamDir = transformDirYupToZup(bracket.beamDir);
+                if (bracket.right) bracket.right = transformDirYupToZup(bracket.right);
+            });
+        }
+        
+        // Transform bolts
+        if (data.bolts) {
+            data.bolts.forEach(bolt => {
+                if (bolt.center) bolt.center = transformPointYupToZup(bolt.center);
+                if (bolt.dir) bolt.dir = transformDirYupToZup(bolt.dir);
+            });
+        }
+        
+        // Transform panels
+        if (data.panels) {
+            data.panels.forEach(panel => {
+                if (panel.center) panel.center = transformPointYupToZup(panel.center);
+                if (panel.corners) {
+                    panel.corners = panel.corners.map(c => transformPointYupToZup(c));
+                }
+                if (panel.axisX) panel.axisX = transformDirYupToZup(panel.axisX);
+                if (panel.axisY) panel.axisY = transformDirYupToZup(panel.axisY);
+                if (panel.axisZ) panel.axisZ = transformDirYupToZup(panel.axisZ);
+                if (panel.normal) panel.normal = transformDirYupToZup(panel.normal);
+            });
+        }
+        
+        console.log('[GLTF Export] Geometry data transformed to Z-up');
+    }
+    
+    // Create a new scene for export (independent of the render scene)
+    const exportScene = new THREE.Scene();
+    exportScene.name = 'LinkageLab_Export';
+    
+    // Create coordinate system wrapper group (for Y-up to Z-up conversion)
+    const coordWrapper = new THREE.Group();
+    coordWrapper.name = 'CoordSystem';
+    exportScene.add(coordWrapper);
+    
+    // Create root group for structure
+    const rootGroup = new THREE.Group();
+    rootGroup.name = 'Structure';
+    coordWrapper.add(rootGroup);
+    
+    // Track total meshes added for validation
+    let totalMeshes = 0;
+    
+    // Flag for Z-up coordinate system (passed to mesh creation functions)
+    const isZup = coordSys === 'zup';
+    
+    // Group beams by module index
+    const beamsByModule = {};
+    if (data.beams) {
+        data.beams.forEach(beam => {
+            const modIdx = beam.moduleIndex !== undefined ? beam.moduleIndex : 0;
+            if (!beamsByModule[modIdx]) {
+                beamsByModule[modIdx] = {
+                    horizontalTop: [],
+                    horizontalBottom: [],
+                    vertical: []
+                };
+            }
+            
+            if (beam.stackType === 'horizontal-top') {
+                beamsByModule[modIdx].horizontalTop.push(beam);
+            } else if (beam.stackType === 'horizontal-bottom') {
+                beamsByModule[modIdx].horizontalBottom.push(beam);
+            } else {
+                beamsByModule[modIdx].vertical.push(beam);
+            }
+        });
+    }
+    
+    // Group brackets by module index
+    const bracketsByModule = {};
+    if (data.brackets) {
+        data.brackets.forEach(bracket => {
+            const modIdx = bracket.moduleIndex !== undefined ? bracket.moduleIndex : 0;
+            if (!bracketsByModule[modIdx]) bracketsByModule[modIdx] = [];
+            bracketsByModule[modIdx].push(bracket);
+        });
+    }
+    
+    // Group bolts by module index
+    const boltsByModule = {};
+    if (data.bolts) {
+        data.bolts.forEach(bolt => {
+            const modIdx = bolt.moduleIndex !== undefined ? bolt.moduleIndex : 0;
+            if (!boltsByModule[modIdx]) boltsByModule[modIdx] = [];
+            boltsByModule[modIdx].push(bolt);
+        });
+    }
+    
+    // Create module groups with hierarchical structure
+    const moduleCount = state.modules || 1;
+    for (let i = 0; i < moduleCount; i++) {
+        const moduleGroup = new THREE.Group();
+        moduleGroup.name = `Module_${i}`;
+        
+        // Create sub-groups for each element type
+        const hBeamsTopGroup = new THREE.Group();
+        hBeamsTopGroup.name = 'HorizontalBeams_Top';
+        
+        const hBeamsBottomGroup = new THREE.Group();
+        hBeamsBottomGroup.name = 'HorizontalBeams_Bottom';
+        
+        const vBeamsGroup = new THREE.Group();
+        vBeamsGroup.name = 'VerticalBeams';
+        
+        const bracketsGroup = new THREE.Group();
+        bracketsGroup.name = 'Brackets';
+        
+        const boltsGroup = new THREE.Group();
+        boltsGroup.name = 'Bolts';
+        
+        // Add beams for this module
+        if (beamsByModule[i]) {
+            // Horizontal top beams
+            beamsByModule[i].horizontalTop.forEach((beam, idx) => {
+                try {
+                    const mesh = createBeamMeshForExport(beam, isZup);
+                    if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                        mesh.name = `HBeam_Top_${idx}`;
+                        hBeamsTopGroup.add(mesh);
+                        totalMeshes++;
+                    }
+                } catch (e) {
+                    console.warn(`[GLTF Export] Failed to create HBeam_Top_${idx}:`, e);
+                }
+            });
+            
+            // Horizontal bottom beams
+            beamsByModule[i].horizontalBottom.forEach((beam, idx) => {
+                try {
+                    const mesh = createBeamMeshForExport(beam, isZup);
+                    if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                        mesh.name = `HBeam_Bottom_${idx}`;
+                        hBeamsBottomGroup.add(mesh);
+                        totalMeshes++;
+                    }
+                } catch (e) {
+                    console.warn(`[GLTF Export] Failed to create HBeam_Bottom_${idx}:`, e);
+                }
+            });
+            
+            // Vertical beams
+            beamsByModule[i].vertical.forEach((beam, idx) => {
+                try {
+                    const mesh = createBeamMeshForExport(beam, isZup);
+                    if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                        mesh.name = `VBeam_${idx}`;
+                        vBeamsGroup.add(mesh);
+                        totalMeshes++;
+                    }
+                } catch (e) {
+                    console.warn(`[GLTF Export] Failed to create VBeam_${idx}:`, e);
+                }
+            });
+        }
+        
+        // Add brackets for this module
+        if (bracketsByModule[i]) {
+            bracketsByModule[i].forEach((bracket, idx) => {
+                try {
+                    const mesh = createBracketMeshForExport(bracket, isZup);
+                    if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                        mesh.name = `Bracket_${idx}`;
+                        bracketsGroup.add(mesh);
+                        totalMeshes++;
+                    }
+                } catch (e) {
+                    console.warn(`[GLTF Export] Failed to create Bracket_${idx}:`, e);
+                }
+            });
+        }
+        
+        // Add bolts for this module
+        if (boltsByModule[i]) {
+            boltsByModule[i].forEach((bolt, idx) => {
+                try {
+                    const mesh = createBoltMeshForExport(bolt, isZup);
+                    if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                        mesh.name = `Bolt_${idx}`;
+                        boltsGroup.add(mesh);
+                        totalMeshes++;
+                    }
+                } catch (e) {
+                    console.warn(`[GLTF Export] Failed to create Bolt_${idx}:`, e);
+                }
+            });
+        }
+        
+        // Add sub-groups to module (only if they have children)
+        if (hBeamsTopGroup.children.length > 0) moduleGroup.add(hBeamsTopGroup);
+        if (hBeamsBottomGroup.children.length > 0) moduleGroup.add(hBeamsBottomGroup);
+        if (vBeamsGroup.children.length > 0) moduleGroup.add(vBeamsGroup);
+        if (bracketsGroup.children.length > 0) moduleGroup.add(bracketsGroup);
+        if (boltsGroup.children.length > 0) moduleGroup.add(boltsGroup);
+        
+        // Only add module if it has content
+        if (moduleGroup.children.length > 0) {
+            rootGroup.add(moduleGroup);
+        }
+    }
+    
+    // Add panels as a separate group if present
+    if (data.panels && data.panels.length > 0) {
+        const panelsGroup = new THREE.Group();
+        panelsGroup.name = 'SolarPanels';
+        
+        data.panels.forEach((panel, idx) => {
+            try {
+                const mesh = createPanelMeshForExport(panel, isZup);
+                if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
+                    mesh.name = `Panel_${idx}`;
+                    panelsGroup.add(mesh);
+                    totalMeshes++;
+                }
+            } catch (e) {
+                console.warn(`[GLTF Export] Failed to create Panel_${idx}:`, e);
+            }
+        });
+        
+        if (panelsGroup.children.length > 0) {
+            rootGroup.add(panelsGroup);
+        }
+    }
+    
+    console.log(`[GLTF Export] Created ${totalMeshes} meshes in ${rootGroup.children.length} modules`);
+    
+    if (totalMeshes === 0) {
+        showToast('No valid geometry to export.', 'error');
+        return;
+    }
+    
+    // Apply structure rotation if any
+    const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
+    if (Math.abs(structureRotRad) > 0.001) {
+        rootGroup.rotation.y = structureRotRad;
+    }
+    
+    // Apply unit scale factor to structure
+    if (scaleFactor !== 1) {
+        rootGroup.scale.set(scaleFactor, scaleFactor, scaleFactor);
+        console.log(`[GLTF Export] Applied scale factor: ${scaleFactor} (${units})`);
+    }
+    
+    // Force update matrices for all objects
+    exportScene.updateMatrixWorld(true);
+    
+    // Export using GLTFExporter
+    const exporter = new THREE.GLTFExporter();
+    
+    const options = {
+        binary: format === 'glb',
+        trs: true,  // Export transforms as TRS (Translation, Rotation, Scale) for better compatibility
+        onlyVisible: true,
+        truncateDrawRange: true,
+        includeCustomExtensions: false
+    };
+    
+    try {
+        exporter.parse(exportScene, (result) => {
+            // Download the file
+            const filename = `LinkageLab_Export_${Date.now()}.${format}`;
+            
+            try {
+                if (format === 'glb') {
+                    // Binary format
+                    const blob = new Blob([result], { type: 'application/octet-stream' });
+                    downloadBlob(blob, filename);
+                } else {
+                    // JSON format (gltf)
+                    const output = JSON.stringify(result, null, 2);
+                    const blob = new Blob([output], { type: 'application/json' });
+                    downloadBlob(blob, filename);
+                }
+                
+                showToast(`Exported 3D model as ${filename}`, 'success');
+                console.log(`[GLTF Export] Successfully exported ${moduleCount} modules with ${data.beams?.length || 0} beams, ${data.brackets?.length || 0} brackets, ${data.bolts?.length || 0} bolts`);
+            } catch (e) {
+                console.error('GLTF Export download error:', e);
+                showToast('Failed to download exported file: ' + e.message, 'error');
+            }
+            
+            // Clean up export scene after export completes
+            exportScene.traverse((obj) => {
+                if (obj.geometry) obj.geometry.dispose();
+                if (obj.material) {
+                    if (Array.isArray(obj.material)) {
+                        obj.material.forEach(m => m.dispose());
+                    } else {
+                        obj.material.dispose();
+                    }
+                }
+            });
+        }, options);
+    } catch (error) {
+        console.error('GLTF Export error:', error);
+        showToast('Failed to export 3D model: ' + error.message, 'error');
+    }
+}
+
+/**
+ * Helper to download a blob as a file
+ */
+function downloadBlob(blob, filename) {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+}
+
+/**
+ * Creates a beam mesh optimized for export using BoxGeometry for glTF compatibility
+ * Uses BoxGeometry with proper orientation to ensure clean export
+ * @param {Object} beam - Beam data with corners
+ * @param {boolean} isZup - Whether we're exporting to Z-up coordinate system
+ */
+function createBeamMeshForExport(beam, isZup = false) {
+    // Validate beam has corners
+    if (!beam || !beam.corners || beam.corners.length < 8) {
+        console.warn('Invalid beam for export - missing corners');
+        // Return an empty group as fallback
+        return new THREE.Group();
+    }
+    
+    const c = beam.corners;
+    
+    // Calculate beam center from corners
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < 8; i++) { 
+        cx += c[i].x; 
+        cy += c[i].y; 
+        cz += c[i].z; 
+    }
+    const center = { x: cx / 8, y: cy / 8, z: cz / 8 };
+    
+    // Calculate beam dimensions from corners
+    // c[0-3] are one end, c[4-7] are the other end
+    const end0Center = {
+        x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4,
+        y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4,
+        z: (c[0].z + c[1].z + c[2].z + c[3].z) / 4
+    };
+    const end1Center = {
+        x: (c[4].x + c[5].x + c[6].x + c[7].x) / 4,
+        y: (c[4].y + c[5].y + c[6].y + c[7].y) / 4,
+        z: (c[4].z + c[5].z + c[6].z + c[7].z) / 4
+    };
+    
+    // Beam length is distance between end centers
+    const dx = end1Center.x - end0Center.x;
+    const dy = end1Center.y - end0Center.y;
+    const dz = end1Center.z - end0Center.z;
+    const length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    // Beam direction
+    const beamDir = length > 0.001 ? 
+        { x: dx / length, y: dy / length, z: dz / length } : 
+        { x: 0, y: 0, z: 1 };
+    
+    // Calculate cross-section vectors from corners
+    // c[0]→c[1] is one edge of the cross-section
+    // c[0]→c[3] is the perpendicular edge
+    const edge1 = new THREE.Vector3(
+        c[1].x - c[0].x,
+        c[1].y - c[0].y,
+        c[1].z - c[0].z
+    );
+    const edge2 = new THREE.Vector3(
+        c[3].x - c[0].x,
+        c[3].y - c[0].y,
+        c[3].z - c[0].z
+    );
+    
+    const width1 = edge1.length();
+    const width2 = edge2.length();
+    
+    // Determine which edge is width vs thickness (larger = width)
+    let widthVec, thickVec, width, thickness;
+    if (width1 >= width2) {
+        width = width1 || 0.1;
+        thickness = width2 || 0.1;
+        widthVec = edge1.clone().normalize();
+        thickVec = edge2.clone().normalize();
+    } else {
+        width = width2 || 0.1;
+        thickness = width1 || 0.1;
+        widthVec = edge2.clone().normalize();
+        thickVec = edge1.clone().normalize();
+    }
+    
+    // Create BoxGeometry (X=width, Y=thickness, Z=length)
+    const geometry = new THREE.BoxGeometry(width, thickness, Math.max(length, 0.1));
+    
+    // Wood color material
+    const base = beam.colorBase || { r: 139, g: 90, b: 43 };
+    const woodColor = new THREE.Color(
+        Math.max(0, (base.r * 0.7 - 20)) / 255,
+        Math.max(0, (base.g * 0.65 - 15)) / 255,
+        Math.max(0, (base.b * 0.5 - 10)) / 255
+    );
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: woodColor,
+        roughness: 0.8,
+        metalness: 0.0
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Position at center
+    mesh.position.set(center.x, center.y, center.z);
+    
+    // Orient using the actual corner-derived axes
+    // X axis = width direction, Y axis = thickness direction, Z axis = beam direction
+    const zAxis = new THREE.Vector3(beamDir.x, beamDir.y, beamDir.z);
+    const xAxis = widthVec;
+    const yAxis = thickVec;
+    
+    // Make sure axes are orthogonal by recalculating Y from X and Z
+    const yAxisCorrected = new THREE.Vector3().crossVectors(zAxis, xAxis).normalize();
+    // And recalculate X to ensure orthogonality
+    const xAxisCorrected = new THREE.Vector3().crossVectors(yAxisCorrected, zAxis).normalize();
+    
+    const rotMatrix = new THREE.Matrix4();
+    rotMatrix.makeBasis(xAxisCorrected, yAxisCorrected, zAxis);
+    mesh.quaternion.setFromRotationMatrix(rotMatrix);
+    
+    return mesh;
+}
+
+/**
+ * Creates a bracket mesh optimized for export
+ * Uses BoxGeometry for glTF compatibility
+ * @param {Object} bracket - Bracket data
+ * @param {boolean} isZup - Whether we're exporting to Z-up coordinate system
+ */
+function createBracketMeshForExport(bracket, isZup = false) {
+    // Validate bracket data
+    if (!bracket || (!bracket.pos && !bracket.bottomPos)) {
+        console.warn('Invalid bracket for export - missing position');
+        return new THREE.Group();
+    }
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x555555,
+        roughness: 0.5,
+        metalness: 0.7
+    });
+    
+    const width = Math.max(bracket.width || state.bracketWidth || 3.5, 0.1);
+    const height = Math.max(bracket.height || state.bracketHeight || 2.5, 0.1);
+    const depth = Math.max(bracket.depth || state.bracketDepth || 3.5, 0.1);
+    const wallThickness = Math.max(bracket.wallThickness || state.bracketWallThickness || 0.25, 0.05);
+    const innerWidth = bracket.innerWidth || state.bracketInnerWidth || 1.5;
+    const legWidth = Math.max((width - innerWidth) / 2, 0.1);
+    
+    const bracketGroup = new THREE.Group();
+    
+    if (isZup) {
+        // Z-up: height goes along Z axis
+        // Bottom plate
+        const bottomPlate = new THREE.BoxGeometry(width, depth, wallThickness);
+        const bottomMesh = new THREE.Mesh(bottomPlate, material);
+        bottomMesh.position.z = wallThickness / 2;
+        bracketGroup.add(bottomMesh);
+        
+        // Left leg
+        const leftLeg = new THREE.BoxGeometry(legWidth, depth, height);
+        const leftMesh = new THREE.Mesh(leftLeg, material.clone());
+        leftMesh.position.set(-(width - legWidth) / 2, 0, height / 2 + wallThickness);
+        bracketGroup.add(leftMesh);
+        
+        // Right leg
+        const rightLeg = new THREE.BoxGeometry(legWidth, depth, height);
+        const rightMesh = new THREE.Mesh(rightLeg, material.clone());
+        rightMesh.position.set((width - legWidth) / 2, 0, height / 2 + wallThickness);
+        bracketGroup.add(rightMesh);
+    } else {
+        // Y-up: height goes along Y axis
+        // Bottom plate
+        const bottomPlate = new THREE.BoxGeometry(width, wallThickness, depth);
+        const bottomMesh = new THREE.Mesh(bottomPlate, material);
+        bottomMesh.position.y = wallThickness / 2;
+        bracketGroup.add(bottomMesh);
+        
+        // Left leg
+        const leftLeg = new THREE.BoxGeometry(legWidth, height, depth);
+        const leftMesh = new THREE.Mesh(leftLeg, material.clone());
+        leftMesh.position.set(-(width - legWidth) / 2, height / 2 + wallThickness, 0);
+        bracketGroup.add(leftMesh);
+        
+        // Right leg
+        const rightLeg = new THREE.BoxGeometry(legWidth, height, depth);
+        const rightMesh = new THREE.Mesh(rightLeg, material.clone());
+        rightMesh.position.set((width - legWidth) / 2, height / 2 + wallThickness, 0);
+        bracketGroup.add(rightMesh);
+    }
+    
+    // Position with validation
+    let bracketX = 0, bracketY = 0, bracketZ = 0;
+    if (bracket.bottomPos) {
+        bracketX = bracket.bottomPos.x || 0;
+        bracketY = bracket.bottomPos.y || 0;
+        bracketZ = bracket.bottomPos.z || 0;
+    } else if (bracket.pos) {
+        bracketX = bracket.pos.x || 0;
+        bracketY = bracket.bottomY || bracket.pos.y || 0;
+        bracketZ = bracket.pos.z || 0;
+    }
+    bracketGroup.position.set(bracketX, bracketY, bracketZ);
+    
+    // Orient bracket based on beam direction and right vector
+    const isArchMode = !!bracket.bottomPos;
+    if (isArchMode && bracket.beamDir && bracket.right) {
+        const beamDirMag = vMag(bracket.beamDir);
+        const rightMag = vMag(bracket.right);
+        if (beamDirMag > 0.001 && rightMag > 0.001) {
+            const beamDir = vNorm(bracket.beamDir);
+            const right = vNorm(bracket.right);
+            
+            // Check if this is a vertical beam (in Z-up, beamDir is mostly along Z)
+            const isVerticalBeam = isZup && Math.abs(beamDir.z) > 0.7;
+            
+            if (isVerticalBeam) {
+                // For vertical beams: bracket sits FLAT (horizontal)
+                // U-opening faces up for bottom brackets, down for top brackets
+                // Use the bracket's "right" vector to determine orientation
+                // "right" points across the beam (tangential direction)
+                // The bracket depth (U-opening) should be perpendicular to "right"
+                
+                const rx = right.x || 0;
+                const ry = right.y || 0;
+                
+                // Calculate angle of the "right" vector in XY plane
+                const rightAngle = Math.atan2(ry, rx);
+                
+                if (bracket.isBottom) {
+                    // Bottom bracket: U-opening faces up
+                    bracketGroup.rotation.z = rightAngle + Math.PI;
+                } else {
+                    // Top bracket: flip upside down and adjust Z rotation to match
+                    // The X flip reverses the effective Z rotation direction
+                    bracketGroup.rotation.x = Math.PI;
+                    bracketGroup.rotation.z = -rightAngle;
+                }
+            } else {
+                // For angled/horizontal beams: tilt bracket to follow beam direction
+                let up = vCross(right, beamDir);
+                const upMag = vMag(up);
+                if (upMag > 0.001) {
+                    up = vScale(up, 1/upMag);
+                    if (!bracket.isBottom) up = vScale(up, -1);
+                    
+                    // Build rotation matrix
+                    const matrix = new THREE.Matrix4();
+                    if (isZup) {
+                        // Z-up bracket: local X=width, local Y=depth, local Z=height
+                        matrix.set(
+                            right.x, beamDir.x, up.x, 0,
+                            right.y, beamDir.y, up.y, 0,
+                            right.z, beamDir.z, up.z, 0,
+                            0, 0, 0, 1
+                        );
+                    } else {
+                        // Y-up bracket: local X=width, local Y=height, local Z=depth
+                        matrix.set(
+                            right.x, up.x, beamDir.x, 0,
+                            right.y, up.y, beamDir.y, 0,
+                            right.z, up.z, beamDir.z, 0,
+                            0, 0, 0, 1
+                        );
+                    }
+                    bracketGroup.setRotationFromMatrix(matrix);
+                }
+            }
+        }
+    } else if (bracket.beamDir) {
+        // Cylinder/simple mode - orient bracket to face the beam direction
+        if (isZup) {
+            // Z-up: vertical beams go along Z axis
+            // The bracket should have its opening facing the beam
+            const beamX = bracket.beamDir.x || 0;
+            const beamY = bracket.beamDir.y || 0;
+            const beamZ = bracket.beamDir.z || 0;
+            
+            // Check if beam is mostly vertical (along Z)
+            const isVerticalBeam = Math.abs(beamZ) > Math.sqrt(beamX*beamX + beamY*beamY);
+            
+            if (isVerticalBeam) {
+                // For vertical beams, bracket sits flat on horizontal beam
+                // U-opening faces UP (+Z), base plate is horizontal
+                // Only rotate around Z to orient which way bracket faces
+                const posX = bracketX || 0;
+                const posY = bracketY || 0;
+                const radialAngle = Math.atan2(posY, posX);
+                
+                // Bracket should face radially (depth along radial direction)
+                // Add 90° so bracket depth points toward/away from center
+                bracketGroup.rotation.z = radialAngle - Math.PI / 2;
+                
+                // If top bracket, flip it upside down (U-opening faces DOWN)
+                if (!bracket.isBottom) {
+                    bracketGroup.rotation.x = Math.PI;
+                }
+            } else {
+                // For horizontal beams
+                const beamHorizLength = Math.sqrt(beamX * beamX + beamY * beamY);
+                if (beamHorizLength > 0.001) {
+                    bracketGroup.rotation.z = Math.atan2(beamY, beamX);
+                }
+                if (!bracket.isBottom) {
+                    bracketGroup.rotateOnAxis(new THREE.Vector3(0, 1, 0), Math.PI);
+                }
+            }
+        } else {
+            // Y-up: horizontal plane is XZ, vertical is Y
+            const beamX = bracket.beamDir.x || 0;
+            const beamZ = bracket.beamDir.z || 0;
+            const beamHorizLength = Math.sqrt(beamX * beamX + beamZ * beamZ);
+            if (beamHorizLength > 0.001) {
+                bracketGroup.rotation.y = Math.atan2(beamX, beamZ);
+            }
+            if (!bracket.isBottom) {
+                bracketGroup.rotateOnAxis(new THREE.Vector3(1, 0, 0), Math.PI);
+            }
+        }
+    }
+    
+    return bracketGroup;
+}
+
+/**
+ * Creates a bolt mesh optimized for export
+ * Uses CylinderGeometry for both shaft and head to ensure glTF compatibility
+ * @param {Object} bolt - Bolt data
+ * @param {boolean} isZup - Whether we're exporting to Z-up coordinate system
+ */
+function createBoltMeshForExport(bolt, isZup = false) {
+    // Validate bolt data
+    if (!bolt || !bolt.center) {
+        console.warn('Invalid bolt for export - missing center');
+        return new THREE.Group();
+    }
+    
+    const boltRadius = bolt.radius || (state.boltDiameter ? state.boltDiameter / 2 : 0.1875);
+    const boltLength = bolt.length || 2;
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x1a1a1a,
+        roughness: 0.3,
+        metalness: 0.8
+    });
+    
+    const boltGroup = new THREE.Group();
+    
+    // Shaft - simple cylinder
+    const shaftGeometry = new THREE.CylinderGeometry(boltRadius, boltRadius, boltLength, 8);
+    const shaftMesh = new THREE.Mesh(shaftGeometry, material);
+    boltGroup.add(shaftMesh);
+    
+    // Hex head - use CylinderGeometry with 6 sides instead of ExtrudeGeometry for compatibility
+    const hexRadius = boltRadius * 1.8;
+    const hexHeight = boltRadius * 1.2;
+    const hexGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, hexHeight, 6);
+    const hexMesh = new THREE.Mesh(hexGeometry, material.clone());
+    hexMesh.position.y = boltLength / 2 + hexHeight / 2;
+    boltGroup.add(hexMesh);
+    
+    // Position and orient
+    boltGroup.position.set(bolt.center.x, bolt.center.y, bolt.center.z);
+    if (bolt.dir) {
+        const dir = new THREE.Vector3(bolt.dir.x, bolt.dir.y, bolt.dir.z).normalize();
+        if (dir.length() > 0.001) {
+            // CylinderGeometry is oriented along Y axis by default
+            const up = new THREE.Vector3(0, 1, 0);
+            const quaternion = new THREE.Quaternion().setFromUnitVectors(up, dir);
+            boltGroup.quaternion.copy(quaternion);
+        }
+    } else if (isZup) {
+        // If no direction specified and Z-up, rotate to point along Z
+        boltGroup.rotation.x = Math.PI / 2;
+    }
+    
+    return boltGroup;
+}
+
+/**
+ * Creates a panel mesh optimized for export with full 3D orientation
+ * Uses BoxGeometry for glTF compatibility and applies proper orientation
+ * based on panel's corner points for accurate geometry matching
+ * @param {Object} panel - Panel data
+ * @param {boolean} isZup - Whether we're exporting to Z-up coordinate system
+ */
+function createPanelMeshForExport(panel, isZup = false) {
+    // Validate panel data
+    if (!panel || !panel.center) {
+        console.warn('Invalid panel for export - missing center');
+        return new THREE.Group();
+    }
+    
+    // Calculate panel dimensions with defaults
+    const width = panel.width || 40;
+    const length = panel.length || 65;
+    const thickness = panel.thickness || panel.thick || 1.4;
+    
+    // Use simple box geometry for export
+    // BoxGeometry: width (X), height (Y), depth (Z)
+    const geometry = new THREE.BoxGeometry(
+        Math.max(width, 0.1), 
+        Math.max(thickness, 0.1), 
+        Math.max(length, 0.1)
+    );
+    
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x1a3a5a,
+        roughness: 0.3,
+        metalness: 0.5
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    
+    // Position at panel center
+    mesh.position.set(
+        panel.center.x || 0, 
+        panel.center.y || 0, 
+        panel.center.z || 0
+    );
+    
+    // Best method: derive orientation from corner points (matches actual render)
+    // Panel3D corners: 0-3 are bottom face, 4-7 are top face
+    // Corner layout: 0=(-w,-l), 1=(+w,-l), 2=(+w,+l), 3=(-w,+l) in local coords
+    if (panel.corners && panel.corners.length >= 8) {
+        const c = panel.corners;
+        
+        // Calculate axes from corners (same as used for rendering)
+        // Width axis: from corner 0 to corner 1 (along panel width)
+        const widthVec = new THREE.Vector3(
+            c[1].x - c[0].x,
+            c[1].y - c[0].y,
+            c[1].z - c[0].z
+        );
+        
+        // Length axis: from corner 0 to corner 3 (along panel length)
+        const lengthVec = new THREE.Vector3(
+            c[3].x - c[0].x,
+            c[3].y - c[0].y,
+            c[3].z - c[0].z
+        );
+        
+        // Normal axis: from bottom center to top center (thickness direction)
+        const bottomCenter = {
+            x: (c[0].x + c[1].x + c[2].x + c[3].x) / 4,
+            y: (c[0].y + c[1].y + c[2].y + c[3].y) / 4,
+            z: (c[0].z + c[1].z + c[2].z + c[3].z) / 4
+        };
+        const topCenter = {
+            x: (c[4].x + c[5].x + c[6].x + c[7].x) / 4,
+            y: (c[4].y + c[5].y + c[6].y + c[7].y) / 4,
+            z: (c[4].z + c[5].z + c[6].z + c[7].z) / 4
+        };
+        const normalVec = new THREE.Vector3(
+            topCenter.x - bottomCenter.x,
+            topCenter.y - bottomCenter.y,
+            topCenter.z - bottomCenter.z
+        );
+        
+        // Normalize the axes
+        const xAxis = widthVec.normalize();
+        const yAxis = normalVec.normalize();
+        const zAxis = lengthVec.normalize();
+        
+        // Build rotation matrix - columns are where box axes go
+        const rotMatrix = new THREE.Matrix4();
+        rotMatrix.makeBasis(xAxis, yAxis, zAxis);
+        mesh.quaternion.setFromRotationMatrix(rotMatrix);
+        
+    } else if (panel.axisX && panel.axisY && panel.axisZ) {
+        // Fallback: use stored axes
+        const xAxis = new THREE.Vector3(panel.axisX.x, panel.axisX.y, panel.axisX.z).normalize();
+        const yAxis = new THREE.Vector3(panel.axisY.x, panel.axisY.y, panel.axisY.z).normalize();
+        const zAxis = new THREE.Vector3(panel.axisZ.x, panel.axisZ.y, panel.axisZ.z).normalize();
+        
+        const rotMatrix = new THREE.Matrix4();
+        rotMatrix.makeBasis(xAxis, yAxis, zAxis);
+        mesh.quaternion.setFromRotationMatrix(rotMatrix);
+        
+    } else if (panel.rotation !== undefined && !isNaN(panel.rotation)) {
+        // Simple rotation around vertical axis (for basic horizontal panels)
+        if (isZup) {
+            mesh.rotation.z = panel.rotation;
+        } else {
+            mesh.rotation.y = panel.rotation;
+        }
+    }
+    
+    return mesh;
+}
+
+/**
+ * Shows a modal dialog for GLTF export options
+ */
+function showGLTFExportDialog() {
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('gltf-export-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'gltf-export-modal';
+        modal.className = 'modal';
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 450px;">
+                <div class="modal-header">
+                    <h3>Export 3D Model</h3>
+                    <button class="modal-close" onclick="closeGLTFExportModal()">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 20px;">
+                    <p style="margin-bottom: 16px; color: var(--text-secondary);">
+                        Export your structure as a 3D model that can be imported into SketchUp, Blender, or other 3D software.
+                    </p>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Format:</label>
+                        <div style="display: flex; gap: 12px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-format" value="glb" checked>
+                                <span><strong>GLB</strong> (Binary, smaller)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-format" value="gltf">
+                                <span><strong>glTF</strong> (JSON)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Export Units:</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-units" value="meters" checked>
+                                <span><strong>Meters</strong> (glTF standard - recommended)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-units" value="inches">
+                                <span><strong>Inches</strong> (raw model units - import as inches)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-units" value="feet">
+                                <span><strong>Feet</strong> (for 1 unit = 1 foot import)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 16px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600;">Target Software:</label>
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-coordsys" value="yup" checked>
+                                <span><strong>Y-Up</strong> (Blender, Three.js, standard glTF)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                                <input type="radio" name="gltf-coordsys" value="zup">
+                                <span><strong>Z-Up</strong> (SketchUp, 3ds Max, AutoCAD)</span>
+                            </label>
+                        </div>
+                        <p style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted);">
+                            Choose "Z-Up" for SketchUp to get correct orientation.
+                        </p>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; font-size: 0.85rem;">
+                        <strong>Hierarchy:</strong><br>
+                        <code style="font-size: 0.8rem; color: var(--text-secondary);">
+                        Structure/<br>
+                        &nbsp;&nbsp;Module_0/<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;HorizontalBeams_Top/<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;HorizontalBeams_Bottom/<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;VerticalBeams/<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;Brackets/<br>
+                        &nbsp;&nbsp;&nbsp;&nbsp;Bolts/<br>
+                        &nbsp;&nbsp;Module_1/...<br>
+                        &nbsp;&nbsp;SolarPanels/
+                        </code>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 12px 20px; display: flex; justify-content: flex-end; gap: 10px; border-top: 1px solid var(--border-light);">
+                    <button onclick="closeGLTFExportModal()" style="padding: 8px 16px;">Cancel</button>
+                    <button onclick="executeGLTFExport()" style="padding: 8px 16px; background: var(--accent-primary); color: white; font-weight: 600;">Export</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    modal.style.display = 'flex';
+}
+
+/**
+ * Closes the GLTF export dialog
+ */
+function closeGLTFExportModal() {
+    const modal = document.getElementById('gltf-export-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * Executes the GLTF export with selected options
+ */
+function executeGLTFExport() {
+    const formatRadio = document.querySelector('input[name="gltf-format"]:checked');
+    const format = formatRadio ? formatRadio.value : 'glb';
+    
+    const unitsRadio = document.querySelector('input[name="gltf-units"]:checked');
+    const units = unitsRadio ? unitsRadio.value : 'meters';
+    
+    const coordSysRadio = document.querySelector('input[name="gltf-coordsys"]:checked');
+    const coordSys = coordSysRadio ? coordSysRadio.value : 'yup';
+    
+    closeGLTFExportModal();
+    exportToGLTF(format, units, coordSys);
 }
 
 /**
@@ -3485,8 +4525,8 @@ const state = {
     offsetTopIn: 1.5,
     offsetBotIn: 1.5,
     vertEndOffset: 1.5, 
-    bracketOffset: 3.0,      // Renamed to bracketGap in UI, but keeping for backward compatibility
-    stackGap: 0.0,
+    hStackGap: 0.0,          // Gap between horizontal beam stacks
+    vStackGap: 0.0,          // Gap between vertical beam stacks
     
     hBeamW: 3.5, 
     hBeamT: 1.5,
@@ -3500,6 +4540,7 @@ const state = {
     bracketWallThickness: 0.25, // Wall thickness (inches)
     bracketInnerWidth: 1.5,   // Inner width between legs (inches)
     bracketHoleDiameter: 0.375, // Hole diameter (inches, 3/8" default)
+    bracketHoleDistance: 0.0,   // Distance from bracket base to side hole centers (inches)
     bracketZRotation: 0,        // Manual Z-axis rotation adjustment (degrees)
     
     // Bolt configuration
@@ -3707,14 +4748,15 @@ const VALIDATION_RULES = {
     vStackCount: { min: 2, max: 6 },
     offsetTopIn: { min: 0, max: 48 },
     offsetBotIn: { min: 0, max: 48 },
-    bracketOffset: { min: 0, max: 12 },
-    stackGap: { min: -2.0, max: 1 },
+    hStackGap: { min: -2.0, max: 1 },
+    vStackGap: { min: -2.0, max: 1 },
     bracketWidth: { min: 0.5, max: 6 },
     bracketDepth: { min: 0.5, max: 6 },
     bracketHeight: { min: 1, max: 12 },
     bracketWallThickness: { min: 0.1, max: 1 },
     bracketInnerWidth: { min: 0.5, max: 5 },
     bracketHoleDiameter: { min: 0.25, max: 0.75 },
+    bracketHoleDistance: { min: 0, max: 12 },
     bracketZRotation: { min: -180, max: 180 },
     hBeamW: { min: 0.5, max: 12 },
     hBeamT: { min: 0.5, max: 12 },
@@ -3785,13 +4827,13 @@ function showToast(message, type = 'info', duration = 3000) {
 const inputs = {};
 const idMap = {
     'mod': 'modules', 'piv': 'pivotPct', 'hob': 'hobermanAng', 'ang': 'pivotAng', 
-    'fold': 'foldAngle', 'brack': 'bracketOffset', 'vgap': 'stackGap',
+    'fold': 'foldAngle', 'hgap': 'hStackGap', 'vgap': 'vStackGap',
     'hstack': 'hStackCount', 'vstack': 'vStackCount',
     'hbeam-w': 'hBeamW', 'hbeam-t': 'hBeamT', 'vbeam-w': 'vBeamW', 'vbeam-t': 'vBeamT',
     'len': 'hLengthFt', 'vlen': 'vLengthFt',
     'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn', 'vert-end': 'vertEndOffset',
     'bracket-width': 'bracketWidth', 'bracket-depth': 'bracketDepth', 'bracket-height': 'bracketHeight',
-    'bracket-wall': 'bracketWallThickness', 'bracket-inner': 'bracketInnerWidth',
+    'bracket-wall': 'bracketWallThickness', 'bracket-inner': 'bracketInnerWidth', 'bracket-hole-distance': 'bracketHoleDistance',
     'cost-hbeam': 'costHBeam', 'cost-vbeam': 'costVBeam', 'cost-bolt': 'costBolt', 'cost-brack': 'costBracket', 'cost-solar': 'costSolarPanel'
 };
 
@@ -5797,7 +6839,7 @@ function solveLinkage(foldAngle) {
             count, width, thick, color, offsetDir,
             moduleIndex, stackType, stackId,
             beamsArray: beams,
-            gap: state.stackGap
+            gap: state.hStackGap
         });
     };
 
@@ -5807,7 +6849,9 @@ function solveLinkage(foldAngle) {
         // Local map function that captures curPos and curRot
         const map = (p, h) => mapTo3D(p, h, curPos, curRot);
 
-        const topH = zHeight + (state.bracketOffset * 2);
+        // Brackets sit flat on horizontal pivots; their height defines vertical beam offset
+        const bracketH = state.bracketHeight || 3.0;
+        const topH = zHeight + (bracketH * 2);
 
         // --- HORIZONTAL RINGS ---
         const hUp = {x:0,y:1,z:0};
@@ -5832,8 +6876,9 @@ function solveLinkage(foldAngle) {
 
         // --- VERTICAL UPRIGHTS (scissor cross-beams) ---
         // Calculate pivot points for both vertical uprights and fixed straight beams
-        const yMin = state.bracketOffset;
-        const yMax = topH - state.bracketOffset;
+        // Vertical beams start at bracket height (brackets sit flat on horizontal pivots)
+        const yMin = bracketH;
+        const yMax = topH - bracketH;
         
         // Define the four corner pivot points (used by both vertical uprights and fixed beams)
         const pBotInner = map(loc.br, yMin);
@@ -5950,7 +6995,7 @@ function solveLinkage(foldAngle) {
             // All beams pass through the center pivot points, stacked perpendicular to beam direction
             // CRITICAL: Use vW (width) for stack spacing, not vT (thickness)
             // Beams are stacked along their width dimension, not thickness
-            const gap = state.stackGap;
+            const gap = state.vStackGap;
             const totalThick = state.vStackCount * vW + (state.vStackCount - 1) * gap;
             
             // Calculate center pivot line (where stack should be centered)
@@ -6236,7 +7281,7 @@ function solveLinkage(foldAngle) {
                 if (vMag(stackDirNorm) < 0.1) {
                     stackDirNorm = vNorm(vCross(patternA_dir, up));
                 }
-                totalThick = state.vStackCount * state.vBeamW + (state.vStackCount - 1) * state.stackGap;
+                totalThick = state.vStackCount * state.vBeamW + (state.vStackCount - 1) * state.vStackGap;
                 // Center mid point (midpoint between bottom and top center pivots)
                 const pivotBotCenter = vScale(vAdd(pBotInner, pBotOuter), 0.5);
                 const pivotTopCenter = vScale(vAdd(pTopOuter, pTopInner), 0.5);
@@ -6263,12 +7308,12 @@ function solveLinkage(foldAngle) {
                     // For top ring: pivotY is at topH, bottom of lower beam is at topH - hT/2, then -0.75" offset
                     const bracketBottomY = isBottom ? (hT / 2 + 0.75) : (topH - hT / 2 - 0.75);
                     
-                    // Side hole position: bracketGap measures from bracket bottom face upward
-                    const bracketGap = state.bracketOffset;
-                    const sideHoleY = bracketBottomY + bracketGap;
+                    // Side hole position: holeDistance measures from bracket bottom face upward
+                    const holeDistFromBase = state.bracketHoleDistance || 0;
+                    const sideHoleY = bracketBottomY + holeDistFromBase;
                     
                     // Calculate required height: side hole + 0.75" clearance above
-                    const minRequiredHeight = bracketGap + 0.75;
+                    const minRequiredHeight = holeDistFromBase + 0.75;
                     const userHeight = state.bracketHeight || 3.0;
                     const actualHeight = Math.max(userHeight, minRequiredHeight);
                     
@@ -6280,7 +7325,7 @@ function solveLinkage(foldAngle) {
                         bottomY: bracketBottomY,
                         sideHoleY: sideHoleY,
                         actualHeight: actualHeight,
-                        holeDistance: bracketGap, // Distance from bottom to side hole centers
+                        holeDistance: holeDistFromBase, // Distance from bottom to side hole centers
                         width: state.bracketWidth || 2.0,
                         depth: state.bracketDepth || 3.0,
                         wallThickness: state.bracketWallThickness || 0.25,
@@ -6492,7 +7537,7 @@ function solveLinkage(foldAngle) {
         curRot = nextRotation;
     }
     
-    let maxHeight = zHeight + (state.bracketOffset*2) + state.hBeamT + state.vertEndOffset;
+    let maxHeight = zHeight + ((state.bracketHeight || 3.0) * 2) + state.hBeamT + state.vertEndOffset;
 
     // Apply orientation transformation for vertical (arch/bridge) mode
     if (state.orientation === 'vertical') {
@@ -10809,8 +11854,12 @@ function showBuildGuide() {
                             <span class="guide-spec-value">${state.vStackCount}</span>
                         </div>
                         <div class="guide-spec-row">
-                            <span class="guide-spec-label">Stack Gap</span>
-                            <span class="guide-spec-value">${formatNumber(state.stackGap, 2)}"</span>
+                            <span class="guide-spec-label">H-Stack Gap</span>
+                            <span class="guide-spec-value">${formatNumber(state.hStackGap, 2)}"</span>
+                        </div>
+                        <div class="guide-spec-row">
+                            <span class="guide-spec-label">V-Stack Gap</span>
+                            <span class="guide-spec-value">${formatNumber(state.vStackGap, 2)}"</span>
                         </div>
                     </div>
                 </div>
@@ -10869,8 +11918,8 @@ function showBuildGuide() {
                             <span class="guide-spec-value">${formatBoltDiameter(state.bracketHoleDiameter || 0.375)}"</span>
                         </div>
                         <div class="guide-spec-row">
-                            <span class="guide-spec-label">Hole Distance (from bottom)</span>
-                            <span class="guide-spec-value">${formatNumber(state.bracketOffset || 0, 2)}"</span>
+                            <span class="guide-spec-label">Hole Distance (from base)</span>
+                            <span class="guide-spec-value">${formatNumber(state.bracketHoleDistance || 0, 2)}"</span>
                         </div>
                     </div>
                 </div>
@@ -10900,8 +11949,8 @@ function showBuildGuide() {
                         <span class="guide-spec-value">${formatNumber(state.pivotAng, 1)}°</span>
                     </div>
                     <div class="guide-spec-row">
-                        <span class="guide-spec-label">Bracket Gap</span>
-                        <span class="guide-spec-value">${formatNumber(state.bracketOffset, 2)}"</span>
+                        <span class="guide-spec-label">Bracket Height</span>
+                        <span class="guide-spec-value">${formatNumber(state.bracketHeight, 2)}"</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">Top Extension</span>
@@ -11278,7 +12327,8 @@ function exportBuildGuide() {
 const CONFIG_KEYS = [
     'modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
     'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
-    'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
+    'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
+    'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 'bracketHoleDistance',
     'costHBeam', 'costVBeam', 'costBolt', 'costBracket', 'costSolarPanel', 'orientation', 'archCapUprights',
     'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams'
 ];
@@ -11325,8 +12375,13 @@ function applyV30Config(config) {
             if (s.offsets.top !== undefined) state.offsetTopIn = s.offsets.top;
             if (s.offsets.bottom !== undefined) state.offsetBotIn = s.offsets.bottom;
             if (s.offsets.vertEnd !== undefined) state.vertEndOffset = s.offsets.vertEnd;
-            if (s.offsets.bracket !== undefined) state.bracketOffset = s.offsets.bracket;
-            if (s.offsets.stackGap !== undefined) state.stackGap = s.offsets.stackGap;
+            // Backward compatibility: old bracketOffset becomes bracketHeight
+            if (s.offsets.bracket !== undefined) state.bracketHeight = s.offsets.bracket;
+            // Support both old single stackGap and new separate gaps
+            if (s.offsets.hStackGap !== undefined) state.hStackGap = s.offsets.hStackGap;
+            else if (s.offsets.stackGap !== undefined) state.hStackGap = s.offsets.stackGap;
+            if (s.offsets.vStackGap !== undefined) state.vStackGap = s.offsets.vStackGap;
+            else if (s.offsets.stackGap !== undefined) state.vStackGap = s.offsets.stackGap;
         }
         if (s.brackets) {
             if (s.brackets.width !== undefined) state.bracketWidth = s.brackets.width;
@@ -11336,6 +12391,16 @@ function applyV30Config(config) {
             if (s.brackets.innerWidth !== undefined) state.bracketInnerWidth = s.brackets.innerWidth;
             if (s.brackets.holeDiameter !== undefined) state.bracketHoleDiameter = s.brackets.holeDiameter;
             if (s.brackets.zRotation !== undefined) state.bracketZRotation = s.brackets.zRotation;
+            if (s.brackets.holeDistance !== undefined) state.bracketHoleDistance = s.brackets.holeDistance;
+        }
+        // Also support new bracketDimensions format
+        if (s.bracketDimensions) {
+            if (s.bracketDimensions.width !== undefined) state.bracketWidth = s.bracketDimensions.width;
+            if (s.bracketDimensions.depth !== undefined) state.bracketDepth = s.bracketDimensions.depth;
+            if (s.bracketDimensions.height !== undefined) state.bracketHeight = s.bracketDimensions.height;
+            if (s.bracketDimensions.wallThickness !== undefined) state.bracketWallThickness = s.bracketDimensions.wallThickness;
+            if (s.bracketDimensions.innerWidth !== undefined) state.bracketInnerWidth = s.bracketDimensions.innerWidth;
+            if (s.bracketDimensions.holeDistance !== undefined) state.bracketHoleDistance = s.bracketDimensions.holeDistance;
         }
         if (s.bolts) {
             if (s.bolts.diameter !== undefined) state.boltDiameter = s.bolts.diameter;
@@ -11533,8 +12598,16 @@ function getConfigSnapshot(includeMetadata = false) {
                 top: state.offsetTopIn,
                 bottom: state.offsetBotIn,
                 vertEnd: state.vertEndOffset,
-                bracket: state.bracketOffset,
-                stackGap: state.stackGap
+                hStackGap: state.hStackGap,
+                vStackGap: state.vStackGap
+            },
+            bracketDimensions: {
+                width: state.bracketWidth,
+                depth: state.bracketDepth,
+                height: state.bracketHeight,
+                wallThickness: state.bracketWallThickness,
+                innerWidth: state.bracketInnerWidth,
+                holeDistance: state.bracketHoleDistance
             },
             brackets: {
                 width: state.bracketWidth,
@@ -13421,8 +14494,9 @@ function computeGeometryHash() {
         state.offsetTopIn,
         state.offsetBotIn,
         state.vertEndOffset,
-        state.bracketOffset,
-        state.stackGap,
+        state.bracketHeight,
+        state.hStackGap,
+        state.vStackGap,
         state.hBeamW,
         state.hBeamT,
         state.vBeamW,
@@ -13581,14 +14655,14 @@ function updateState(key, val) {
         // Invalidate cache when geometry-changing parameters are updated
         const geometryKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
                               'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
-                              'bracketOffset', 'stackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
+                              'bracketHeight', 'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
                               'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount',
                               'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 'bracketHoleDiameter'];
         if (geometryKeys.includes(key)) {
             invalidateGeometryCache();
             
             // Update auto bolt lengths when relevant parameters change
-            if (['hStackCount', 'vStackCount', 'hBeamT', 'vBeamW', 'stackGap'].includes(key)) {
+            if (['hStackCount', 'vStackCount', 'hBeamT', 'vBeamW', 'hStackGap', 'vStackGap'].includes(key)) {
                 updateAutoBoltLengths();
             }
             
@@ -15513,6 +16587,12 @@ document.getElementById('btn-import-json-top').onclick = () => {
         importFromJSON();
     }
 };
+
+// GLTF/GLB 3D model export button
+document.getElementById('btn-export-gltf').onclick = () => {
+    showGLTFExportDialog();
+};
+
 document.getElementById('btn-build-guide-top').onclick = showBuildGuide;
 
 // Unified config functions for Solar mode
@@ -15924,7 +17004,7 @@ Object.keys(idMap).forEach(k => syncUI(idMap[k]));
 function updateBracketHoleDistance() {
     const holeDistanceEl = document.getElementById('nb-bracket-hole-distance');
     if (holeDistanceEl) {
-        holeDistanceEl.value = formatNumber(state.bracketOffset || 0, 2);
+        holeDistanceEl.value = formatNumber(state.bracketHoleDistance || 0, 2);
     }
 }
 
