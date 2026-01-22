@@ -121,7 +121,7 @@
     border-color: var(--clr-primary);
     color: var(--text-primary);
     transform: translateY(-1px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 .topbar-btn.active,
@@ -134,25 +134,34 @@
     box-shadow: var(--glow-primary);
 }
 
-/* Mode toggle group - segmented control */
+/* Mode toggle group - segmented control (Mission Control style) */
 .mode-toggle {
-    display: flex;
+    display: flex !important;
     gap: 0;
     background: var(--space-800);
-    border-radius: var(--radius-md);
+    border-radius: 8px;
     padding: 3px;
     border: 1px solid var(--space-400);
     flex-shrink: 0;
+    visibility: visible !important;
 }
 
 .mode-toggle button {
-    border-radius: var(--radius-sm);
+    border-radius: 6px;
     border: none;
     background: transparent;
     min-width: 100px;
     padding: 8px 20px;
     color: var(--text-secondary);
     font-weight: 500;
+}
+
+.mode-toggle button:first-child {
+    border-radius: 6px;
+}
+
+.mode-toggle button:last-child {
+    border-radius: 6px;
 }
 
 .mode-toggle button.active {
@@ -285,4 +294,48 @@
     min-width: 100px;
     flex: 1 1 auto;
     max-width: 250px;
+}
+
+/* System Review Button - Mission Control style */
+.system-review-button {
+    font-family: var(--font-display);
+    background: linear-gradient(135deg, rgba(var(--clr-info-rgb), 0.3), rgba(var(--clr-info-rgb), 0.15));
+    border: 1px solid var(--status-info);
+    color: var(--text-data);
+    padding: 6px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 0 12px rgba(var(--clr-info-rgb), 0.3);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    transition: all var(--transition-fast);
+}
+
+.system-review-button:hover {
+    background: linear-gradient(135deg, rgba(var(--clr-info-rgb), 0.5), rgba(var(--clr-info-rgb), 0.3));
+    border-color: var(--text-data);
+    box-shadow: 0 0 20px rgba(var(--clr-info-rgb), 0.5);
+    transform: translateY(-1px);
+}
+
+/* Time display - digital clock style */
+.toolbar .time-display,
+.topbar .time-display {
+    font-family: var(--font-mono);
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--text-data);
+    text-shadow: var(--glow-cyan);
+    white-space: nowrap;
+    display: inline-block;
+    text-align: center;
+    padding: 6px 16px;
+    background: var(--space-800);
+    border: 1px solid var(--space-400);
+    border-radius: 6px;
 }

@@ -13,13 +13,14 @@
 }
 
 /* Canvas container - SVG drawing area */
+/* Default: both sidebars visible */
 #canvas-container {
     position: fixed;
     top: 52px;
     left: 260px; /* Account for left sidebar */
-    right: 0;
+    right: 340px; /* Account for right sidebar */
     bottom: 0;
-    width: calc(100% - 260px); /* Explicit width calculation */
+    width: calc(100% - 260px - 340px); /* Explicit width calculation accounting for both sidebars */
     height: calc(100vh - 52px); /* Explicit height calculation */
     overflow: hidden;
     touch-action: none;
@@ -30,24 +31,40 @@
     min-height: 0;
 }
 
-/* Adjust canvas when right sidebar is open */
-#right-sidebar.open ~ #main-content #canvas-container,
+/* Right sidebar closed */
+body:has(#right-sidebar.closed) #canvas-container {
+    right: 0;
+    width: calc(100% - 260px - 0px);
+}
+
+/* Right sidebar open (default state) */
 body:has(#right-sidebar.open) #canvas-container {
     right: 340px;
-    width: calc(100% - 260px - 340px);
 }
 
-/* Adjust canvas when left sidebar is collapsed */
-#left-sidebar.collapsed ~ #main-content #canvas-container,
+/* Left sidebar collapsed */
 body:has(#left-sidebar.collapsed) #canvas-container {
     left: 0;
-    width: calc(100% - 340px); /* Only account for right sidebar if open */
 }
 
-/* When both sidebars are in default state */
-#left-sidebar:not(.collapsed) ~ #main-content #canvas-container,
-body:has(#left-sidebar:not(.collapsed)) #canvas-container {
+/* Left sidebar collapsed + right sidebar closed */
+body:has(#left-sidebar.collapsed):has(#right-sidebar.closed) #canvas-container {
+    left: 0;
+    right: 0;
+    width: 100%;
+}
+
+/* Left sidebar collapsed + right sidebar open */
+body:has(#left-sidebar.collapsed):has(#right-sidebar.open) #canvas-container {
+    left: 0;
+    right: 340px;
+    width: calc(100% - 340px);
+}
+
+/* Left sidebar open + right sidebar closed */
+body:has(#left-sidebar:not(.collapsed)):has(#right-sidebar.closed) #canvas-container {
     left: 260px;
+    right: 0;
     width: calc(100% - 260px);
 }
 
@@ -198,7 +215,7 @@ path.wire.ac-240 {
 }
 
 /* Prevent buttons and text from appearing on canvas */
-#canvas-container > *:not(svg):not(#structure-viewport):not(#structure-background-canvas) {
+#canvas-container > *:not(svg):not(#structure-background-canvas) {
     position: absolute;
     z-index: 10;
     pointer-events: auto;
@@ -222,60 +239,7 @@ path.wire.ac-240 {
     display: none !important;
 }
 
-/* Structure 3D Minimap Viewport */
-#structure-viewport {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 320px;
-    height: 220px;
-    min-width: 320px;
-    min-height: 220px;
-    border: 2px solid var(--border-med);
-    border-radius: var(--radius-md);
-    overflow: hidden;
-    display: none;
-    background: #0a1525;
-    box-shadow: var(--shadow-lg);
-    z-index: 100;
-}
-
-#structure-viewport canvas {
-    width: 100% !important;
-    height: 100% !important;
-    display: block;
-    min-width: 320px;
-    min-height: 220px;
-}
-
-#structure-viewport-header {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    padding: 4px 8px;
-    background: rgba(0, 0, 0, 0.7);
-    font-size: 11px;
-    color: var(--text-muted);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-.structure-view-btn {
-    padding: 2px 6px;
-    font-size: 10px;
-    background: var(--space-600);
-    border: 1px solid var(--border-light);
-    color: var(--text-primary);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-}
-
-.structure-view-btn.active {
-    background: var(--clr-primary);
-    color: var(--space-900);
-}
+/* Minimap removed - no longer needed */
 
 /* Sidebars */
 #left-sidebar,
@@ -318,6 +282,8 @@ path.wire.ac-240 {
     transform: translateX(100%);
 }
 
+/* Right sidebar toggle is now outside the sidebar, so it's always visible */
+
 #right-sidebar.open {
     transform: translateX(0);
 }
@@ -332,6 +298,13 @@ path.wire.ac-240 {
 #left-sidebar.collapsed > *:not(#left-sidebar-toggle) {
     opacity: 0;
     pointer-events: none;
+}
+
+/* Ensure left sidebar toggle button stays visible when collapsed */
+#left-sidebar.collapsed #left-sidebar-toggle {
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    display: flex !important;
 }
 
 /* Sidebar toggle buttons */
@@ -351,6 +324,12 @@ path.wire.ac-240 {
     z-index: 1001 !important;
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
     transition: all var(--transition-fast);
+    opacity: 1 !important;
+    pointer-events: auto !important;
+}
+
+#left-sidebar-toggle {
+    left: 0;
 }
 
 #right-sidebar-toggle {
@@ -358,15 +337,26 @@ path.wire.ac-240 {
     right: 0;
 }
 
-/* Ensure toggle is visible even when sidebar is closed */
-#right-sidebar.closed ~ #right-sidebar-toggle,
-body:has(#right-sidebar.closed) #right-sidebar-toggle {
+/* Ensure toggle buttons are always visible and positioned correctly */
+#right-sidebar-toggle {
     display: flex !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
     right: 0 !important;
 }
 
+/* Right sidebar toggle button is always visible since it's outside the sidebar */
+
 #left-sidebar-toggle {
     left: 0;
+}
+
+/* Ensure left sidebar toggle is visible when sidebar is collapsed */
+#left-sidebar.collapsed #left-sidebar-toggle {
+    display: flex !important;
+    left: 0 !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
 }
 
 #left-sidebar-toggle:hover,
@@ -547,19 +537,55 @@ body:has(#right-sidebar.closed) #right-sidebar-toggle {
     margin-bottom: 0;
 }
 
+/* Sidebar sections */
+.sidebar-section {
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--space-500);
+}
+
+.sidebar-section:last-child {
+    border-bottom: none;
+}
+
+.system-scores-section {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(180deg, var(--space-700) 0%, var(--space-800) 100%);
+    z-index: 10;
+    padding-top: 8px;
+    margin-top: -8px;
+    padding-bottom: 12px;
+}
+
 /* Section headers in sidebars */
 #left-sidebar h3,
 #right-sidebar h3,
 #left-sidebar .section-title,
-#right-sidebar .section-title {
-    font-size: 0.75rem;
-    font-weight: 600;
+#right-sidebar .section-title,
+.sidebar-section h3 {
+    font-family: var(--font-display);
+    font-size: 10px;
+    font-weight: 700;
     color: var(--clr-primary);
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 10px;
+    letter-spacing: 1px;
+    margin: 0 0 14px 0;
     padding-bottom: 6px;
-    border-bottom: 1px solid var(--border-light);
+    border-bottom: 1px solid var(--space-500);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Decorative dot before section headers */
+.sidebar-section h3::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--clr-primary);
+    border-radius: 50%;
+    opacity: 0.6;
 }
 
 /* Ensure sidebar text is visible */
@@ -682,27 +708,59 @@ body:has(#right-sidebar.closed) #right-sidebar-toggle {
     letter-spacing: 0.5px;
 }
 
-/* Score bar styling (telemetry) */
+/* Score bar styling (telemetry) - Mission Control style */
 .score-bar {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 3px;
 }
 
 .score-item {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 10px;
-    background: var(--space-600);
-    border: 1px solid var(--space-400);
+    padding: 7px 10px;
+    background: linear-gradient(90deg, var(--space-800) 0%, rgba(15, 22, 41, 0.8) 100%);
     border-radius: var(--radius-sm);
+    border-left: 3px solid var(--space-500);
+    position: relative;
+    cursor: help;
     transition: all var(--transition-fast);
+    overflow: hidden;
+}
+
+/* Inner glow on hover */
+.score-item::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at left center, rgba(34, 211, 238, 0.1) 0%, transparent 70%);
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    pointer-events: none;
+}
+
+.score-item:hover::before {
+    opacity: 1;
+}
+
+/* Animated bar indicator behind score */
+.score-item::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 2px;
+    width: var(--score-percent, 0%);
+    background: var(--gradient-energy);
+    transition: width 0.5s ease;
 }
 
 .score-item:hover {
-    background: var(--space-500);
-    border-color: var(--clr-primary);
+    border-left-color: var(--clr-primary);
+    background: linear-gradient(90deg, var(--space-700) 0%, var(--space-800) 100%);
+    transform: translateX(3px);
+    box-shadow: inset 0 0 20px rgba(34, 211, 238, 0.05);
 }
 
 .score-label {
@@ -717,6 +775,67 @@ body:has(#right-sidebar.closed) #right-sidebar-toggle {
     font-weight: 700;
     font-family: var(--font-mono);
     text-shadow: var(--glow-primary);
+}
+
+/* Cost breakdown styling */
+.cost-breakdown {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.cost-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    background: linear-gradient(90deg, var(--space-800) 0%, rgba(15, 22, 41, 0.8) 100%);
+    border-radius: var(--radius-sm);
+    border-left: 3px solid var(--space-500);
+    font-size: 0.8rem;
+    transition: all var(--transition-fast);
+}
+
+.cost-item:hover {
+    background: linear-gradient(90deg, var(--space-700) 0%, rgba(20, 30, 50, 0.9) 100%);
+    border-left-color: var(--clr-primary);
+}
+
+.cost-item.cost-total {
+    margin-top: 8px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    border-top: 1px solid var(--space-500);
+    border-left-width: 4px;
+    border-left-color: var(--clr-primary);
+    font-weight: 600;
+    background: linear-gradient(90deg, rgba(var(--clr-primary-rgb), 0.1) 0%, rgba(15, 22, 41, 0.9) 100%);
+}
+
+.cost-item.cost-total:hover {
+    background: linear-gradient(90deg, rgba(var(--clr-primary-rgb), 0.15) 0%, rgba(20, 30, 50, 0.95) 100%);
+}
+
+.cost-label {
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+}
+
+.cost-item.cost-total .cost-label {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.cost-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+}
+
+.cost-item.cost-total .cost-value {
+    color: var(--clr-primary);
+    font-size: 0.9rem;
 }
 
 /* Simulation location controls */

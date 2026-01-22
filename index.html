@@ -12545,9 +12545,8 @@ function serializeGeometry(data) {
 }
 
 /**
- * Exports current design to Solar Circuit Designer for microgrid design
+ * Exports current design to Solar Designer for circuit design and simulation
  * Passes panel configuration, BOM costs, and 3D geometry
- * User can then export from designer to simulator for 3D energy flow simulation
  */
 function exportToSolarSimulator() {
     // Get current linkage data
@@ -12580,6 +12579,8 @@ function exportToSolarSimulator() {
     const vBoltsCenter = moduleCount * 1;
     const hCenterBolts = moduleCount * 2;
     const hPivotBolts = moduleCount * 4;
+    const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
+    const totalHBolts = hCenterBolts + hPivotBolts;
     
     // Get bolt costs
     const costVInner = splitBolts ? (state.costBoltVInner || 0.75) : (state.costBoltVInner || 0.75);
@@ -12656,11 +12657,10 @@ function exportToSolarSimulator() {
     // Store in localStorage for the designer to read
     localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
     
-    // Open Solar Circuit Designer with import flag
-    // User can then export to simulator from the designer
+    // Open Solar Designer with import flag
     window.open('solar_designer.html?import=linkageLab', '_blank');
     
-    showToast(`Exported ${panelCount} panels to Solar Circuit Designer`, 'info');
+    showToast(`Exported ${panelCount} panels to Solar Designer`, 'info');
 }
 
 
@@ -19545,7 +19545,7 @@ window.addEventListener('resize', debounce(() => {
             <div class="guide-header-actions">
                 <button class="guide-header-btn" onclick="window.print()">🖨️ Print</button>
                 <button class="guide-header-btn" onclick="exportGuideJSON()">💾 Export JSON</button>
-                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Circuit Designer</button>
+                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Simulator</button>
             </div>
             <button class="guide-close" onclick="closeBuildGuide()">&times;</button>
         </div>

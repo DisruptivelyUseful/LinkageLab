@@ -11,28 +11,36 @@
     --font-body: 'Segoe UI', system-ui, sans-serif;
     
     /* === PRIMARY COLORS - Blue/Cyan Aerospace === */
-    --clr-primary: #22d3ee;           /* Cyan blue - main brand color */
+    --clr-primary: #22d3ee;          /* Cyan blue - main brand color */
     --clr-primary-light: #67e8f9;    /* Light cyan */
     --clr-primary-dark: #0891b2;     /* Dark cyan */
     --clr-primary-rgb: 34, 211, 238; /* For rgba() usage */
     
-    /* === ENERGY COLORS - Status Indicators === */
-    --energy-amber: #f59e0b;         /* Warning/caution */
-    --energy-orange: #ea580c;        /* Critical */
-    --energy-gold: #fbbf24;          /* Highlight */
+    /* === ENERGY COLORS - Warm Indicators === */
+    --energy-amber: #f59e0b;         /* Primary energy color */
+    --energy-orange: #ea580c;        /* Critical/hot */
+    --energy-gold: #fbbf24;           /* Highlight/bright */
+    --energy-glow: rgba(245, 158, 11, 0.15); /* Subtle amber glow */
+    
+    /* === STATUS COLORS === */
     --energy-green: #10b981;          /* Success/nominal */
     --energy-red: #ef4444;            /* Error/danger */
     --energy-blue: #3b82f6;           /* Info */
-    --energy-glow: rgba(34, 211, 238, 0.15); /* Subtle cyan glow */
     
     /* === STATUS COLORS (Semantic) === */
-    --clr-success: var(--energy-green);
+    --status-nominal: #10b981;        /* Success/nominal */
+    --status-caution: #f59e0b;        /* Caution */
+    --status-warning: #ef4444;        /* Warning */
+    --status-info: #3b82f6;           /* Info */
+    --status-offline: #6b7280;        /* Offline */
+    
+    --clr-success: var(--status-nominal);
     --clr-success-rgb: 16, 185, 129;
-    --clr-danger: var(--energy-red);
+    --clr-danger: var(--status-warning);
     --clr-danger-rgb: 239, 68, 68;
-    --clr-warning: var(--energy-amber);
+    --clr-warning: var(--status-caution);
     --clr-warning-rgb: 245, 158, 11;
-    --clr-info: var(--energy-blue);
+    --clr-info: var(--status-info);
     --clr-info-rgb: 59, 130, 246;
     
     /* === SPACE BACKGROUNDS (Deep Space Palette) === */
@@ -54,6 +62,7 @@
     --gradient-panel: linear-gradient(180deg, var(--space-600) 0%, var(--space-700) 100%);
     --gradient-primary: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
     --gradient-energy: linear-gradient(135deg, var(--energy-amber) 0%, var(--energy-orange) 100%);
+    --gradient-primary: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
     
     /* === BORDERS === */
     --border: var(--space-400);
@@ -67,15 +76,16 @@
     --text-secondary: #94a3b8;        /* Secondary text */
     --text-muted: #64748b;            /* Muted text */
     --text-dim: #475569;              /* Dim text */
-    --text-data: var(--clr-primary);  /* Data/numbers */
+    --text-data: #22d3ee;             /* Data/numbers (cyan for visibility) */
     --text-accent: var(--clr-primary); /* Accent text */
     
-    /* === GLOW EFFECTS (Subtle, Professional) === */
-    --glow-primary: 0 0 12px rgba(34, 211, 238, 0.4);      /* Cyan glow */
-    --glow-primary-strong: 0 0 20px rgba(34, 211, 238, 0.6); /* Strong cyan */
-    --glow-green: 0 0 12px rgba(16, 185, 129, 0.4);        /* Success glow */
-    --glow-red: 0 0 12px rgba(239, 68, 68, 0.4);           /* Error glow */
-    --glow-amber: 0 0 12px rgba(245, 158, 11, 0.3);         /* Warning glow (subtle) */
+    /* === GLOW EFFECTS (Mission Control Aesthetic) === */
+    --glow-amber: 0 0 20px rgba(245, 158, 11, 0.4);        /* Energy/warning glow */
+    --glow-green: 0 0 15px rgba(16, 185, 129, 0.5);        /* Success/nominal glow */
+    --glow-red: 0 0 15px rgba(239, 68, 68, 0.5);           /* Error/warning glow */
+    --glow-cyan: 0 0 12px rgba(34, 211, 238, 0.4);         /* Primary/data glow */
+    --glow-primary: var(--glow-cyan);                      /* Primary glow alias */
+    --glow-primary-strong: 0 0 25px rgba(34, 211, 238, 0.6); /* Strong primary glow */
     
     /* === BORDER RADIUS (Professional, Less Cartoony) === */
     --radius-sm: 4px;                 /* Small elements */
@@ -111,12 +121,9 @@
     --z-modal: 1000;
     --z-tooltip: 1100;
     
-    /* === STATUS VARIABLES (for compatibility) === */
-    --status-nominal: var(--energy-green);
-    --status-info: var(--energy-blue);
-    --status-warning: var(--energy-amber);
-    --status-caution: var(--energy-orange);
-    --status-error: var(--energy-red);
+    /* === STATUS VARIABLES (already defined above) === */
+    /* --status-nominal, --status-caution, --status-warning, --status-info, --status-offline */
+    --status-error: var(--status-warning); /* Alias for error */
     
     /* === LEGACY COMPATIBILITY === */
     /* Maintain backward compatibility with existing variable names */

@@ -4822,8 +4822,29 @@
         
         function updateSvgDimensions() {
             const container = document.getElementById('canvas-container');
+            if (!container) return;
+            
+            const oldWidth = svgWidth;
+            const oldHeight = svgHeight;
+            
             svgWidth = container.clientWidth;
             svgHeight = container.clientHeight;
+            
+            svg.attr("width", svgWidth).attr("height", svgHeight);
+            
+            // Preserve view center on resize
+            if (oldWidth && oldHeight && (oldWidth !== svgWidth || oldHeight !== svgHeight)) {
+                const transform = d3.zoomTransform(svg.node());
+                const centerX = (svgWidth / 2 - transform.x) / transform.k;
+                const centerY = (svgHeight / 2 - transform.y) / transform.k;
+                
+                const newTransform = d3.zoomIdentity
+                    .translate(svgWidth / 2, svgHeight / 2)
+                    .scale(transform.k)
+                    .translate(-centerX, -centerY);
+                
+                svg.call(zoomBehavior.transform, newTransform);
+            }
         }
         
         // ============================================
@@ -5816,7 +5837,7 @@
             }
             
             try {
-                const transform = d3.zoomTransform(itemsGroup.node());
+                const transform = d3.zoomTransform(svg.node());
                 if (!transform) return allItems;
                 
                 const viewport = {
@@ -5862,6 +5883,42 @@
                 
                 return (sourceVisible && targetVisible) || sourceSelected || targetSelected;
             });
+        }
+        
+        /**
+         * Fit view to show all items with padding
+         */
+        function fitViewToContent() {
+            if (allItems.length === 0) return;
+            
+            // Calculate bounds of all items
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            allItems.forEach(item => {
+                minX = Math.min(minX, item.x);
+                minY = Math.min(minY, item.y);
+                maxX = Math.max(maxX, item.x + (item.width || 100));
+                maxY = Math.max(maxY, item.y + (item.height || 100));
+            });
+            
+            const padding = 50;
+            const contentWidth = maxX - minX + padding * 2;
+            const contentHeight = maxY - minY + padding * 2;
+            
+            const scale = Math.min(
+                svgWidth / contentWidth,
+                svgHeight / contentHeight,
+                1.5 // max zoom
+            );
+            
+            const centerX = (minX + maxX) / 2;
+            const centerY = (minY + maxY) / 2;
+            
+            const transform = d3.zoomIdentity
+                .translate(svgWidth / 2, svgHeight / 2)
+                .scale(scale)
+                .translate(-centerX, -centerY);
+            
+            svg.transition().duration(300).call(zoomBehavior.transform, transform);
         }
         
         function render() {
@@ -19938,6 +19995,7 @@
                 allItems = [];
                 connections = [];
                 invalidateSpecsCache();
+                _initialRenderDone = false; // Reset render flag for proper viewport culling
                 
                 // Apply items
                 circuitData.items.forEach(item => {
@@ -19965,6 +20023,9 @@
                     items: allItems.length,
                     connections: connections.length
                 });
+                
+                // Invalidate wire path cache after importing circuit data
+                invalidateWirePathCache();
             }
             
             // Apply simulation settings
@@ -20011,6 +20072,10 @@
             
             // Render
             render();
+            
+            // Fit view to content after import
+            fitViewToContent();
+            
             if (typeof historyManager !== 'undefined') {
                 historyManager.pushState();
             }
@@ -22736,6 +22801,14 @@
             if (scene3D && scene3D.initialized) {
                 syncNodesTo3D();
             }
+            
+            // Invalidate wire paths for all connections to linked panels
+            const linkedPanelIds = new Set(panelItems.filter(p => p.linkedStructurePanel).map(p => p.id));
+            connections.forEach(conn => {
+                if (linkedPanelIds.has(conn.sourceItemId) || linkedPanelIds.has(conn.targetItemId)) {
+                    invalidateWirePathCache(conn.id);
+                }
+            });
         }
         
         /**
@@ -22756,6 +22829,7 @@
             connectionIdCounter = 0;
             tutorialCompleted = true; // Skip tutorial for imports
             systemValidated = false;
+            _initialRenderDone = false; // Reset render flag for proper viewport culling
             
             // Add custom panel preset to the beginning of PANEL_PRESETS
             const customPanel = data.solarPanels.specs;
@@ -23049,8 +23123,14 @@
             // Refresh library UI to show custom panel
             populateLibraries();
             
+            // Invalidate wire path cache after import
+            invalidateWirePathCache();
+            
             // Render the canvas
             render();
+            
+            // Fit view to content after import
+            fitViewToContent();
             
             // Initialize 3D structure viewport if geometry is available
             if (window.linkageLabGeometry) {

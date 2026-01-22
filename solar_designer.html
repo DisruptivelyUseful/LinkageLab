@@ -136,6 +136,41 @@
                 </div>
             </div>
             
+            <!-- Cost Breakdown Section -->
+            <div class="sidebar-section" id="costBreakdownSection">
+                <h3>💰 Cost Breakdown</h3>
+                <div class="cost-breakdown">
+                    <div class="cost-item" id="costStructure">
+                        <span class="cost-label">Structure</span>
+                        <span class="cost-value" id="costStructureValue">$0.00</span>
+                    </div>
+                    <div class="cost-item" id="costPanels">
+                        <span class="cost-label">Solar Panels</span>
+                        <span class="cost-value" id="costPanelsValue">$0.00</span>
+                    </div>
+                    <div class="cost-item" id="costInverter">
+                        <span class="cost-label">Inverter/Controller</span>
+                        <span class="cost-value" id="costInverterValue">$0.00</span>
+                    </div>
+                    <div class="cost-item" id="costBatteries">
+                        <span class="cost-label">Batteries</span>
+                        <span class="cost-value" id="costBatteriesValue">$0.00</span>
+                    </div>
+                    <div class="cost-item" id="costComponents">
+                        <span class="cost-label">Components</span>
+                        <span class="cost-value" id="costComponentsValue">$0.00</span>
+                    </div>
+                    <div class="cost-item" id="costWires">
+                        <span class="cost-label">Wires</span>
+                        <span class="cost-value" id="costWiresValue">$0.00</span>
+                    </div>
+                    <div class="cost-item cost-total">
+                        <span class="cost-label">Total</span>
+                        <span class="cost-value" id="costTotalValue">$0.00</span>
+                    </div>
+                </div>
+            </div>
+            
             <!-- Simulation Stats (shown in simulate mode) -->
             <div class="sidebar-section" id="simStatsSection" style="display: none;">
                 <h3>📊 Simulation</h3>
@@ -227,7 +262,6 @@
                         <button onclick="setMain3DView('isometric')" class="main-3d-view-btn" data-view="isometric" style="padding: 6px 10px; font-size: 0.65rem; font-weight: 700; background: var(--space-600); border: 2px solid var(--space-400); color: var(--text-secondary); cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px; transition: all 0.15s ease;">Iso</button>
                     </div>
                     <div style="display: flex; gap: 4px; margin-top: 4px;">
-                        <button onclick="toggleMinimapViewport()" class="minimap-toggle-btn" style="padding: 6px 10px; font-size: 0.65rem; font-weight: 700; background: var(--space-600); border: 2px solid var(--space-400); color: var(--text-secondary); cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px; transition: all 0.15s ease; flex: 1;">Minimap</button>
                         <button onclick="toggleShadows()" class="shadow-toggle-btn" style="padding: 6px 10px; font-size: 0.65rem; font-weight: 700; background: var(--space-600); border: 2px solid var(--space-400); color: var(--text-secondary); cursor: pointer; text-transform: uppercase; letter-spacing: 0.3px; transition: all 0.15s ease; flex: 1;">Shadows</button>
                     </div>
                     <div style="font-size: 0.6rem; color: var(--text-muted); margin-top: 6px; text-align: center; opacity: 0.8;">Ctrl+Drag to orbit • Scroll to zoom</div>
@@ -235,26 +269,13 @@
             </div>
             
             <svg id="canvas" style="position: relative; z-index: 1; pointer-events: auto;"></svg>
-            
-            <!-- Structure 3D Minimap Viewport (populated when importing from LinkageLab) -->
-            <div id="structure-viewport">
-                <canvas id="structure-canvas"></canvas>
-                <div id="structure-viewport-header">
-                    <span>Minimap</span>
-                    <div id="structure-controls" style="display: flex; gap: 4px;">
-                        <button onclick="setStructureView('perspective')" class="structure-view-btn active" data-view="perspective">3D</button>
-                        <button onclick="setStructureView('side')" class="structure-view-btn" data-view="side">Side</button>
-                        <button onclick="setStructureView('top')" class="structure-view-btn" data-view="top">Top</button>
-                        <button onclick="toggleStructureViewport()" style="padding: 2px 6px; font-size: 10px; background: #444; border: 1px solid #555; color: #fff; border-radius: 3px; cursor: pointer;">✕</button>
-                    </div>
-                </div>
-                <div id="structure-time-display" style="position: absolute; bottom: 4px; left: 8px; font-size: 10px; color: #ffdd57; text-shadow: 0 0 4px rgba(0,0,0,0.8);"></div>
-            </div>
         </div>
+        
+        <!-- Right sidebar toggle button (outside sidebar so it stays visible) -->
+        <button id="right-sidebar-toggle" title="Toggle Library Panel (L)">▶</button>
         
         <!-- RIGHT SIDEBAR - Component Library & Inspector -->
         <div id="right-sidebar" class="open">
-            <button id="right-sidebar-toggle" title="Toggle Library Panel (L)">▶</button>
             
             <!-- Tab Header -->
             <div class="right-panel-tabs">
@@ -5272,6 +5293,69 @@
         }
         
         function renderBattery(g, d) {
+            // Add "DESTROYED" text if destroyed
+            if (d.destroyed) {
+                // Main rect with destroyed styling
+                g.append("rect")
+                    .attr("class", "item-rect")
+                    .attr("width", d.width)
+                    .attr("height", d.height)
+                    .attr("rx", 6)
+                    .attr("ry", 6)
+                    .attr("fill", "rgba(100, 0, 0, 0.5)")
+                    .attr("stroke", "#ff0000")
+                    .attr("stroke-width", 4);
+                
+                g.append("text")
+                    .attr("class", "destroyed-label")
+                    .attr("x", d.width / 2)
+                    .attr("y", d.height / 2)
+                    .attr("dominant-baseline", "middle")
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#ff0000")
+                    .attr("font-weight", "bold")
+                    .attr("font-size", "14px")
+                    .text("💥 DESTROYED");
+                
+                // Add reset button
+                const resetBtn = g.append("rect")
+                    .attr("class", "reset-button")
+                    .attr("x", d.width / 2 - 30)
+                    .attr("y", d.height / 2 + 15)
+                    .attr("width", 60)
+                    .attr("height", 20)
+                    .attr("rx", 4)
+                    .attr("fill", "#5cb85c")
+                    .attr("stroke", "#4cae4c")
+                    .attr("stroke-width", 1)
+                    .style("cursor", "pointer");
+                
+                resetBtn.append("title").text("Click to reset");
+                
+                g.append("text")
+                    .attr("class", "reset-button-text")
+                    .attr("x", d.width / 2)
+                    .attr("y", d.height / 2 + 27)
+                    .attr("dominant-baseline", "middle")
+                    .attr("text-anchor", "middle")
+                    .attr("fill", "#fff")
+                    .attr("font-size", "10px")
+                    .attr("font-weight", "bold")
+                    .text("RESET")
+                    .style("cursor", "pointer")
+                    .style("pointer-events", "none");
+                
+                // Make reset button clickable
+                resetBtn.on("click", (event) => {
+                    event.stopPropagation();
+                    d.destroyed = false;
+                    render();
+                    validateSystem();
+                });
+                
+                return; // Don't render normal battery content if destroyed
+            }
+            
             // Main rect
             g.append("rect")
                 .attr("class", "item-rect")
@@ -5536,6 +5620,22 @@
                     d.batteryOvervoltage = false;
                     d.incompatibleVoltageShown = false;
                     d.reversedPolarityWarningShown = false;
+                    
+                    // If controller was destroyed due to reverse polarity, disconnect battery wires
+                    // This forces the user to reconnect them correctly
+                    if (d.handles) {
+                        const battPosConn = d.handles.batteryPositive?.connectedTo || [];
+                        const battNegConn = d.handles.batteryNegative?.connectedTo || [];
+                        
+                        // Disconnect all battery connections
+                        [...battPosConn, ...battNegConn].forEach(conn => {
+                            const connection = connections.find(c => c.id === conn.connectionId);
+                            if (connection) {
+                                deleteConnection(connection.id);
+                            }
+                        });
+                    }
+                    
                     render();
                     validateSystem();
                 });
@@ -10257,9 +10357,28 @@
             
             const pos = getHandlePosition(draggingHandle.item, draggingHandle.handle);
             
+            // Determine wire color based on handle polarity
+            const polarity = draggingHandle.handle.polarity || 'mixed';
+            let wireColor = '#888'; // Default gray
+            if (polarity === 'positive' || polarity === 'pv-positive') {
+                wireColor = '#d9534f'; // Red
+            } else if (polarity === 'negative' || polarity === 'pv-negative') {
+                wireColor = '#333'; // Dark gray/black
+            } else if (polarity === 'ac' || polarity === 'load') {
+                wireColor = '#f0ad4e'; // Orange/yellow
+            } else if (polarity === 'parallel') {
+                wireColor = '#00a8e8'; // Blue
+            }
+            
             tempWire = tempGroup.append("path")
                 .attr("class", "wire temp")
-                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`);
+                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`)
+                .style("stroke", wireColor)
+                .style("stroke-width", 3)
+                .style("stroke-dasharray", "8,4") // Dashed line for preview
+                .style("fill", "none")
+                .style("opacity", 0.8)
+                .style("pointer-events", "none");
         }
         
         function handleDragMove(event) {
@@ -10287,6 +10406,9 @@
             
             const path = generateCurvePath(start.x, start.y, mouseX, mouseY, handle.side, targetSide);
             tempWire.attr("d", path);
+            
+            // Ensure temp wire is visible and on top
+            tempWire.raise();
         }
         
         function handleDragEnd(event) {
@@ -10308,13 +10430,12 @@
             const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === draggingHandle.handleId) || draggingHandle.handle;
             
             // Find target handle - closest one within range
+            // IMPORTANT: Don't exclude sourceItem - we need to detect short circuits on same battery
             let targetItem = null;
             let targetHandle = null;
             let closestDist = HANDLE_RADIUS * 3;
             
             for (const item of allItems) {
-                if (item.id === sourceItem.id) continue;
-                
                 for (const handle of Object.values(item.handles)) {
                     const pos = getHandlePosition(item, handle);
                     const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
@@ -10323,6 +10444,111 @@
                         closestDist = dist;
                         targetItem = item;
                         targetHandle = handle;
+                    }
+                }
+            }
+            
+            // Check for battery short circuit BEFORE creating connection or new battery
+            if (sourceItem.type === 'battery' && targetHandle && targetItem.type === 'battery') {
+                const sourcePolarity = sourceHandle.polarity;
+                const targetPolarity = targetHandle.polarity;
+                
+                // Check if polarities are opposite (positive to negative or negative to positive)
+                const isOppositePolarity = (sourcePolarity === 'positive' && targetPolarity === 'negative') ||
+                                         (sourcePolarity === 'negative' && targetPolarity === 'positive');
+                
+                if (isOppositePolarity) {
+                    // Check if it's the same battery or a battery in the same connected bank
+                    let isShortCircuit = false;
+                    let shortCircuitBattery = null;
+                    
+                    if (sourceItem.id === targetItem.id) {
+                        // Same battery - definitely a short circuit
+                        isShortCircuit = true;
+                        shortCircuitBattery = sourceItem;
+                    } else {
+                        // Check if batteries are in the same connected bank/string
+                        // Use a helper function to trace if batteries are in the same series string
+                        function areBatteriesInSameString(battery1, battery2) {
+                            if (battery1.id === battery2.id) return true;
+                            
+                            // Trace series string from battery1
+                            const visited = new Set();
+                            const toVisit = [battery1];
+                            
+                            while (toVisit.length > 0) {
+                                const battery = toVisit.pop();
+                                if (visited.has(battery.id)) continue;
+                                visited.add(battery.id);
+                                
+                                // If we found battery2, they're in the same string
+                                if (battery.id === battery2.id) return true;
+                                
+                                // Check both handles for connections to other batteries
+                                Object.values(battery.handles).forEach(handle => {
+                                    handle.connectedTo.forEach(conn => {
+                                        const connectedItem = allItems.find(i => i.id === conn.itemId);
+                                        if (connectedItem && connectedItem.type === 'battery' && !visited.has(connectedItem.id)) {
+                                            toVisit.push(connectedItem);
+                                        }
+                                    });
+                                });
+                            }
+                            
+                            return false;
+                        }
+                        
+                        // Check if they're directly connected to each other
+                        const sourcePosConn = sourceItem.handles.positive?.connectedTo || [];
+                        const sourceNegConn = sourceItem.handles.negative?.connectedTo || [];
+                        const targetPosConn = targetItem.handles.positive?.connectedTo || [];
+                        const targetNegConn = targetItem.handles.negative?.connectedTo || [];
+                        
+                        const sourceConnectsToTarget = 
+                            sourcePosConn.some(c => c.itemId === targetItem.id) ||
+                            sourceNegConn.some(c => c.itemId === targetItem.id);
+                        
+                        const targetConnectsToSource =
+                            targetPosConn.some(c => c.itemId === sourceItem.id) ||
+                            targetNegConn.some(c => c.itemId === sourceItem.id);
+                        
+                        // Check if they're in the same series string (even if not directly connected)
+                        const inSameString = areBatteriesInSameString(sourceItem, targetItem);
+                        
+                        // Also check if they're both connected to the same controller (same bank)
+                        const sourceControllerConn = [...sourcePosConn, ...sourceNegConn]
+                            .map(c => allItems.find(i => i.id === c.itemId))
+                            .find(i => i && i.type === 'controller');
+                        const targetControllerConn = [...targetPosConn, ...targetNegConn]
+                            .map(c => allItems.find(i => i.id === c.itemId))
+                            .find(i => i && i.type === 'controller');
+                        
+                        const sameController = sourceControllerConn && targetControllerConn && 
+                                             sourceControllerConn.id === targetControllerConn.id;
+                        
+                        if (sourceConnectsToTarget || targetConnectsToSource || inSameString || sameController) {
+                            // Batteries are in the same bank - this is a short circuit
+                            isShortCircuit = true;
+                            // Use the battery that would be shorted (the one with the target handle)
+                            shortCircuitBattery = targetItem;
+                        }
+                    }
+                    
+                    if (isShortCircuit && shortCircuitBattery) {
+                        // This is a short circuit - trigger explosion
+                        // Create a temporary connection to identify which connection caused the short
+                        const tempConnection = {
+                            id: 'temp-short-' + Date.now(),
+                            sourceItemId: sourceItem.id,
+                            sourceHandleId: sourceHandle.id,
+                            targetItemId: targetItem.id,
+                            targetHandleId: targetHandle.id,
+                            polarity: 'positive' // Doesn't matter for short circuit
+                        };
+                        
+                        triggerBatteryShort(shortCircuitBattery, tempConnection);
+                        draggingHandle = null;
+                        return; // Don't create connection or new battery
                     }
                 }
             }
@@ -13128,56 +13354,128 @@
             const cx = battery.x + battery.width / 2;
             const cy = battery.y + battery.height / 2;
             
-            // Create explosion with intense sparks
-            for (let i = 0; i < 40; i++) {
-                const angle = (Math.PI * 2 * i) / 40;
-                const distance = 60 + Math.random() * 80;
-                const spark = zoomGroup.append("circle")
-                    .attr("class", "spark")
-                    .attr("cx", cx)
-                    .attr("cy", cy)
-                    .attr("r", 5 + Math.random() * 6)
-                    .attr("fill", Math.random() > 0.3 ? "#ff6600" : "#ffff00")
-                    .style("filter", "blur(2px)");
-                
-                spark.transition()
-                    .duration(700 + Math.random() * 500)
-                    .attr("cx", cx + Math.cos(angle) * distance)
-                    .attr("cy", cy + Math.sin(angle) * distance)
-                    .attr("r", 0)
-                    .style("opacity", 0)
-                    .remove();
-            }
+            // Mark battery as destroyed
+            battery.destroyed = true;
             
-            // Flash screen orange
-            const flash = d3.select("svg").append("rect")
-                .attr("class", "overload-flash")
-                .attr("width", "100%")
-                .attr("height", "100%")
-                .attr("fill", "#ff6600")
-                .style("opacity", 0.4)
-                .style("pointer-events", "none");
+            // Play "pop" sound effect
+            playIncidentSound('critical');
             
-            flash.transition()
-                .duration(300)
+            // PHASE 1: Initial bright arc flash (the moment of short)
+            const arcFlash = zoomGroup.append("circle")
+                .attr("cx", cx)
+                .attr("cy", cy)
+                .attr("r", 5)
+                .attr("fill", "#ffffff")
+                .style("filter", "blur(8px)")
+                .style("opacity", 1);
+            
+            arcFlash.transition()
+                .duration(100)
+                .attr("r", 100)
                 .style("opacity", 0)
                 .remove();
             
-            // Shake battery
-            batteryGroup
-                .transition().duration(50).attr("transform", `translate(${battery.x - 5}, ${battery.y})`)
-                .transition().duration(50).attr("transform", `translate(${battery.x + 5}, ${battery.y})`)
-                .transition().duration(50).attr("transform", `translate(${battery.x - 3}, ${battery.y})`)
-                .transition().duration(50).attr("transform", `translate(${battery.x + 3}, ${battery.y})`)
-                .transition().duration(50).attr("transform", `translate(${battery.x}, ${battery.y})`);
+            // Screen flash - bright white then orange
+            const whiteFlash = d3.select("svg").append("rect")
+                .attr("class", "overload-flash")
+                .attr("width", "100%")
+                .attr("height", "100%")
+                .attr("fill", "#ffffff")
+                .style("opacity", 0.9)
+                .style("pointer-events", "none");
+            
+            whiteFlash.transition()
+                .duration(80)
+                .style("opacity", 0)
+                .remove();
+            
+            // PHASE 2: Orange/yellow sparks (100ms delay)
+            setTimeout(() => {
+                // Create explosion with intense orange/yellow sparks
+                for (let i = 0; i < 50; i++) {
+                    const angle = (Math.PI * 2 * i) / 50;
+                    const distance = 70 + Math.random() * 100;
+                    const spark = zoomGroup.append("circle")
+                        .attr("class", "spark")
+                        .attr("cx", cx)
+                        .attr("cy", cy)
+                        .attr("r", 6 + Math.random() * 8)
+                        .attr("fill", Math.random() > 0.4 ? "#ff6600" : (Math.random() > 0.5 ? "#ffff00" : "#ff8800"))
+                        .style("filter", "blur(2px)");
+                    
+                    spark.transition()
+                        .duration(800 + Math.random() * 600)
+                        .attr("cx", cx + Math.cos(angle) * distance)
+                        .attr("cy", cy + Math.sin(angle) * distance)
+                        .attr("r", 0)
+                        .style("opacity", 0)
+                        .remove();
+                }
+                
+                // Orange screen flash
+                const orangeFlash = d3.select("svg").append("rect")
+                    .attr("class", "overload-flash")
+                    .attr("width", "100%")
+                    .attr("height", "100%")
+                    .attr("fill", "#ff6600")
+                    .style("opacity", 0.6)
+                    .style("pointer-events", "none");
+                
+                orangeFlash.transition()
+                    .duration(500)
+                    .style("opacity", 0)
+                    .remove();
+                
+                // Violent shake
+                batteryGroup
+                    .transition().duration(40).attr("transform", `translate(${battery.x - 10}, ${battery.y - 5})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x + 10}, ${battery.y + 5})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x - 8}, ${battery.y - 4})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x + 8}, ${battery.y + 4})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x - 6}, ${battery.y})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x + 6}, ${battery.y})`)
+                    .transition().duration(40).attr("transform", `translate(${battery.x}, ${battery.y})`);
+            }, 100);
+            
+            // PHASE 3: Smoke rising (300ms delay)
+            setTimeout(() => {
+                // Heavy smoke effect
+                createSmokeEffect(cx, cy, 20);
+                
+                // More smoke particles with staggered timing
+                setTimeout(() => createSmokeEffect(cx - 15, cy + 5, 10), 200);
+                setTimeout(() => createSmokeEffect(cx + 15, cy + 5, 10), 400);
+            }, 300);
+            
+            // PHASE 4: Secondary sparks/embers (500ms delay)
+            setTimeout(() => {
+                // Small secondary sparks (embers)
+                for (let i = 0; i < 15; i++) {
+                    setTimeout(() => {
+                        const ember = zoomGroup.append("circle")
+                            .attr("cx", cx + (Math.random() - 0.5) * 50)
+                            .attr("cy", cy + (Math.random() - 0.5) * 40)
+                            .attr("r", 3 + Math.random() * 3)
+                            .attr("fill", Math.random() > 0.5 ? "#ff6600" : "#ffaa00");
+                        
+                        ember.transition()
+                            .duration(400 + Math.random() * 300)
+                            .attr("cy", cy - 30 - Math.random() * 40)
+                            .style("opacity", 0)
+                            .remove();
+                    }, i * 50);
+                }
+            }, 500);
             
             // Disconnect the short circuit
             if (connection) {
                 deleteConnection(connection.id);
             }
             
-            // Show enhanced incident report
-            showIncidentReport(INCIDENT_TEMPLATES.batteryShort(battery));
+            // PHASE 5: Show incident report after animation completes (1.5 second delay)
+            setTimeout(() => {
+                showIncidentReport(INCIDENT_TEMPLATES.batteryShort(battery));
+            }, 1500);
         }
         
         function validateSystem() {
@@ -14146,7 +14444,118 @@
             // Sum wire costs from all connections
             let wireCost = connections.reduce((sum, conn) => sum + (conn.totalWireCost || 0), 0);
             
-            return componentCost + wireCost;
+            // Add structure cost from LinkageLab if present
+            let structureCost = 0;
+            if (window.linkageLabStructureCost) {
+                // Structure cost can be a number or an object with subtotal
+                if (typeof window.linkageLabStructureCost === 'object' && window.linkageLabStructureCost.subtotal !== undefined) {
+                    structureCost = window.linkageLabStructureCost.subtotal;
+                } else if (typeof window.linkageLabStructureCost === 'number') {
+                    structureCost = window.linkageLabStructureCost;
+                }
+            }
+            
+            return componentCost + wireCost + structureCost;
+        }
+        
+        function updateCostBreakdown() {
+            // Structure cost (from LinkageLab import)
+            let structureCost = 0;
+            if (window.linkageLabStructureCost) {
+                // Structure cost can be a number or an object with subtotal
+                if (typeof window.linkageLabStructureCost === 'object' && window.linkageLabStructureCost.subtotal !== undefined) {
+                    structureCost = window.linkageLabStructureCost.subtotal;
+                } else if (typeof window.linkageLabStructureCost === 'number') {
+                    structureCost = window.linkageLabStructureCost;
+                }
+            }
+            const structureEl = document.getElementById('costStructure');
+            const structureValueEl = document.getElementById('costStructureValue');
+            if (structureEl && structureValueEl) {
+                if (structureCost > 0) {
+                    structureEl.style.display = 'flex';
+                    structureValueEl.textContent = '$' + structureCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    structureEl.style.display = 'none';
+                }
+            }
+            
+            // Solar panels cost
+            const panels = allItems.filter(i => i.type === 'panel');
+            const panelsCost = panels.reduce((sum, p) => sum + (p.specs.cost || 0), 0);
+            const panelsEl = document.getElementById('costPanels');
+            const panelsValueEl = document.getElementById('costPanelsValue');
+            if (panelsEl && panelsValueEl) {
+                if (panelsCost > 0) {
+                    panelsEl.style.display = 'flex';
+                    panelsValueEl.textContent = '$' + panelsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    panelsEl.style.display = 'none';
+                }
+            }
+            
+            // Inverter/Controller cost
+            const controllers = allItems.filter(i => i.type === 'controller');
+            const inverterCost = controllers.reduce((sum, c) => sum + (c.specs.cost || 0), 0);
+            const inverterEl = document.getElementById('costInverter');
+            const inverterValueEl = document.getElementById('costInverterValue');
+            if (inverterEl && inverterValueEl) {
+                if (inverterCost > 0) {
+                    inverterEl.style.display = 'flex';
+                    inverterValueEl.textContent = '$' + inverterCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    inverterEl.style.display = 'none';
+                }
+            }
+            
+            // Batteries cost
+            const batteries = allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery');
+            const batteriesCost = batteries.reduce((sum, b) => sum + (b.specs.cost || 0), 0);
+            const batteriesEl = document.getElementById('costBatteries');
+            const batteriesValueEl = document.getElementById('costBatteriesValue');
+            if (batteriesEl && batteriesValueEl) {
+                if (batteriesCost > 0) {
+                    batteriesEl.style.display = 'flex';
+                    batteriesValueEl.textContent = '$' + batteriesCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    batteriesEl.style.display = 'none';
+                }
+            }
+            
+            // Components cost (breakers, outlets, loads, combiners, etc.)
+            const componentTypes = ['breaker', 'acbreaker', 'acoutlet', 'acload', 'combiner', 'solarcombiner', 'generator', 'acdistribution'];
+            const components = allItems.filter(i => componentTypes.includes(i.type));
+            const componentsCost = components.reduce((sum, c) => sum + (c.specs.cost || 0), 0);
+            const componentsEl = document.getElementById('costComponents');
+            const componentsValueEl = document.getElementById('costComponentsValue');
+            if (componentsEl && componentsValueEl) {
+                if (componentsCost > 0) {
+                    componentsEl.style.display = 'flex';
+                    componentsValueEl.textContent = '$' + componentsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    componentsEl.style.display = 'none';
+                }
+            }
+            
+            // Wires cost
+            const wireCost = connections.reduce((sum, conn) => sum + (conn.totalWireCost || 0), 0);
+            const wiresEl = document.getElementById('costWires');
+            const wiresValueEl = document.getElementById('costWiresValue');
+            if (wiresEl && wiresValueEl) {
+                if (wireCost > 0) {
+                    wiresEl.style.display = 'flex';
+                    wiresValueEl.textContent = '$' + wireCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                } else {
+                    wiresEl.style.display = 'none';
+                }
+            }
+            
+            // Total cost
+            const totalCost = structureCost + panelsCost + inverterCost + batteriesCost + componentsCost + wireCost;
+            const totalEl = document.getElementById('costTotalValue');
+            if (totalEl) {
+                totalEl.textContent = '$' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
         }
         
         // Generate Amazon search link for a component
@@ -14220,7 +14629,10 @@
             const componentGroups = {};
             
             allItems.forEach(item => {
-                if (!item.specs || item.specs.cost === undefined) return;
+                if (!item.specs) return;
+                
+                // Include all items, default cost to 0 if not specified
+                const itemCost = item.specs.cost !== undefined ? (item.specs.cost || 0) : 0;
                 
                 const key = getItemKey(item);
                 if (!componentGroups[key]) {
@@ -14229,13 +14641,13 @@
                         type: item.type,
                         specs: { ...item.specs },
                         quantity: 0,
-                        unitCost: item.specs.cost || 0,
+                        unitCost: itemCost,
                         totalCost: 0,
                         referenceLink: item.specs.referenceLink || null
                     };
                 }
                 componentGroups[key].quantity++;
-                componentGroups[key].totalCost += item.specs.cost || 0;
+                componentGroups[key].totalCost += itemCost;
             });
             
             // Categorize components and generate links
@@ -14283,45 +14695,70 @@
             if (window.linkageLabStructureCost) {
                 const structureCost = window.linkageLabStructureCost;
                 bom.categories.structure = {
-                    subtotal: structureCost.subtotal || 0,
+                    subtotal: 0,
                     items: []
                 };
                 
-                // Add individual structure items
-                if (structureCost.hBeamsCost) {
+                // Handle structure cost - can be object with breakdown or just a number
+                if (typeof structureCost === 'object' && structureCost.subtotal !== undefined) {
+                    // Detailed breakdown available
+                    bom.categories.structure.subtotal = structureCost.subtotal || 0;
+                    
+                    // Add individual structure items if available
+                    if (structureCost.hBeamsCost) {
+                        bom.categories.structure.items.push({
+                            name: 'Horizontal Beams',
+                            quantity: 1,
+                            unitCost: structureCost.hBeamsCost,
+                            totalCost: structureCost.hBeamsCost
+                        });
+                    }
+                    if (structureCost.vBeamsCost) {
+                        bom.categories.structure.items.push({
+                            name: 'Vertical Beams',
+                            quantity: 1,
+                            unitCost: structureCost.vBeamsCost,
+                            totalCost: structureCost.vBeamsCost
+                        });
+                    }
+                    if (structureCost.bracketCost) {
+                        bom.categories.structure.items.push({
+                            name: 'Brackets',
+                            quantity: 1,
+                            unitCost: structureCost.bracketCost,
+                            totalCost: structureCost.bracketCost
+                        });
+                    }
+                    if (structureCost.boltCost) {
+                        bom.categories.structure.items.push({
+                            name: 'Bolts & Hardware',
+                            quantity: 1,
+                            unitCost: structureCost.boltCost,
+                            totalCost: structureCost.boltCost
+                        });
+                    }
+                    
+                    // If no individual items but we have a subtotal, show as single line item
+                    if (bom.categories.structure.items.length === 0 && bom.categories.structure.subtotal > 0) {
+                        bom.categories.structure.items.push({
+                            name: 'Solar Structure',
+                            quantity: 1,
+                            unitCost: bom.categories.structure.subtotal,
+                            totalCost: bom.categories.structure.subtotal
+                        });
+                    }
+                } else if (typeof structureCost === 'number' && structureCost > 0) {
+                    // Just a number - show as single line item
+                    bom.categories.structure.subtotal = structureCost;
                     bom.categories.structure.items.push({
-                        name: 'Horizontal Beams',
+                        name: 'Solar Structure',
                         quantity: 1,
-                        unitCost: structureCost.hBeamsCost,
-                        totalCost: structureCost.hBeamsCost
-                    });
-                }
-                if (structureCost.vBeamsCost) {
-                    bom.categories.structure.items.push({
-                        name: 'Vertical Beams',
-                        quantity: 1,
-                        unitCost: structureCost.vBeamsCost,
-                        totalCost: structureCost.vBeamsCost
-                    });
-                }
-                if (structureCost.bracketCost) {
-                    bom.categories.structure.items.push({
-                        name: 'Brackets',
-                        quantity: 1,
-                        unitCost: structureCost.bracketCost,
-                        totalCost: structureCost.bracketCost
-                    });
-                }
-                if (structureCost.boltCost) {
-                    bom.categories.structure.items.push({
-                        name: 'Bolts & Hardware',
-                        quantity: 1,
-                        unitCost: structureCost.boltCost,
-                        totalCost: structureCost.boltCost
+                        unitCost: structureCost,
+                        totalCost: structureCost
                     });
                 }
                 
-                bom.totalCost += structureCost.subtotal || 0;
+                bom.totalCost += bom.categories.structure.subtotal;
             }
             
             // Group wires by AWG size
@@ -14607,6 +15044,9 @@
             
             const totalCost = calculateTotalCost();
             
+            // Update cost breakdown
+            updateCostBreakdown();
+            
             // Calculate clipping for array Wmp display
             let clippedWmp = arrayWmp;
             let hasClipping = false;
@@ -14787,11 +15227,20 @@
          * @param {string} config.learnMoreTopic - Optional topic for learn more button
          */
         function showIncidentReport(config) {
-            // Don't show if hints are disabled
-            if (!areHintsEnabled()) return;
+            // Always show critical incidents (safety information), even if hints are disabled
+            // Only skip non-critical incidents when hints are disabled
+            if (!areHintsEnabled() && config.type !== 'critical' && config.type !== 'error') {
+                return;
+            }
             
             const overlay = document.getElementById('incidentReportOverlay');
             const modal = document.getElementById('incidentReportModal');
+            
+            // Safety check - ensure elements exist
+            if (!overlay || !modal) {
+                console.error('Incident report modal elements not found!');
+                return;
+            }
             
             // Set modal class based on type (Phase 3.1: Enhanced card types)
             modal.className = 'incident-report';
@@ -15042,26 +15491,37 @@
                 learnMoreTopic: 'voltage-matching'
             }),
             
-            batteryShort: (battery) => ({
-                type: 'critical',
-                icon: '🔋💥',
-                category: 'CRITICAL FAILURE',
-                title: 'Battery Short Circuit',
-                description: 'A direct short circuit was created across the battery terminals. This caused an extremely high current flow that the battery\'s internal protection (if any) attempted to handle.',
-                math: [
-                    { label: 'Battery Voltage', value: `${battery.specs.voltage}V`, status: '' },
-                    { label: 'Internal Resistance', value: '~5mΩ', status: '' },
-                    { label: 'Short Circuit Current', value: `~${(battery.specs.voltage / 0.005).toFixed(0)}A`, status: 'danger' }
-                ],
-                realworld: 'A short circuit on a lithium battery can deliver hundreds or thousands of amps instantly. This generates extreme heat, potentially causing thermal runaway - a chain reaction where the battery heats itself further, leading to fire, explosion, and release of toxic gases. Never short circuit a battery!',
-                solutions: [
-                    'Never connect positive directly to negative',
-                    'Always include a load or controller in the circuit',
-                    'Use fused battery cables',
-                    'Keep metal tools away from battery terminals'
-                ],
-                learnMoreTopic: 'battery-safety'
-            }),
+            batteryShort: (battery) => {
+                const shortCircuitCurrent = Math.round(battery.specs.voltage / 0.005);
+                const batteryCapacity = battery.specs.kWh || (battery.specs.voltage * (battery.specs.ah || 100) / 1000);
+                const isBank = batteryCapacity > 5; // Consider >5kWh as a bank
+                
+                return {
+                    type: 'critical',
+                    icon: '🔋💥',
+                    category: 'CRITICAL FAILURE',
+                    title: isBank ? 'Battery Bank Short Circuit' : 'Battery Short Circuit',
+                    description: `A direct short circuit was created across the ${isBank ? 'battery bank' : 'battery'} terminals (positive connected directly to negative). This created an extremely high current flow that instantly destroyed the ${isBank ? 'battery bank' : 'battery'}.`,
+                    math: [
+                        { label: isBank ? 'Bank Voltage' : 'Battery Voltage', value: `${battery.specs.voltage}V`, status: '' },
+                        { label: isBank ? 'Bank Capacity' : 'Battery Capacity', value: `${batteryCapacity.toFixed(1)}kWh`, status: '' },
+                        { label: 'Internal Resistance', value: '~5mΩ', status: '' },
+                        { label: 'Short Circuit Current', value: `~${shortCircuitCurrent.toFixed(0)}A`, status: 'danger' },
+                        { label: 'Result', value: `${isBank ? 'Battery bank' : 'Battery'} destroyed`, status: 'danger' }
+                    ],
+                    realworld: 'A short circuit on a lithium battery or battery bank is extremely dangerous. The battery can deliver hundreds or thousands of amps instantly - far more than any wire or component can handle. This generates extreme heat (P = I²R), potentially causing thermal runaway - a chain reaction where the battery heats itself further, leading to fire, explosion, and release of toxic gases. The battery cells can rupture, vent toxic fumes, and catch fire. This is why battery terminals should ALWAYS be protected and never directly connected.',
+                    solutions: [
+                        'NEVER connect battery positive directly to negative',
+                        'Always include a load, controller, or fuse in the circuit',
+                        'Use fused battery cables with appropriate ratings',
+                        'Keep metal tools, jewelry, and conductive materials away from battery terminals',
+                        'Install a main battery disconnect switch for safety',
+                        'Use insulated terminal covers when batteries are not in use',
+                        'If working with battery banks, ensure proper isolation between parallel strings'
+                    ],
+                    learnMoreTopic: 'battery-safety'
+                };
+            },
             
             batteryOverdischarge: (battery, dischargeAmps, maxAmps) => ({
                 type: 'warning',
@@ -19878,8 +20338,18 @@
             // Refresh library UI to show custom panel
             populateLibraries();
             
+            // Invalidate cache after all connections are created to ensure fresh calculation
+            invalidateSpecsCache();
+            
             // Render the canvas
             render();
+            
+            // Force update scores after render to ensure correct array config is displayed
+            // Use setTimeout to ensure all connections are fully processed
+            setTimeout(() => {
+                invalidateSpecsCache();
+                updateScores();
+            }, 0);
             
             // Initialize 3D structure viewport if geometry is available
             if (window.linkageLabGeometry) {
@@ -20035,13 +20505,18 @@
             rebuildStructureMeshes();
             bgScene.add(structureMeshGroup);
             
-            // Add ground plane
-            const groundSize = structureSize * 5;
+            // Add ground plane - centered on structure and larger
+            const groundSize = Math.max(structureSize * 12, 2000); // Increased size to cover more area, minimum 2000 units
             const groundGeo = new THREE.PlaneGeometry(groundSize, groundSize);
             const groundMat = new THREE.MeshLambertMaterial({ color: 0x3d5c3d });
             const ground = new THREE.Mesh(groundGeo, groundMat);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = structureGeometryData.bounds.min.y - 1;
+            // Center ground plane on structure center (x, z) and position at ground level (y)
+            ground.position.set(
+                structureCenter.x,
+                structureGeometryData.bounds.min.y - 1,
+                structureCenter.z
+            );
             ground.receiveShadow = true;
             bgScene.add(ground);
             
@@ -20193,10 +20668,216 @@
                 if (bgOrbitControls) {
                     bgOrbitControls.update();
                 }
+                // Poll SpaceMouse if connected
+                if (spaceMouse.connected) {
+                    pollSpaceMouse();
+                }
                 renderMainBackground();
             }
             animate();
         }
+        
+        // ============================================================================
+        // SPACEMOUSE / 3D CONNEXION SUPPORT
+        // ============================================================================
+        
+        const spaceMouse = {
+            connected: false,
+            gamepadIndex: null,
+            // Sensitivity multipliers (adjust to taste)
+            sensitivity: {
+                pan: 8.0,       // Translation X/Y (increased for snappier response)
+                zoom: 0.08,     // Translation Z (push/pull) - reduced, was too sensitive
+                orbit: 0.08,    // Rotation around Y (yaw) - increased for snappier response
+                tilt: 0.08      // Rotation around X (pitch) - increased for snappier response
+            },
+            // Dead zone to prevent drift
+            deadZone: 0.04,
+            // Inversion flags (set to -1 to invert, 1 for normal)
+            invert: {
+                panX: -1,
+                panY: 1,
+                zoom: -1,       // Inverted: push forward = zoom in
+                orbit: 1,
+                tilt: -1
+            },
+            // Axis mapping for 3Dconnexion devices
+            // Standard mapping: axes 0-2 = translation (X, Y, Z), axes 3-5 = rotation (X, Y, Z)
+            axes: {
+                panX: 0,      // Left/Right translation
+                panY: 1,      // Up/Down translation
+                zoom: 2,      // Forward/Back translation
+                tilt: 3,      // Rotation around X (pitch)
+                orbit: 5,     // Rotation around Y (yaw) - changed to axis 5
+                roll: 4       // Rotation around Z (roll) - swapped with orbit
+            }
+        };
+        
+        /**
+         * Check if a gamepad is a 3Dconnexion SpaceMouse
+         */
+        function isSpaceMouse(gamepad) {
+            if (!gamepad || !gamepad.id) return false;
+            const id = gamepad.id.toLowerCase();
+            return id.includes('3dconnexion') || 
+                   id.includes('spacemouse') || 
+                   id.includes('spacenavigator') ||
+                   id.includes('spacepilot') ||
+                   (gamepad.axes && gamepad.axes.length >= 6); // 6DOF device
+        }
+        
+        /**
+         * Apply dead zone to axis value
+         */
+        function applyDeadZone(value, deadZone) {
+            if (Math.abs(value) < deadZone) return 0;
+            // Scale remaining range from 0 to 1
+            const sign = value > 0 ? 1 : -1;
+            return sign * (Math.abs(value) - deadZone) / (1 - deadZone);
+        }
+        
+        /**
+         * Poll SpaceMouse and update 3D camera via OrbitControls
+         * Only works when 3D structure is loaded and camera is active
+         */
+        function pollSpaceMouse() {
+            if (!spaceMouse.connected || spaceMouse.gamepadIndex === null) return;
+            if (!bgCamera || !bgOrbitControls) return; // Only work when 3D view is active
+            
+            const gamepads = navigator.getGamepads();
+            const gamepad = gamepads[spaceMouse.gamepadIndex];
+            
+            if (!gamepad) {
+                spaceMouse.connected = false;
+                spaceMouse.gamepadIndex = null;
+                console.log('[SpaceMouse] Disconnected');
+                return;
+            }
+            
+            const axes = gamepad.axes;
+            if (!axes || axes.length < 6) return;
+            
+            // Read and apply dead zone to all axes
+            const panX = applyDeadZone(axes[spaceMouse.axes.panX], spaceMouse.deadZone);
+            const panY = applyDeadZone(axes[spaceMouse.axes.panY], spaceMouse.deadZone);
+            const zoom = applyDeadZone(axes[spaceMouse.axes.zoom], spaceMouse.deadZone);
+            const tilt = applyDeadZone(axes[spaceMouse.axes.tilt], spaceMouse.deadZone);
+            const orbit = applyDeadZone(axes[spaceMouse.axes.orbit], spaceMouse.deadZone);
+            
+            // Check if any input is active
+            const hasInput = panX !== 0 || panY !== 0 || zoom !== 0 || tilt !== 0 || orbit !== 0;
+            
+            if (hasInput) {
+                // Apply inversions
+                const inv = spaceMouse.invert;
+                
+                // Get current camera state
+                const target = bgOrbitControls.target;
+                const cameraPos = bgCamera.position;
+                const currentDist = cameraPos.distanceTo(target);
+                
+                // Convert camera position to spherical coordinates relative to target
+                const spherical = new THREE.Spherical();
+                spherical.setFromVector3(cameraPos.clone().sub(target));
+                
+                // Apply rotations first (orbit and tilt)
+                // Orbit rotates around vertical axis (yaw), tilt rotates around horizontal axis (pitch)
+                if (orbit !== 0 || tilt !== 0) {
+                    spherical.theta += orbit * inv.orbit * spaceMouse.sensitivity.orbit;
+                    spherical.phi -= tilt * inv.tilt * spaceMouse.sensitivity.tilt;
+                    
+                    // Clamp phi to prevent flipping
+                    spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+                }
+                
+                // Apply zoom (change distance)
+                let newDist = currentDist;
+                if (zoom !== 0) {
+                    const zoomDelta = zoom * inv.zoom * spaceMouse.sensitivity.zoom * currentDist;
+                    newDist = currentDist + zoomDelta;
+                    
+                    // Clamp zoom distance
+                    const minDist = bgOrbitControls.minDistance || 10;
+                    const maxDist = bgOrbitControls.maxDistance || structureSize * 10;
+                    newDist = Math.max(minDist, Math.min(maxDist, newDist));
+                }
+                
+                // Update spherical radius with new distance
+                spherical.radius = newDist;
+                
+                // Update camera position from spherical coordinates
+                bgCamera.position.setFromSpherical(spherical).add(target);
+                
+                // Apply pan (translate target) - do this after camera position is set
+                if (panX !== 0 || panY !== 0) {
+                    const panSpeed = spaceMouse.sensitivity.pan * (newDist / 100);
+                    const panVector = new THREE.Vector3();
+                    
+                    // Get camera's right and up vectors from current orientation
+                    bgCamera.updateMatrixWorld();
+                    const right = new THREE.Vector3();
+                    right.setFromMatrixColumn(bgCamera.matrixWorld, 0);
+                    right.normalize();
+                    
+                    const up = new THREE.Vector3();
+                    up.setFromMatrixColumn(bgCamera.matrixWorld, 1);
+                    up.normalize();
+                    
+                    // Pan in camera-relative space
+                    panVector.addScaledVector(right, -panX * inv.panX * panSpeed);
+                    panVector.addScaledVector(up, panY * inv.panY * panSpeed);
+                    
+                    target.add(panVector);
+                    // Update camera position to maintain distance after pan
+                    bgCamera.position.setFromSpherical(spherical).add(target);
+                }
+                
+                // Make camera look at target
+                bgCamera.lookAt(target);
+                
+                // Update OrbitControls to reflect changes
+                bgOrbitControls.update();
+            }
+        }
+        
+        /**
+         * Initialize SpaceMouse support
+         */
+        function initSpaceMouse() {
+            // Listen for gamepad connections
+            window.addEventListener('gamepadconnected', (e) => {
+                if (isSpaceMouse(e.gamepad)) {
+                    spaceMouse.connected = true;
+                    spaceMouse.gamepadIndex = e.gamepad.index;
+                    console.log('[SpaceMouse] Connected:', e.gamepad.id);
+                    console.log('[SpaceMouse] Axes:', e.gamepad.axes.length, 'Buttons:', e.gamepad.buttons.length);
+                    console.log('[SpaceMouse] Will control 3D camera when structure is loaded');
+                }
+            });
+            
+            window.addEventListener('gamepaddisconnected', (e) => {
+                if (e.gamepad.index === spaceMouse.gamepadIndex) {
+                    spaceMouse.connected = false;
+                    spaceMouse.gamepadIndex = null;
+                    console.log('[SpaceMouse] Disconnected');
+                }
+            });
+            
+            // Check for already-connected gamepads (some browsers require this)
+            const gamepads = navigator.getGamepads();
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i] && isSpaceMouse(gamepads[i])) {
+                    spaceMouse.connected = true;
+                    spaceMouse.gamepadIndex = i;
+                    console.log('[SpaceMouse] Found on init:', gamepads[i].id);
+                    console.log('[SpaceMouse] Will control 3D camera when structure is loaded');
+                    break;
+                }
+            }
+        }
+        
+        // Initialize SpaceMouse support
+        initSpaceMouse();
         
         /**
          * Initialize the minimap renderer (small corner viewport)
@@ -20711,6 +21392,8 @@
             updateSvgDimensions();
             populateLibraries();
             setupKeyboardShortcuts();
+            // Initialize right sidebar toggle button state
+            updateRightSidebarToggle();
             setupTooltips();
             setupQuickActions();
             initIncidentReportListeners();
