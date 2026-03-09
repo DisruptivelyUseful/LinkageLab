@@ -1069,6 +1069,106 @@ input.error {
     color: #006600;
 }
 
+/* BOM card spans full grid width so the table columns have room */
+.guide-grid > .guide-card:first-child {
+    grid-column: 1 / -1;
+}
+
+/* Prevent spin-wrapper from touching guide price inputs */
+#guide-bom-table .number-spin-wrapper {
+    display: contents;
+}
+#guide-bom-table .number-spin-buttons {
+    display: none !important;
+}
+
+/* Editable BOM price inputs — high specificity to override global dark-theme styles */
+#guide-bom-table input[type="number"].guide-price-input,
+#guide-bom-table .number-spin-wrapper input[type="number"].guide-price-input {
+    width: 80px;
+    padding: 4px 8px !important;
+    border: 1px solid #d4c4a8;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+    text-align: right;
+    background: #fff !important;
+    color: #2c3e50 !important;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    -moz-appearance: textfield;
+    appearance: textfield;
+    box-sizing: border-box;
+}
+
+#guide-bom-table input[type="number"].guide-price-input::-webkit-inner-spin-button,
+#guide-bom-table input[type="number"].guide-price-input::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    appearance: none;
+    margin: 0;
+    display: none;
+}
+
+#guide-bom-table input[type="number"].guide-price-input:focus,
+#guide-bom-table .number-spin-wrapper input[type="number"].guide-price-input:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+    background: #fff !important;
+    color: #2c3e50 !important;
+}
+
+#guide-bom-table input[type="number"].guide-price-input:hover {
+    border-color: #b0a898;
+}
+
+/* BOM table column sizing */
+#guide-bom-table {
+    table-layout: fixed;
+}
+
+#guide-bom-table th:nth-child(1),
+#guide-bom-table td.qty { width: 50px; }
+
+#guide-bom-table th:nth-child(3),
+#guide-bom-table td.price { width: 100px; }
+
+#guide-bom-table th:nth-child(4),
+#guide-bom-table td.total { width: 90px; overflow: visible; white-space: nowrap; }
+
+/* BOM section header rows */
+.guide-bom-section-row td {
+    background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.72rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 7px 10px !important;
+}
+
+/* BOM subtotal rows */
+.guide-bom-subtotal-row td {
+    background: #f0f0f0;
+    border-top: 2px solid #d4c4a8;
+    padding: 8px 10px !important;
+}
+
+/* Hardware bolt table — override dark-theme text color */
+.guide-hw-table th {
+    font-size: 0.7rem;
+    color: #444;
+}
+
+.guide-hw-table td {
+    color: #2c3e50;
+    font-size: 0.88rem;
+}
+
+.guide-hw-table td.qty {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
 /* Print styles */
 @media print {
     #build-guide-modal {

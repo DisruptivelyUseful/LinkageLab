@@ -17939,13 +17939,16 @@
         
         // Export circuit to simulator
         function exportToSimulator() {
+            console.log('[ExportToSimulator] Function called');
             // Validate system has required components
             const controller = allItems.find(i => i.type === 'controller');
             if (!controller) {
+                console.log('[ExportToSimulator] No controller found');
                 showHint("⚠️ No Controller", 
                     "Add a charge controller to your system before simulating.");
                 return;
             }
+            console.log('[ExportToSimulator] Controller found, proceeding...');
             
             const arraySpecs = calculateConnectedArraySpecs(controller);
             const batterySpecs = calculateConnectedBatterySpecs(controller);
@@ -21565,7 +21568,21 @@
             document.getElementById('testModeBtn').addEventListener('click', () => setMode('test'));
             
             // Export to simulator button
-            document.getElementById('exportToSimulatorBtn').addEventListener('click', exportToSimulator);
+            const exportToSimulatorBtn = document.getElementById('exportToSimulatorBtn');
+            if (exportToSimulatorBtn) {
+                exportToSimulatorBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    try {
+                        exportToSimulator();
+                    } catch (error) {
+                        console.error('Error exporting to simulator:', error);
+                        showHint("❌ Export Error", "Failed to export to simulator: " + error.message);
+                    }
+                });
+            } else {
+                console.warn('exportToSimulatorBtn not found');
+            }
             
             // Live view controls
             document.getElementById('resetAllLoadsBtn').addEventListener('click', () => {
@@ -22637,7 +22654,7 @@
             document.getElementById('achievementClose').addEventListener('click', hideAchievement);
             document.getElementById('startSimulation').addEventListener('click', () => {
                 hideAchievement();
-                setMode('simulate');
+                exportToSimulator();
             });
             
             // Canvas click to deselect
