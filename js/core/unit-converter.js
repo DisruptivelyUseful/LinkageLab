@@ -282,6 +282,28 @@ function inputDisplayToImperial(inputId, value) {
 // ============================================================================
 
 /**
+ * Trim trailing zeros from a fixed-decimal numeric string (e.g. "1.750" → "1.75", "3.00" → "3").
+ * @param {string} s
+ * @returns {string}
+ */
+function trimTrailingZerosFromDecimalString(s) {
+    if (typeof s !== 'string' || s.indexOf('.') < 0) return s;
+    return s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+}
+
+/**
+ * Format a decimal inch value for display with enough precision for shop dims (e.g. 1.75" not 1.8").
+ * @param {number} inches
+ * @param {number} maxDecimals - cap on toFixed (default 4)
+ */
+function formatDecimalInchesTrimmed(inches, maxDecimals) {
+    if (inches === null || inches === undefined || isNaN(inches)) return '—';
+    const md = typeof maxDecimals === 'undefined' ? 4 : Math.min(8, Math.max(0, maxDecimals));
+    const fn = (typeof formatNumber === 'function') ? formatNumber : (v, d) => Number(v).toFixed(d);
+    return trimTrailingZerosFromDecimalString(fn(inches, md));
+}
+
+/**
  * Format a weight in lbs to the current display system.
  * Requires formatNumber to be available globally.
  */
@@ -296,14 +318,17 @@ function formatWeightWithUnit(lbs, precision) {
 
 /**
  * Format a dimension in inches to the current display system.
+ * Imperial: uses at least 2 decimal places when precision is below 2 so values like 1.75" do not round to 1.8".
  */
 function formatDimensionWithUnit(inches, precision) {
-    if (typeof precision === 'undefined') precision = 1;
+    if (inches === null || inches === undefined || isNaN(inches)) return '—';
     const fn = (typeof formatNumber === 'function') ? formatNumber : (v, d) => v.toFixed(d);
     if (getPreferredUnitSystem() === 'metric') {
+        if (typeof precision === 'undefined') precision = 1;
         return fn(inches * IN_TO_MM, precision) + ' mm';
     }
-    return fn(inches, precision) + '"';
+    const dec = typeof precision === 'undefined' ? 2 : (precision < 2 ? 2 : precision);
+    return trimTrailingZerosFromDecimalString(fn(inches, dec)) + '"';
 }
 
 /**
@@ -567,7 +592,10 @@ function formatBeamSpecForCost(lengthFt, widthIn, thickIn) {
         const tMm = fn(thickIn * IN_TO_MM, 0);
         return `${lM}m × ${wMm}×${tMm}mm`;
     }
-    return `${lengthFt}' × ${widthIn}×${thickIn}"`;
+    const w = trimTrailingZerosFromDecimalString(fn(widthIn, 2));
+    const t = trimTrailingZerosFromDecimalString(fn(thickIn, 2));
+    const lf = trimTrailingZerosFromDecimalString(fn(lengthFt, 2));
+    return `${lf}' × ${w}×${t}"`;
 }
 
 /**
@@ -607,6 +635,7 @@ const unitConverter = {
     stateToDisplay, displayToState,
     inputDisplayToImperial,
     formatWeightWithUnit, formatDimensionWithUnit, formatForceWithUnit,
+    trimTrailingZerosFromDecimalString, formatDecimalInchesTrimmed,
     formatFeetWithUnit, formatInchesAsLargeUnit,
     formatBoltSpec, formatBeamSpecForCost,
     applyUnitSystemToUI, storeOriginalInputProps,

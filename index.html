@@ -21,6 +21,8 @@
     </style>
     <!-- Three.js for WebGL rendering - UMD build works with file:// protocol -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- GLTFLoader for optional reference models (IBC tank) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
     <!-- GLTFExporter for 3D model export -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/exporters/GLTFExporter.js"></script>
     <!-- jsPDF + autoTable for PDF export -->
@@ -654,6 +656,62 @@
             </div>
         </div>
 
+        <div class="group">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">IBC tanks (275 gal)</div>
+            <div class="group-content">
+                <label class="chk-label">
+                    <input type="checkbox" id="chk-ibc-glb"> Show IBC column
+                </label>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:6px; line-height:1.35;">
+                    Loads <code style="font-size:0.65rem;">Just IBC.glb</code> from this folder. Column is centered on the beam footprint, rests on the lowest beam, and rotates with the structure. Two tanks: bottom upright, top mirrored (180° flip) with optional stack gap.
+                </div>
+                <div class="ctrl-row" style="margin-top:8px;">
+                    <div class="ctrl-head"><span>Tank count</span></div>
+                    <div class="input-wrap">
+                        <select id="sel-ibc-count" style="flex:1; padding:6px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                            <option value="0">0 (hidden)</option>
+                            <option value="1">1 (bottom)</option>
+                            <option value="2" selected>2 (stacked)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ctrl-row" id="ibc-stack-gap-row" style="display:none;">
+                    <div class="ctrl-head"><span>Stack gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-ibc-stack-gap" min="0" max="24" step="0.25" value="0">
+                        <input type="number" id="nb-ibc-stack-gap" min="0" max="48" step="0.25" value="0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Offset A (bottom)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-ibc-offset-a" min="-24" max="24" step="0.25" value="0">
+                        <input type="number" id="nb-ibc-offset-a" min="-48" max="48" step="0.25" value="0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row" id="ibc-offset-b-row" style="display:none;">
+                    <div class="ctrl-head"><span>Offset B (top)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-ibc-offset-b" min="-24" max="24" step="0.25" value="0">
+                        <input type="number" id="nb-ibc-offset-b" min="-48" max="48" step="0.25" value="0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Rotation (Y)</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-ibc-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-ibc-rotation" min="-180" max="180" step="1" value="0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Model scale</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-ibc-scale" min="0.01" max="200" step="0.01" value="39.37" style="width:80px;" title="Uniform scale (×). Default ≈ meters→inches.">
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Solar Panels Group -->
         <div class="group" id="solar-panel-group">
             <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Solar Panels</div>
@@ -1056,22 +1114,22 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-support-rotation" min="-45" max="45" step="1" value="0">
+                            <input type="range" id="sl-support-rotation" min="-180" max="180" step="1" value="0">
                             <input type="number" id="nb-support-rotation" min="-180" max="180" step="1" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Radial Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-support-offset-h" min="-120" max="120" step="0.5" value="0">
-                            <input type="number" id="nb-support-offset-h" step="0.5" value="0">
+                            <input type="range" id="sl-support-offset-h" min="-240" max="240" step="0.5" value="0">
+                            <input type="number" id="nb-support-offset-h" min="-240" max="240" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>V Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-support-offset-v" min="-120" max="120" step="0.5" value="0">
-                            <input type="number" id="nb-support-offset-v" step="0.5" value="0">
+                            <input type="range" id="sl-support-offset-v" min="-240" max="240" step="0.5" value="0">
+                            <input type="number" id="nb-support-offset-v" min="-240" max="240" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -1112,28 +1170,28 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-rcp-fold" min="-90" max="90" step="0.5" value="0">
+                                <input type="range" id="sl-rcp-fold" min="-180" max="180" step="0.5" value="0">
                                 <input type="number" id="nb-rcp-fold" min="-180" max="180" step="0.5" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Swing Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-rcp-swing" min="-90" max="90" step="0.5" value="0">
+                                <input type="range" id="sl-rcp-swing" min="-180" max="180" step="0.5" value="0">
                                 <input type="number" id="nb-rcp-swing" min="-180" max="180" step="0.5" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>V Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-rcp-voffset" min="-60" max="60" step="0.5" value="0">
+                                <input type="range" id="sl-rcp-voffset" min="-120" max="120" step="0.5" value="0">
                                 <input type="number" id="nb-rcp-voffset" min="-120" max="120" step="0.5" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Overlap</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-support-overlap" min="-96" max="96" step="0.5" value="24">
+                                <input type="range" id="sl-support-overlap" min="-240" max="240" step="0.5" value="24">
                                 <input type="number" id="nb-support-overlap" min="-240" max="240" step="0.5" value="24">
                             </div>
                         </div>
@@ -1147,7 +1205,7 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>A/B Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-support-ab-offset" min="-12" max="12" step="0.25" value="0">
+                                <input type="range" id="sl-support-ab-offset" min="-24" max="24" step="0.25" value="0">
                                 <input type="number" id="nb-support-ab-offset" min="-24" max="24" step="0.25" value="0">
                             </div>
                         </div>
@@ -1649,6 +1707,30 @@
                     <span id="bom-w-h-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
                     <span id="bom-w-h-cost" style="display:none; text-align: right;">$0</span>
                 </div>
+                <div id="bom-support-wrap" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 8px; font-size: 0.75rem;">
+                        <span class="hud-val" id="bom-sb-radial-qty">0</span>
+                        <span id="bom-sb-radial-label">Radial support beams</span>
+                        <span id="bom-sb-radial-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-radial-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-rcp-qty" style="display:none;">0</span>
+                        <span id="bom-sb-rcp-label" style="display:none;">Reciprocal support beams</span>
+                        <span id="bom-sb-rcp-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-rcp-cost" style="display:none; text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-bolt-qty">0</span>
+                        <span>Radial support bolts</span>
+                        <span id="bom-sb-bolt-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-bolt-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-thru-qty">0</span>
+                        <span>Radial through-bolts</span>
+                        <span id="bom-sb-thru-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-thru-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-wash-qty">0</span>
+                        <span>Radial support washers</span>
+                        <span id="bom-sb-wash-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-wash-cost" style="text-align: right;">$0</span>
+                    </div>
+                </div>
                 <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
                     <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
                         <span class="hud-val" id="bom-solar">0</span>
@@ -1699,6 +1781,14 @@
                     <span id="bom-weight-u-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
                     <span id="bom-weight-u-val" style="text-align: right;">0 lbs</span>
                 </div>
+                <div id="bom-weight-support-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-weight-support">0</span>
+                        <span>Support beams &amp; hardware</span>
+                        <span id="bom-weight-support-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                        <span id="bom-weight-support-val" style="text-align: right;">0 lbs</span>
+                    </div>
+                </div>
                 <div id="bom-weight-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
                     <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
                         <span class="hud-val" id="bom-weight-solar">0</span>
@@ -1742,6 +1832,7 @@
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
 const INCHES_PER_FOOT = 12; // Kept for backward compatibility, but prefer unitConverter
+const INCHES_PER_METER = 39.37007874015748; // glTF / Blender meters → scene native inches
 
 /** Minimum fold angle in radians (5 degrees) */
 const MIN_FOLD_ANGLE = 5 * Math.PI / 180;
@@ -2022,9 +2113,20 @@ const threeRenderer = {
     panelGroupRoot: null,  // Root group for panels (separate from structure rotation)
     actuatorLineGroup: null,  // Group for actuator visualization lines
     humanScaleGroup: null,    // Group for human scale reference figure
+    ibcReferenceGroup: null,  // Column root (child of structureGroup); sits on beam footprint
+    ibcPivot: null,           // Y-rotation + stacked tank clones
     measurementGroup: null,   // Group for 3D measurement lines
     gridHelper: null       // Grid helper mesh
 };
+
+/** Cached glTF for IBC; meshes are cloned into ibcPivot (never dispose template maps via clone materials) */
+const ibcGlbState = {
+    gltf: null,
+    loading: false,
+    fillLight: null
+};
+/** When unchanged, skip rebuilding IBC clones (rotation/footprint handled on groups). */
+let ibcStackLayoutCacheKey = '';
 
 // ============================================================================
 // MATERIAL & GEOMETRY CACHE (Performance Optimization)
@@ -2159,6 +2261,12 @@ function initThreeJS() {
     
     // Create group for human scale reference figure
     threeRenderer.humanScaleGroup = new THREE.Group();
+    
+    // IBC column (Just IBC.glb): rotates with structure, stacked clones in ibcPivot
+    threeRenderer.ibcReferenceGroup = new THREE.Group();
+    threeRenderer.ibcPivot = new THREE.Group();
+    threeRenderer.ibcReferenceGroup.add(threeRenderer.ibcPivot);
+    threeRenderer.structureGroup.add(threeRenderer.ibcReferenceGroup);
     
     // Create group for 3D measurement lines
     threeRenderer.measurementGroup = new THREE.Group();
@@ -4684,6 +4792,9 @@ function updateThreeJSScenes(data, structureCenter) {
     // Update human scale reference figure
     updateHumanScaleFigure(data, sc);
     
+    // Optional IBC GLB at structure footprint center
+    updateIbcGlbReference(data, sc);
+    
     // Update ground plane for shadows
     updateGroundPlane();
     
@@ -5217,6 +5328,16 @@ const state = {
     // New state properties
     measureMode: false,
     showHumanScale: false,
+    /** IBC column: Just IBC.glb, stacked mirrored pair, structure-local placement */
+    ibc: {
+        enabled: false,
+        count: 2,
+        stackGapIn: 0,
+        verticalOffsetAIn: 0,
+        verticalOffsetBIn: 0,
+        rotationYDeg: 0,
+        scale: INCHES_PER_METER
+    },
     measurePoints: [],
     collisions: [],
     animation: {
@@ -10044,6 +10165,168 @@ function calculateArchLayout(canopy, config, data) {
     return panels;
 }
 
+/** Default support / reciprocal beam parameters (matches initial `state.supportBeams`). */
+const DEFAULT_SUPPORT_BEAMS = {
+    enabled: false,
+    length: 96,
+    width: 1.5,
+    thickness: 3.5,
+    rotation: 0,
+    offsetH: 0,
+    offsetV: 0,
+    foldAngle: 0,
+    parallelEnabled: false,
+    parallelLength: 96,
+    parallelWidth: 1.5,
+    parallelThickness: 3.5,
+    parallelFoldAngle: 0,
+    parallelSwingAngle: 0,
+    parallelOverlap: 24,
+    parallelInset: 0,
+    parallelVOffset: 0,
+    parallelOffsetV: 0
+};
+
+function resetSupportBeamsToDefaults() {
+    Object.assign(state.supportBeams, DEFAULT_SUPPORT_BEAMS);
+}
+
+function applySupportBeamsConfig(sb) {
+    if (!sb || typeof sb !== 'object') return;
+    if (sb.enabled !== undefined) state.supportBeams.enabled = sb.enabled;
+    if (sb.length !== undefined) state.supportBeams.length = sb.length;
+    if (sb.width !== undefined) state.supportBeams.width = sb.width;
+    if (sb.thickness !== undefined) state.supportBeams.thickness = sb.thickness;
+    if (sb.rotation !== undefined) state.supportBeams.rotation = sb.rotation;
+    if (sb.offsetH !== undefined) state.supportBeams.offsetH = sb.offsetH;
+    if (sb.offsetV !== undefined) state.supportBeams.offsetV = sb.offsetV;
+    if (sb.foldAngle !== undefined) state.supportBeams.foldAngle = sb.foldAngle;
+    if (sb.parallelEnabled !== undefined) state.supportBeams.parallelEnabled = sb.parallelEnabled;
+    if (sb.parallelLength !== undefined) state.supportBeams.parallelLength = sb.parallelLength;
+    if (sb.parallelWidth !== undefined) state.supportBeams.parallelWidth = sb.parallelWidth;
+    if (sb.parallelThickness !== undefined) state.supportBeams.parallelThickness = sb.parallelThickness;
+    if (sb.parallelFoldAngle !== undefined) state.supportBeams.parallelFoldAngle = sb.parallelFoldAngle;
+    if (sb.parallelSwingAngle !== undefined) state.supportBeams.parallelSwingAngle = sb.parallelSwingAngle;
+    if (sb.parallelOverlap !== undefined) state.supportBeams.parallelOverlap = sb.parallelOverlap;
+    if (sb.parallelInset !== undefined) state.supportBeams.parallelInset = sb.parallelInset;
+    if (sb.parallelVOffset !== undefined) state.supportBeams.parallelVOffset = sb.parallelVOffset;
+    if (sb.parallelOffsetV !== undefined) state.supportBeams.parallelOffsetV = sb.parallelOffsetV;
+}
+
+/** Legacy `panels.support` (pre–top-level `supportBeams`). */
+function applyLegacyPanelsSupport(ps) {
+    if (!ps || typeof ps !== 'object') return;
+    if (ps.show !== undefined) state.supportBeams.enabled = ps.show;
+    if (ps.rotation !== undefined) state.supportBeams.rotation = ps.rotation;
+    if (ps.length !== undefined) state.supportBeams.length = ps.length;
+    if (ps.foldAngle !== undefined) state.supportBeams.foldAngle = ps.foldAngle;
+    if (ps.offsetH !== undefined) state.supportBeams.offsetH = ps.offsetH;
+    if (ps.offsetV !== undefined) state.supportBeams.offsetV = ps.offsetV;
+}
+
+/**
+ * BOM cost/weight for radial + optional reciprocal support (matches {@link generateSupportBeams}).
+ * @param {number} moduleCount
+ * @param {number} costBoltVInner
+ * @returns {{ structureItems: Array<{qty:number,item:string,unit:number,total:number}>, supportBeamCost: number, supportBeamWeight: number, radialQty: number, reciprocalQty: number, sbBolts: number, sbThrough: number, sbWashers: number }}
+ */
+function computeSupportBomContribution(moduleCount, costBoltVInner) {
+    const structureItems = [];
+    const cfg = state.supportBeams;
+    const n = moduleCount;
+    const costWasherV = state.costWasherV || 0.10;
+
+    if (!cfg || !cfg.enabled || state.orientation === 'vertical') {
+        return {
+            structureItems,
+            supportBeamCost: 0,
+            supportBeamWeight: 0,
+            radialQty: 0,
+            reciprocalQty: 0,
+            sbBolts: 0,
+            sbThrough: 0,
+            sbWashers: 0
+        };
+    }
+
+    const radialCount = n;
+    const lenIn = cfg.length || 96;
+    const radFt = lenIn / INCHES_PER_FOOT;
+    const rw = cfg.width || 1.5;
+    const rt = cfg.thickness || 3.5;
+    const radialVolPerFt = rw * rt * INCHES_PER_FOOT;
+    const radialWeightOne = radFt * radialVolPerFt * state.woodDensity;
+    const radialLumberCost = radialCount * state.costHBeam;
+    const radialLumberWeight = radialCount * radialWeightOne;
+
+    structureItems.push({
+        qty: radialCount,
+        item: `Radial Support Beams (${unitConverter.formatBeamSpecForCost(radFt, rw, rt)})`,
+        unit: state.costHBeam,
+        total: radialLumberCost
+    });
+
+    let reciprocalCount = 0;
+    let reciprocalLumberCost = 0;
+    let reciprocalLumberWeight = 0;
+    if (cfg.parallelEnabled) {
+        reciprocalCount = n * 2;
+        const rcpLen = cfg.parallelLength || 96;
+        const rcpW = cfg.parallelWidth || 1.5;
+        const rcpT = cfg.parallelThickness || 3.5;
+        const rcpFt = rcpLen / INCHES_PER_FOOT;
+        const rcpWtOne = rcpFt * (rcpW * rcpT * INCHES_PER_FOOT) * state.woodDensity;
+        reciprocalLumberCost = reciprocalCount * state.costVBeam;
+        reciprocalLumberWeight = reciprocalCount * rcpWtOne;
+        structureItems.push({
+            qty: reciprocalCount,
+            item: `Reciprocal Support Beams (${unitConverter.formatBeamSpecForCost(rcpFt, rcpW, rcpT)})`,
+            unit: state.costVBeam,
+            total: reciprocalLumberCost
+        });
+    }
+
+    const sbBolts = n * 4;
+    const sbThrough = n * 2;
+    const sbWashers = n * 6;
+    const sbBoltCost = sbBolts * costBoltVInner;
+    const sbThroughCost = sbThrough * costBoltVInner;
+    const sbWasherCost = sbWashers * costWasherV;
+
+    structureItems.push({
+        qty: sbBolts,
+        item: 'Radial Support Bolts (to top ring / outer pivot)',
+        unit: costBoltVInner,
+        total: sbBoltCost
+    });
+    structureItems.push({
+        qty: sbThrough,
+        item: 'Radial Through-Bolts (through-beam tie)',
+        unit: costBoltVInner,
+        total: sbThroughCost
+    });
+    structureItems.push({
+        qty: sbWashers,
+        item: 'Radial Support Washers (same stack as V-bolts)',
+        unit: costWasherV,
+        total: sbWasherCost
+    });
+
+    const supportBeamCost = radialLumberCost + reciprocalLumberCost + sbBoltCost + sbThroughCost + sbWasherCost;
+    const supportBeamWeight = radialLumberWeight + reciprocalLumberWeight + (sbBolts + sbThrough) * state.weightBolt;
+
+    return {
+        structureItems,
+        supportBeamCost,
+        supportBeamWeight,
+        radialQty: radialCount,
+        reciprocalQty: reciprocalCount,
+        sbBolts,
+        sbThrough,
+        sbWashers
+    };
+}
+
 /**
  * Generates support beams independently of solar panels.
  * Beams sit on top of the top ring beams, radiating inward.
@@ -10808,8 +11091,66 @@ function updateHUD(data) {
         if (bomWHCost) bomWHCost.style.display = 'none';
     }
     
-    // Update structure subtotal (include washer costs)
-    const structureSubtotalWithWashers = structureSubtotal + totalWasherCost;
+    const sbBom = computeSupportBomContribution(moduleCount, costBoltVInner);
+    const bomSupportWrap = document.getElementById('bom-support-wrap');
+    if (bomSupportWrap) {
+        if (sbBom.supportBeamCost > 0) {
+            bomSupportWrap.style.display = 'block';
+            const radQty = document.getElementById('bom-sb-radial-qty');
+            const radU = document.getElementById('bom-sb-radial-cost-unit');
+            const radT = document.getElementById('bom-sb-radial-cost');
+            if (radQty) radQty.innerText = sbBom.radialQty;
+            if (radU) radU.innerText = '$' + formatNumber(state.costHBeam, 2);
+            if (radT) radT.innerText = '$' + formatNumber(sbBom.structureItems[0].total, 0);
+
+            const rcpQty = document.getElementById('bom-sb-rcp-qty');
+            const rcpLab = document.getElementById('bom-sb-rcp-label');
+            const rcpU = document.getElementById('bom-sb-rcp-cost-unit');
+            const rcpT = document.getElementById('bom-sb-rcp-cost');
+            const showRcp = state.supportBeams.parallelEnabled && sbBom.reciprocalQty > 0;
+            if (rcpQty) {
+                rcpQty.style.display = showRcp ? '' : 'none';
+                rcpQty.innerText = sbBom.reciprocalQty;
+            }
+            if (rcpLab) rcpLab.style.display = showRcp ? '' : 'none';
+            if (rcpU) {
+                rcpU.style.display = showRcp ? '' : 'none';
+                rcpU.innerText = '$' + formatNumber(state.costVBeam, 2);
+            }
+            if (rcpT) {
+                rcpT.style.display = showRcp ? '' : 'none';
+                const rcpRow = sbBom.structureItems.find(r => r.item.startsWith('Reciprocal'));
+                rcpT.innerText = '$' + formatNumber(rcpRow ? rcpRow.total : 0, 0);
+            }
+
+            const boltQty = document.getElementById('bom-sb-bolt-qty');
+            const boltU = document.getElementById('bom-sb-bolt-cost-unit');
+            const boltT = document.getElementById('bom-sb-bolt-cost');
+            if (boltQty) boltQty.innerText = sbBom.sbBolts;
+            if (boltU) boltU.innerText = '$' + formatNumber(costBoltVInner, 2);
+            if (boltT) boltT.innerText = '$' + formatNumber(sbBom.sbBolts * costBoltVInner, 0);
+
+            const thruQty = document.getElementById('bom-sb-thru-qty');
+            const thruU = document.getElementById('bom-sb-thru-cost-unit');
+            const thruT = document.getElementById('bom-sb-thru-cost');
+            if (thruQty) thruQty.innerText = sbBom.sbThrough;
+            if (thruU) thruU.innerText = '$' + formatNumber(costBoltVInner, 2);
+            if (thruT) thruT.innerText = '$' + formatNumber(sbBom.sbThrough * costBoltVInner, 0);
+
+            const washQty = document.getElementById('bom-sb-wash-qty');
+            const washU = document.getElementById('bom-sb-wash-cost-unit');
+            const washT = document.getElementById('bom-sb-wash-cost');
+            const cWV = state.costWasherV || 0.10;
+            if (washQty) washQty.innerText = sbBom.sbWashers;
+            if (washU) washU.innerText = '$' + formatNumber(cWV, 2);
+            if (washT) washT.innerText = '$' + formatNumber(sbBom.sbWashers * cWV, 0);
+        } else {
+            bomSupportWrap.style.display = 'none';
+        }
+    }
+
+    // Update structure subtotal (washers + radial/reciprocal support BOM)
+    const structureSubtotalWithWashers = structureSubtotal + totalWasherCost + sbBom.supportBeamCost;
     uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureSubtotalWithWashers, 2);
     
     // Calculate solar panel cost if panels are enabled
@@ -10830,8 +11171,8 @@ function updateHUD(data) {
         uiStats.bSolarSubtotalRow.style.display = 'none';
     }
     
-    // Calculate total cost
-    const totalCost = structureSubtotal + solarCost;
+    // Calculate total cost (structure includes washers and support BOM)
+    const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + solarCost;
     uiStats.bt.innerText = formatNumber(totalCost, 2);
 
     // Calculate structure weight (lbs) based on volume and density
@@ -10843,7 +11184,22 @@ function updateHUD(data) {
     const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
-    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
+    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
+
+    const bomWeightSupportRow = document.getElementById('bom-weight-support-row');
+    const bomWeightSupport = document.getElementById('bom-weight-support');
+    const bomWeightSupportUnit = document.getElementById('bom-weight-support-unit');
+    const bomWeightSupportVal = document.getElementById('bom-weight-support-val');
+    if (bomWeightSupportRow && bomWeightSupport && bomWeightSupportUnit && bomWeightSupportVal) {
+        if (sbBom.supportBeamWeight > 0) {
+            bomWeightSupportRow.style.display = 'block';
+            bomWeightSupport.innerText = '\u2013';
+            bomWeightSupportUnit.innerText = '';
+            bomWeightSupportVal.innerText = unitConverter.formatWeightWithUnit(sbBom.supportBeamWeight);
+        } else {
+            bomWeightSupportRow.style.display = 'none';
+        }
+    }
     
     // Update weight section (unit and total)
     uiStats.weightH.innerText = hBeams;
@@ -12982,6 +13338,8 @@ function showBuildGuide() {
     const vWasherCost2 = vWasherCount2 * costWasherV2;
     const hWasherCost2 = hWasherCount2 * costWasherH2;
     const washerCost2 = vWasherCost2 + hWasherCost2;
+
+    const sbForGuide = computeSupportBomContribution(moduleCount, costBoltVInner);
     
     // Solar panel calculations - get active panel config first
     const solarEnabled = state.solarPanels.enabled;
@@ -12991,7 +13349,7 @@ function showBuildGuide() {
     const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
     const totalKw = totalWatts / 1000;
     
-    const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2;
+    const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost;
     const totalCost = structureCost + solarPanelCost;
     
     // Calculate weight (lbs) based on volume and density
@@ -13003,7 +13361,7 @@ function showBuildGuide() {
     const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
-    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
+    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight;
     
     // Calculate solar panel weight
     const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
@@ -13052,6 +13410,53 @@ function showBuildGuide() {
     // Calculate margins to center the shorter beam
     const hBeamMargin = (100 - hBeamWidthPct) / 2;
     const vBeamMargin = (100 - vBeamWidthPct) / 2;
+
+    let supportBOMGuideRows = '';
+    if (sbForGuide.supportBeamCost > 0) {
+        const radialRow = sbForGuide.structureItems[0];
+        const sidebarBolt = splitBolts ? 'nb-cost-bolt-vinner' : 'nb-cost-bolt-v';
+        let idx = 1;
+        let recipRow = null;
+        if (sbForGuide.structureItems[idx] && sbForGuide.structureItems[idx].item.startsWith('Reciprocal')) {
+            recipRow = sbForGuide.structureItems[idx];
+            idx++;
+        }
+        const boltSb = sbForGuide.structureItems[idx++];
+        const boltThru = sbForGuide.structureItems[idx++];
+        const washRow = sbForGuide.structureItems[idx];
+        const combBoltQty = boltSb.qty + boltThru.qty;
+        const combBoltTotal = boltSb.total + boltThru.total;
+
+        supportBOMGuideRows = `
+                            <tr data-bom-section="structure">
+                                <td class="qty">${radialRow.qty}×</td>
+                                <td class="item">${radialRow.item}</td>
+                                <td class="price"><input type="number" class="guide-price-input" data-bom-state="costHBeam" data-bom-qty="${radialRow.qty}" data-bom-sidebar="nb-cost-hbeam" value="${formatNumber(state.costHBeam, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                <td class="total">$${formatNumber(radialRow.total, 2)}</td>
+                            </tr>`;
+        if (recipRow) {
+            supportBOMGuideRows += `
+                            <tr data-bom-section="structure">
+                                <td class="qty">${recipRow.qty}×</td>
+                                <td class="item">${recipRow.item}</td>
+                                <td class="price"><input type="number" class="guide-price-input" data-bom-state="costVBeam" data-bom-qty="${recipRow.qty}" data-bom-sidebar="nb-cost-vbeam" value="${formatNumber(state.costVBeam, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                <td class="total">$${formatNumber(recipRow.total, 2)}</td>
+                            </tr>`;
+        }
+        supportBOMGuideRows += `
+                            <tr data-bom-section="structure">
+                                <td class="qty">${combBoltQty}×</td>
+                                <td class="item">Radial support + through bolts</td>
+                                <td class="price"><input type="number" class="guide-price-input" data-bom-state="costBoltVInner" data-bom-qty="${combBoltQty}" data-bom-sidebar="${sidebarBolt}" value="${formatNumber(costBoltVInner, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                <td class="total">$${formatNumber(combBoltTotal, 2)}</td>
+                            </tr>
+                            <tr data-bom-section="structure">
+                                <td class="qty">${washRow.qty}×</td>
+                                <td class="item">${washRow.item}</td>
+                                <td class="price"><input type="number" class="guide-price-input" data-bom-state="costWasherV" data-bom-qty="${washRow.qty}" data-bom-sidebar="nb-cost-washer-v" value="${formatNumber(costWasherV2, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                <td class="total">$${formatNumber(washRow.total, 2)}</td>
+                            </tr>`;
+    }
     
     // Build the HTML content
     const solarStatsHtml = solarEnabled ? `
@@ -13200,6 +13605,7 @@ function showBuildGuide() {
                                 <td class="total">$${formatNumber(hWasherCost2, 2)}</td>
                             </tr>
                             ` : ''}
+                            ${supportBOMGuideRows}
                             <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-structure" style="font-weight:700;">$${formatNumber(structureCost, 2)}</td></tr>
                             ${solarEnabled ? `
                             <tr class="guide-bom-section-row"><td colspan="4">POWER</td></tr>
@@ -13226,6 +13632,10 @@ function showBuildGuide() {
                             <span style="text-align: right;">${unitConverter.formatWeightWithUnit(vBeamWeight)}</span>
                             <span>Brackets</span>
                             <span style="text-align: right;">${unitConverter.formatWeightWithUnit(bracketWeight)}</span>
+                            ${sbForGuide.supportBeamWeight > 0 ? `
+                            <span>Support beams &amp; hardware</span>
+                            <span style="text-align: right;">${unitConverter.formatWeightWithUnit(sbForGuide.supportBeamWeight)}</span>
+                            ` : ''}
                             ${solarEnabled && solarPanelWeight > 0 ? `
                             <span>Solar Panels</span>
                             <span style="text-align: right;">${unitConverter.formatWeightWithUnit(solarPanelWeight)}</span>
@@ -14264,6 +14674,8 @@ function gatherBOMData() {
     const hWasherCost = hWasherCount * costWasherH;
     const washerCost = vWasherCost + hWasherCost;
 
+    const sbBom = computeSupportBomContribution(moduleCount, costBoltVInner);
+
     const solarEnabled = state.solarPanels.enabled;
     const panelConfig = getActivePanelConfig();
     const solarPanelCount = solarEnabled && data.panels ? data.panels.length : 0;
@@ -14271,7 +14683,7 @@ function gatherBOMData() {
     const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
     const totalKw = totalWatts / 1000;
 
-    const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost;
+    const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost;
     const totalCost = structureCost + solarPanelCost;
 
     const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
@@ -14280,7 +14692,7 @@ function gatherBOMData() {
     const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
-    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight;
+    const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
     const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
     const totalWeight = structureWeight + solarPanelWeight;
 
@@ -14321,6 +14733,8 @@ function gatherBOMData() {
         structureItems.push({ qty: hWasherCount, item: `H-Stack Washers (ID:${unitConverter.formatDimensionWithUnit(state.hWasherID, 3)} OD:${unitConverter.formatDimensionWithUnit(state.hWasherOD, 2)} T:${unitConverter.formatDimensionWithUnit(state.hWasherThickness, 2)})`, unit: costWasherH, total: hWasherCost });
     }
 
+    sbBom.structureItems.forEach(li => structureItems.push(li));
+
     const powerItems = [];
     if (solarEnabled && solarPanelCount > 0) {
         powerItems.push({ qty: solarPanelCount, item: `Solar Panels (${panelConfig.ratedWatts || 0}W - ${unitConverter.formatDimensionWithUnit(panelConfig.panelLength || 0, 1)} x ${unitConverter.formatDimensionWithUnit(panelConfig.panelWidth || 0, 1)})`, unit: state.costSolarPanel, total: solarPanelCost });
@@ -14331,6 +14745,8 @@ function gatherBOMData() {
         structureItems, structureCost,
         powerItems, powerCost: solarPanelCost,
         totalCost, totalWeight, structureWeight, solarPanelWeight,
+        supportBeamCost: sbBom.supportBeamCost,
+        supportBeamWeight: sbBom.supportBeamWeight,
         heightFt, diameterFt, actuatorInfo,
         solarEnabled, solarPanelCount, totalKw, panelConfig,
         hBeamWeight, vBeamWeight, bracketWeight, boltWeight,
@@ -14963,6 +15379,9 @@ function exportBOMcsv() {
     rows.push(['', '', 'Vertical Beams', '', `${unitConverter.formatWeightWithUnit(bom.vBeamWeight, 1)}`]);
     rows.push(['', '', 'Brackets', '', `${unitConverter.formatWeightWithUnit(bom.bracketWeight, 1)}`]);
     rows.push(['', '', 'Bolts', '', `${unitConverter.formatWeightWithUnit(bom.boltWeight, 1)}`]);
+    if (bom.supportBeamWeight > 0) {
+        rows.push(['', '', 'Support beams & hardware', '', `${unitConverter.formatWeightWithUnit(bom.supportBeamWeight, 1)}`]);
+    }
     if (bom.solarEnabled && bom.solarPanelWeight > 0) {
         rows.push(['', '', 'Solar Panels', '', `${unitConverter.formatWeightWithUnit(bom.solarPanelWeight, 1)}`]);
     }
@@ -15123,6 +15542,7 @@ function applyV30Config(config) {
         const v = config.visibility;
         if (v.brackets !== undefined) state.showBrackets = v.brackets;
         if (v.bolts !== undefined) state.showBolts = v.bolts;
+        if (v.ibc !== undefined) state.ibc.enabled = v.ibc;
         // Solar panels visibility is handled in the panels section
     } else {
         // Default: show bolts when loading a config (user preference)
@@ -15220,42 +15640,9 @@ function applyV30Config(config) {
             if (p.spiral.armRotationStep !== undefined) sp.spiralArmRotationStep = p.spiral.armRotationStep;
         }
         
-        // Legacy support beam import (old files stored under panels.support)
-        if (p.support) {
-            if (p.support.show !== undefined) state.supportBeams.enabled = p.support.show;
-            if (p.support.rotation !== undefined) state.supportBeams.rotation = p.support.rotation;
-            if (p.support.length !== undefined) state.supportBeams.length = p.support.length;
-            if (p.support.foldAngle !== undefined) state.supportBeams.foldAngle = p.support.foldAngle;
-            if (p.support.offsetH !== undefined) state.supportBeams.offsetH = p.support.offsetH;
-            if (p.support.offsetV !== undefined) state.supportBeams.offsetV = p.support.offsetV;
-        }
-        
         if (p.enabledFaces !== undefined) sp.archWallFaces = p.enabledFaces;
     }
 
-    // Support beams (new top-level section)
-    if (config.supportBeams) {
-        const sb = config.supportBeams;
-        if (sb.enabled !== undefined) state.supportBeams.enabled = sb.enabled;
-        if (sb.length !== undefined) state.supportBeams.length = sb.length;
-        if (sb.width !== undefined) state.supportBeams.width = sb.width;
-        if (sb.thickness !== undefined) state.supportBeams.thickness = sb.thickness;
-        if (sb.rotation !== undefined) state.supportBeams.rotation = sb.rotation;
-        if (sb.offsetH !== undefined) state.supportBeams.offsetH = sb.offsetH;
-        if (sb.offsetV !== undefined) state.supportBeams.offsetV = sb.offsetV;
-        if (sb.foldAngle !== undefined) state.supportBeams.foldAngle = sb.foldAngle;
-        if (sb.parallelEnabled !== undefined) state.supportBeams.parallelEnabled = sb.parallelEnabled;
-        if (sb.parallelLength !== undefined) state.supportBeams.parallelLength = sb.parallelLength;
-        if (sb.parallelWidth !== undefined) state.supportBeams.parallelWidth = sb.parallelWidth;
-        if (sb.parallelThickness !== undefined) state.supportBeams.parallelThickness = sb.parallelThickness;
-        if (sb.parallelFoldAngle !== undefined) state.supportBeams.parallelFoldAngle = sb.parallelFoldAngle;
-        if (sb.parallelSwingAngle !== undefined) state.supportBeams.parallelSwingAngle = sb.parallelSwingAngle;
-        if (sb.parallelOverlap !== undefined) state.supportBeams.parallelOverlap = sb.parallelOverlap;
-        if (sb.parallelInset !== undefined) state.supportBeams.parallelInset = sb.parallelInset;
-        if (sb.parallelVOffset !== undefined) state.supportBeams.parallelVOffset = sb.parallelVOffset;
-        if (sb.parallelOffsetV !== undefined) state.supportBeams.parallelOffsetV = sb.parallelOffsetV;
-    }
-    
     // Costs
     if (config.costs) {
         const c = config.costs;
@@ -15279,6 +15666,33 @@ function applyV30Config(config) {
             if (c.refBeam.price !== undefined) state.refBeamPrice = c.refBeam.price;
         }
     }
+
+    if ('supportBeams' in config) {
+        if (config.supportBeams != null && typeof config.supportBeams === 'object') {
+            applySupportBeamsConfig(config.supportBeams);
+        } else {
+            resetSupportBeamsToDefaults();
+        }
+    } else {
+        resetSupportBeamsToDefaults();
+        if (config.panels && config.panels.support) {
+            applyLegacyPanelsSupport(config.panels.support);
+        }
+    }
+
+    if (config.ibc) {
+        const ib = config.ibc;
+        if (ib.enabled !== undefined) state.ibc.enabled = ib.enabled;
+        if (ib.count !== undefined) state.ibc.count = ib.count;
+        if (ib.stackGapIn !== undefined) state.ibc.stackGapIn = ib.stackGapIn;
+        if (ib.verticalOffsetAIn !== undefined) state.ibc.verticalOffsetAIn = ib.verticalOffsetAIn;
+        if (ib.verticalOffsetBIn !== undefined) state.ibc.verticalOffsetBIn = ib.verticalOffsetBIn;
+        if (ib.verticalSpacingIn !== undefined) state.ibc.stackGapIn = ib.verticalSpacingIn;
+        if (ib.rotationYDeg !== undefined) state.ibc.rotationYDeg = ib.rotationYDeg;
+        if (ib.modelScale !== undefined) state.ibc.scale = ib.modelScale;
+        if (ib.scale !== undefined) state.ibc.scale = ib.scale;
+        ibcStackLayoutCacheKey = '';
+    }
 }
 
 /**
@@ -15299,6 +15713,12 @@ function applyLegacyConfig(config) {
                 state.solarPanels[key] = config.solarPanels[key];
             }
         });
+    }
+
+    if (config.supportBeams != null && typeof config.supportBeams === 'object') {
+        applySupportBeamsConfig(config.supportBeams);
+    } else if (config.panels && config.panels.support) {
+        applyLegacyPanelsSupport(config.panels.support);
     }
 }
 
@@ -15391,6 +15811,16 @@ function getConfigSnapshot(includeMetadata = false) {
         // Fold angle in degrees
         foldAngle: radToDeg(state.foldAngle),
         animationStopAngle: state.animation.stopAngle,
+        
+        ibc: {
+            enabled: state.ibc.enabled,
+            count: state.ibc.count,
+            stackGapIn: state.ibc.stackGapIn,
+            verticalOffsetAIn: state.ibc.verticalOffsetAIn,
+            verticalOffsetBIn: state.ibc.verticalOffsetBIn,
+            rotationYDeg: state.ibc.rotationYDeg,
+            scale: state.ibc.scale
+        },
         
         // Solar panel configuration
         panels: {
@@ -15520,7 +15950,8 @@ function getConfigSnapshot(includeMetadata = false) {
         visibility: {
             brackets: state.showBrackets,
             bolts: state.showBolts,
-            solarPanels: state.solarPanels.enabled
+            solarPanels: state.solarPanels.enabled,
+            ibc: state.ibc.enabled
         },
         
         // Camera/viewport state for debugging and default view in simulate mode
@@ -15667,6 +16098,31 @@ function applyConfig(config, updateUI = true) {
         if (bracketsChk) bracketsChk.checked = state.showBrackets;
         const boltsChk = document.getElementById('chk-bolts');
         if (boltsChk) boltsChk.checked = state.showBolts;
+        
+        const ibc = state.ibc;
+        const chkIbc = document.getElementById('chk-ibc-glb');
+        if (chkIbc) chkIbc.checked = !!ibc.enabled;
+        const selIbcCount = document.getElementById('sel-ibc-count');
+        if (selIbcCount) selIbcCount.value = String(Math.min(2, Math.max(0, ibc.count | 0)));
+        syncIbcStackControlsVisibility();
+        const slGap = document.getElementById('sl-ibc-stack-gap');
+        const nbGap = document.getElementById('nb-ibc-stack-gap');
+        if (slGap) slGap.value = ibc.stackGapIn || 0;
+        if (nbGap) nbGap.value = ibc.stackGapIn || 0;
+        const slA = document.getElementById('sl-ibc-offset-a');
+        const nbA = document.getElementById('nb-ibc-offset-a');
+        if (slA) slA.value = ibc.verticalOffsetAIn || 0;
+        if (nbA) nbA.value = ibc.verticalOffsetAIn || 0;
+        const slB = document.getElementById('sl-ibc-offset-b');
+        const nbB = document.getElementById('nb-ibc-offset-b');
+        if (slB) slB.value = ibc.verticalOffsetBIn || 0;
+        if (nbB) nbB.value = ibc.verticalOffsetBIn || 0;
+        const slRot = document.getElementById('sl-ibc-rotation');
+        const nbRot = document.getElementById('nb-ibc-rotation');
+        if (slRot) slRot.value = ibc.rotationYDeg || 0;
+        if (nbRot) nbRot.value = ibc.rotationYDeg || 0;
+        const nbScale = document.getElementById('nb-ibc-scale');
+        if (nbScale) nbScale.value = ibc.scale != null ? ibc.scale : INCHES_PER_METER;
         
         // Sync orientation dropdown
         const orientationSel = document.getElementById('sel-orientation');
@@ -16353,7 +16809,12 @@ function formatMeasurementSidebar(inches) {
         }
         return `${formatNumber(cm, 1)} cm`;
     }
-    return `${formatNumber(inches / INCHES_PER_FOOT, 2)}' (${formatNumber(inches, 1)}")`;
+    const trimDec = (s) => (typeof s === 'string' && s.indexOf('.') >= 0)
+        ? s.replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '')
+        : s;
+    const ftPart = trimDec(formatNumber(inches / INCHES_PER_FOOT, 2));
+    const inPart = trimDec(formatNumber(inches, 2));
+    return `${ftPart}' (${inPart}")`;
 }
 
 function calculateMeasurements(data) {
@@ -16941,6 +17402,292 @@ function drawMeasurementsOverlay(data, structureCenter, w, h) {
     }
 }
 
+// --- IBC “lit from inside” green glow (emissive + soft local fill light) ---
+const IBC_INTERIOR_GLOW_COLOR = 0x2dff8a;
+const IBC_INTERIOR_GLOW_INTENSITY = 0.52;
+const IBC_FILL_LIGHT_COLOR = 0x55ffaa;
+const IBC_FILL_LIGHT_INTENSITY = 0.32;
+
+/** Clone / upgrade materials so black albedo tanks read as self-lit green (does not mutate GLTF originals on disk). */
+function applyIbcInteriorGlow(root) {
+    if (!root || typeof THREE === 'undefined') return;
+    const glow = new THREE.Color(IBC_INTERIOR_GLOW_COLOR);
+    root.traverse((ch) => {
+        if (!ch.isMesh || !ch.material) return;
+        const upgrade = (mat) => {
+            if (mat.isMeshBasicMaterial) {
+                const m = new THREE.MeshStandardMaterial({
+                    map: mat.map,
+                    metalness: 0.15,
+                    roughness: 0.9,
+                    emissive: glow.clone(),
+                    transparent: mat.transparent,
+                    opacity: mat.opacity,
+                    side: mat.side != null ? mat.side : THREE.FrontSide
+                });
+                if ('emissiveIntensity' in m) m.emissiveIntensity = IBC_INTERIOR_GLOW_INTENSITY;
+                m.userData = Object.assign({}, mat.userData, { ibcOwnedMaterial: true });
+                return m;
+            }
+            const m = mat.clone();
+            m.userData = Object.assign({}, mat.userData, { ibcOwnedMaterial: true });
+            if ('emissive' in m) {
+                m.emissive.copy(glow);
+                if ('emissiveIntensity' in m) m.emissiveIntensity = IBC_INTERIOR_GLOW_INTENSITY;
+            }
+            return m;
+        };
+        ch.material = Array.isArray(ch.material) ? ch.material.map(upgrade) : upgrade(ch.material);
+    });
+}
+
+const IBC_TEXTURE_KEYS = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap', 'emissiveMap', 'bumpMap',
+    'displacementMap', 'lightMap', 'specularMap', 'alphaMap', 'envMap', 'clearcoatNormalMap'];
+
+function detachIbcMaterialMapsForDispose(mat) {
+    if (!mat) return;
+    IBC_TEXTURE_KEYS.forEach((k) => { if (mat[k]) mat[k] = null; });
+}
+
+function disposeIbcGlowMaterialsOnSubtree(root) {
+    if (!root) return;
+    root.traverse((node) => {
+        if (!node.isMesh || !node.material) return;
+        const mats = Array.isArray(node.material) ? node.material : [node.material];
+        mats.forEach((m) => {
+            if (m && m.userData && m.userData.ibcOwnedMaterial) {
+                detachIbcMaterialMapsForDispose(m);
+                m.dispose();
+            }
+        });
+    });
+}
+
+function clearIbcPivotChildren() {
+    const pivot = threeRenderer && threeRenderer.ibcPivot;
+    if (!pivot) return;
+    while (pivot.children.length) {
+        const ch = pivot.children[0];
+        disposeIbcGlowMaterialsOnSubtree(ch);
+        pivot.remove(ch);
+    }
+    ibcGlbState.fillLight = null;
+}
+
+function addIbcGreenFillLightOnPivot(pivot) {
+    if (!pivot || typeof THREE === 'undefined') return;
+    pivot.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(pivot);
+    if (box.isEmpty()) return;
+    const h = Math.max(1, box.max.y - box.min.y);
+    const wc = new THREE.Vector3();
+    box.getCenter(wc);
+    const local = wc.clone();
+    pivot.worldToLocal(local);
+    if (ibcGlbState.fillLight && ibcGlbState.fillLight.parent) {
+        ibcGlbState.fillLight.parent.remove(ibcGlbState.fillLight);
+    }
+    const light = new THREE.PointLight(IBC_FILL_LIGHT_COLOR, IBC_FILL_LIGHT_INTENSITY, h * 4, 2);
+    light.position.copy(local);
+    light.userData.ibcFillLight = true;
+    pivot.add(light);
+    ibcGlbState.fillLight = light;
+}
+
+/** Bottom tank: scale, center XZ, ground at y=0 in pivot space; returns max Y for stacking */
+function layoutBottomIbcTank(root, scale) {
+    root.scale.setScalar(scale);
+    root.rotation.set(0, 0, 0);
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const midX = (box.min.x + box.max.x) / 2;
+    const midZ = (box.min.z + box.max.z) / 2;
+    root.position.set(-midX, -box.min.y, -midZ);
+    root.updateMatrixWorld(true);
+    const box2 = new THREE.Box3().setFromObject(root);
+    return box2.max.y;
+}
+
+/** Top tank: mirrored (flip X), stacked with gap under bottom’s max Y */
+function layoutTopFlippedIbcTank(root, scale, bottomTopY, gapIn) {
+    root.scale.setScalar(scale);
+    root.rotation.set(Math.PI, 0, 0);
+    root.updateMatrixWorld(true);
+    const box = new THREE.Box3().setFromObject(root);
+    const midX = (box.min.x + box.max.x) / 2;
+    const midZ = (box.min.z + box.max.z) / 2;
+    root.position.set(-midX, bottomTopY + gapIn - box.min.y, -midZ);
+    root.updateMatrixWorld(true);
+}
+
+function applyIbcShadowFlagsToSubtree(root) {
+    if (!root) return;
+    root.traverse((obj) => {
+        if (obj.isMesh) {
+            obj.castShadow = !!state.shadowsEnabled;
+            obj.receiveShadow = !!state.shadowsEnabled;
+        }
+    });
+}
+
+function rebuildIbcPivotStack() {
+    const pivot = threeRenderer && threeRenderer.ibcPivot;
+    if (!pivot) return;
+    if (!ibcGlbState.gltf || !ibcGlbState.gltf.scene) {
+        clearIbcPivotChildren();
+        return;
+    }
+    const ibc = state.ibc;
+    const layoutKey = [ibc.count | 0, ibc.stackGapIn ?? 0, ibc.verticalOffsetAIn ?? 0, ibc.verticalOffsetBIn ?? 0, ibc.scale ?? INCHES_PER_METER].join('|');
+    if (layoutKey === ibcStackLayoutCacheKey && pivot.children.length > 0) return;
+    ibcStackLayoutCacheKey = layoutKey;
+    clearIbcPivotChildren();
+
+    const scale = ibc.scale > 0 ? ibc.scale : INCHES_PER_METER;
+    const count = Math.min(2, Math.max(1, ibc.count | 0));
+    const gap = Math.max(0, ibc.stackGapIn || 0);
+    const offA = ibc.verticalOffsetAIn || 0;
+    const offB = ibc.verticalOffsetBIn || 0;
+    const template = ibcGlbState.gltf.scene;
+
+    const bottom = template.clone(true);
+    const topY = layoutBottomIbcTank(bottom, scale);
+    bottom.position.y += offA;
+    applyIbcInteriorGlow(bottom);
+    applyIbcShadowFlagsToSubtree(bottom);
+    pivot.add(bottom);
+
+    if (count >= 2) {
+        const top = template.clone(true);
+        layoutTopFlippedIbcTank(top, scale, topY + offA, gap);
+        top.position.y += offB;
+        applyIbcInteriorGlow(top);
+        applyIbcShadowFlagsToSubtree(top);
+        pivot.add(top);
+    }
+
+    addIbcGreenFillLightOnPivot(pivot);
+}
+
+function syncIbcStackControlsVisibility() {
+    const n = (state && state.ibc && (state.ibc.count | 0)) || 0;
+    const showStack = n === 2;
+    const gapRow = document.getElementById('ibc-stack-gap-row');
+    const offBRow = document.getElementById('ibc-offset-b-row');
+    if (gapRow) gapRow.style.display = showStack ? 'flex' : 'none';
+    if (offBRow) offBRow.style.display = showStack ? 'flex' : 'none';
+}
+
+/**
+ * Horizontal center and ground height for reference props (human, IBC), in scene inches.
+ * @param {Object} data - Linkage geometry
+ * @returns {{ centerX: number, centerZ: number, minY: number }}
+ */
+function getStructurePlanFootprintForReference(data) {
+    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity;
+    if (data && data.beams) {
+        data.beams.forEach(beam => {
+            if (beam.corners) {
+                beam.corners.forEach(c => {
+                    if (c) {
+                        minX = Math.min(minX, c.x);
+                        maxX = Math.max(maxX, c.x);
+                        minZ = Math.min(minZ, c.z || 0);
+                        maxZ = Math.max(maxZ, c.z || 0);
+                        minY = Math.min(minY, c.y);
+                    }
+                });
+            }
+        });
+    }
+    if (!isFinite(minX)) {
+        minX = -50; maxX = 50; minZ = -50; maxZ = 50; minY = 0;
+    }
+    return {
+        centerX: (minX + maxX) / 2,
+        centerZ: (minZ + maxZ) / 2,
+        minY
+    };
+}
+
+/**
+ * Loads Just IBC.glb once, then each frame rebuilds stacked clones in structure-local space
+ * (column center on beam footprint XY, base on lowest beam Y relative to structure center).
+ * @param {Object} data - Linkage geometry
+ * @param {{x:number,y:number,z:number}} structureCenter - Structure center (beam bbox center)
+ */
+function updateIbcGlbReference(data, structureCenter) {
+    if (!threeRenderer.ibcReferenceGroup || !threeRenderer.ibcPivot) return;
+    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    const ibc = state.ibc;
+
+    const show = ibc.enabled && (ibc.count | 0) >= 1;
+    if (!show) {
+        clearIbcPivotChildren();
+        ibcStackLayoutCacheKey = '';
+        threeRenderer.ibcReferenceGroup.visible = false;
+        return;
+    }
+
+    threeRenderer.ibcReferenceGroup.visible = true;
+    const pos = getStructurePlanFootprintForReference(data);
+    threeRenderer.ibcReferenceGroup.position.set(
+        pos.centerX - sc.x,
+        pos.minY - sc.y,
+        pos.centerZ - sc.z
+    );
+    threeRenderer.ibcPivot.rotation.y = (ibc.rotationYDeg || 0) * Math.PI / 180;
+
+    const finishStack = () => {
+        if (!state.ibc.enabled || (state.ibc.count | 0) < 1) return;
+        rebuildIbcPivotStack();
+    };
+
+    if (ibcGlbState.gltf) {
+        finishStack();
+        return;
+    }
+    if (ibcGlbState.loading) return;
+
+    if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+        showToast('GLTFLoader failed to load (check network). IBC model disabled.', 'error');
+        state.ibc.enabled = false;
+        const chk = document.getElementById('chk-ibc-glb');
+        if (chk) chk.checked = false;
+        threeRenderer.ibcReferenceGroup.visible = false;
+        return;
+    }
+
+    ibcGlbState.loading = true;
+    const glbUrl = new URL('Just IBC.glb', window.location.href).href;
+    const loader = new THREE.GLTFLoader();
+    loader.load(
+        glbUrl,
+        (gltf) => {
+            ibcGlbState.loading = false;
+            if (!threeRenderer.ibcReferenceGroup) return;
+            ibcGlbState.gltf = gltf;
+
+            if (!state.ibc.enabled || (state.ibc.count | 0) < 1) {
+                threeRenderer.ibcReferenceGroup.visible = false;
+                return;
+            }
+            renderPending = false;
+            render();
+        },
+        undefined,
+        (err) => {
+            ibcGlbState.loading = false;
+            console.warn('[IBC GLB] load failed:', err);
+            showToast('Could not load Just IBC.glb — add it next to index.html.', 'error');
+            state.ibc.enabled = false;
+            const chk = document.getElementById('chk-ibc-glb');
+            if (chk) chk.checked = false;
+            if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = false;
+        }
+    );
+}
+
 /**
  * Creates or updates the human scale reference figure (6' tall person)
  * @param {Object} data - Linkage data with structure dimensions
@@ -16960,8 +17707,7 @@ function updateHumanScaleFigure(data, structureCenter) {
     if (!state.showHumanScale) return;
     
     const humanHeight = 72; // 6 feet in inches
-    const sc = structureCenter || { x: 0, y: 0, z: 0 };
-    const isArchMode = state.orientation === 'vertical';
+    const footprint = getStructurePlanFootprintForReference(data);
     
     // Create a stylized human silhouette using basic shapes
     const humanGroup = new THREE.Group();
@@ -17050,37 +17796,8 @@ function updateHumanScaleFigure(data, structureCenter) {
     labelSprite.scale.set(24, 9, 1);
     humanGroup.add(labelSprite);
     
-    // Position the human figure at the center of the structure
-    // Calculate structure bounds
-    let minX = Infinity, maxX = -Infinity;
-    let minZ = Infinity, maxZ = -Infinity;
-    let minY = Infinity;
-    
-    if (data && data.beams) {
-        data.beams.forEach(beam => {
-            if (beam.corners) {
-                beam.corners.forEach(c => {
-                    if (c) {
-                        minX = Math.min(minX, c.x);
-                        maxX = Math.max(maxX, c.x);
-                        minZ = Math.min(minZ, c.z || 0);
-                        maxZ = Math.max(maxZ, c.z || 0);
-                        minY = Math.min(minY, c.y);
-                    }
-                });
-            }
-        });
-    }
-    
-    // Default position if no data
-    if (!isFinite(minX)) {
-        minX = -50; maxX = 50; minZ = -50; maxZ = 50; minY = 0;
-    }
-    
-    // Position human at the center of the structure
-    const centerX = (minX + maxX) / 2;
-    const centerZ = (minZ + maxZ) / 2;
-    humanGroup.position.set(centerX, minY, centerZ);
+    // Position the human figure at the center of the structure (same footprint as IBC reference)
+    humanGroup.position.set(footprint.centerX, footprint.minY, footprint.centerZ);
     
     // No rotation needed - human will be visible from all angles
     humanGroup.rotation.y = 0;
@@ -18392,6 +19109,14 @@ document.getElementById('chk-shadows').onchange = e => {
             }
         });
     }
+    if (threeRenderer.ibcReferenceGroup) {
+        threeRenderer.ibcReferenceGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
     
     requestRender();
 };
@@ -19108,6 +19833,103 @@ document.getElementById('chk-human-scale').onchange = e => {
     renderPending = false;
     render();
 };
+const chkIbcGlb = document.getElementById('chk-ibc-glb');
+if (chkIbcGlb) chkIbcGlb.onchange = e => {
+    state.ibc.enabled = e.target.checked;
+    ibcStackLayoutCacheKey = '';
+    renderPending = false;
+    render();
+};
+const selIbcCountEl = document.getElementById('sel-ibc-count');
+if (selIbcCountEl) selIbcCountEl.onchange = e => {
+    state.ibc.count = Math.min(2, Math.max(0, parseInt(e.target.value, 10) || 0));
+    ibcStackLayoutCacheKey = '';
+    syncIbcStackControlsVisibility();
+    renderPending = false;
+    render();
+};
+const slIbcGap = document.getElementById('sl-ibc-stack-gap');
+const nbIbcGap = document.getElementById('nb-ibc-stack-gap');
+if (slIbcGap && nbIbcGap) {
+    slIbcGap.oninput = e => {
+        const v = parseFloat(e.target.value) || 0;
+        state.ibc.stackGapIn = v;
+        nbIbcGap.value = v;
+        requestRender();
+    };
+    nbIbcGap.onchange = e => {
+        let v = parseFloat(e.target.value) || 0;
+        v = Math.max(0, Math.min(48, v));
+        state.ibc.stackGapIn = v;
+        slIbcGap.value = v;
+        e.target.value = v;
+        requestRender();
+    };
+}
+const slIbcA = document.getElementById('sl-ibc-offset-a');
+const nbIbcA = document.getElementById('nb-ibc-offset-a');
+if (slIbcA && nbIbcA) {
+    slIbcA.oninput = e => {
+        const v = parseFloat(e.target.value) || 0;
+        state.ibc.verticalOffsetAIn = v;
+        nbIbcA.value = v;
+        requestRender();
+    };
+    nbIbcA.onchange = e => {
+        let v = parseFloat(e.target.value) || 0;
+        v = Math.max(-48, Math.min(48, v));
+        state.ibc.verticalOffsetAIn = v;
+        slIbcA.value = v;
+        e.target.value = v;
+        requestRender();
+    };
+}
+const slIbcB = document.getElementById('sl-ibc-offset-b');
+const nbIbcB = document.getElementById('nb-ibc-offset-b');
+if (slIbcB && nbIbcB) {
+    slIbcB.oninput = e => {
+        const v = parseFloat(e.target.value) || 0;
+        state.ibc.verticalOffsetBIn = v;
+        nbIbcB.value = v;
+        requestRender();
+    };
+    nbIbcB.onchange = e => {
+        let v = parseFloat(e.target.value) || 0;
+        v = Math.max(-48, Math.min(48, v));
+        state.ibc.verticalOffsetBIn = v;
+        slIbcB.value = v;
+        e.target.value = v;
+        requestRender();
+    };
+}
+const slIbcRot = document.getElementById('sl-ibc-rotation');
+const nbIbcRot = document.getElementById('nb-ibc-rotation');
+if (slIbcRot && nbIbcRot) {
+    slIbcRot.oninput = e => {
+        const v = parseFloat(e.target.value) || 0;
+        state.ibc.rotationYDeg = v;
+        nbIbcRot.value = v;
+        requestRender();
+    };
+    nbIbcRot.onchange = e => {
+        let v = parseFloat(e.target.value) || 0;
+        v = Math.max(-180, Math.min(180, v));
+        state.ibc.rotationYDeg = v;
+        slIbcRot.value = v;
+        e.target.value = v;
+        requestRender();
+    };
+}
+const nbIbcScale = document.getElementById('nb-ibc-scale');
+if (nbIbcScale) nbIbcScale.onchange = e => {
+    let v = parseFloat(e.target.value);
+    if (!(v > 0)) v = INCHES_PER_METER;
+    v = Math.max(0.01, Math.min(200, v));
+    state.ibc.scale = v;
+    e.target.value = v;
+    requestRender();
+};
+syncIbcStackControlsVisibility();
 
 // === SOLAR PANEL EVENT HANDLERS ===
 document.getElementById('chk-solar-panels').onchange = e => {
@@ -19991,7 +20813,10 @@ function importUnifiedConfig() {
 
 function applyUnifiedConfigToModes(config) {
     // Apply to linkage mode if structure data present
-    if (config.structure || config.mode || config.foldAngle !== undefined) {
+    const linkageTrigger = config.structure || config.mode || config.foldAngle !== undefined
+        || ('supportBeams' in config)
+        || (config.panels && config.panels.support);
+    if (linkageTrigger) {
         try {
             applyConfig(config);
         } catch (e) {
