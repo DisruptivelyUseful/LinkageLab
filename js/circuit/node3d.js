@@ -4,6 +4,111 @@
  */
 
 /**
+ * Read LinkageLab structure viewer rotation (degrees in export, radians here).
+ * Geometry positions are exported unrotated; this rotation is applied once in the simulator.
+ */
+export function getLinkageStructureRotationRadians() {
+    if (typeof window === 'undefined') return 0;
+    const cs = window.linkageLabCameraState;
+    if (!cs) return 0;
+    if (typeof cs.structureRotation === 'number') {
+        return cs.structureRotation * Math.PI / 180;
+    }
+    if (typeof cs.globalRotation === 'number') {
+        return cs.globalRotation * Math.PI / 180;
+    }
+    return 0;
+}
+
+/**
+ * Apply structure viewer rotation to a Three.js group (beams, background structure, etc.)
+ */
+export function applyLinkageStructureRotationToGroup(group) {
+    if (!group) return;
+    group.rotation.y = getLinkageStructureRotationRadians();
+}
+
+function toAxisVector(axis, fallback) {
+    if (!axis) return fallback.clone();
+    return new THREE.Vector3(axis.x || 0, axis.y || 0, axis.z || 0);
+}
+
+/**
+ * Derive an orthonormal panel axis triad from exported LinkageLab panel data.
+ * Matches LinkageLab Panel3D: axisX = width, axisY = thickness/normal, axisZ = length.
+ */
+export function deriveLinkagePanelAxes(panelData) {
+    const up = new THREE.Vector3(0, 1, 0);
+
+    let axisY = panelData.axisY
+        ? toAxisVector(panelData.axisY, up).normalize()
+        : (panelData.normal
+            ? toAxisVector(panelData.normal, up).normalize()
+            : up.clone());
+
+    let axisX;
+    let axisZ;
+
+    if (panelData.axisX && panelData.axisZ) {
+        axisX = toAxisVector(panelData.axisX, new THREE.Vector3(1, 0, 0)).normalize();
+        axisZ = toAxisVector(panelData.axisZ, new THREE.Vector3(0, 0, 1)).normalize();
+    } else if (panelData.axisX) {
+        axisX = toAxisVector(panelData.axisX, new THREE.Vector3(1, 0, 0)).normalize();
+        axisZ = new THREE.Vector3().crossVectors(axisY, axisX).normalize();
+        axisX = new THREE.Vector3().crossVectors(axisZ, axisY).normalize();
+    } else if (panelData.rotation !== undefined && !isNaN(panelData.rotation)) {
+        const cosR = Math.cos(panelData.rotation);
+        const sinR = Math.sin(panelData.rotation);
+        if (Math.abs(axisY.y) > 0.99) {
+            axisX = new THREE.Vector3(cosR, 0, sinR);
+            axisZ = new THREE.Vector3(-sinR, 0, cosR);
+        } else {
+            let refUp = up;
+            if (Math.abs(axisY.dot(up)) > 0.99) {
+                refUp = new THREE.Vector3(1, 0, 0);
+            }
+            axisX = new THREE.Vector3().crossVectors(refUp, axisY).normalize();
+            axisZ = new THREE.Vector3().crossVectors(axisY, axisX).normalize();
+            const tempX = axisX.clone();
+            const tempZ = axisZ.clone();
+            axisX = tempX.clone().multiplyScalar(cosR).add(tempZ.clone().multiplyScalar(sinR)).normalize();
+            axisZ = tempX.clone().multiplyScalar(-sinR).add(tempZ.clone().multiplyScalar(cosR)).normalize();
+        }
+    } else {
+        axisX = new THREE.Vector3(1, 0, 0);
+        axisZ = new THREE.Vector3(0, 0, 1);
+    }
+
+    return { axisX, axisY, axisZ };
+}
+
+/**
+ * Orient a panel mesh using LinkageLab axis data (same convention as createPanelMeshForExport).
+ */
+export function applyLinkagePanelOrientation(mesh, panelData) {
+    if (!mesh || !panelData) return;
+
+    const { axisX, axisY, axisZ } = deriveLinkagePanelAxes(panelData);
+    const rotMatrix = new THREE.Matrix4();
+    rotMatrix.makeBasis(axisX, axisY, axisZ);
+    mesh.quaternion.setFromRotationMatrix(rotMatrix);
+}
+
+/**
+ * Apply structure viewer rotation to a positioned/oriented panel mesh.
+ */
+export function applyLinkageStructureRotationToMesh(mesh) {
+    const structRot = getLinkageStructureRotationRadians();
+    if (!mesh || structRot === 0) return;
+
+    const rotQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), structRot);
+    const pos = mesh.position.clone();
+    pos.applyQuaternion(rotQuat);
+    mesh.position.copy(pos);
+    mesh.quaternion.premultiply(rotQuat);
+}
+
+/**
  * Base class for 3D node representations
  */
 export class Node3D {
@@ -709,49 +814,9 @@ export class Panel3D extends Node3D {
             this.syncEnabled = false; // Disable 2D sync when using LinkageLab position
             
             if (this.mesh) {
-                // Panel positions from LinkageLab are already in the final rotated coordinate system
-                // (they already account for global rotation and grid rotation)
-                // So we use them as-is - no additional rotation needed
                 this.mesh.position.set(pos3D.x, pos3D.y, pos3D.z);
-                
-                // Apply orientation from axisX (the panel's local X-axis direction in world coords)
-                // axisX tells us which direction the panel's width runs in world space
-                // For horizontal panels, this is a rotation around Y-axis
-                // For tilted panels, we first orient to normal, then rotate around it
-                if (linkedPanel.normal && (linkedPanel.normal.x !== 0 || linkedPanel.normal.z !== 0 || linkedPanel.normal.y !== 1)) {
-                    // For tilted/vertical panels: apply normal-based orientation
-                    const up = new THREE.Vector3(0, 1, 0);
-                    const normal = new THREE.Vector3(
-                        linkedPanel.normal.x || 0,
-                        linkedPanel.normal.y || 1,
-                        linkedPanel.normal.z || 0
-                    ).normalize();
-                    
-                    const quaternion = new THREE.Quaternion();
-                    quaternion.setFromUnitVectors(up, normal);
-                    this.mesh.quaternion.copy(quaternion);
-                    
-                    // Apply rotation around the normal axis to align with axisX
-                    // Positive rotation aligns mesh X-axis with axisX direction
-                    if (linkedPanel.rotation !== undefined && linkedPanel.rotation !== 0) {
-                        const rotationQuat = new THREE.Quaternion();
-                        rotationQuat.setFromAxisAngle(normal, linkedPanel.rotation);
-                        this.mesh.quaternion.multiplyQuaternions(this.mesh.quaternion, rotationQuat);
-                    }
-                } else {
-                    // For horizontal panels (normal pointing up): apply rotation around Y axis
-                    // Positive rotation aligns mesh X-axis with axisX direction
-                    // rotation = atan2(axisX.z, axisX.x) gives us the angle of axisX from +X
-                    
-                    // Reset rotation/quaternion first, then apply Y rotation
-                    this.mesh.rotation.set(0, 0, 0);
-                    if (linkedPanel.rotation !== undefined && linkedPanel.rotation !== 0) {
-                        this.mesh.rotation.y = linkedPanel.rotation;
-                    }
-                    
-                    // Panel is already horizontal (XZ plane), no need to flip around X
-                    // The panel geometry is created in the correct orientation
-                }
+                applyLinkagePanelOrientation(this.mesh, linkedPanel);
+                applyLinkageStructureRotationToMesh(this.mesh);
             }
         } else {
             // Fall back to normal 2D position mapping

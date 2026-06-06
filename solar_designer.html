@@ -105,6 +105,10 @@
                 <input type="checkbox" id="showHintsToggle" checked style="cursor: pointer;">
                 Show Hints
             </label>
+            <label id="blueprintBackgroundLabel" style="display: none; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;" title="Use blueprint grid instead of LinkageLab 3D structure">
+                <input type="checkbox" id="blueprintBackgroundToggle" style="cursor: pointer;">
+                Blueprint BG
+            </label>
             <button id="saveBtn">Save</button>
             <button id="loadBtn">Load</button>
             <button id="exportEmbedBtn" title="Export an embeddable read-only view for documentation">📤 Embed</button>
@@ -163,41 +167,6 @@
                     <div class="score-item" data-tooltip="Estimated total cost of all components including panels, batteries, controller, wiring, and accessories.">
                         <span class="score-label">Total Cost</span>
                         <span class="score-value" id="scoreTotalCost">$0</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Cost Breakdown Section -->
-            <div class="sidebar-section" id="costBreakdownSection">
-                <h3>💰 Cost Breakdown</h3>
-                <div class="cost-breakdown">
-                    <div class="cost-item" id="costStructure">
-                        <span class="cost-label">Structure</span>
-                        <span class="cost-value" id="costStructureValue">$0.00</span>
-                    </div>
-                    <div class="cost-item" id="costPanels">
-                        <span class="cost-label">Solar Panels</span>
-                        <span class="cost-value" id="costPanelsValue">$0.00</span>
-                    </div>
-                    <div class="cost-item" id="costInverter">
-                        <span class="cost-label">Inverter/Controller</span>
-                        <span class="cost-value" id="costInverterValue">$0.00</span>
-                    </div>
-                    <div class="cost-item" id="costBatteries">
-                        <span class="cost-label">Batteries</span>
-                        <span class="cost-value" id="costBatteriesValue">$0.00</span>
-                    </div>
-                    <div class="cost-item" id="costComponents">
-                        <span class="cost-label">Components</span>
-                        <span class="cost-value" id="costComponentsValue">$0.00</span>
-                    </div>
-                    <div class="cost-item" id="costWires">
-                        <span class="cost-label">Wires</span>
-                        <span class="cost-value" id="costWiresValue">$0.00</span>
-                    </div>
-                    <div class="cost-item cost-total">
-                        <span class="cost-label">Total</span>
-                        <span class="cost-value" id="costTotalValue">$0.00</span>
                     </div>
                 </div>
             </div>
@@ -14997,104 +14966,45 @@
             return componentCost + wireCost + structureCost;
         }
         
-        function updateCostBreakdown() {
-            // Structure cost (from LinkageLab import)
+        function computeCostBreakdown() {
             let structureCost = 0;
             if (window.linkageLabStructureCost) {
-                // Structure cost can be a number or an object with subtotal
                 if (typeof window.linkageLabStructureCost === 'object' && window.linkageLabStructureCost.subtotal !== undefined) {
                     structureCost = window.linkageLabStructureCost.subtotal;
                 } else if (typeof window.linkageLabStructureCost === 'number') {
                     structureCost = window.linkageLabStructureCost;
                 }
             }
-            const structureEl = document.getElementById('costStructure');
-            const structureValueEl = document.getElementById('costStructureValue');
-            if (structureEl && structureValueEl) {
-                if (structureCost > 0) {
-                    structureEl.style.display = 'flex';
-                    structureValueEl.textContent = '$' + structureCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    structureEl.style.display = 'none';
-                }
-            }
             
-            // Solar panels cost
-            const panels = allItems.filter(i => i.type === 'panel');
-            const panelsCost = panels.reduce((sum, p) => sum + (p.specs.cost || 0), 0);
-            const panelsEl = document.getElementById('costPanels');
-            const panelsValueEl = document.getElementById('costPanelsValue');
-            if (panelsEl && panelsValueEl) {
-                if (panelsCost > 0) {
-                    panelsEl.style.display = 'flex';
-                    panelsValueEl.textContent = '$' + panelsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    panelsEl.style.display = 'none';
-                }
-            }
-            
-            // Inverter/Controller cost
-            const controllers = allItems.filter(i => i.type === 'controller');
-            const inverterCost = controllers.reduce((sum, c) => sum + (c.specs.cost || 0), 0);
-            const inverterEl = document.getElementById('costInverter');
-            const inverterValueEl = document.getElementById('costInverterValue');
-            if (inverterEl && inverterValueEl) {
-                if (inverterCost > 0) {
-                    inverterEl.style.display = 'flex';
-                    inverterValueEl.textContent = '$' + inverterCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    inverterEl.style.display = 'none';
-                }
-            }
-            
-            // Batteries cost
-            const batteries = allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery');
-            const batteriesCost = batteries.reduce((sum, b) => sum + (b.specs.cost || 0), 0);
-            const batteriesEl = document.getElementById('costBatteries');
-            const batteriesValueEl = document.getElementById('costBatteriesValue');
-            if (batteriesEl && batteriesValueEl) {
-                if (batteriesCost > 0) {
-                    batteriesEl.style.display = 'flex';
-                    batteriesValueEl.textContent = '$' + batteriesCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    batteriesEl.style.display = 'none';
-                }
-            }
-            
-            // Components cost (breakers, outlets, loads, combiners, etc.)
+            const panelsCost = allItems.filter(i => i.type === 'panel').reduce((sum, p) => sum + (p.specs.cost || 0), 0);
+            const inverterCost = allItems.filter(i => i.type === 'controller').reduce((sum, c) => sum + (c.specs.cost || 0), 0);
+            const batteriesCost = allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery').reduce((sum, b) => sum + (b.specs.cost || 0), 0);
             const componentTypes = ['breaker', 'acbreaker', 'acoutlet', 'acload', 'combiner', 'solarcombiner', 'generator', 'acdistribution'];
-            const components = allItems.filter(i => componentTypes.includes(i.type));
-            const componentsCost = components.reduce((sum, c) => sum + (c.specs.cost || 0), 0);
-            const componentsEl = document.getElementById('costComponents');
-            const componentsValueEl = document.getElementById('costComponentsValue');
-            if (componentsEl && componentsValueEl) {
-                if (componentsCost > 0) {
-                    componentsEl.style.display = 'flex';
-                    componentsValueEl.textContent = '$' + componentsCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    componentsEl.style.display = 'none';
-                }
-            }
-            
-            // Wires cost
+            const componentsCost = allItems.filter(i => componentTypes.includes(i.type)).reduce((sum, c) => sum + (c.specs.cost || 0), 0);
             const wireCost = connections.reduce((sum, conn) => sum + (conn.totalWireCost || 0), 0);
-            const wiresEl = document.getElementById('costWires');
-            const wiresValueEl = document.getElementById('costWiresValue');
-            if (wiresEl && wiresValueEl) {
-                if (wireCost > 0) {
-                    wiresEl.style.display = 'flex';
-                    wiresValueEl.textContent = '$' + wireCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                } else {
-                    wiresEl.style.display = 'none';
-                }
-            }
             
-            // Total cost
-            const totalCost = structureCost + panelsCost + inverterCost + batteriesCost + componentsCost + wireCost;
-            const totalEl = document.getElementById('costTotalValue');
-            if (totalEl) {
-                totalEl.textContent = '$' + totalCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            }
+            const lines = [];
+            if (structureCost > 0) lines.push({ label: 'Structure', cost: structureCost });
+            if (panelsCost > 0) lines.push({ label: 'Solar Panels', cost: panelsCost });
+            if (inverterCost > 0) lines.push({ label: 'Inverter/Controller', cost: inverterCost });
+            if (batteriesCost > 0) lines.push({ label: 'Batteries', cost: batteriesCost });
+            if (componentsCost > 0) lines.push({ label: 'Components', cost: componentsCost });
+            if (wireCost > 0) lines.push({ label: 'Wires', cost: wireCost });
+            
+            const total = structureCost + panelsCost + inverterCost + batteriesCost + componentsCost + wireCost;
+            return { lines, total };
+        }
+        
+        function formatCostBreakdownHTML(breakdown) {
+            if (!breakdown.lines.length && breakdown.total <= 0) return '';
+            
+            let html = '<div class="system-review-cost-section" style="grid-column: 1 / -1;"><div class="system-review-cost-title">💰 Cost Breakdown</div>';
+            breakdown.lines.forEach(line => {
+                html += `<div class="system-review-cost-row"><span>${line.label}</span><span>$${line.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+            });
+            html += `<div class="system-review-cost-row system-review-cost-total"><span>Total</span><span>$${breakdown.total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></div>`;
+            html += '</div>';
+            return html;
         }
         
         // Generate Amazon search link for a component
@@ -15582,9 +15492,6 @@
             }
             
             const totalCost = calculateTotalCost();
-            
-            // Update cost breakdown
-            updateCostBreakdown();
             
             // Calculate clipping for array Wmp display
             let clippedWmp = arrayWmp;
@@ -17846,6 +17753,7 @@
                 
                 // Cost
                 statsHTML += this.formatStatItem('Total Cost', `$${stats.cost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+                statsHTML += formatCostBreakdownHTML(computeCostBreakdown());
                 
                 // Payback
                 if (stats.isOperational && stats.cost > 0) {
@@ -20251,7 +20159,7 @@
             
             // Update canvas container background
             // If 3D structure is loaded, Three.js handles the sky color - keep SVG transparent
-            const has3DBackground = bgRenderer && window.linkageLabGeometry;
+            const has3DBackground = bgRenderer && window.linkageLabGeometry && !useBlueprintBackground;
             
             const canvasContainer = document.getElementById('canvas-container');
             if (canvasContainer) {
@@ -21163,12 +21071,10 @@
             
             // Initialize 3D structure viewport if geometry is available
             if (window.linkageLabGeometry) {
-                // Show the structure button in toolbar
-                const structureBtn = document.getElementById('structureViewBtn');
-                if (structureBtn) {
-                    structureBtn.style.display = 'inline-block';
-                }
+                updateBlueprintBackgroundToggleVisibility();
                 setTimeout(() => initStructureViewport(), 100);
+            } else {
+                document.body.classList.add('blueprint-background');
             }
             
             // Show import summary
@@ -21219,6 +21125,76 @@
         let structureViewportVisible = false;
         let currentMinimapView = 'top';
         let exportedCameraState = null;
+        let useBlueprintBackground = false;
+        const BACKGROUND_MODE_KEY = 'solarDesignerBackgroundMode';
+        
+        function loadBackgroundModePreference() {
+            try {
+                useBlueprintBackground = localStorage.getItem(BACKGROUND_MODE_KEY) === 'blueprint';
+            } catch (e) {
+                useBlueprintBackground = false;
+            }
+        }
+        
+        function setBlueprintBackground(enabled) {
+            useBlueprintBackground = enabled;
+            try {
+                localStorage.setItem(BACKGROUND_MODE_KEY, enabled ? 'blueprint' : '3d');
+            } catch (e) {}
+            
+            const toggle = document.getElementById('blueprintBackgroundToggle');
+            if (toggle) toggle.checked = enabled;
+            
+            applyBackgroundDisplay();
+        }
+        
+        function updateBlueprintBackgroundToggleVisibility() {
+            const label = document.getElementById('blueprintBackgroundLabel');
+            const toggle = document.getElementById('blueprintBackgroundToggle');
+            const hasGeometry = !!window.linkageLabGeometry;
+            if (label) {
+                label.style.display = hasGeometry ? 'flex' : 'none';
+            }
+            if (toggle) {
+                toggle.checked = useBlueprintBackground;
+            }
+            if (!hasGeometry) {
+                useBlueprintBackground = true;
+            }
+        }
+        
+        function stopOrbitControlsAnimation() {
+            if (bgAnimationId) {
+                cancelAnimationFrame(bgAnimationId);
+                bgAnimationId = null;
+            }
+        }
+        
+        function applyBackgroundDisplay() {
+            const canvas = document.getElementById('structure-background-canvas');
+            const controls = document.getElementById('main-3d-view-controls');
+            const hasGeometry = !!window.linkageLabGeometry && !!bgRenderer;
+            const show3D = hasGeometry && !useBlueprintBackground;
+            
+            if (canvas) {
+                canvas.style.display = show3D ? 'block' : 'none';
+            }
+            if (controls) {
+                controls.style.display = show3D ? 'block' : 'none';
+            }
+            
+            document.body.classList.toggle('blueprint-background', !show3D);
+            
+            if (show3D) {
+                if (!bgAnimationId) {
+                    startOrbitControlsAnimation();
+                } else {
+                    renderMainBackground();
+                }
+            } else {
+                stopOrbitControlsAnimation();
+            }
+        }
         
         // Legacy alias for compatibility
         let structureRenderer = null;
@@ -21345,17 +21321,11 @@
             // Set up orbit controls
             setupOrbitControls();
             
-            // Show the canvas
-            canvas.style.display = 'block';
-            
-            // Show 3D view controls
-            const controls = document.getElementById('main-3d-view-controls');
-            if (controls) {
-                controls.style.display = 'block';
-            }
-            
             // Set default view to top
             setMain3DView('top');
+            
+            updateBlueprintBackgroundToggleVisibility();
+            applyBackgroundDisplay();
             
             // Set legacy aliases for compatibility
             structureRenderer = bgRenderer;
@@ -21485,12 +21455,16 @@
          * Animation loop for OrbitControls damping
          */
         function startOrbitControlsAnimation() {
+            if (bgAnimationId || useBlueprintBackground) return;
             function animate() {
                 bgAnimationId = requestAnimationFrame(animate);
+                if (useBlueprintBackground) {
+                    stopOrbitControlsAnimation();
+                    return;
+                }
                 if (bgOrbitControls) {
                     bgOrbitControls.update();
                 }
-                // Poll SpaceMouse if connected
                 if (spaceMouse.connected) {
                     pollSpaceMouse();
                 }
@@ -22212,6 +22186,18 @@
         
         document.addEventListener('DOMContentLoaded', async () => {
             if (EMBED_MODE) initEmbedMode();
+
+            loadBackgroundModePreference();
+            document.body.classList.toggle('blueprint-background', useBlueprintBackground || !window.linkageLabGeometry);
+            
+            const blueprintToggle = document.getElementById('blueprintBackgroundToggle');
+            if (blueprintToggle) {
+                blueprintToggle.checked = useBlueprintBackground;
+                blueprintToggle.addEventListener('change', (e) => {
+                    setBlueprintBackground(e.target.checked);
+                });
+            }
+            updateBlueprintBackgroundToggleVisibility();
 
             updateSvgDimensions();
             if (!EMBED_MODE) populateLibraries();

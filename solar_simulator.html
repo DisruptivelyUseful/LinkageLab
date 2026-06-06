@@ -57,6 +57,7 @@
     <link rel="stylesheet" href="css/sidebar.css">
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/utilities.css">
+    <link rel="stylesheet" href="css/designer.css">
     <link rel="stylesheet" href="css/simulator.css">
     <!-- Inline styles removed - now using external CSS files -->
     <style>
@@ -5852,12 +5853,6 @@
                 const buffer = 200 / transform.k;
                 
                 return allItems.filter(item => {
-                    // Always include powerstation2D in split/2D mode (it's important and may be off-screen initially)
-                    if ((item.type === 'powerstation2d' || item.isPowerStation2D) && 
-                        scene3D && (scene3D.viewMode === 'split' || scene3D.viewMode === '2d')) {
-                        return true;
-                    }
-                    
                     const itemRight = item.x + (item.width || 100);
                     const itemBottom = item.y + (item.height || 100);
                     return itemRight >= viewport.x - buffer &&
@@ -5923,6 +5918,7 @@
         }
         
         function render() {
+            cleanupPowerStation2D();
             renderItems();
             
             // Phase 3: Sync 2D nodes to 3D scene
@@ -5970,29 +5966,7 @@
         
         function renderItems() {
             // Phase 1.3: Use viewport culling to only render visible items
-            let visibleItems = getVisibleItems();
-            
-            // In split/2D view with powerstation, hide individual controller/battery/breaker panel nodes
-            // But ensure powerstation2D is always visible
-            if (powerStation2D && (scene3D?.viewMode === 'split' || scene3D?.viewMode === '2d')) {
-                const powerStationNodeIds = new Set();
-                const controller = allItems.find(i => i.type === 'controller');
-                const batteries = allItems.filter(i => i.type === 'battery');
-                const breakerPanel = allItems.find(i => i.type === 'breakerpanel');
-                if (controller) powerStationNodeIds.add(controller.id);
-                batteries.forEach(b => powerStationNodeIds.add(b.id));
-                if (breakerPanel) powerStationNodeIds.add(breakerPanel.id);
-                
-                // Filter out individual nodes that are part of powerstation
-                visibleItems = visibleItems.filter(item => 
-                    !powerStationNodeIds.has(item.id) || item.id === powerStation2D.id
-                );
-                
-                // Ensure powerstation2D is always in visibleItems if it exists
-                if (!visibleItems.find(item => item.id === powerStation2D.id)) {
-                    visibleItems.push(powerStation2D);
-                }
-            }
+            const visibleItems = getVisibleItems();
             
             const itemGroups = itemsGroup.selectAll(".item-group")
                 .data(visibleItems, d => d.id);
@@ -6009,42 +5983,15 @@
                 .style("pointer-events", "auto") // Enable pointer events for interactions
                 .call(d3.drag()
                     .touchable(true) // Enable touch support
-                    .filter(function(event, d) {
-                        // Don't start node drag if clicking on a handle (handles have their own drag)
-                        // Check if the click is on a handle by checking the target
-                        if (event.sourceEvent && event.sourceEvent.target) {
-                            const target = event.sourceEvent.target;
-                            // If clicking on a handle circle, don't start node drag
-                            if (target.classList && (target.classList.contains('handle') || target.closest('.handle'))) {
-                                return false;
-                            }
-                        }
-                        return true;
-                    })
+                    // Don't start item drag when touching a port handle (handles have their own drag)
+                    .filter(event => !event.target.closest?.('.handle'))
                     .on("start", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
-                        // Track if powerstation2D is being dragged
-                        if (d.isPowerStation2D) {
-                            powerStation2DIsDragging = true;
-                        }
                         dragStarted.call(this, event, d);
                     })
                     .on("drag", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
                         dragged.call(this, event, d);
                     })
                     .on("end", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
-                        // Clear drag flag when done
-                        if (d.isPowerStation2D) {
-                            powerStation2DIsDragging = false;
-                        }
                         dragEnded.call(this, event, d);
                     })
                 )
@@ -6099,8 +6046,6 @@
                     renderSpiderBox(g, d);
                 } else if (d.type === 'breakerpanel') {
                     renderBreakerPanel(g, d);
-                } else if (d.type === 'powerstation2d' || d.isPowerStation2D) {
-                    renderPowerStation2D(g, d);
                 } else if (d.type === 'acload') {
                     renderACLoad(g, d);
                 } else if (d.type === 'resourcecontainer') {
@@ -6139,25 +6084,7 @@
             const allItemGroups = newItems.merge(itemGroups);
             allItemGroups.each(function(d) {
                 const g = d3.select(this);
-                // For powerstation2d, we need to re-render to update SOC glow and breaker states
-                if (d.type === 'powerstation2d' || d.isPowerStation2D) {
-                    // Check if we need to re-render (SOC changed, breaker states changed, etc.)
-                    const lastSOC = g.attr('data-last-soc');
-                    const currentSOC = d.currentSOC !== undefined ? d.currentSOC : 0.5;
-                    const socChanged = lastSOC !== String(currentSOC);
-                    
-                    // Re-render if SOC changed significantly or if structure is missing
-                    if (socChanged || !g.select('.powerstation-glow').node()) {
-                        g.attr('data-last-soc', currentSOC);
-                        g.selectAll("*").remove();
-                        renderPowerStation2D(g, d);
-                    } else {
-                        // Just update content without full re-render
-                        updateItemContent(g, d);
-                    }
-                } else {
-                    updateItemContent(g, d);
-                }
+                updateItemContent(g, d);
             });
         }
         
@@ -10696,6 +10623,27 @@
             const newWireGroups = wireGroups.enter()
                 .append("g")
                 .attr("class", "wire-group");
+
+            // Invisible wide hit path for touch — sits below the visual wire
+            newWireGroups.append("path")
+                .attr("class", "wire-hit-area")
+                .style("stroke", "transparent")
+                .style("stroke-width", "24")
+                .style("fill", "none")
+                .style("cursor", "pointer")
+                .on("click", (event, d) => {
+                    event.stopPropagation();
+                    if (event.ctrlKey || event.metaKey) {
+                        addWaypointToWire(d, event);
+                    } else {
+                        selectConnection(d);
+                    }
+                })
+                .on("dblclick", (event, d) => {
+                    event.stopPropagation();
+                    deleteConnection(d.id);
+                    closeInspector();
+                });
             
             // Create wire path
             newWireGroups.append("path")
@@ -10718,8 +10666,10 @@
                 });
             
             const mergedGroups = wireGroups.merge(newWireGroups);
+
+            mergedGroups.select(".wire-hit-area")
+                .attr("d", d => generateWirePath(d));
             
-            // Update wire path
             // Update wire path and classes
             mergedGroups.select(".wire")
                 .attr("d", d => generateWirePath(d))
@@ -17795,6 +17745,8 @@
                 connections = JSON.parse(JSON.stringify(state.connections));
                 itemIdCounter = state.itemIdCounter;
                 connectionIdCounter = state.connectionIdCounter;
+
+                cleanupPowerStation2D();
                 
                 // Rebuild handle.connectedTo arrays from connections
                 allItems.forEach(item => {
@@ -19622,8 +19574,9 @@
                     thickness: panel.thickness,
                     rotation: panel.rotation,
                     normal: panel.normal,
-                    // Include axisX for proper panel orientation
                     axisX: panel.axisX,
+                    axisY: panel.axisY,
+                    axisZ: panel.axisZ,
                     row: panel.row,
                     col: panel.col,
                     side: panel.side,
@@ -19698,7 +19651,10 @@
                             linkedStructurePanel: node2D?.linkedStructurePanel ? {
                                 index: node2D.linkedStructurePanel.index,
                                 center: node2D.linkedStructurePanel.center,
-                                rotation: node2D.linkedStructurePanel.rotation
+                                rotation: node2D.linkedStructurePanel.rotation,
+                                axisX: node2D.linkedStructurePanel.axisX,
+                                axisY: node2D.linkedStructurePanel.axisY,
+                                axisZ: node2D.linkedStructurePanel.axisZ
                             } : null
                         };
                         
@@ -20014,6 +19970,9 @@
                 // Apply counters
                 itemIdCounter = circuitData.itemIdCounter || allItems.length + 1;
                 connectionIdCounter = circuitData.connectionIdCounter || connections.length + 1;
+
+                cleanupPowerStation2D();
+                rebuildHandleConnectionsFromWires();
                 
                 // Link panels to structure geometry
                 if (window.linkageLabGeometry?.panels) {
@@ -22768,14 +22727,6 @@
                     const lengthInches = heightMm * INCHES_PER_MM;
                     const thicknessInches = thicknessMm * INCHES_PER_MM;
                     
-                    // Calculate rotation from axisX if available
-                    let rotation = 0;
-                    if (structurePanel.axisX) {
-                        // Calculate rotation angle from axisX vector
-                        const axisX = structurePanel.axisX;
-                        rotation = Math.atan2(axisX.z, axisX.x);
-                    }
-                    
                     // Create complete panel data with all required fields
                     panel.linkedStructurePanelIndex = i;
                     panel.linkedStructurePanel = {
@@ -22784,7 +22735,10 @@
                         width: structurePanel.width || widthInches,
                         length: structurePanel.length || lengthInches,
                         thickness: structurePanel.thickness || thicknessInches,
-                        rotation: structurePanel.rotation !== undefined ? structurePanel.rotation : rotation,
+                        rotation: structurePanel.rotation,
+                        axisX: structurePanel.axisX || null,
+                        axisY: structurePanel.axisY || null,
+                        axisZ: structurePanel.axisZ || null,
                         index: structurePanel.index !== undefined ? structurePanel.index : i
                     };
                     
@@ -23661,47 +23615,40 @@
             
             // Create panel meshes (solar panels)
             if (geo.panels) {
+                const panelHelpers = window.CircuitModules?.Node3D;
+                const inchesToMeters = (v) => v * 0.0254;
+                const xOff = window.structureXOffset || 0;
+                const yOff = window.structureYOffset || 0;
+                const zOff = window.structureZOffset || 0;
+
                 geo.panels.forEach(panel => {
-                    const geometry = new THREE.BoxGeometry(panel.width, panel.thickness, panel.length);
+                    const widthM = inchesToMeters(panel.width);
+                    const thicknessM = inchesToMeters(panel.thickness);
+                    const lengthM = inchesToMeters(panel.length);
+                    const geometry = new THREE.BoxGeometry(widthM, thicknessM, lengthM);
                     const material = new THREE.MeshPhongMaterial({
                         color: 0x1a3a5a,
                         specular: 0x4a7aaa,
                         shininess: 60
                     });
                     const mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(panel.center.x, panel.center.y, panel.center.z);
-                    
-                    // Apply normal-based orientation first if available (for tilted/vertical panels)
-                    if (panel.normal && (panel.normal.x !== 0 || panel.normal.z !== 0 || panel.normal.y !== 1)) {
-                        const up = new THREE.Vector3(0, 1, 0);
-                        const normal = new THREE.Vector3(panel.normal.x, panel.normal.y, panel.normal.z);
-                        const quaternion = new THREE.Quaternion();
-                        quaternion.setFromUnitVectors(up, normal);
-                        mesh.quaternion.copy(quaternion);
-                        
-                        // Apply rotation around the normal axis if specified
-                        // Negate rotation to match Panel3D's rotation convention
-                        if (panel.rotation) {
-                            const rotationQuat = new THREE.Quaternion();
-                            rotationQuat.setFromAxisAngle(normal, -panel.rotation);
-                            mesh.quaternion.multiplyQuaternions(mesh.quaternion, rotationQuat);
-                        }
-                    } else {
-                        // For horizontal panels (normal pointing up), apply rotation around Y axis
-                        // Negate rotation to match Panel3D's rotation convention (opposite to Three.js)
-                        if (panel.rotation) {
-                            mesh.rotation.y = -panel.rotation;
-                        }
+                    mesh.position.set(
+                        inchesToMeters(panel.center.x) + xOff,
+                        inchesToMeters(panel.center.y) + yOff,
+                        inchesToMeters(panel.center.z) + zOff
+                    );
+
+                    if (panelHelpers?.applyLinkagePanelOrientation) {
+                        panelHelpers.applyLinkagePanelOrientation(mesh, panel);
                     }
-                    
+
                     mesh.castShadow = true;
                     structureMeshGroup.add(mesh);
                 });
             }
-            
-            // Apply global rotation if provided from LinkageLab
-            if (window.linkageLabCameraState && window.linkageLabCameraState.globalRotation) {
-                structureMeshGroup.rotation.y = window.linkageLabCameraState.globalRotation * Math.PI / 180;
+
+            if (window.CircuitModules?.Node3D?.applyLinkageStructureRotationToGroup) {
+                window.CircuitModules.Node3D.applyLinkageStructureRotationToGroup(structureMeshGroup);
             }
         }
         
@@ -23861,11 +23808,115 @@
         const nodes3D = new Map(); // Map of node2D.id -> Node3D instance
         const connections3D = new Map(); // Map of connection2D.id -> Connection3D instance
         
-        // Phase 7: PowerStation grouping (simulate mode)
+        // Phase 7: PowerStation grouping (simulate mode — 3D only; 2D uses individual nodes)
         let powerStation3D = null; // Single PowerStation3D instance when in simulate mode
         let groupingAnimation = null; // Current grouping/ungrouping animation
-        let powerStation2D = null; // 2D representation of powerstation (for split/2D view)
-        let powerStation2DIsDragging = false; // Track if powerstation2D is being dragged
+        let powerStation2D = null; // Legacy — always cleared
+        let powerStation2DIsDragging = false;
+
+        /**
+         * Rebuild handle.connectedTo arrays from the connections list.
+         */
+        function rebuildHandleConnectionsFromWires() {
+            allItems.forEach(item => {
+                if (item.handles) {
+                    Object.values(item.handles).forEach(handle => {
+                        if (handle) handle.connectedTo = [];
+                    });
+                }
+            });
+
+            connections.forEach(conn => {
+                const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
+                const targetItem = allItems.find(i => i.id === conn.targetItemId);
+                if (!sourceItem || !targetItem) return;
+
+                const sourceHandle = Object.values(sourceItem.handles || {}).find(h => h && h.id === conn.sourceHandleId);
+                const targetHandle = Object.values(targetItem.handles || {}).find(h => h && h.id === conn.targetHandleId);
+                if (!sourceHandle || !targetHandle) return;
+
+                if (!sourceHandle.connectedTo) sourceHandle.connectedTo = [];
+                if (!targetHandle.connectedTo) targetHandle.connectedTo = [];
+                sourceHandle.connectedTo.push({
+                    itemId: targetItem.id,
+                    handleId: targetHandle.id,
+                    connectionId: conn.id
+                });
+                targetHandle.connectedTo.push({
+                    itemId: sourceItem.id,
+                    handleId: sourceHandle.id,
+                    connectionId: conn.id
+                });
+            });
+
+            invalidateWirePathCache();
+        }
+
+        /**
+         * Remove the legacy combined 2D powerstation node and restore real item endpoints.
+         */
+        function cleanupPowerStation2D() {
+            const hadPowerStation = allItems.some(i => i.id === 'powerstation2d' || i.isPowerStation2D) ||
+                connections.some(c => c.sourceItemId === 'powerstation2d' || c.targetItemId === 'powerstation2d');
+
+            if (!hadPowerStation) {
+                powerStation2D = null;
+                powerStation2DIsDragging = false;
+                return false;
+            }
+
+            const controller = allItems.find(i => i.type === 'controller');
+            const breakerPanel = allItems.find(i => i.type === 'breakerpanel');
+
+            function resolvePowerStationEndpoint(handleId) {
+                if (!handleId || !handleId.startsWith('powerstation2d')) return null;
+
+                if (handleId === 'powerstation2d-pv-positive' && controller) {
+                    const handle = controller.handles?.pvPositive || controller.handles?.positive;
+                    return handle ? { item: controller, handle } : null;
+                }
+                if (handleId === 'powerstation2d-pv-negative' && controller) {
+                    const handle = controller.handles?.pvNegative || controller.handles?.negative;
+                    return handle ? { item: controller, handle } : null;
+                }
+
+                const circuitMatch = handleId.match(/^powerstation2d-circuit-(\d+)$/);
+                if (circuitMatch && breakerPanel) {
+                    const circuitNum = parseInt(circuitMatch[1], 10);
+                    const handle = breakerPanel.handles?.[`circuit${circuitNum}`];
+                    return handle ? { item: breakerPanel, handle } : null;
+                }
+
+                return null;
+            }
+
+            connections.forEach(conn => {
+                if (conn.sourceItemId === 'powerstation2d') {
+                    const resolved = resolvePowerStationEndpoint(conn.sourceHandleId);
+                    if (resolved) {
+                        conn.sourceItemId = resolved.item.id;
+                        conn.sourceHandleId = resolved.handle.id;
+                    }
+                }
+                if (conn.targetItemId === 'powerstation2d') {
+                    const resolved = resolvePowerStationEndpoint(conn.targetHandleId);
+                    if (resolved) {
+                        conn.targetItemId = resolved.item.id;
+                        conn.targetHandleId = resolved.handle.id;
+                    }
+                }
+            });
+
+            const psIndex = allItems.findIndex(i => i.id === 'powerstation2d' || i.isPowerStation2D);
+            if (psIndex >= 0) {
+                allItems.splice(psIndex, 1);
+            }
+
+            powerStation2D = null;
+            powerStation2DIsDragging = false;
+            rebuildHandleConnectionsFromWires();
+            return true;
+        }
         
         // Phase 6: 3D Interaction handler
         let interaction3D = null;
@@ -24180,9 +24231,8 @@
                 }
             }
             
-            // Apply global rotation if provided from LinkageLab
-            if (window.linkageLabCameraState && window.linkageLabCameraState.globalRotation && scene3D.structureGroup) {
-                scene3D.structureGroup.rotation.y = window.linkageLabCameraState.globalRotation * Math.PI / 180;
+            if (window.CircuitModules?.Node3D?.applyLinkageStructureRotationToGroup && scene3D.structureGroup) {
+                window.CircuitModules.Node3D.applyLinkageStructureRotationToGroup(scene3D.structureGroup);
             }
             
             buildingStructure = false; // Release lock
@@ -24243,6 +24293,9 @@
             if (!scene3D || !coordinateMapper || !window.CircuitModules?.Node3D) {
                 return;
             }
+
+            // 2D canvas always uses individual nodes (controller, battery, breaker panel)
+            cleanupPowerStation2D();
             
             // Phase 8.2: Mode Switching Logic
             // Build/Edit mode: Show individual nodes, hide PowerStation
@@ -24923,29 +24976,6 @@
                 }
             }
             
-            // Create or update 2D powerstation node (for split/2D view)
-            // Only show in split or 2D view, and only when powerStation3D exists
-            if (powerStation3D && scene3D && (scene3D.viewMode === 'split' || scene3D.viewMode === '2d')) {
-                updatePowerStation2D();
-                // Ensure powerstation2D is in allItems
-                if (powerStation2D) {
-                    const index = allItems.findIndex(item => item.id === powerStation2D.id);
-                    if (index < 0) {
-                        allItems.push(powerStation2D);
-                    }
-                }
-            } else if (powerStation2D) {
-                // Remove 2D powerstation if not needed (but keep it if just switching modes temporarily)
-                // Only remove if switching to 3D mode
-                if (scene3D && scene3D.viewMode === '3d') {
-                    const index = allItems.findIndex(item => item.id === powerStation2D.id);
-                    if (index >= 0) {
-                        allItems.splice(index, 1);
-                    }
-                    powerStation2D = null;
-                }
-            }
-            
             // Still create 3D nodes for panels (not part of PowerStation)
             allItems.forEach(node2D => {
                 if (node2D.type === 'panel') {
@@ -25488,6 +25518,8 @@
                         invalidateSpecsCache();
                         itemIdCounter = idCounter;
                         connectionIdCounter = connIdCounter;
+
+                        cleanupPowerStation2D();
                         
                         // Rebuild handle.connectedTo arrays from connections
                         allItems.forEach(item => {
@@ -25646,6 +25678,8 @@
                         invalidateSpecsCache(); // New data loaded - clear cached specs
                         itemIdCounter = state.itemIdCounter || 0;
                         connectionIdCounter = state.connectionIdCounter || 0;
+
+                        cleanupPowerStation2D();
                         
                         // Rebuild handle.connectedTo arrays from connections
                         // (these don't serialize properly with circular refs)

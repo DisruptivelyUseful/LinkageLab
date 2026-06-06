@@ -333,6 +333,41 @@
     opacity: 0.5;
 }
 
+.system-review-cost-section {
+    background: var(--space-800);
+    border: 1px solid var(--space-500);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-top: 4px;
+}
+
+.system-review-cost-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+}
+
+.system-review-cost-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 13px;
+    color: var(--text-primary);
+    padding: 4px 0;
+}
+
+.system-review-cost-row.system-review-cost-total {
+    margin-top: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--space-500);
+    font-weight: 700;
+    color: var(--text-data);
+}
+
 /* ============================================
    INCIDENT REPORT MODAL - Enhanced Failure Feedback
    ============================================ */

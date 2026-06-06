@@ -1767,6 +1767,29 @@ body.embed-mode #embed-info-panel:not(.open) {
     margin-top: 8px;
 }
 
+/* Blueprint grid background (alternative to 3D LinkageLab structure) */
+body.blueprint-background #canvas-container {
+    background-color: #0a1525;
+    background-image:
+        linear-gradient(rgba(112, 160, 208, 0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(112, 160, 208, 0.06) 1px, transparent 1px),
+        linear-gradient(rgba(112, 160, 208, 0.1) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(112, 160, 208, 0.1) 1px, transparent 1px);
+    background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px;
+}
+
+body.blueprint-background #canvas-container::after {
+    background: radial-gradient(
+        ellipse 85% 70% at 50% 50%,
+        transparent 0%,
+        rgba(10, 14, 26, 0.25) 100%
+    );
+}
+
+body.blueprint-background #main-3d-view-controls {
+    display: none !important;
+}
+
 /* ============================================
    LITE LIVE VISUALS (iPad / touch / reduced motion)
    Disables expensive wire animations and glow filters in Test mode

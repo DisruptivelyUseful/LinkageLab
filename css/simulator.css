@@ -2,8 +2,7 @@
    SOLAR SIMULATOR MODE - Specific Styles
    ============================================ */
 
-/* Simulator inherits most styles from designer.css */
-/* Add simulator-specific overrides here if needed */
+/* Simulator loads designer.css before this file; overrides only below */
 
 /* SVG layer - ensure visibility */
 svg {

@@ -14308,11 +14308,21 @@ function serializeGeometry(data) {
                 thickness: panel.thickness,
                 rotation: panel.rotation,
                 normal: panel.normal,
-                // Include axisX for proper orientation in simulator
+                // Include axis triad for proper orientation in simulator
                 axisX: panel.axisX ? {
                     x: panel.axisX.x,
                     y: panel.axisX.y,
                     z: panel.axisX.z
+                } : null,
+                axisY: panel.axisY ? {
+                    x: panel.axisY.x,
+                    y: panel.axisY.y,
+                    z: panel.axisY.z
+                } : null,
+                axisZ: panel.axisZ ? {
+                    x: panel.axisZ.x,
+                    y: panel.axisZ.y,
+                    z: panel.axisZ.z
                 } : null,
                 // Grid position info
                 row: row,

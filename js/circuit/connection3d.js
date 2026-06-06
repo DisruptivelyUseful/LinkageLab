@@ -657,21 +657,18 @@ export class Connection3D {
             }
         }
         
-        // Apply panel rotation to handle offset if panel is linked to structure
-        // Only do this if we didn't get the position from port handle mesh above
-        if (node3D.node2D.type === 'panel' && node3D.node2D.linkedStructurePanel) {
-            const rotation = node3D.node2D.linkedStructurePanel.rotation || 0;
-            if (rotation !== 0) {
-                // Rotate handle offset around Y axis
-                const cos = Math.cos(rotation);
-                const sin = Math.sin(rotation);
-                const rotatedX = handleX * cos - handleZ * sin;
-                const rotatedZ = handleX * sin + handleZ * cos;
-                handleX = rotatedX;
-                handleZ = rotatedZ;
-            }
+        const handleOffset = new THREE.Vector3(handleX, handleY, handleZ);
+
+        // Apply full panel orientation when linked to LinkageLab structure geometry
+        if (node3D.node2D.type === 'panel' && node3D.node2D.linkedStructurePanel && node3D.mesh) {
+            const panelWorldPos = new THREE.Vector3();
+            const panelWorldQuat = new THREE.Quaternion();
+            node3D.mesh.getWorldPosition(panelWorldPos);
+            node3D.mesh.getWorldQuaternion(panelWorldQuat);
+            handleOffset.applyQuaternion(panelWorldQuat);
+            return panelWorldPos.clone().add(handleOffset);
         }
-        
+
         return new THREE.Vector3(
             nodePos.x + handleX,
             nodePos.y + handleY,

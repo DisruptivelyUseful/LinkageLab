@@ -3,12 +3,18 @@ echo ========================================
 echo   LinkageLab Local Server
 echo ========================================
 echo.
+echo Serving files from:
+echo   %CD%
+echo.
 echo Starting server on http://localhost:8000
 echo.
 echo Press Ctrl+C to stop the server
 echo.
 echo Your browser should open automatically...
 echo If not, open: http://localhost:8000/index.html
+echo.
+echo TIP: If changes don't appear, stop ALL old servers (Ctrl+C)
+echo      and re-run this script from your GitHub Desktop repo folder.
 echo.
 echo ========================================
 timeout /t 2 >nul
@@ -17,7 +23,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -Command ^
 "$listener = New-Object System.Net.HttpListener; ^
 $listener.Prefixes.Add('http://localhost:8000/'); ^
 $listener.Start(); ^
-Write-Host 'Server running on http://localhost:8000'; ^
+Write-Host ('Server running on http://localhost:8000'); ^
+Write-Host ('Serving from: ' + (Get-Location).Path); ^
 Write-Host 'Press Ctrl+C to stop...'; ^
 while ($listener.IsListening) { ^
     $context = $listener.GetContext(); ^
