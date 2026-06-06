@@ -4,6 +4,203 @@
 
 /* Simulator loads designer.css before this file; overrides only below */
 
+.simulator-page {
+    --sim-topbar-height: 52px;
+    --sim-controls-bar-height: 52px;
+    --sim-stats-bar-height: 44px;
+    --sim-bottom-dock-height: calc(var(--sim-controls-bar-height) + var(--sim-stats-bar-height));
+}
+
+/* Single-row simulator topbar (actions only) */
+.sim-topbar {
+    height: auto;
+    min-height: var(--sim-topbar-height);
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    padding: 0;
+    gap: 0;
+}
+
+.sim-topbar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--sim-topbar-height);
+    padding: 4px 12px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.sim-topbar-row-actions {
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+}
+
+.sim-topbar-row-actions .toolbar-left,
+.sim-topbar-row-actions .toolbar-right {
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sim-topbar-row-actions .toolbar-right {
+    justify-content: flex-end;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.sim-topbar-row .file-controls {
+    flex-wrap: wrap;
+}
+
+/* Fixed bottom dock: simulation controls + stats */
+.sim-bottom-dock {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1100;
+    display: flex;
+    flex-direction: column;
+    pointer-events: none;
+}
+
+.sim-bottom-dock > * {
+    pointer-events: auto;
+}
+
+.sim-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px 16px;
+    min-height: var(--sim-controls-bar-height);
+    padding: 6px 16px;
+    background: var(--bg-toolbar);
+    border-top: 1px solid var(--clr-primary);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.45);
+}
+
+.sim-bottom-bar .time-display {
+    font-family: var(--font-mono);
+    font-size: 0.95em;
+    font-weight: 600;
+    color: var(--text-data);
+    text-shadow: var(--glow-cyan);
+    white-space: nowrap;
+    padding: 6px 14px;
+    background: var(--space-800);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-md);
+}
+
+.sim-bottom-bar .play-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.sim-bottom-bar .weather-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+#statsBar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: var(--sim-stats-bar-height);
+    padding: 4px 12px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    background: rgba(15, 22, 32, 0.96);
+    border-top: 1px solid rgba(var(--clr-primary-rgb), 0.2);
+    -webkit-overflow-scrolling: touch;
+}
+
+#statsBar .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-width: 72px;
+    padding: 2px 8px;
+    flex-shrink: 0;
+}
+
+#statsBar .stat-label {
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+#statsBar .stat-value {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--clr-primary);
+}
+
+#statsBar .stat-value.large {
+    font-size: 1rem;
+}
+
+#statsBar .stat-unit {
+    font-size: 0.58rem;
+    color: var(--text-muted);
+}
+
+@media (pointer: coarse) {
+    .simulator-page {
+        --sim-topbar-height: 56px;
+        --sim-controls-bar-height: 56px;
+        --sim-stats-bar-height: 48px;
+    }
+
+    .sim-topbar-row {
+        min-height: 56px;
+        padding: 6px 10px;
+    }
+
+    .sim-topbar-row-actions .toolbar-left button,
+    .sim-topbar-row-actions .toolbar-right button,
+    .sim-topbar-row-actions .toolbar-right select,
+    .sim-topbar-row-actions .toolbar-right label {
+        min-height: 40px;
+    }
+
+    .sim-bottom-bar .play-controls button,
+    .sim-bottom-bar .play-controls input[type="range"],
+    .sim-bottom-bar .weather-controls select {
+        min-height: 40px;
+    }
+}
+
+@media (max-width: 900px) {
+    .simulator-page {
+        --sim-topbar-height: 88px;
+    }
+
+    .sim-topbar-row-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .sim-topbar-row-actions .toolbar-left,
+    .sim-topbar-row-actions .toolbar-right {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
 /* SVG layer - ensure visibility */
 svg {
     touch-action: none;
@@ -969,17 +1166,17 @@ path.wire.ac-240 {
     flex-grow: 1;
     overflow: hidden;
     position: relative;
-    margin-top: 52px; /* Account for topbar */
-    height: calc(100vh - 52px);
+    margin-top: var(--sim-topbar-height, 52px);
+    height: calc(100vh - var(--sim-topbar-height, 52px) - var(--sim-bottom-dock-height, 96px));
 }
 
 /* Canvas container - 3D viewport */
 #canvas-container {
     position: fixed;
-    top: 52px;
+    top: var(--sim-topbar-height, 52px);
     left: 260px; /* Account for left sidebar */
     right: 0;
-    bottom: 0;
+    bottom: var(--sim-bottom-dock-height, 96px);
     overflow: hidden;
     touch-action: none;
     -webkit-overflow-scrolling: touch;
@@ -1050,8 +1247,8 @@ body:has(#left-sidebar:not(.collapsed)) #canvas-container {
     overflow-x: hidden;
     color: var(--text-primary);
     position: fixed;
-    top: 52px; /* Below topbar */
-    bottom: 0;
+    top: var(--sim-topbar-height, 52px); /* Below topbar */
+    bottom: var(--sim-bottom-dock-height, 96px); /* Above bottom dock */
     z-index: var(--z-sticky);
     box-shadow:
         4px 0 20px rgba(0, 0, 0, 0.3),
@@ -1167,6 +1364,19 @@ body:has(#right-sidebar.closed) #right-sidebar-toggle {
 
 .toolbar .zoom-controls {
     gap: 5px;
+}
+
+.sim-bottom-bar .play-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.sim-bottom-bar .play-controls input[type="range"] {
+    min-width: 120px;
+    max-width: 220px;
 }
 
 .toolbar .play-controls {

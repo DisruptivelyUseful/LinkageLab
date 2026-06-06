@@ -61,13 +61,38 @@
     <link rel="stylesheet" href="css/simulator.css">
     <!-- Inline styles removed - now using external CSS files -->
     <style>
-        /* All styles moved to external CSS files in css/ folder */
-        /* Only keeping minimal critical overrides if needed */
+        @keyframes drag-dash-march {
+            from { stroke-dashoffset: 0; }
+            to   { stroke-dashoffset: -22px; }
+        }
+        @keyframes drag-source-pulse {
+            0%   { r: 10px; opacity: 0.9; }
+            50%  { r: 18px; opacity: 0.4; }
+            100% { r: 10px; opacity: 0.9; }
+        }
+        @keyframes drag-snap-ring {
+            0%   { r: 20px; opacity: 1;   stroke-width: 3; }
+            50%  { r: 28px; opacity: 0.5; stroke-width: 2; }
+            100% { r: 20px; opacity: 1;   stroke-width: 3; }
+        }
+        .drag-preview-halo {
+            animation: drag-dash-march 0.4s linear infinite;
+        }
+        .drag-preview-dashes {
+            animation: drag-dash-march 0.4s linear infinite;
+        }
+        .drag-source-pulse {
+            animation: drag-source-pulse 0.8s ease-in-out infinite;
+        }
+        .drag-snap-ring {
+            animation: drag-snap-ring 0.5s ease-in-out infinite;
+        }
     </style>
 </head>
-<body>
+<body class="simulator-page">
     <!-- TOOLBAR -->
-    <div class="toolbar topbar">
+    <div class="toolbar topbar sim-topbar">
+        <div class="sim-topbar-row sim-topbar-row-actions">
         <div class="toolbar-left topbar-left">
             <button id="undoButton" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
             <button id="redoButton" title="Redo (Ctrl+Y)" disabled>↷ Redo</button>
@@ -92,21 +117,6 @@
                     <span class="live-view-power-unit">(</span>
                     <span id="liveViewBatteryPercentLeft" class="live-view-power-label battery">0</span>
                     <span class="live-view-power-unit">%)</span>
-                </div>
-            </div>
-        </div>
-        
-        <div class="toolbar-center topbar-center">
-            <!-- Time display - always visible and centered -->
-            <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
-
-            <!-- Simulate Mode Controls -->
-            <div id="simulateControls">
-                <div class="play-controls">
-                    <button id="playPauseButton">▶</button>
-                    <input type="range" id="speedSlider" min="1" max="100" value="10">
-                    <span class="speed-label" id="speedLabel">1x</span>
-                    <button id="resetSimulationBtn" style="margin-left: 10px;">Reset Simulation</button>
                 </div>
             </div>
         </div>
@@ -166,15 +176,7 @@
             </label>
             <button id="editCircuitBtn" style="background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);" title="Open this circuit in Solar Designer for advanced editing">✏️ Open in Designer</button>
             <button id="challengeModeBtn">Challenge Mode</button>
-            <div class="weather-controls">
-                <label for="weatherDifficulty" style="color: white;">Weather:</label>
-                <select id="weatherDifficulty" style="padding: 5px;">
-                    <option value="clear" selected>Clear Sky (100%)</option>
-                    <option value="easy">Easy (80-100%)</option>
-                    <option value="medium">Medium (50-80%)</option>
-                    <option value="hard">Hard (20-60%)</option>
-                </select>
-            </div>
+        </div>
         </div>
     </div>
     
@@ -4839,6 +4841,20 @@
         const heatMerge = heatGlow.append("feMerge");
         heatMerge.append("feMergeNode").attr("in", "coloredBlur");
         heatMerge.append("feMergeNode").attr("in", "SourceGraphic");
+
+        const dragPreviewGlow = defs.append("filter")
+            .attr("id", "drag-preview-glow")
+            .attr("x", "-50%")
+            .attr("y", "-50%")
+            .attr("width", "200%")
+            .attr("height", "200%");
+        dragPreviewGlow.append("feGaussianBlur")
+            .attr("in", "SourceGraphic")
+            .attr("stdDeviation", "4")
+            .attr("result", "blur");
+        const dragPreviewMerge = dragPreviewGlow.append("feMerge");
+        dragPreviewMerge.append("feMergeNode").attr("in", "blur");
+        dragPreviewMerge.append("feMergeNode").attr("in", "SourceGraphic");
         
         // Overheat gradient for controllers
         const overheatGradient = defs.append("linearGradient")
@@ -12065,82 +12081,237 @@
             
             render();
         }
+
+        // ---- Drag preview elements (populated by handleDragStart, cleared by handleDragEnd) ----
+        let _dragPreviewHalo = null;
+        let _dragPreviewLine = null;
+        let _dragSourceDot = null;
+        let _dragCursorDot = null;
+        let _dragSnapRing = null;
+        let _dragSnapTarget = null;
+        let _dragWireColor = '#aaa';
+
+        function _getDragPreviewColor(polarity) {
+            switch (polarity) {
+                case 'positive':
+                case 'pv-positive':  return '#ff6660';
+                case 'negative':
+                case 'pv-negative':  return '#aaaaaa';
+                case 'ac':
+                case 'load':         return '#ffd060';
+                case 'parallel':     return '#40c8ff';
+                case 'output':       return '#80e880';
+                default:             return '#cccccc';
+            }
+        }
+
+        function _clientToSVG(clientX, clientY) {
+            try {
+                const ctm = zoomGroup.node().getScreenCTM();
+                if (!ctm) return null;
+                const pt = svg.node().createSVGPoint();
+                pt.x = clientX;
+                pt.y = clientY;
+                const transformed = pt.matrixTransform(ctm.inverse());
+                return [transformed.x, transformed.y];
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function _dragEventToSVGCoords(event) {
+            const src = event.sourceEvent;
+            if (!src) return null;
+
+            if (src.changedTouches && src.changedTouches.length > 0) {
+                const t = src.changedTouches[0];
+                return _clientToSVG(t.clientX, t.clientY);
+            }
+            if (src.touches && src.touches.length > 0) {
+                const t = src.touches[0];
+                return _clientToSVG(t.clientX, t.clientY);
+            }
+            if (src.clientX !== undefined) {
+                return _clientToSVG(src.clientX, src.clientY);
+            }
+            return null;
+        }
         
         function handleDragStart(event, item, handle) {
             if (!circuitEditEnabled) return;
             event.sourceEvent?.stopPropagation?.();
             
-            // Store reference to the CURRENT item from allItems (not a stale copy)
             const currentItem = allItems.find(i => i.id === item.id);
             const currentHandle = currentItem ? Object.values(currentItem.handles).find(h => h.id === handle.id) : handle;
             
             draggingHandle = { 
-                itemId: item.id,  // Store ID instead of object reference
+                itemId: item.id,
                 handleId: handle.id,
                 item: currentItem || item,
                 handle: currentHandle || handle
             };
             
             const pos = getHandlePosition(draggingHandle.item, draggingHandle.handle);
-            
-            tempWire = tempGroup.append("path")
-                .attr("class", "wire temp")
-                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`);
+            const polarity = draggingHandle.handle.polarity || 'mixed';
+            _dragWireColor = _getDragPreviewColor(polarity);
+
+            tempGroup.selectAll('.drag-preview').remove();
+
+            _dragPreviewHalo = tempGroup.append("path")
+                .attr("class", "drag-preview drag-preview-halo")
+                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`)
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 12)
+                .style("stroke-linecap", "round")
+                .style("stroke-dasharray", "16,8")
+                .style("stroke-dashoffset", "0")
+                .style("fill", "none")
+                .style("opacity", 0.3)
+                .style("filter", "url(#drag-preview-glow)")
+                .style("pointer-events", "none");
+
+            _dragPreviewLine = tempGroup.append("path")
+                .attr("class", "drag-preview drag-preview-dashes")
+                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`)
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 3)
+                .style("stroke-linecap", "round")
+                .style("stroke-dasharray", "10,6")
+                .style("stroke-dashoffset", "0")
+                .style("fill", "none")
+                .style("opacity", 0.95)
+                .style("pointer-events", "none");
+
+            _dragSourceDot = tempGroup.append("circle")
+                .attr("class", "drag-preview drag-source-pulse")
+                .attr("cx", pos.x)
+                .attr("cy", pos.y)
+                .attr("r", 14)
+                .style("fill", "none")
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 2.5)
+                .style("opacity", 0.9)
+                .style("pointer-events", "none");
+
+            _dragCursorDot = tempGroup.append("circle")
+                .attr("class", "drag-preview")
+                .attr("cx", pos.x)
+                .attr("cy", pos.y)
+                .attr("r", 6)
+                .style("fill", _dragWireColor)
+                .style("opacity", 0.9)
+                .style("pointer-events", "none");
+
+            tempWire = _dragPreviewLine;
         }
         
         function handleDragMove(event) {
-            if (!draggingHandle || !tempWire) return;
+            if (!draggingHandle || !_dragPreviewLine) return;
             
-            // Prevent default touch behavior during drag
-            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                event.sourceEvent.preventDefault();
-            }
-            
-            // Get fresh reference to item (in case it moved)
+            event.sourceEvent?.preventDefault?.();
+
             const item = allItems.find(i => i.id === draggingHandle.itemId) || draggingHandle.item;
             const handle = Object.values(item.handles).find(h => h.id === draggingHandle.handleId) || draggingHandle.handle;
             
-            // d3.pointer automatically handles both mouse and touch events
-            const [mouseX, mouseY] = d3.pointer(event, zoomGroup.node());
+            let coords = _dragEventToSVGCoords(event);
+            if (!coords) {
+                try { coords = d3.pointer(event, zoomGroup.node()); } catch (e) { return; }
+            }
+            const [mouseX, mouseY] = coords;
             const start = getHandlePosition(item, handle);
-            
-            // Determine target side based on mouse position relative to start
+
             let targetSide = 'top';
-            if (mouseY > start.y + 20) targetSide = 'top';      // Mouse is below, so target handle is on top
-            else if (mouseY < start.y - 20) targetSide = 'bottom'; // Mouse is above, so target handle is on bottom
-            else if (mouseX > start.x) targetSide = 'left';
-            else targetSide = 'right';
+            if (mouseY > start.y + 20)      targetSide = 'top';
+            else if (mouseY < start.y - 20) targetSide = 'bottom';
+            else if (mouseX > start.x)      targetSide = 'left';
+            else                             targetSide = 'right';
             
             const path = generateCurvePath(start.x, start.y, mouseX, mouseY, handle.side, targetSide);
-            tempWire.attr("d", path);
+
+            if (_dragPreviewHalo)  _dragPreviewHalo.attr("d", path);
+            if (_dragPreviewLine)  _dragPreviewLine.attr("d", path);
+
+            if (_dragCursorDot) {
+                _dragCursorDot.attr("cx", mouseX).attr("cy", mouseY);
+            }
+
+            const snapDist = HANDLE_RADIUS * 8;
+            let nearestItem = null, nearestHandle = null, nearestDist = snapDist;
+
+            for (const candidate of allItems) {
+                for (const h of Object.values(candidate.handles)) {
+                    if (candidate.id === draggingHandle.itemId && h.id === draggingHandle.handleId) continue;
+                    const pos = getHandlePosition(candidate, h);
+                    const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestItem = candidate;
+                        nearestHandle = h;
+                    }
+                }
+            }
+
+            if (nearestHandle) {
+                const snapPos = getHandlePosition(nearestItem, nearestHandle);
+                if (!_dragSnapRing) {
+                    _dragSnapRing = tempGroup.append("circle")
+                        .attr("class", "drag-preview drag-snap-ring")
+                        .style("fill", "none")
+                        .style("stroke", _dragWireColor)
+                        .style("stroke-width", 3)
+                        .style("pointer-events", "none");
+                }
+                _dragSnapRing
+                    .attr("cx", snapPos.x)
+                    .attr("cy", snapPos.y)
+                    .attr("r", HANDLE_RADIUS + 8)
+                    .style("opacity", 1)
+                    .style("display", null);
+                _dragSnapTarget = { item: nearestItem, handle: nearestHandle };
+            } else if (_dragSnapRing) {
+                _dragSnapRing.style("display", "none");
+                _dragSnapTarget = null;
+            }
+
+            tempGroup.raise();
         }
         
         function handleDragEnd(event) {
+            tempGroup.selectAll('.drag-preview').remove();
+            tempWire = null;
+            _dragPreviewHalo = null;
+            _dragPreviewLine = null;
+            _dragSourceDot = null;
+            _dragCursorDot = null;
+            _dragSnapRing = null;
+            _dragSnapTarget = null;
+
             _lastHandleDragEndTime = Date.now();
             if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
                 event.sourceEvent.preventDefault();
             }
             
-            if (tempWire) tempWire.remove();
-            tempWire = null;
-            
             if (!draggingHandle) return;
+
+            const src = event.sourceEvent;
+            const coords = _dragEventToSVGCoords(event);
+            let x, y;
+            if (coords) {
+                [x, y] = coords;
+            } else {
+                try { [x, y] = d3.pointer(event, zoomGroup.node()); }
+                catch (e) { draggingHandle = null; return; }
+            }
             
-            // d3.pointer automatically handles both mouse and touch events
-            const [x, y] = d3.pointer(event, zoomGroup.node());
-            
-            // Get fresh reference to source item
             const sourceItem = allItems.find(i => i.id === draggingHandle.itemId) || draggingHandle.item;
             const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === draggingHandle.handleId) || draggingHandle.handle;
             
-            // Find target handle - closest one within range
+            const isTouch = src && (src.pointerType === 'touch' || (src.type && src.type.startsWith('touch')));
             let targetItem = null;
             let targetHandle = null;
-            let closestDist = HANDLE_RADIUS * 3;
+            let closestDist = HANDLE_RADIUS * (isTouch ? 6 : 3);
             
             for (const item of allItems) {
-                if (item.id === sourceItem.id) continue;
-                
                 for (const handle of Object.values(item.handles)) {
                     const pos = getHandlePosition(item, handle);
                     const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
@@ -12151,6 +12322,11 @@
                         targetHandle = handle;
                     }
                 }
+            }
+
+            if (targetHandle && targetItem.id === sourceItem.id && targetHandle.id === sourceHandle.id) {
+                draggingHandle = null;
+                return;
             }
             
             if (targetHandle) {
@@ -27161,8 +27337,29 @@
         });
     </script>
     
-    <!-- Bottom Stats Bar -->
-    <div id="statsBar">
+    <!-- Bottom dock: simulation controls + live stats (always visible, full width) -->
+    <footer id="sim-bottom-dock" class="sim-bottom-dock">
+        <div id="sim-bottom-bar" class="sim-bottom-bar">
+            <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
+            <div id="simulateControls">
+                <div class="play-controls">
+                    <button id="playPauseButton">▶</button>
+                    <input type="range" id="speedSlider" min="1" max="100" value="10">
+                    <span class="speed-label" id="speedLabel">1x</span>
+                    <button id="resetSimulationBtn">Reset Simulation</button>
+                </div>
+            </div>
+            <div class="weather-controls">
+                <label for="weatherDifficulty">Weather:</label>
+                <select id="weatherDifficulty">
+                    <option value="clear" selected>Clear Sky (100%)</option>
+                    <option value="easy">Easy (80-100%)</option>
+                    <option value="medium">Medium (50-80%)</option>
+                    <option value="hard">Hard (20-60%)</option>
+                </select>
+            </div>
+        </div>
+        <div id="statsBar">
         <div class="stat-item">
             <div class="stat-label">Time</div>
             <div class="stat-value" id="liveTimeElapsed">0</div>
@@ -27215,6 +27412,7 @@
         </div>
         <div id="resourceStatsContainer" style="display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; flex: 0 0 auto;"></div>
     </div>
+    </footer>
 </body>
 </html>
 
