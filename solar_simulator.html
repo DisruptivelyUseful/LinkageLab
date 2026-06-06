@@ -135,11 +135,15 @@
             <div class="view-mode-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px;">
                 <label style="font-size: 12px; color: #aaa;">View:</label>
                 <select id="viewModeSelect" style="padding: 5px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer;">
-                    <option value="2d">2D</option>
+                    <option value="2d" selected>2D</option>
                     <option value="3d">3D</option>
                     <option value="split">Split</option>
                 </select>
             </div>
+            <label id="blueprintBackgroundLabel" style="display: none; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer; margin-right: 10px;" title="Use blueprint grid instead of LinkageLab 3D structure background">
+                <input type="checkbox" id="blueprintBackgroundToggle" checked style="cursor: pointer;">
+                Blueprint BG
+            </label>
             <!-- Phase 9: 3D View Controls (shown only in 3D/Split mode) -->
             <div class="3d-view-controls" style="display: none; align-items: center; gap: 5px; margin-right: 10px;" id="3dViewControlsContainer">
                 <button id="cameraResetBtn" title="Reset Camera" style="padding: 5px 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer; font-size: 11px;">📷 Reset</button>
@@ -152,11 +156,15 @@
                     <span>Shadows</span>
                 </label>
             </div>
+            <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;" title="Drag components, connect wires, and edit wire paths while simulating">
+                <input type="checkbox" id="circuitEditToggle" checked style="cursor: pointer;">
+                Edit Layout
+            </label>
             <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
                 <input type="checkbox" id="showHintsToggle" checked style="cursor: pointer;">
                 Show Hints
             </label>
-            <button id="editCircuitBtn" style="background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);">✏️ Edit Circuit</button>
+            <button id="editCircuitBtn" style="background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);" title="Open this circuit in Solar Designer for advanced editing">✏️ Open in Designer</button>
             <button id="challengeModeBtn">Challenge Mode</button>
             <div class="weather-controls">
                 <label for="weatherDifficulty" style="color: white;">Weather:</label>
@@ -2006,6 +2014,35 @@
         // ============================================
         
         let currentMode = 'simulate'; // 'build', 'live', or 'simulate' - simulator always runs in simulate mode
+        let circuitEditEnabled = true; // Inline canvas editing (wires, components, waypoints) while simulating
+
+        // Touch / iPad: lighter visuals and 2D-first defaults
+        const USE_LITE_LIVE_VISUALS = (() => {
+            try {
+                return window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                    || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    || (navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 1200);
+            } catch (e) {
+                return false;
+            }
+        })();
+        const PREFER_LITE_CANVAS = USE_LITE_LIVE_VISUALS;
+        if (USE_LITE_LIVE_VISUALS) {
+            document.body.classList.add('lite-live-visuals');
+        }
+
+        function setMode(mode) {
+            if (mode === 'live') {
+                currentMode = 'live';
+            } else {
+                currentMode = 'simulate';
+                if (typeof LiveView !== 'undefined' && LiveView.stop) {
+                    LiveView.stop();
+                }
+                if (LiveView?.state) LiveView.state.active = false;
+            }
+            render();
+        }
         
         // ============================================
         // LIVE VIEW MODULE
@@ -4607,6 +4644,10 @@
         // Drag state
         let isDragging = false;
         let dragStartPos = { x: 0, y: 0 };
+        let _lastHandleDragEndTime = 0;
+        let _lastTapInfo = { id: null, time: 0 };
+        let _lastTapHandledAt = 0;
+        let _lastWireTapInfo = { id: null, time: 0 };
         let dragOffset = { x: 0, y: 0 };
         let tempWire = null;
         let draggingHandle = null;
@@ -5997,21 +6038,55 @@
                 )
                 .on("click", (event, d) => {
                     event.stopPropagation();
-                    // Select item and open inspector
                     selectItem(d);
                     openInspector(d);
                 })
+                .on("pointerup", function(event, d) {
+                    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+                    const dx = event.clientX - dragStartPos.x;
+                    const dy = event.clientY - dragStartPos.y;
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return;
+                    if (Date.now() - _lastHandleDragEndTime < 250) return;
+                    if (event.target.closest?.('.handle') ||
+                        event.target.closest?.('.reset-button') ||
+                        event.target.closest?.('.load-switch-group') ||
+                        event.target.closest?.('.breaker-switch-group')) return;
+
+                    event.stopPropagation();
+                    const now = Date.now();
+                    _lastTapHandledAt = now;
+                    const isDoubleTap = (_lastTapInfo.id === d.id && now - _lastTapInfo.time < 350);
+                    _lastTapInfo = { id: d.id, time: now };
+
+                    if (d.type === 'acload' && currentMode === 'simulate') {
+                        toggleLoadInSimulate(d);
+                    }
+                    selectItem(d);
+                    if (isDoubleTap) openInspector(d);
+                })
                 .on("touchend", (event, d) => {
-                    // Handle touch as click for mobile devices
                     event.stopPropagation();
                     event.preventDefault();
+                    const now = Date.now();
+                    if (now - _lastHandleDragEndTime < 250) return;
+                    if (now - _lastTapHandledAt < 100) return;
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const moved = Math.abs(touch.clientX - dragStartPos.x) > 12 ||
+                                  Math.abs(touch.clientY - dragStartPos.y) > 12;
+                    if (moved) return;
+                    _lastTapHandledAt = now;
+                    const isDoubleTap = (_lastTapInfo.id === d.id && now - _lastTapInfo.time < 350);
+                    _lastTapInfo = { id: d.id, time: now };
+                    if (d.type === 'acload' && currentMode === 'simulate') {
+                        toggleLoadInSimulate(d);
+                    }
                     selectItem(d);
-                    openInspector(d);
+                    if (isDoubleTap) openInspector(d);
                 })
                 .on("dblclick", (event, d) => {
                     event.stopPropagation();
-                    // Double-click also opens inspector (or toggles load if it's an AC load)
-                    if (d.type === 'acload') {
+                    if (d.type === 'acload' && currentMode === 'simulate') {
                         toggleLoadInSimulate(d);
                     }
                     selectItem(d);
@@ -9870,8 +9945,36 @@
                     handleStroke = '#5a9a5a';
                 }
                 
-                // Draw handle circle
-                const handleCircle = g.append("circle")
+                // Invisible enlarged hit-area for touch screens (below visible handle)
+                const touchHitArea = handleRadius + 10;
+                g.append("circle")
+                    .attr("class", `handle ${handle.polarity} ${handle.resourceType ? 'resource-port' : ''}`)
+                    .attr("cx", handle.x)
+                    .attr("cy", handle.y)
+                    .attr("r", touchHitArea)
+                    .attr("data-handle-id", handle.id)
+                    .attr("fill", "transparent")
+                    .attr("stroke", "none")
+                    .style("touch-action", "none")
+                    .style("-webkit-touch-callout", "none")
+                    .call(d3.drag()
+                        .touchable(true)
+                        .on("start", (event) => {
+                            event.sourceEvent?.preventDefault?.();
+                            event.sourceEvent?.stopPropagation?.();
+                            handleDragStart(event, d, handle);
+                        })
+                        .on("drag", (event) => {
+                            event.sourceEvent?.preventDefault?.();
+                            handleDragMove(event);
+                        })
+                        .on("end", (event) => {
+                            handleDragEnd(event);
+                        })
+                    );
+
+                // Visible handle circle (on top of hit area)
+                g.append("circle")
                     .attr("class", `handle ${handle.polarity} ${handle.resourceType ? 'resource-port' : ''}`)
                     .attr("cx", handle.x)
                     .attr("cy", handle.y)
@@ -9880,49 +9983,9 @@
                     .attr("fill", handleColor)
                     .attr("stroke", handleStroke)
                     .attr("stroke-width", 2)
-                    .style("pointer-events", "auto") // Enable pointer events for interactions
-                    .style("touch-action", "none") // Prevent default touch behaviors
-                    .style("-webkit-touch-callout", "none") // Prevent iOS callout
-                    .call(d3.drag()
-                        .touchable(true) // Enable touch support in d3.drag
-                        .filter(function(event) {
-                            // Always allow handle dragging - don't filter
-                            return true;
-                        })
-                        .on("start", (event) => {
-                            // Stop propagation to prevent node drag from interfering
-                            if (event.sourceEvent) {
-                                event.sourceEvent.stopPropagation();
-                            }
-                            // Prevent default touch behavior
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
-                            handleDragStart(event, d, handle);
-                        })
-                        .on("drag", (event) => {
-                            // Stop propagation to prevent node drag from interfering
-                            if (event.sourceEvent) {
-                                event.sourceEvent.stopPropagation();
-                            }
-                            // Prevent default touch behavior during drag
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
-                            handleDragMove(event);
-                        })
-                        .on("end", (event) => {
-                            // Stop propagation to prevent node drag from interfering
-                            if (event.sourceEvent) {
-                                event.sourceEvent.stopPropagation();
-                            }
-                            // Prevent default touch behavior
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
-                            handleDragEnd(event);
-                        })
-                    );
+                    .style("touch-action", "none")
+                    .style("-webkit-touch-callout", "none")
+                    .style("pointer-events", "none");
                 
                 // Add +/- symbol centered on handle (for DC polarities)
                 const normalizedPolarity = handle.polarity === 'pv-positive' ? 'positive' : 
@@ -10643,6 +10706,21 @@
                     event.stopPropagation();
                     deleteConnection(d.id);
                     closeInspector();
+                })
+                .on("touchend", (event, d) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const now = Date.now();
+                    const isDoubleTap = (_lastWireTapInfo.id === d.id && now - _lastWireTapInfo.time < 350);
+                    _lastWireTapInfo = { id: d.id, time: now };
+                    if (isDoubleTap) {
+                        deleteConnection(d.id);
+                        closeInspector();
+                    } else {
+                        selectConnection(d);
+                    }
                 });
             
             // Create wire path
@@ -10663,6 +10741,21 @@
                     event.stopPropagation();
                     deleteConnection(d.id);
                     closeInspector();
+                })
+                .on("touchend", (event, d) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const now = Date.now();
+                    const isDoubleTap = (_lastWireTapInfo.id === d.id && now - _lastWireTapInfo.time < 350);
+                    _lastWireTapInfo = { id: d.id, time: now };
+                    if (isDoubleTap) {
+                        deleteConnection(d.id);
+                        closeInspector();
+                    } else {
+                        selectConnection(d);
+                    }
                 });
             
             const mergedGroups = wireGroups.merge(newWireGroups);
@@ -10675,8 +10768,7 @@
                 .attr("d", d => generateWirePath(d))
                 .classed("selected", d => selectedConnection && selectedConnection.id === d.id)
                 .classed("power-flowing", d => {
-                    // Add power-flowing class for AC wire animation in simulate AND live modes
-                    // Force re-evaluation on every render by always checking current power flow state
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -10704,8 +10796,7 @@
                     return false;
                 })
                 .classed("power-flowing-reverse", d => {
-                    // Add power-flowing-reverse class for AC wires drawn from load to source
-                    // This makes the animation flow towards the load (opposite of wire draw direction)
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -10722,8 +10813,7 @@
                     return false;
                 })
                 .classed("pv-flowing", d => {
-                    // Add pv-flowing class for PV wire animation in simulate AND live modes
-                    // Only for positive wires (electron flow: panel+ to controller+)
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -10737,7 +10827,7 @@
                     return false;
                 })
                 .classed("pv-flowing-reverse", d => {
-                    // Add pv-flowing-reverse for negative wires (electron flow: controller- to panel-)
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -10763,7 +10853,7 @@
                     return false;
                 })
                 .classed("battery-charging", d => {
-                    // Add battery-charging class for battery wire animation (power flowing INTO battery)
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -10779,7 +10869,7 @@
                     return false;
                 })
                 .classed("battery-discharging", d => {
-                    // Add battery-discharging class for battery wire animation (power flowing FROM battery)
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
                         powerFlow = SimulateMode.powerFlow[d.id];
@@ -11090,8 +11180,8 @@
                     return 1;
                 });
             
-            // Render waypoint handles for each wire (only in build mode)
-            if (currentMode === 'build') {
+            // Render waypoint handles when inline editing is enabled
+            if (circuitEditEnabled) {
                 renderWaypointHandles(mergedGroups);
             }
         }
@@ -11510,6 +11600,7 @@
         
         
         function dragStarted(event, d) {
+            if (!circuitEditEnabled) return;
             // Get data from element if not provided
             if (!d) {
                 d = d3.select(this).datum();
@@ -11976,7 +12067,8 @@
         }
         
         function handleDragStart(event, item, handle) {
-            event.sourceEvent.stopPropagation();
+            if (!circuitEditEnabled) return;
+            event.sourceEvent?.stopPropagation?.();
             
             // Store reference to the CURRENT item from allItems (not a stale copy)
             const currentItem = allItems.find(i => i.id === item.id);
@@ -12024,7 +12116,7 @@
         }
         
         function handleDragEnd(event) {
-            // Prevent default touch behavior
+            _lastHandleDragEndTime = Date.now();
             if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
                 event.sourceEvent.preventDefault();
             }
@@ -12140,9 +12232,9 @@
                         }
                     }
                 }
-                // AC output drag - create circuit (breaker + outlet)
+                // AC output drag - create a plain outlet (no inline breaker).
                 else if (sourceHandle.polarity === 'ac' && sourceHandle.id.includes('-ac-out')) {
-                    createACCircuit(sourceItem, sourceHandle, x, y);
+                    createOutletFromCircuit(sourceItem, sourceHandle, x, y);
                 }
                 // Panel/Spiderbox circuit output drag - create outlet directly
                 else if (sourceHandle.polarity === 'ac' && (sourceItem.type === 'breakerpanel' || sourceItem.type === 'spiderbox')) {
@@ -12308,20 +12400,37 @@
         
         // Create outlet from panel/spiderbox circuit output or daisy-chain from another outlet
         function createOutletFromCircuit(sourceItem, sourceHandle, x, y) {
-            // Get voltage from the source handle
-            const voltage = sourceHandle.voltage || 120;
-            
+            // Resolve voltage: prefer explicit handle voltage, then item spec, then 120V default.
+            // Handles on controllers don't carry a voltage property, so we read it from the spec.
+            let voltage = sourceHandle.voltage;
+            if (!voltage) {
+                if (sourceItem.type === 'controller' || sourceItem.type === 'hybrid_inverter') {
+                    voltage = sourceItem.specs?.acVoltage || 120;
+                } else if (sourceItem.type === 'doublevoltagehub') {
+                    voltage = 240;
+                } else {
+                    voltage = sourceItem.specs?.voltage || 120;
+                }
+            }
+
             // Create outlet at drag position
             const outlet = createACOutlet(x - AC_OUTLET_WIDTH / 2, y - AC_OUTLET_HEIGHT / 2, voltage);
             allItems.push(outlet);
-            
+
             // Connect source to outlet input
             createConnection(sourceItem, sourceHandle, outlet, outlet.handles.input);
-            
+
             if (areHintsEnabled()) {
-                const isDaisyChain = sourceItem.type === 'acoutlet';
-                showHint(isDaisyChain ? "🔌 Outlet Daisy-Chained!" : "🔌 Outlet Connected!", 
-                    `Added ${voltage}V outlet. Drag from its right port to add more outlets in series.`);
+                if (sourceItem.type === 'acoutlet') {
+                    showHint("🔌 Outlet Daisy-Chained!",
+                        `Added ${voltage}V outlet. Keep dragging from the right port to extend the chain.`);
+                } else if (sourceItem.type === 'controller') {
+                    showHint("🔌 Outlet Added!",
+                        `Connected a ${voltage}V outlet directly to the inverter's AC output.\n\nTip: Drag from the outlet's right port to daisy-chain more outlets. Add an AC breaker in-line when you need circuit protection.`);
+                } else {
+                    showHint("🔌 Outlet Connected!",
+                        `Added ${voltage}V outlet. Drag from its right port to add more outlets in series.`);
+                }
             }
         }
         
@@ -23137,6 +23246,107 @@
         let bgAmbientLight = null;
         let bgOrbitControls = null;
         let bgAnimationId = null;
+        let useBlueprintBackground = true;
+        const SIM_BACKGROUND_MODE_KEY = 'solarSimulatorBackgroundMode';
+
+        function loadBackgroundModePreference() {
+            try {
+                const saved = localStorage.getItem(SIM_BACKGROUND_MODE_KEY);
+                if (saved === '3d') {
+                    useBlueprintBackground = false;
+                } else {
+                    useBlueprintBackground = true;
+                }
+            } catch (e) {
+                useBlueprintBackground = true;
+            }
+        }
+
+        function setBlueprintBackground(enabled) {
+            useBlueprintBackground = enabled;
+            try {
+                localStorage.setItem(SIM_BACKGROUND_MODE_KEY, enabled ? 'blueprint' : '3d');
+            } catch (e) {}
+            const toggle = document.getElementById('blueprintBackgroundToggle');
+            if (toggle) toggle.checked = enabled;
+            applyBackgroundDisplay();
+        }
+
+        function updateBlueprintBackgroundToggleVisibility() {
+            const label = document.getElementById('blueprintBackgroundLabel');
+            const toggle = document.getElementById('blueprintBackgroundToggle');
+            const hasGeometry = !!window.linkageLabGeometry;
+            if (label) label.style.display = hasGeometry ? 'flex' : 'none';
+            if (toggle) toggle.checked = useBlueprintBackground;
+            if (!hasGeometry) useBlueprintBackground = true;
+        }
+
+        function stopOrbitControlsAnimation() {
+            if (bgAnimationId) {
+                cancelAnimationFrame(bgAnimationId);
+                bgAnimationId = null;
+            }
+        }
+
+        function applyBackgroundDisplay() {
+            const canvas = document.getElementById('structure-background-canvas');
+            const controls = document.getElementById('main-3d-view-controls');
+            const hasGeometry = !!window.linkageLabGeometry && !!bgRenderer;
+            const show3D = hasGeometry && !useBlueprintBackground;
+
+            if (canvas) canvas.style.display = show3D ? 'block' : 'none';
+            if (controls) controls.style.display = show3D ? 'block' : 'none';
+            document.body.classList.toggle('blueprint-background', !show3D);
+
+            if (show3D) {
+                if (!bgAnimationId) startOrbitControlsAnimation();
+                else renderMainBackground();
+            } else {
+                stopOrbitControlsAnimation();
+            }
+        }
+
+        function updateScene3DAnimationForViewMode(mode) {
+            if (!scene3D) return;
+            if (mode === '2d') {
+                scene3D.stopAnimationLoop();
+            } else {
+                scene3D.startAnimationLoop();
+            }
+        }
+
+        function applyCanvasViewModeStyles(mode) {
+            const svg = document.querySelector('#canvas-container svg');
+            const bgCanvas = document.getElementById('structure-background-canvas');
+
+            if (!svg) return;
+
+            if (mode === '3d') {
+                svg.style.display = 'none';
+                if (bgCanvas && !useBlueprintBackground) bgCanvas.style.display = 'block';
+            } else if (mode === 'split') {
+                svg.style.display = 'block';
+                svg.style.width = '100%';
+                svg.style.position = 'absolute';
+                svg.style.left = '0';
+                svg.style.top = '0';
+                svg.style.zIndex = '3';
+                svg.style.pointerEvents = 'none';
+                svg.style.backgroundColor = 'transparent';
+                if (bgCanvas) bgCanvas.style.display = 'none';
+            } else {
+                svg.style.display = 'block';
+                svg.style.width = '100%';
+                svg.style.position = 'relative';
+                svg.style.zIndex = '1';
+                svg.style.pointerEvents = 'auto';
+                svg.style.backgroundColor = '';
+                if (bgCanvas) bgCanvas.style.display = 'none';
+            }
+
+            document.body.classList.toggle('blueprint-background', mode === '2d' && (useBlueprintBackground || !window.linkageLabGeometry));
+            updateScene3DAnimationForViewMode(mode);
+        }
         
         // Shared elements
         let structureMeshGroup = null;
@@ -23207,6 +23417,8 @@
             
             // Initial render
             renderAllStructureScenes();
+            updateBlueprintBackgroundToggleVisibility();
+            applyBackgroundDisplay();
         }
         
         /**
@@ -23374,9 +23586,6 @@
                 setTimeout(() => {
                     updateOrbitControlsTarget();
                 }, 50);
-                
-                // Start animation loop for smooth damping
-                startOrbitControlsAnimation();
                 
                 // Set up Ctrl key listeners for toggling 3D interaction mode
                 setup3DInteractionToggle();
@@ -25152,21 +25361,22 @@
                         scene3D.positionGridAtStructureCenter(structCenter);
                     }
                     
-                    // Phase 9: Restore saved view preferences
-                    const savedViewMode = localStorage.getItem('circuit3d_viewMode');
-                    if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
-                        scene3D.setViewMode(savedViewMode);
-                        const viewModeSelect = document.getElementById('viewModeSelect');
-                        if (viewModeSelect) {
-                            viewModeSelect.value = savedViewMode;
-                        }
-                        
-                        // Show 3D view controls if in 3D or split mode
-                        const viewControlsContainer = document.getElementById('3dViewControlsContainer');
-                        if (viewControlsContainer) {
-                            viewControlsContainer.style.display = (savedViewMode === '3d' || savedViewMode === 'split') ? 'flex' : 'none';
+                    // Default 2D on touch devices; restore saved preference on desktop
+                    let initialViewMode = '2d';
+                    if (!PREFER_LITE_CANVAS) {
+                        const savedViewMode = localStorage.getItem('circuit3d_viewMode');
+                        if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
+                            initialViewMode = savedViewMode;
                         }
                     }
+                    scene3D.setViewMode(initialViewMode);
+                    const viewModeSelect = document.getElementById('viewModeSelect');
+                    if (viewModeSelect) viewModeSelect.value = initialViewMode;
+                    const viewControlsContainer = document.getElementById('3dViewControlsContainer');
+                    if (viewControlsContainer) {
+                        viewControlsContainer.style.display = (initialViewMode === '3d' || initialViewMode === 'split') ? 'flex' : 'none';
+                    }
+                    applyCanvasViewModeStyles(initialViewMode);
                     
                     // Restore camera state if saved
                     const savedCameraState = localStorage.getItem('circuit3d_cameraState');
@@ -25239,8 +25449,11 @@
                         }
                     }
                     
-                    // Start animation loop
-                    scene3D.startAnimationLoop();
+                    if (scene3D.viewMode === '2d') {
+                        scene3D.render();
+                    } else {
+                        scene3D.startAnimationLoop();
+                    }
                 } else {
                     console.warn('3D scene initialization returned false');
                 }
@@ -25287,56 +25500,25 @@
                         viewControlsContainer.style.display = (mode === '3d' || mode === 'split') ? 'flex' : 'none';
                     }
                     
-                    // Also toggle SVG visibility
-                    const svg = document.querySelector('#canvas-container svg');
-                    const bgCanvas = document.getElementById('structure-background-canvas');
-                    
-                    if (svg) {
-                        if (mode === '3d') {
-                            svg.style.display = 'none';
-                            if (bgCanvas) bgCanvas.style.display = 'block';
-                        } else if (mode === 'split') {
-                            // In split mode, SVG is full screen and transparent so 3D shows through
-                            svg.style.display = 'block';
-                            svg.style.width = '100%';
-                            svg.style.position = 'absolute';
-                            svg.style.left = '0';
-                            svg.style.top = '0';
-                            svg.style.zIndex = '3'; // Above 3D canvas
-                            // Use pointer-events: none on SVG, but enable on individual nodes
-                            // This allows clicks on nodes to work, but empty space passes through to 3D
-                            svg.style.pointerEvents = 'none';
-                            // Make SVG background transparent
-                            svg.style.backgroundColor = 'transparent';
-                            if (bgCanvas) bgCanvas.style.display = 'none'; // Hide background canvas in split mode
-                            
-                            // Note: Individual item groups and handles will have pointer-events: auto
-                            // This allows them to be clicked even though SVG has pointer-events: none
-                        } else {
-                            svg.style.display = 'block';
-                            svg.style.width = '100%';
-                            svg.style.position = 'relative';
-                            svg.style.zIndex = '1';
-                            svg.style.backgroundColor = '#15202b'; // Normal background
-                            if (bgCanvas) bgCanvas.style.display = 'none'; // Hide background canvas in 2D mode
-                        }
+                    applyCanvasViewModeStyles(mode);
+                    if (!PREFER_LITE_CANVAS) {
+                        localStorage.setItem('circuit3d_viewMode', mode);
                     }
-                    
-                    // Save view mode preference
-                    localStorage.setItem('circuit3d_viewMode', mode);
                 });
                 
-                // Set initial view mode and show controls if needed
-                const savedViewMode = localStorage.getItem('circuit3d_viewMode') || '2d';
-                if (savedViewMode !== '2d') {
-                    viewModeSelect.value = savedViewMode;
-                    const viewControlsContainer = document.getElementById('3dViewControlsContainer');
-                    if (viewControlsContainer) {
-                        viewControlsContainer.style.display = 'flex';
+                let initialMode = '2d';
+                if (!PREFER_LITE_CANVAS) {
+                    const savedViewMode = localStorage.getItem('circuit3d_viewMode');
+                    if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
+                        initialMode = savedViewMode;
                     }
-                    if (scene3D) {
-                        scene3D.setViewMode(savedViewMode);
-                    }
+                }
+                viewModeSelect.value = initialMode;
+                if (scene3D) scene3D.setViewMode(initialMode);
+                applyCanvasViewModeStyles(initialMode);
+                const viewControlsContainer = document.getElementById('3dViewControlsContainer');
+                if (viewControlsContainer) {
+                    viewControlsContainer.style.display = (initialMode === '3d' || initialMode === 'split') ? 'flex' : 'none';
                 }
             } else {
                 console.warn('View mode select element not found');
@@ -26012,6 +26194,11 @@
                 });
             }
             
+            document.getElementById('circuitEditToggle')?.addEventListener('change', (e) => {
+                circuitEditEnabled = e.target.checked;
+                render();
+            });
+
             // Show Hints toggle - hide any visible hint when unchecked
             document.getElementById('showHintsToggle')?.addEventListener('change', (e) => {
                 if (!e.target.checked) {
@@ -26944,17 +27131,27 @@
                 }
             }
             
+            loadBackgroundModePreference();
+            if (!window.linkageLabGeometry || useBlueprintBackground) {
+                document.body.classList.add('blueprint-background');
+            }
+
+            document.getElementById('blueprintBackgroundToggle')?.addEventListener('change', (e) => {
+                setBlueprintBackground(e.target.checked);
+            });
+
             if (window.linkageLabGeometry) {
                 const structureBtn = document.getElementById('structureViewBtn');
                 if (structureBtn) {
                     structureBtn.style.display = 'inline-block';
                 }
-                // Delay initialization slightly to ensure DOM is fully ready
+                updateBlueprintBackgroundToggleVisibility();
+                // Defer WebGL background init; blueprint mode skips the animation loop
                 setTimeout(() => {
                     if (typeof initStructureViewport === 'function') {
                         initStructureViewport();
                     }
-                }, 200);
+                }, PREFER_LITE_CANVAS ? 500 : 200);
                 
                 // Phase 1: Build structure meshes in circuit 3D scene if initialized
                 if (scene3D && scene3D.initialized) {

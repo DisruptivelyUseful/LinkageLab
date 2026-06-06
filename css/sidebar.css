@@ -25,6 +25,9 @@
     overflow-y: auto;
     overflow-x: hidden;
     padding: 8px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-y;
 }
 
 .sidebar-content::-webkit-scrollbar,

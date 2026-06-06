@@ -16,6 +16,7 @@ export class Scene3D {
         this.camera = null;
         this.controls = null;
         this.initialized = false;
+        this._animationFrameId = null;
         
         // View mode: '2d', '3d', or 'split'
         this.viewMode = options.viewMode || '2d';
@@ -1231,10 +1232,11 @@ export class Scene3D {
      */
     startAnimationLoop() {
         if (!this.initialized) return;
+        this.stopAnimationLoop();
         
         let frameCount = 0;
         const animate = () => {
-            requestAnimationFrame(animate);
+            this._animationFrameId = requestAnimationFrame(animate);
             this.render();
             
             // Phase 9: Periodically save camera state (every 60 frames ~1 second at 60fps)
@@ -1245,6 +1247,16 @@ export class Scene3D {
         };
         
         animate();
+    }
+    
+    /**
+     * Stop the render animation loop (e.g. when switching to 2D-only view)
+     */
+    stopAnimationLoop() {
+        if (this._animationFrameId !== null) {
+            cancelAnimationFrame(this._animationFrameId);
+            this._animationFrameId = null;
+        }
     }
     
     /**

@@ -109,8 +109,9 @@
                 <input type="checkbox" id="blueprintBackgroundToggle" style="cursor: pointer;">
                 Blueprint BG
             </label>
-            <button id="saveBtn">Save</button>
-            <button id="loadBtn">Load</button>
+            <button id="saveBrowserBtn" title="Save to Browser (Ctrl+S)">💾</button>
+            <button id="saveBtn" title="Download JSON file">Save</button>
+            <button id="loadBtn" title="Load JSON file">Load</button>
             <button id="exportEmbedBtn" title="Export an embeddable read-only view for documentation">📤 Embed</button>
             <button id="exportToSimulatorBtn" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">▶ Simulate</button>
         </div>
@@ -16579,6 +16580,10 @@
                 }
                 
                 this.updateUI();
+
+                if (!EMBED_MODE && typeof scheduleAutoSaveToBrowser === 'function') {
+                    scheduleAutoSaveToBrowser();
+                }
             }
             
             /**
@@ -20791,6 +20796,126 @@
         // ============================================
         // SAVE/LOAD
         // ============================================
+
+        const SOLAR_DESIGNER_CONFIG_KEY = 'solarDesigner_config';
+        let browserAutoSaveTimer = null;
+
+        function getBrowserSaveData() {
+            const data = {
+                ...getDesignExportData(),
+                itemIdCounter,
+                connectionIdCounter,
+                timestamp: Date.now(),
+                source: 'solarDesigner',
+                version: 1,
+                tutorialCompleted,
+                systemValidated
+            };
+
+            if (window.linkageLabGeometry) {
+                data.structureGeometry = window.linkageLabGeometry;
+            }
+            if (window.linkageLabCameraState) {
+                data.cameraState = window.linkageLabCameraState;
+            }
+            if (window.linkageLabStructureCost) {
+                data.structureCost = window.linkageLabStructureCost;
+            }
+
+            return data;
+        }
+
+        function restoreStructureBackgroundFromSave() {
+            if (window.linkageLabGeometry) {
+                updateBlueprintBackgroundToggleVisibility();
+                setTimeout(() => initStructureViewport(), 100);
+            } else {
+                document.body.classList.add('blueprint-background');
+                updateBlueprintBackgroundToggleVisibility();
+            }
+        }
+
+        function applyBrowserSaveData(data, options = {}) {
+            applyDesignData(data);
+
+            if (data.structureGeometry) {
+                window.linkageLabGeometry = data.structureGeometry;
+                try {
+                    localStorage.setItem('linkageLabGeometry', JSON.stringify(data.structureGeometry));
+                } catch (e) {
+                    console.warn('Failed to persist geometry to localStorage:', e);
+                }
+            }
+            if (data.cameraState) {
+                window.linkageLabCameraState = data.cameraState;
+                try {
+                    localStorage.setItem('linkageLabCameraState', JSON.stringify(data.cameraState));
+                } catch (e) {
+                    console.warn('Failed to persist camera state to localStorage:', e);
+                }
+            }
+            if (data.structureCost) {
+                window.linkageLabStructureCost = data.structureCost;
+            }
+
+            restoreStructureBackgroundFromSave();
+
+            if (options.showFeedback) {
+                showToast(`Design loaded (${allItems.length} components)`, 'success', 2000);
+            }
+        }
+
+        function saveToBrowser(showFeedback = true) {
+            if (EMBED_MODE) return;
+
+            try {
+                const data = getBrowserSaveData();
+                localStorage.setItem(SOLAR_DESIGNER_CONFIG_KEY, JSON.stringify(data));
+
+                // Keep legacy key in sync for older simulator round-trip code paths
+                localStorage.setItem('solarBuilderState', JSON.stringify({
+                    items: data.items,
+                    connections: data.connections,
+                    itemIdCounter: data.itemIdCounter,
+                    connectionIdCounter: data.connectionIdCounter
+                }));
+
+                if (showFeedback) {
+                    showToast(`Saved to browser (${data.items.length} components)`, 'success', 2000);
+                }
+            } catch (e) {
+                console.error('Failed to save to browser:', e);
+                showToast('Could not save to browser: ' + e.message, 'error', 3000);
+            }
+        }
+
+        function loadFromBrowser(options = {}) {
+            const saved = localStorage.getItem(SOLAR_DESIGNER_CONFIG_KEY);
+            if (!saved) return false;
+
+            try {
+                applyBrowserSaveData(JSON.parse(saved), { showFeedback: options.showFeedback });
+                return true;
+            } catch (e) {
+                console.error('Failed to load browser config:', e);
+                localStorage.removeItem(SOLAR_DESIGNER_CONFIG_KEY);
+                return false;
+            }
+        }
+
+        function scheduleAutoSaveToBrowser() {
+            if (EMBED_MODE) return;
+            clearTimeout(browserAutoSaveTimer);
+            browserAutoSaveTimer = setTimeout(() => saveToBrowser(false), 2000);
+        }
+
+        function tryRestoreBrowserConfig() {
+            if (loadFromBrowser({ showFeedback: false })) {
+                showToast(`Restored saved design (${allItems.length} components)`, 'info', 2500);
+                return true;
+            }
+            return false;
+        }
         
         function saveSystem() {
             const data = getDesignExportData();
@@ -22324,6 +22449,9 @@
             }
             
             if (!skipDefaultSetup) {
+                if (tryRestoreBrowserConfig()) {
+                    // Restored from browser storage
+                } else {
                 // Check if returning from simulator with saved state (legacy)
                 const savedState = localStorage.getItem('solarBuilderState');
                 if (savedState) {
@@ -22366,11 +22494,18 @@
                 } else if (!EMBED_MODE) {
                     setupDefaultLayout();
                 }
+                }
             }
             
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
                 if (EMBED_MODE) return;
+                if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                    e.preventDefault();
+                    saveToBrowser(true);
+                    return;
+                }
                 if (e.key === 'Delete' || e.key === 'Backspace') {
                     // Don't delete if user is typing in an input
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -22598,6 +22733,7 @@
             });
             
             // Save/Load / Embed export
+            document.getElementById('saveBrowserBtn').addEventListener('click', () => saveToBrowser(true));
             document.getElementById('saveBtn').addEventListener('click', saveSystem);
             document.getElementById('loadBtn').addEventListener('click', loadSystem);
             document.getElementById('exportEmbedBtn')?.addEventListener('click', showEmbedExportDialog);

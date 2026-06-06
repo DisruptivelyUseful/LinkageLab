@@ -296,6 +296,27 @@
     max-width: 250px;
 }
 
+@media (pointer: coarse) {
+    .topbar button,
+    .topbar-anim button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0 14px;
+    }
+
+    .topbar-anim input[type="range"],
+    .topbar-sun input[type="range"],
+    .topbar-center > div:first-child input[type="range"] {
+        min-height: 44px;
+        max-width: none;
+    }
+
+    .topbar-chk {
+        min-height: 44px;
+        font-size: 0.75rem;
+    }
+}
+
 /* System Review Button - Mission Control style */
 .system-review-button {
     font-family: var(--font-display);

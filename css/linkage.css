@@ -28,6 +28,15 @@ body:not(.solar-mode) #solar-canvas-container {
         linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
     background-size: 40px 40px;
     transition: left var(--transition-med), right var(--transition-med);
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    cursor: grab;
+}
+
+#viewport.viewport-dragging {
+    cursor: grabbing;
 }
 
 #viewport canvas {
@@ -381,6 +390,57 @@ input.error {
     }
     #right-panel {
         display: none;
+    }
+}
+
+/* Touch-friendly controls for tablets and touchscreens */
+@media (pointer: coarse) {
+    #sidebar button,
+    .btn-group button,
+    .anim-controls button,
+    #sidebar-toggle {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    #sidebar-toggle {
+        width: 28px;
+        height: 56px;
+        font-size: 0.75rem;
+    }
+
+    .group-title,
+    .sidebar-group-title {
+        min-height: 44px;
+        padding-top: 8px;
+        padding-bottom: 8px;
+    }
+
+    .chk-label {
+        min-height: 40px;
+        font-size: 0.75rem;
+    }
+
+    .input-wrap {
+        min-height: 44px;
+        align-items: center;
+    }
+
+    input[type="number"] {
+        min-height: 40px;
+        font-size: 0.85rem;
+        padding: 8px 10px;
+    }
+
+    select {
+        min-height: 44px;
+        font-size: 0.85rem;
+    }
+
+    #stats-panel {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+        touch-action: pan-y;
     }
 }
 

@@ -20024,17 +20024,19 @@ Object.keys(idMap).forEach(k => {
     updatePricingMode();
 })();
 
-// Prevent sidebar interactions from affecting canvas
+// Prevent sidebar/panel interactions from affecting canvas navigation
 const sidebar = document.getElementById('sidebar');
-sidebar.addEventListener('mousedown', e => e.stopPropagation(), true);
-sidebar.addEventListener('mousemove', e => e.stopPropagation(), true);
-sidebar.addEventListener('mouseup', e => e.stopPropagation(), true);
-sidebar.addEventListener('wheel', e => e.stopPropagation(), true);
+const rightPanel = document.getElementById('right-panel');
+['mousedown', 'mousemove', 'mouseup', 'wheel', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(eventType => {
+    sidebar?.addEventListener(eventType, e => e.stopPropagation(), true);
+    rightPanel?.addEventListener(eventType, e => e.stopPropagation(), true);
+});
 
 // Auto-save pending flag - tracks if autosave was requested during drag
 let autoSavePending = false;
 
-let drag = {active: false, x: 0, y: 0, mode: 'orbit'};
+let drag = { active: false, x: 0, y: 0, mode: 'orbit' };
+let pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, lastCenterY: 0 };
 
 /**
  * Check if an element or its ancestors are form inputs
@@ -20046,55 +20048,32 @@ function isFormElement(el) {
         return true;
     }
     // Check for custom controls
-    if (el.closest('.input-wrap') || el.closest('#sidebar')) {
+    if (el.closest('.input-wrap') || el.closest('#sidebar') || el.closest('#right-panel')) {
         return true;
     }
     return false;
 }
 
-// Only start drag when clicking in the viewport area
-// Use viewport container instead of canvas to avoid issues with canvas stacking
-const viewportElement = document.getElementById('viewport');
-viewportElement.addEventListener('mousedown', e => {
-    // Don't interfere with form elements or sidebar
-    if (isFormElement(e.target)) return;
-    
-    // Only handle clicks on the viewport or its canvases
-    if (!viewportElement.contains(e.target)) return;
-    
-    e.preventDefault(); // Prevent text selection during drag
-    
-    // Main canvas is now only the 3D view
-    drag.active = true;
-    drag.x = e.clientX;
-    drag.y = e.clientY;
-    drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
-});
+function setViewportDragging(active) {
+    document.getElementById('viewport')?.classList.toggle('viewport-dragging', active);
+}
 
-// Use document-level listeners to catch mouse events even when cursor leaves canvas
-document.addEventListener('mouseup', e => {
+function finishViewportDrag() {
+    const wasActive = drag.active || pinch.active;
     if (drag.active) {
         drag.active = false;
-        // If autosave was pending, trigger it now that dragging stopped
         if (autoSavePending) {
             autoSavePending = false;
             autoSave();
         }
     }
-});
-
-document.addEventListener('mousemove', e => {
-    // Only process if we started a drag on the canvas
-    if (!drag.active) return;
-    
-    // Stop drag if mouse is over sidebar (user moved there while dragging)
-    if (isFormElement(e.target)) {
-        return;
+    pinch.active = false;
+    if (wasActive) {
+        setViewportDragging(false);
     }
-    
-    const dx = e.clientX - drag.x;
-    const dy = e.clientY - drag.y;
-    
+}
+
+function applyCameraDragDelta(dx, dy) {
     if (drag.mode === 'orbit') {
         state.cam.yaw -= dx * 0.01;
         state.cam.pitch += dy * 0.01;
@@ -20104,42 +20083,156 @@ document.addEventListener('mousemove', e => {
     } else if (drag.mode === 'fold') {
         let newAngle = state.foldAngle + dx * 0.005;
         newAngle = clamp(newAngle, MIN_FOLD_ANGLE, MAX_FOLD_ANGLE);
-        
+
         // If collision enforcement is enabled, limit to safe range
         if (state.enforceCollision) {
-            // Invalidate cache during drag
             invalidateGeometryCache();
             const data = solveLinkage(newAngle);
             const collisions = detectCollisions(data);
             if (collisions.length > 0) {
-                // Find safe angle in the direction we're trying to move
                 const previousAngle = state.foldAngle;
                 const safeAngle = findSafeFoldAngle(newAngle, previousAngle);
                 if (safeAngle !== null) {
                     newAngle = safeAngle;
                 } else {
-                    // Can't find safe angle, don't change
                     newAngle = state.foldAngle;
                 }
             }
         }
-        
+
         state.foldAngle = newAngle;
         syncUI('foldAngle');
-        // Mark autosave as pending during drag (will save when drag ends)
         autoSavePending = true;
     }
-    
+
+    requestRender();
+}
+
+function getTouchPairDistance(touches) {
+    const dx = touches[0].clientX - touches[1].clientX;
+    const dy = touches[0].clientY - touches[1].clientY;
+    return Math.hypot(dx, dy);
+}
+
+function getTouchPairCenter(touches) {
+    return {
+        x: (touches[0].clientX + touches[1].clientX) / 2,
+        y: (touches[0].clientY + touches[1].clientY) / 2
+    };
+}
+
+function clampCameraDistance() {
+    if (state.cam.dist < MIN_CAM_DIST) state.cam.dist = MIN_CAM_DIST;
+}
+
+// Only start drag when clicking in the viewport area
+// Use viewport container instead of canvas to avoid issues with canvas stacking
+const viewportElement = document.getElementById('viewport');
+viewportElement.addEventListener('mousedown', e => {
+    if (isFormElement(e.target)) return;
+    if (!viewportElement.contains(e.target)) return;
+
+    e.preventDefault();
+
+    drag.active = true;
     drag.x = e.clientX;
     drag.y = e.clientY;
-    requestRender();
+    drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
+    setViewportDragging(true);
 });
+
+viewportElement.addEventListener('touchstart', e => {
+    if (isFormElement(e.target)) return;
+    if (!viewportElement.contains(e.target)) return;
+
+    if (e.touches.length === 1) {
+        e.preventDefault();
+        pinch.active = false;
+        drag.active = true;
+        drag.x = e.touches[0].clientX;
+        drag.y = e.touches[0].clientY;
+        drag.mode = 'orbit';
+        setViewportDragging(true);
+    } else if (e.touches.length === 2) {
+        e.preventDefault();
+        drag.active = false;
+        pinch.active = true;
+        pinch.startDist = getTouchPairDistance(e.touches);
+        pinch.startCamDist = state.cam.dist;
+        const center = getTouchPairCenter(e.touches);
+        pinch.lastCenterX = center.x;
+        pinch.lastCenterY = center.y;
+        setViewportDragging(true);
+    }
+}, { passive: false });
+
+// Use document-level listeners to catch mouse events even when cursor leaves canvas
+document.addEventListener('mouseup', finishViewportDrag);
+
+document.addEventListener('mousemove', e => {
+    if (!drag.active) return;
+    if (isFormElement(e.target)) return;
+
+    applyCameraDragDelta(e.clientX - drag.x, e.clientY - drag.y);
+    drag.x = e.clientX;
+    drag.y = e.clientY;
+});
+
+viewportElement.addEventListener('touchmove', e => {
+    if (pinch.active && e.touches.length >= 2) {
+        e.preventDefault();
+        const center = getTouchPairCenter(e.touches);
+        const dx = center.x - pinch.lastCenterX;
+        const dy = center.y - pinch.lastCenterY;
+        state.cam.panX += dx;
+        state.cam.panY += dy;
+        pinch.lastCenterX = center.x;
+        pinch.lastCenterY = center.y;
+
+        const dist = getTouchPairDistance(e.touches);
+        if (pinch.startDist > 0) {
+            state.cam.dist = pinch.startCamDist * (pinch.startDist / dist);
+            clampCameraDistance();
+        }
+        requestRender();
+        return;
+    }
+
+    if (!drag.active || e.touches.length !== 1) return;
+
+    e.preventDefault();
+    const touch = e.touches[0];
+    const target = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (isFormElement(target)) return;
+
+    applyCameraDragDelta(touch.clientX - drag.x, touch.clientY - drag.y);
+    drag.x = touch.clientX;
+    drag.y = touch.clientY;
+}, { passive: false });
+
+viewportElement.addEventListener('touchend', e => {
+    if (e.touches.length === 0) {
+        finishViewportDrag();
+        return;
+    }
+
+    if (e.touches.length === 1 && pinch.active) {
+        pinch.active = false;
+        drag.active = true;
+        drag.x = e.touches[0].clientX;
+        drag.y = e.touches[0].clientY;
+        drag.mode = 'orbit';
+    }
+}, { passive: true });
+
+viewportElement.addEventListener('touchcancel', finishViewportDrag, { passive: true });
+
 // Attach wheel event to viewport
 viewportElement.onwheel = e => {
     e.preventDefault();
     // Main canvas is now only the 3D view
     state.cam.dist += e.deltaY * (state.cam.dist / 1000);
-    if (state.cam.dist < MIN_CAM_DIST) state.cam.dist = MIN_CAM_DIST;
+    clampCameraDistance();
     requestRender();
 };
 
