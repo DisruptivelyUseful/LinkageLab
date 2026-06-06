@@ -58,7 +58,7 @@
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/utilities.css">
     <link rel="stylesheet" href="css/designer.css">
-    <link rel="stylesheet" href="css/simulator.css">
+    <link rel="stylesheet" href="css/simulator.css?v=2">
     <!-- Inline styles removed - now using external CSS files -->
     <style>
         @keyframes drag-dash-march {
@@ -21577,37 +21577,35 @@
                 statsBarCache.set('efficiency', efficiencyText);
             }
             
-            // Update Micro-Kardashev score
+            // Update Micro-Kardashev score (hidden in UI, kept for future use)
             const kMicro = computeMicroKardashev(liveStats.solarKwhCaptured, liveStats.solarKwhPossible);
             const kMicroText = kMicro.toFixed(5);
-            if (statsBarCache.get('kMicro') !== kMicroText) {
+            if (kMicroEl && statsBarCache.get('kMicro') !== kMicroText) {
                 kMicroEl.textContent = kMicroText;
-                // Color based on K_micro thresholds
                 if (kMicro >= 0.02) {
-                    kMicroEl.style.color = '#5cb85c'; // Green - good
+                    kMicroEl.style.color = '#5cb85c';
                 } else if (kMicro >= 0.01) {
-                    kMicroEl.style.color = '#f0ad4e'; // Yellow - typical
+                    kMicroEl.style.color = '#f0ad4e';
                 } else {
-                    kMicroEl.style.color = '#d9534f'; // Red - poor
+                    kMicroEl.style.color = '#d9534f';
                 }
                 statsBarCache.set('kMicro', kMicroText);
             }
             
-            // Update CO2 stats (for now, set to 0 - will be populated when recipe processing tracks biochar/woodgas)
             const eco2SeqText = liveStats.eco2Sequestered.toFixed(2);
-            if (statsBarCache.get('eco2Seq') !== eco2SeqText) {
+            if (eco2SeqEl && statsBarCache.get('eco2Seq') !== eco2SeqText) {
                 eco2SeqEl.textContent = eco2SeqText;
                 statsBarCache.set('eco2Seq', eco2SeqText);
             }
             
             const eco2AvdText = liveStats.eco2Avoided.toFixed(2);
-            if (statsBarCache.get('eco2Avd') !== eco2AvdText) {
+            if (eco2AvdEl && statsBarCache.get('eco2Avd') !== eco2AvdText) {
                 eco2AvdEl.textContent = eco2AvdText;
                 statsBarCache.set('eco2Avd', eco2AvdText);
             }
             
             const eco2TotalText = liveStats.eco2TotalSaved.toFixed(2);
-            if (statsBarCache.get('eco2Total') !== eco2TotalText) {
+            if (eco2TotalEl && statsBarCache.get('eco2Total') !== eco2TotalText) {
                 eco2TotalEl.textContent = eco2TotalText;
                 statsBarCache.set('eco2Total', eco2TotalText);
             }
@@ -27337,81 +27335,88 @@
         });
     </script>
     
-    <!-- Bottom dock: simulation controls + live stats (always visible, full width) -->
+    <!-- Bottom dock: simulation controls + integrated live stats -->
     <footer id="sim-bottom-dock" class="sim-bottom-dock">
         <div id="sim-bottom-bar" class="sim-bottom-bar">
-            <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
-            <div id="simulateControls">
-                <div class="play-controls">
-                    <button id="playPauseButton">▶</button>
-                    <input type="range" id="speedSlider" min="1" max="100" value="10">
-                    <span class="speed-label" id="speedLabel">1x</span>
-                    <button id="resetSimulationBtn">Reset Simulation</button>
+            <div class="sim-bottom-stats sim-bottom-stats-left">
+                <div class="stat-item">
+                    <div class="stat-label">Time</div>
+                    <div class="stat-value" id="liveTimeElapsed">0</div>
+                    <div class="stat-unit">hours</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Solar</div>
+                    <div class="stat-value large" id="liveSolarKwh">0.00</div>
+                    <div class="stat-unit">kWh</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Generated</div>
+                    <div class="stat-value large" id="liveKwhGenerated">0.00</div>
+                    <div class="stat-unit">kWh</div>
                 </div>
             </div>
-            <div class="weather-controls">
-                <label for="weatherDifficulty">Weather:</label>
-                <select id="weatherDifficulty">
-                    <option value="clear" selected>Clear Sky (100%)</option>
-                    <option value="easy">Easy (80-100%)</option>
-                    <option value="medium">Medium (50-80%)</option>
-                    <option value="hard">Hard (20-60%)</option>
-                </select>
+            <div class="sim-bottom-center">
+                <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
+                <div id="simulateControls">
+                    <div class="play-controls">
+                        <button id="playPauseButton">▶</button>
+                        <input type="range" id="speedSlider" min="1" max="100" value="10">
+                        <span class="speed-label" id="speedLabel">1x</span>
+                        <button id="resetSimulationBtn">Reset Simulation</button>
+                    </div>
+                </div>
+                <div class="weather-controls">
+                    <label for="weatherDifficulty">Weather:</label>
+                    <select id="weatherDifficulty">
+                        <option value="clear" selected>Clear Sky (100%)</option>
+                        <option value="easy">Easy (80-100%)</option>
+                        <option value="medium">Medium (50-80%)</option>
+                        <option value="hard">Hard (20-60%)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="sim-bottom-stats sim-bottom-stats-right">
+                <div class="stat-item">
+                    <div class="stat-label">Consumed</div>
+                    <div class="stat-value large" id="liveKwhConsumed">0.00</div>
+                    <div class="stat-unit">kWh</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Net</div>
+                    <div class="stat-value large" id="liveNetKwh">0.00</div>
+                    <div class="stat-unit">kWh</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Solar</div>
+                    <div class="stat-value" id="liveEfficiency">0.00%</div>
+                    <div class="stat-unit">Utilization</div>
+                </div>
             </div>
         </div>
-        <div id="statsBar">
-        <div class="stat-item">
-            <div class="stat-label">Time</div>
-            <div class="stat-value" id="liveTimeElapsed">0</div>
-            <div class="stat-unit">hours</div>
+        <!-- Hidden stats: values kept for simulation logic, not shown in UI -->
+        <div id="statsBar" class="stats-bar-hidden" aria-hidden="true">
+            <div class="stat-item" title="Micro-Kardashev Scale: 0.1 = perfect capture, 0.02 = good, 0.015 = typical">
+                <div class="stat-label">K<sub>micro</sub></div>
+                <div class="stat-value" id="liveKMicro">0.00000</div>
+                <div class="stat-unit">score</div>
+            </div>
+            <div class="stat-item" id="eco2SequesteredStat" title="Double-click to edit factors">
+                <div class="stat-label">CO₂ Sequestered</div>
+                <div class="stat-value large" id="liveEco2Sequestered">0.00</div>
+                <div class="stat-unit">kg eCO₂</div>
+            </div>
+            <div class="stat-item" id="eco2AvoidedStat" title="Double-click to edit factors">
+                <div class="stat-label">CO₂ Avoided</div>
+                <div class="stat-value large" id="liveEco2Avoided">0.00</div>
+                <div class="stat-unit">kg eCO₂</div>
+            </div>
+            <div class="stat-item" id="eco2TotalSavedStat" title="Double-click to edit factors">
+                <div class="stat-label">CO₂ Saved</div>
+                <div class="stat-value large" id="liveEco2TotalSaved">0.00</div>
+                <div class="stat-unit">kg eCO₂</div>
+            </div>
+            <div id="resourceStatsContainer"></div>
         </div>
-        <div class="stat-item">
-            <div class="stat-label">Solar</div>
-            <div class="stat-value large" id="liveSolarKwh">0.00</div>
-            <div class="stat-unit">kWh</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label">Generated</div>
-            <div class="stat-value large" id="liveKwhGenerated">0.00</div>
-            <div class="stat-unit">kWh</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label">Consumed</div>
-            <div class="stat-value large" id="liveKwhConsumed">0.00</div>
-            <div class="stat-unit">kWh</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label">Net</div>
-            <div class="stat-value large" id="liveNetKwh">0.00</div>
-            <div class="stat-unit">kWh</div>
-        </div>
-        <div class="stat-item">
-            <div class="stat-label">Solar</div>
-            <div class="stat-value" id="liveEfficiency">0.00%</div>
-            <div class="stat-unit">Utilization</div>
-        </div>
-        <div class="stat-item" title="Micro-Kardashev Scale: 0.1 = perfect capture, 0.02 = good, 0.015 = typical">
-            <div class="stat-label">K<sub>micro</sub></div>
-            <div class="stat-value" id="liveKMicro">0.00000</div>
-            <div class="stat-unit">score</div>
-        </div>
-        <div class="stat-item" id="eco2SequesteredStat" style="cursor: pointer;" title="Double-click to edit factors">
-            <div class="stat-label">CO₂ Sequestered</div>
-            <div class="stat-value large" id="liveEco2Sequestered">0.00</div>
-            <div class="stat-unit">kg eCO₂</div>
-        </div>
-        <div class="stat-item" id="eco2AvoidedStat" style="cursor: pointer;" title="Double-click to edit factors">
-            <div class="stat-label">CO₂ Avoided</div>
-            <div class="stat-value large" id="liveEco2Avoided">0.00</div>
-            <div class="stat-unit">kg eCO₂</div>
-        </div>
-        <div class="stat-item" id="eco2TotalSavedStat" style="cursor: pointer;" title="Double-click to edit factors">
-            <div class="stat-label">CO₂ Saved</div>
-            <div class="stat-value large" id="liveEco2TotalSaved">0.00</div>
-            <div class="stat-unit">kg eCO₂</div>
-        </div>
-        <div id="resourceStatsContainer" style="display: flex; gap: 10px; flex-wrap: nowrap; align-items: center; flex: 0 0 auto;"></div>
-    </div>
     </footer>
 </body>
 </html>
