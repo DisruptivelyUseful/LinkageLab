@@ -8410,7 +8410,10 @@ const SolarDesigner = (function() {
         ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.AUTOMATION_RULES, Automations.exportRules());
         
         // Open Solar Simulator with import flag
-        window.open('solar_simulator.html?import=solarDesigner', '_blank');
+        const simulatorUrl = typeof ExportFormat !== 'undefined'
+            ? ExportFormat.buildImportURL('solar_simulator.html', 'solarDesigner')
+            : 'solar_simulator.html?import=solarDesigner';
+        window.open(simulatorUrl, '_blank');
         
         showToast(`Exported ${allItems.length} components to 3D Simulator`, 'info');
     }

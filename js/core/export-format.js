@@ -345,13 +345,22 @@ const ExportFormat = (function() {
     }
     
     /**
+     * Resolve a relative app path against the current page (works on GitHub Pages subpaths).
+     * @param {string} relativePath - e.g. 'solar_designer.html'
+     * @returns {string} Absolute URL
+     */
+    function resolveAppUrl(relativePath) {
+        return new URL(relativePath, window.location.href).toString();
+    }
+    
+    /**
      * Build URL with import parameter
-     * @param {string} baseUrl - Base URL
+     * @param {string} baseUrl - Base URL (relative or absolute)
      * @param {string} source - Import source
      * @returns {string} URL with import parameter
      */
     function buildImportURL(baseUrl, source) {
-        const url = new URL(baseUrl, window.location.origin);
+        const url = new URL(baseUrl, window.location.href);
         url.searchParams.set('import', source);
         return url.toString();
     }
@@ -448,6 +457,7 @@ const ExportFormat = (function() {
         
         // URL helpers
         getImportSourceFromURL,
+        resolveAppUrl,
         buildImportURL,
         
         // Serialization helpers

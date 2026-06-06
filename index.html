@@ -14351,6 +14351,11 @@ function serializeGeometry(data) {
  * Passes panel configuration, BOM costs, and 3D geometry
  */
 async function exportToSolarSimulator() {
+    // Open a placeholder window synchronously so popup blockers don't block us after async GLTF export.
+    const designerUrl = ExportFormat.buildImportURL('solar_designer.html', 'linkageLab');
+    const newWindow = window.open('about:blank', '_blank');
+
+    try {
     // Get current linkage data with the same generated components shown in the viewport.
     const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
     
@@ -14476,10 +14481,25 @@ async function exportToSolarSimulator() {
     // Store in localStorage for the designer to read
     localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
     
-    // Open Solar Designer with import flag
-    window.open('solar_designer.html?import=linkageLab', '_blank');
+    // Navigate the pre-opened window (or retry if the placeholder was blocked)
+    if (newWindow && !newWindow.closed) {
+        newWindow.location.replace(designerUrl);
+    } else {
+        const retryWindow = window.open(designerUrl, '_blank');
+        if (!retryWindow) {
+            showToast('Popup blocked — allow popups for this site to open Solar Designer', 'warning');
+            return;
+        }
+    }
     
     showToast(`Exported ${panelCount} panels to Solar Designer`, 'info');
+    } catch (e) {
+        console.error('exportToSolarSimulator failed:', e);
+        if (newWindow && !newWindow.closed) {
+            newWindow.close();
+        }
+        showToast('Failed to open Solar Designer', 'error');
+    }
 }
 
 
