@@ -1956,6 +1956,20 @@
         
         let currentMode = 'build'; // 'build', 'live', or 'simulate'
         
+        // Touch devices (iPad, phones): skip expensive SVG blur filters and dash animations in Test mode
+        const USE_LITE_LIVE_VISUALS = (() => {
+            try {
+                return window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                    || window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                    || (navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 1200);
+            } catch (e) {
+                return false;
+            }
+        })();
+        if (USE_LITE_LIVE_VISUALS) {
+            document.body.classList.add('lite-live-visuals');
+        }
+        
         // ============================================
         // LIVE VIEW MODULE
         // ============================================
@@ -3281,6 +3295,37 @@
             Animation: {
                 updateScheduled: false,
                 updateTimeout: null,
+                _lastPowerFlowStateKey: null,
+                _lastBatteryVisualUpdate: 0,
+                
+                _getInteractionStateKey: function() {
+                    const loadStates = LiveView.state.loadStates || {};
+                    const breakerStates = LiveView.state.breakerStates || {};
+                    const loadKey = Object.keys(loadStates).sort().map(k => `${k}:${loadStates[k] ? 1 : 0}`).join(',');
+                    const breakerKey = Object.keys(breakerStates).sort().map(k => {
+                        const b = breakerStates[k];
+                        return `${k}:${b?.isClosed ? 1 : 0}:${b?.wasTripped ? 1 : 0}`;
+                    }).join(',');
+                    return [
+                        loadKey,
+                        breakerKey,
+                        LiveView.state.controllerACOutputEnabled ? 1 : 0,
+                        connections.length,
+                        allItems.length
+                    ].join('|');
+                },
+                
+                _shouldRefreshBatteryVisuals: function() {
+                    const loadsActive = Object.values(LiveView.state.loadStates || {}).some(Boolean);
+                    if (!loadsActive) return false;
+                    const interval = USE_LITE_LIVE_VISUALS ? 2000 : 500;
+                    const now = Date.now();
+                    if (now - LiveView.Animation._lastBatteryVisualUpdate >= interval) {
+                        LiveView.Animation._lastBatteryVisualUpdate = now;
+                        return true;
+                    }
+                    return false;
+                },
                 
                 start: function() {
                     // No continuous loop - updates will be triggered by events
@@ -3295,29 +3340,32 @@
                         LiveView.Animation.updateTimeout = null;
                     }
                     LiveView.Animation.updateScheduled = false;
+                    LiveView.Animation._lastPowerFlowStateKey = null;
+                    LiveView.Animation._lastBatteryVisualUpdate = 0;
                 },
                 
                 // Perform a full update cycle
                 update: function() {
                     if (!LiveView.state.active) return;
                     
-                    // Calculate power flow
-                    LiveView.PowerFlow.calculate();
+                    const stateKey = LiveView.Animation._getInteractionStateKey();
+                    const powerFlowChanged = stateKey !== LiveView.Animation._lastPowerFlowStateKey;
                     
-                    // Check for voltage mismatches in Live View (Phase 3.2)
-                    checkVoltageMismatchesInLiveView();
+                    if (powerFlowChanged) {
+                        LiveView.PowerFlow.calculate();
+                        LiveView.Animation._lastPowerFlowStateKey = stateKey;
+                        checkVoltageMismatchesInLiveView();
+                        LiveView.BreakerManager.checkTripping();
+                    }
                     
-                    // Check breaker tripping
-                    LiveView.BreakerManager.checkTripping();
-                    
-                    // Update displays
                     LiveView.Display.update();
                     
-                    // Update sidebar live stats
-                    updateLiveStats();
-                    
-                    // Re-render to show changes
-                    render();
+                    if (powerFlowChanged) {
+                        updateLiveStats();
+                        render({ skipScores: true });
+                    } else if (LiveView.Animation._shouldRefreshBatteryVisuals()) {
+                        render({ itemsOnly: true, skipScores: true });
+                    }
                     
                     LiveView.Animation.updateScheduled = false;
                 },
@@ -4981,14 +5029,22 @@
             });
         }
         
-        function render() {
-            renderItems();
+        function render(options = {}) {
+            const { wiresOnly = false, itemsOnly = false, skipScores = false } = options;
+            
+            if (!wiresOnly) {
+                renderItems();
+            }
             
             // Simulate mode removed - power flow calculation moved to simulator
             // Power flow is now only calculated in LiveView (Test mode) for circuit validation
             
-            renderWires();
-            updateScores();
+            if (!itemsOnly) {
+                renderWires();
+            }
+            if (!skipScores && !wiresOnly && !itemsOnly) {
+                updateScores();
+            }
             
             // Mark initial render as done after first render
             if (!_initialRenderDone) {
@@ -9369,6 +9425,7 @@
                 .attr("d", d => generateWirePath(d))
                 .classed("selected", d => selectedConnection && selectedConnection.id === d.id)
                 .classed("power-flowing", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add power-flowing class for AC wire animation in simulate AND live modes
                     // Force re-evaluation on every render by always checking current power flow state
                     let powerFlow = null;
@@ -9398,6 +9455,7 @@
                     return false;
                 })
                 .classed("power-flowing-reverse", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add power-flowing-reverse class for AC wires drawn from load to source
                     // This makes the animation flow towards the load (opposite of wire draw direction)
                     let powerFlow = null;
@@ -9416,6 +9474,7 @@
                     return false;
                 })
                 .classed("pv-flowing", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add pv-flowing class for PV wire animation in simulate AND live modes
                     // Only for positive wires (electron flow: panel+ to controller+)
                     let powerFlow = null;
@@ -9429,6 +9488,7 @@
                     return false;
                 })
                 .classed("pv-flowing-reverse", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add pv-flowing-reverse for negative wires (electron flow: controller- to panel-)
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
@@ -9443,14 +9503,16 @@
                     return false;
                 })
                 .classed("pv-live", d => {
-                    // Add pv-live class for PV wire glow in test mode
+                    // Add pv-live class for PV wire glow in test mode (only when actually generating)
                     if (liveViewActive && LiveView.state.active) {
                         const powerFlow = LiveView.state.powerFlow[d.id];
-                        return powerFlow && (d.polarity === 'positive' || d.polarity === 'negative' || d.polarity === 'pv-positive' || d.polarity === 'pv-negative');
+                        const isPvWire = d.polarity === 'positive' || d.polarity === 'negative' || d.polarity === 'pv-positive' || d.polarity === 'pv-negative';
+                        return isPvWire && powerFlow && powerFlow.isLive && powerFlow.watts > 0;
                     }
                     return false;
                 })
                 .classed("battery-charging", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add battery-charging class for battery wire animation (power flowing INTO battery)
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
@@ -9467,6 +9529,7 @@
                     return false;
                 })
                 .classed("battery-discharging", d => {
+                    if (USE_LITE_LIVE_VISUALS) return false;
                     // Add battery-discharging class for battery wire animation (power flowing FROM battery)
                     let powerFlow = null;
                     if (currentMode === 'simulate') {
@@ -9629,6 +9692,9 @@
                     return getWireStyle(d).color;
                 })
                 .attr("filter", d => {
+                    // SVG blur filters are very expensive on iPad — use stroke color only in lite mode
+                    if (USE_LITE_LIVE_VISUALS && LiveView.state.active) return null;
+                    
                     // Check simulate mode first (works even when paused)
                     if (currentMode === 'simulate') {
                         // Check for resource flow glow

@@ -1766,3 +1766,32 @@ body.embed-mode #embed-info-panel:not(.open) {
 #embed-export-modal .copy-embed-btn {
     margin-top: 8px;
 }
+
+/* ============================================
+   LITE LIVE VISUALS (iPad / touch / reduced motion)
+   Disables expensive wire animations and glow filters in Test mode
+   ============================================ */
+body.lite-live-visuals .wire.power-flowing,
+body.lite-live-visuals .wire.power-flowing-reverse,
+body.lite-live-visuals .wire.pv-flowing,
+body.lite-live-visuals .wire.pv-flowing-reverse,
+body.lite-live-visuals .wire.battery-charging,
+body.lite-live-visuals .wire.battery-discharging,
+body.lite-live-visuals .wire.resource-consuming,
+body.lite-live-visuals .wire.resource-producing,
+body.lite-live-visuals .wire.overloaded {
+    animation: none !important;
+    stroke-dasharray: none !important;
+}
+
+body.lite-live-visuals .wire.pv-live,
+body.lite-live-visuals .wire.battery-live,
+body.lite-live-visuals .wire.wire-live {
+    filter: none !important;
+}
+
+body.lite-live-visuals .wire.power-flowing,
+body.lite-live-visuals .wire.pv-flowing,
+body.lite-live-visuals .wire.battery-charging {
+    opacity: 1;
+}
