@@ -170,6 +170,7 @@ const KG_TO_LBS = 1 / LBS_TO_KG;
 const STATE_UNIT_MAP = {
     hLengthFt: 'ft', vLengthFt: 'ft',
     hBeamW: 'in', hBeamT: 'in', vBeamW: 'in', vBeamT: 'in',
+    vBeamInnerW: 'in', vBeamInnerT: 'in', vBeamOuterW: 'in', vBeamOuterT: 'in',
     offsetTopIn: 'in', offsetBotIn: 'in', vertEndOffset: 'in',
     hStackGap: 'in', vStackGap: 'in',
     bracketWidth: 'in', bracketDepth: 'in', bracketHeight: 'in',
@@ -184,6 +185,8 @@ const INPUT_UNIT_MAP = {
     'nb-ref-beam-len': 'ft',
     'nb-hbeam-w': 'in', 'nb-hbeam-t': 'in',
     'nb-vbeam-w': 'in', 'nb-vbeam-t': 'in',
+    'nb-vbeam-inner-w': 'in', 'nb-vbeam-inner-t': 'in',
+    'nb-vbeam-outer-w': 'in', 'nb-vbeam-outer-t': 'in',
     'sl-off-top': 'in', 'nb-off-top': 'in',
     'sl-off-bot': 'in', 'nb-off-bot': 'in',
     'sl-vert-end': 'in', 'nb-vert-end': 'in',

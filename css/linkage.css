@@ -241,6 +241,41 @@ body:not(.solar-mode) #solar-canvas-container {
     gap: 6px;
 }
 
+/* Dimension link/unlink toggle (Photoshop/Godot-style) */
+.dim-link-btn {
+    background: none;
+    border: none;
+    padding: 0 2px;
+    cursor: pointer;
+    color: var(--clr-primary);
+    opacity: 0.8;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    transition: opacity var(--transition-fast), color var(--transition-fast);
+}
+
+.dim-link-btn:hover {
+    opacity: 1;
+}
+
+.dim-link-btn.unlinked {
+    color: var(--text-muted);
+}
+
+.dim-link-btn .dim-link-icon--unlinked {
+    display: none;
+}
+
+.dim-link-btn.unlinked .dim-link-icon--linked {
+    display: none;
+}
+
+.dim-link-btn.unlinked .dim-link-icon--unlinked {
+    display: block;
+}
+
 /* Input feedback */
 input[type="number"].modified {
     border-color: var(--energy-amber);
@@ -250,7 +285,8 @@ input[type="number"]:valid {
     border-color: var(--border-med);
 }
 
-input[type="number"]:invalid {
+/* Only show native invalid styling after editing (avoids red flash while typing) */
+input[type="number"]:invalid:not(:focus) {
     border-color: var(--energy-red);
 }
 

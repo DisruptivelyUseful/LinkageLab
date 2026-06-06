@@ -186,31 +186,68 @@
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Horizontal Beam Length</span><span style="font-size:0.75rem; color:#8899a6;">ft</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-len" min="2" max="24" step="0.1">
-                        <input type="number" id="nb-len" min="2" max="24" step="0.1">
+                        <input type="range" id="sl-len" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-len" min="2" max="24" step="0.01">
                     </div>
                 </div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Vertical Beam Length</span><span style="font-size:0.75rem; color:#8899a6;">ft</span></div>
                     <div class="input-wrap">
-                        <input type="range" id="sl-vlen" min="2" max="24" step="0.1">
-                        <input type="number" id="nb-vlen" min="2" max="24" step="0.1">
+                        <input type="range" id="sl-vlen" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-vlen" min="2" max="24" step="0.01">
                     </div>
                 </div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Horiz Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                     <div class="input-wrap">
-                        <input type="number" id="nb-hbeam-w" value="3.5" step="0.25" style="width:90px;" title="Width">
+                        <input type="number" id="nb-hbeam-w" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Width">
                         <span style="color:#666">x</span>
-                        <input type="number" id="nb-hbeam-t" value="1.5" step="0.25" style="width:90px;" title="Thick">
+                        <input type="number" id="nb-hbeam-t" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Thick">
                     </div>
                 </div>
-                <div class="ctrl-row">
-                    <div class="ctrl-head"><span>Vert Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                <div class="ctrl-row" id="vbeam-linked-row">
+                    <div class="ctrl-head">
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            Vert Beam (W x T)
+                            <button type="button" id="btn-vbeam-dim-link" class="dim-link-btn linked" title="Beam dimensions linked — click to set inner/outer sizes independently" aria-label="Toggle inner/outer beam dimension link" style="display:none;">
+                                <svg class="dim-link-icon dim-link-icon--linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                </svg>
+                                <svg class="dim-link-icon dim-link-icon--unlinked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l1.37-1.37"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-1.37 1.37"/>
+                                    <path d="M8 8l8 8"/>
+                                </svg>
+                            </button>
+                        </span>
+                        <span style="font-size:0.75rem; color:#8899a6;">in</span>
+                    </div>
                     <div class="input-wrap">
-                        <input type="number" id="nb-vbeam-w" value="1.5" step="0.25" style="width:90px;" title="Width">
+                        <input type="number" id="nb-vbeam-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Width">
                         <span style="color:#666">x</span>
-                        <input type="number" id="nb-vbeam-t" value="3.5" step="0.25" style="width:90px;" title="Thick">
+                        <input type="number" id="nb-vbeam-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Thick">
+                    </div>
+                </div>
+                <div id="vbeam-split-section" style="display:none;">
+                    <div style="font-size:0.65rem; color:#8899a6; margin:4px 0 2px; border-left:2px solid var(--accent); padding-left:6px;">
+                        V-Stack inner/outer beam sizes (unlinked)
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Inner Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbeam-inner-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Inner beam width">
+                            <span style="color:#666">x</span>
+                            <input type="number" id="nb-vbeam-inner-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Inner beam thickness">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Outer Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbeam-outer-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Outer beam width">
+                            <span style="color:#666">x</span>
+                            <input type="number" id="nb-vbeam-outer-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Outer beam thickness">
+                        </div>
                     </div>
                 </div>
                 <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
@@ -218,22 +255,22 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>H-Beam Top Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-off-top" min="0" max="48" step="0.1">
-                            <input type="number" id="nb-off-top" min="0" max="48" step="0.1">
+                            <input type="range" id="sl-off-top" min="0" max="48" step="0.01">
+                            <input type="number" id="nb-off-top" min="0" max="48" step="0.01">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>H-Beam Bot Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-off-bot" min="0" max="48" step="0.1">
-                            <input type="number" id="nb-off-bot" min="0" max="48" step="0.1">
+                            <input type="range" id="sl-off-bot" min="0" max="48" step="0.01">
+                            <input type="number" id="nb-off-bot" min="0" max="48" step="0.01">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>V-Beam End Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-vert-end" min="0.5" max="12" step="0.1" value="1.5">
-                            <input type="number" id="nb-vert-end" min="0.5" max="24" step="0.1" value="1.5">
+                            <input type="range" id="sl-vert-end" min="0.5" max="12" step="0.01" value="1.5">
+                            <input type="number" id="nb-vert-end" min="0.5" max="24" step="0.01" value="1.5">
                         </div>
                     </div>
                     <div style="font-size:0.65rem; color:#8899a6; margin-top:4px;">
@@ -1899,37 +1936,227 @@ function needsSplitVBolts() {
     return stackCount > 2 && stackCount % 2 === 1;
 }
 
+/** Check if V-stack supports independent inner/outer beam dimensions (stack = 3) */
+function needsSplitVBeamDimensions() {
+    return (state.vStackCount || 3) === 3;
+}
+
+/** Whether inner/outer V-beam dimensions are linked (same size for all beams) */
+function isVBeamDimensionsLinked() {
+    if (!needsSplitVBeamDimensions()) return true;
+    return state.vBeamDimensionsLinked !== false;
+}
+
+/** True when stack index is the center (inner) beam for a 3-beam V-stack */
+function isVStackInnerBeamIndex(stackIndex) {
+    const count = state.vStackCount || 3;
+    return count === 3 && stackIndex === Math.floor(count / 2);
+}
+
+/** Get beam width/thickness for a stack index (center = inner, sides = outer) */
+function getVBeamDimsForStackIndex(stackIndex) {
+    if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+        return { w: state.vBeamW, t: state.vBeamT };
+    }
+    if (isVStackInnerBeamIndex(stackIndex)) {
+        return { w: state.vBeamInnerW, t: state.vBeamInnerT };
+    }
+    return { w: state.vBeamOuterW, t: state.vBeamOuterT };
+}
+
+/** Get beam width/thickness for fixed straight beams (inner/outer pivot positions) */
+function getVBeamDimsForPivot(isInnerPivot) {
+    if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+        return { w: state.vBeamW, t: state.vBeamT };
+    }
+    if (isInnerPivot) {
+        return { w: state.vBeamInnerW, t: state.vBeamInnerT };
+    }
+    return { w: state.vBeamOuterW, t: state.vBeamOuterT };
+}
+
+/** Width of each beam in the vertical stack */
+function getVStackBeamWidths() {
+    const count = state.vStackCount || 3;
+    const widths = [];
+    for (let i = 0; i < count; i++) {
+        widths.push(getVBeamDimsForStackIndex(i).w);
+    }
+    return widths;
+}
+
+/** Total stack thickness including gaps */
+function calculateVStackTotalThickness(widths = null, gap = null) {
+    const count = state.vStackCount || 3;
+    const stackGap = gap !== null ? gap : (state.vStackGap || 0);
+    if (!widths) {
+        if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+            const vW = state.vBeamW;
+            return count * vW + Math.max(0, count - 1) * stackGap;
+        }
+        widths = getVStackBeamWidths();
+    }
+    let total = widths.reduce((sum, w) => sum + w, 0);
+    if (count > 1) total += (count - 1) * stackGap;
+    return total;
+}
+
+/** Center offset of a beam within the vertical stack */
+function getVStackBeamCenterOffset(stackIndex, widths = null) {
+    const count = state.vStackCount || 3;
+    const gap = state.vStackGap || 0;
+    if (!widths) {
+        if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+            const vW = state.vBeamW;
+            const totalThick = count * vW + (count - 1) * gap;
+            const startOffset = -totalThick / 2 + vW / 2;
+            return startOffset + stackIndex * (vW + gap);
+        }
+        widths = getVStackBeamWidths();
+    }
+    const totalThick = calculateVStackTotalThickness(widths, gap);
+    let offset = -totalThick / 2;
+    for (let i = 0; i < stackIndex; i++) {
+        offset += widths[i] + gap;
+    }
+    offset += widths[stackIndex] / 2;
+    return offset;
+}
+
+/** Sum of all beam widths in the vertical stack */
+function calculateTotalVBeamWidth() {
+    if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+        return (state.vStackCount || 3) * (state.vBeamW || 1.5);
+    }
+    return getVStackBeamWidths().reduce((sum, w) => sum + w, 0);
+}
+
+/** Count inner/outer V-beams across all modules */
+function getVBeamCountsByType() {
+    const moduleCount = state.modules;
+    const stackCount = state.vStackCount || 3;
+    if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+        return { inner: 0, outer: 0, total: moduleCount * stackCount, linked: true };
+    }
+    let innerPerModule = 0;
+    let outerPerModule = 0;
+    for (let i = 0; i < stackCount; i++) {
+        if (isVStackInnerBeamIndex(i)) innerPerModule++;
+        else outerPerModule++;
+    }
+    return {
+        inner: moduleCount * innerPerModule,
+        outer: moduleCount * outerPerModule,
+        total: moduleCount * stackCount,
+        linked: false
+    };
+}
+
+/** Sum beam widths for a bolt sub-type (inner/outer/full) */
+function calculateVBoltStackBeamWidth(subType) {
+    const stackCount = state.vStackCount || 3;
+    if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
+        let beamCount;
+        if (subType === 'inner') beamCount = Math.ceil(stackCount / 2);
+        else if (subType === 'outer') beamCount = Math.floor(stackCount / 2);
+        else beamCount = stackCount;
+        return beamCount * (state.vBeamW || 1.5);
+    }
+    let total = 0;
+    for (let i = 0; i < stackCount; i++) {
+        const dims = getVBeamDimsForStackIndex(i);
+        if (subType === 'inner' && !isVStackInnerBeamIndex(i)) total += dims.w;
+        else if (subType === 'outer' && isVStackInnerBeamIndex(i)) total += dims.w;
+        else if (subType !== 'inner' && subType !== 'outer') total += dims.w;
+    }
+    return total;
+}
+
+/** Total weight of all vertical beams */
+function calculateVBeamTotalWeight() {
+    const counts = getVBeamCountsByType();
+    const vLength = state.vLengthFt;
+    if (!counts.linked) {
+        const innerPerFoot = (state.vBeamInnerW * state.vBeamInnerT * INCHES_PER_FOOT) * state.woodDensity;
+        const outerPerFoot = (state.vBeamOuterW * state.vBeamOuterT * INCHES_PER_FOOT) * state.woodDensity;
+        return (counts.inner * vLength * innerPerFoot) + (counts.outer * vLength * outerPerFoot);
+    }
+    const perFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
+    return counts.total * vLength * perFoot;
+}
+
+/** Average weight per vertical beam (for unit display) */
+function getVBeamWeightPerBeam() {
+    const counts = getVBeamCountsByType();
+    return counts.total > 0 ? calculateVBeamTotalWeight() / counts.total : 0;
+}
+
+/** Total cost of all vertical beams */
+function calculateVBeamsCost() {
+    const counts = getVBeamCountsByType();
+    if (!counts.linked) {
+        const innerUnit = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamInnerW, state.vBeamInnerT, state.vLengthFt)
+            : state.costVBeam;
+        const outerUnit = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamOuterW, state.vBeamOuterT, state.vLengthFt)
+            : state.costVBeam;
+        return (counts.inner * innerUnit) + (counts.outer * outerUnit);
+    }
+    return counts.total * state.costVBeam;
+}
+
+/** Sync linked V-beam dimensions from the primary inputs */
+function syncLinkedVBeamDimensions() {
+    state.vBeamInnerW = state.vBeamW;
+    state.vBeamInnerT = state.vBeamT;
+    state.vBeamOuterW = state.vBeamW;
+    state.vBeamOuterT = state.vBeamT;
+}
+
+/** Update visibility of V-beam dimension link/split controls */
+function updateVBeamDimensionUIVisibility() {
+    const showLink = needsSplitVBeamDimensions();
+    const splitMode = showLink && !isVBeamDimensionsLinked();
+    const linkBtn = document.getElementById('btn-vbeam-dim-link');
+    const splitSection = document.getElementById('vbeam-split-section');
+    if (linkBtn) linkBtn.style.display = showLink ? 'inline-flex' : 'none';
+    if (splitSection) splitSection.style.display = splitMode ? 'block' : 'none';
+    if (linkBtn) {
+        linkBtn.classList.toggle('linked', isVBeamDimensionsLinked());
+        linkBtn.classList.toggle('unlinked', !isVBeamDimensionsLinked());
+        linkBtn.title = isVBeamDimensionsLinked()
+            ? 'Beam dimensions linked — click to set inner/outer sizes independently'
+            : 'Beam dimensions unlinked — click to link inner/outer sizes';
+    }
+}
+
 /** Calculate auto bolt length for vertical stack (full stack - used for even stacks or center bolt) */
 function calculateVStackBoltLength() {
     const stackCount = state.vStackCount || 3;
-    const beamWidth = state.vBeamW || 1.5;
     const stackGap = state.vStackGap || 0;
+    const totalBeamWidth = (needsSplitVBeamDimensions() && !isVBeamDimensionsLinked())
+        ? calculateTotalVBeamWidth()
+        : stackCount * (state.vBeamW || 1.5);
     // Total thickness + 2x gap (for head/nut clearance)
-    return (stackCount * beamWidth) + (Math.max(0, stackGap) * 2) + 1;
+    return totalBeamWidth + (Math.max(0, stackGap) * 2) + 1;
 }
 
 /** Calculate inner bolt length for V-stack (holds more beams at inner brackets) */
 function calculateVStackInnerBoltLength() {
     const stackCount = state.vStackCount || 3;
-    const beamWidth = state.vBeamW || 1.5;
     const stackGap = state.vStackGap || 0;
-    // Inner brackets hold ceil(stackCount/2) beams for odd stacks
-    // For 3-beam: inner holds 2 beams, outer holds 1
-    // For 5-beam: inner holds 3 beams, outer holds 2
     const innerBeamCount = Math.ceil(stackCount / 2);
-    return (innerBeamCount * beamWidth) + (Math.max(0, stackGap)) + 1;
+    const totalBeamWidth = calculateVBoltStackBeamWidth('inner');
+    return totalBeamWidth + (Math.max(0, stackGap)) + 1;
 }
 
 /** Calculate outer bolt length for V-stack (holds fewer beams at outer brackets) */
 function calculateVStackOuterBoltLength() {
     const stackCount = state.vStackCount || 3;
-    const beamWidth = state.vBeamW || 1.5;
     const stackGap = state.vStackGap || 0;
-    // Outer brackets hold floor(stackCount/2) beams for odd stacks
-    // For 3-beam: outer holds 1 beam
-    // For 5-beam: outer holds 2 beams
-    const outerBeamCount = Math.floor(stackCount / 2);
-    return (outerBeamCount * beamWidth) + (Math.max(0, stackGap)) + 1;
+    const totalBeamWidth = calculateVBoltStackBeamWidth('outer');
+    return totalBeamWidth + (Math.max(0, stackGap)) + 1;
 }
 
 /** Calculate auto bolt length for horizontal stack center bolts */
@@ -2037,11 +2264,12 @@ function updateAutoBoltLengths() {
         infoText += `H-Pivot: ${(state.hPivotBoltLength * dFactor).toFixed(2)}${dUnit}`;
     }
     
+    updateVBeamDimensionUIVisibility();
+
     if (state.vWasherAuto && state.vWasherEnabled) {
         const bracketInnerWidth = state.bracketInnerWidth || 1.5;
-        const vBeamW = state.vBeamW || 1.5;
         const vStackCount = state.vStackCount || 3;
-        const totalBeamWidth = vStackCount * vBeamW;
+        const totalBeamWidth = calculateTotalVBeamWidth();
         const extraSpace = bracketInnerWidth - totalBeamWidth;
         
         if (vStackCount > 1) {
@@ -5774,6 +6002,11 @@ const state = {
     hBeamT: 1.5,
     vBeamW: 1.5,
     vBeamT: 3.5,
+    vBeamDimensionsLinked: true,
+    vBeamInnerW: 1.5,
+    vBeamInnerT: 3.5,
+    vBeamOuterW: 1.5,
+    vBeamOuterT: 3.5,
     
     // Bracket configuration
     bracketWidth: 2.0,         // Width of U-bracket (inches)
@@ -6053,6 +6286,10 @@ const VALIDATION_RULES = {
     hBeamT: { min: 0.5, max: 12 },
     vBeamW: { min: 0.5, max: 12 },
     vBeamT: { min: 0.5, max: 12 },
+    vBeamInnerW: { min: 0.5, max: 12 },
+    vBeamInnerT: { min: 0.5, max: 12 },
+    vBeamOuterW: { min: 0.5, max: 12 },
+    vBeamOuterT: { min: 0.5, max: 12 },
     costHBeam: { min: 0, max: 1000 },
     costVBeam: { min: 0, max: 1000 },
     costBolt: { min: 0, max: 1000 },
@@ -6121,6 +6358,8 @@ const idMap = {
     'fold': 'foldAngle', 'hgap': 'hStackGap', 'vgap': 'vStackGap',
     'hstack': 'hStackCount', 'vstack': 'vStackCount',
     'hbeam-w': 'hBeamW', 'hbeam-t': 'hBeamT', 'vbeam-w': 'vBeamW', 'vbeam-t': 'vBeamT',
+    'vbeam-inner-w': 'vBeamInnerW', 'vbeam-inner-t': 'vBeamInnerT',
+    'vbeam-outer-w': 'vBeamOuterW', 'vbeam-outer-t': 'vBeamOuterT',
     'len': 'hLengthFt', 'vlen': 'vLengthFt',
     'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn', 'vert-end': 'vertEndOffset',
     'bracket-width': 'bracketWidth', 'bracket-depth': 'bracketDepth', 'bracket-height': 'bracketHeight',
@@ -7338,7 +7577,17 @@ function updateAutoBeamPricing() {
     
     // Calculate costs based on current beam dimensions
     const hCost = calculateBeamCostByVolume(state.hBeamW, state.hBeamT, state.hLengthFt);
-    const vCost = calculateBeamCostByVolume(state.vBeamW, state.vBeamT, state.vLengthFt);
+    let vCost;
+    if (needsSplitVBeamDimensions() && !isVBeamDimensionsLinked()) {
+        const innerCost = calculateBeamCostByVolume(state.vBeamInnerW, state.vBeamInnerT, state.vLengthFt);
+        const outerCost = calculateBeamCostByVolume(state.vBeamOuterW, state.vBeamOuterT, state.vLengthFt);
+        const counts = getVBeamCountsByType();
+        vCost = counts.total > 0
+            ? ((counts.inner * innerCost) + (counts.outer * outerCost)) / counts.total
+            : innerCost;
+    } else {
+        vCost = calculateBeamCostByVolume(state.vBeamW, state.vBeamT, state.vLengthFt);
+    }
     
     // Update state
     state.costHBeam = hCost;
@@ -7397,9 +7646,7 @@ function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
     const nBolts = moduleCount * (4 + 2);
     
     const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
-    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
     const hBeamWeightPerBeam = state.hLengthFt * hBeamWeightPerFoot;
-    const vBeamWeightPerBeam = state.vLengthFt * vBeamWeightPerFoot;
     const bracketWeight = state.weightBracket;
     const boltWeight = state.weightBolt;
     
@@ -7409,8 +7656,10 @@ function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
             let weight = 0;
             if (beam.stackType && beam.stackType.startsWith('horizontal')) {
                 weight = hBeamWeightPerBeam;
-            } else if (beam.stackType && beam.stackType.startsWith('vertical')) {
-                weight = vBeamWeightPerBeam;
+            } else if (beam.stackType && (beam.stackType.startsWith('vertical') || beam.stackType.startsWith('fixed-beam'))) {
+                const beamW = beam.w || state.vBeamW;
+                const beamT = beam.t || state.vBeamT;
+                weight = state.vLengthFt * (beamW * beamT * INCHES_PER_FOOT) * state.woodDensity;
             }
             
             if (weight > 0 && beam.center) {
@@ -8124,6 +8373,9 @@ function solveLinkage(foldAngle) {
         const washerCount = stackCount - 1; // One washer per gap
         if (washerCount <= 0) return washers;
         
+        const beamWidths = Array.isArray(beamThickness) ? beamThickness : null;
+        const uniformThickness = !beamWidths;
+        
         // Use provided stack direction, or calculate from bolt type
         let stackDir = stackDirNorm;
         if (!stackDir) {
@@ -8140,13 +8392,20 @@ function solveLinkage(foldAngle) {
             }
         }
         
+        const getBeamWidth = (beamIndex) => uniformThickness ? beamThickness : beamWidths[beamIndex];
+        
         // Calculate beam positions relative to bolt center (which is at stack center)
-        const totalStackThick = stackCount * beamThickness + (stackCount - 1) * stackGap;
-        const stackStart = -totalStackThick / 2;
+        const totalStackThick = uniformThickness
+            ? stackCount * beamThickness + (stackCount - 1) * stackGap
+            : calculateVStackTotalThickness(beamWidths, stackGap);
         
         // Helper to get beam center position (index 0 is first beam)
         const getBeamCenter = (beamIndex) => {
-            return stackStart + beamThickness / 2 + beamIndex * (beamThickness + stackGap);
+            if (uniformThickness) {
+                const stackStart = -totalStackThick / 2;
+                return stackStart + beamThickness / 2 + beamIndex * (beamThickness + stackGap);
+            }
+            return getVStackBeamCenterOffset(beamIndex, beamWidths);
         };
         
         // Center gap index (for determining which half of stack we're in)
@@ -8159,8 +8418,8 @@ function solveLinkage(foldAngle) {
             const beamIPlusOne_center = getBeamCenter(i + 1);
             
             // Beam face positions (sides of the gap)
-            const beamI_outerFace = beamI_center + beamThickness / 2; // Face towards beam i+1
-            const beamIPlusOne_innerFace = beamIPlusOne_center - beamThickness / 2; // Face towards beam i
+            const beamI_outerFace = beamI_center + getBeamWidth(i) / 2; // Face towards beam i+1
+            const beamIPlusOne_innerFace = beamIPlusOne_center - getBeamWidth(i + 1) / 2; // Face towards beam i
             
             // Position washer: FLUSH with inner beam (towards stack center), EXPAND outward (towards bracket)
             // The washer mesh is centered, so we calculate where its center should be
@@ -8321,8 +8580,7 @@ function solveLinkage(foldAngle) {
             const pivotBotCenter = vScale(vAdd(pBotInner, pBotOuter), 0.5);
             const pivotTopCenter = vScale(vAdd(pTopOuter, pTopInner), 0.5);
             
-            const vW = state.vBeamW; 
-            const vT = state.vBeamT;
+            const stackBeamWidths = getVStackBeamWidths();
             
             // Calculate the beam direction (from center bottom to center top pivot)
             const beamDir = vNorm(vSub(pivotTopCenter, pivotBotCenter));
@@ -8423,7 +8681,7 @@ function solveLinkage(foldAngle) {
             // CRITICAL: Use vW (width) for stack spacing, not vT (thickness)
             // Beams are stacked along their width dimension, not thickness
             const gap = state.vStackGap;
-            const totalThick = state.vStackCount * vW + (state.vStackCount - 1) * gap;
+            const totalThick = calculateVStackTotalThickness(stackBeamWidths, gap);
             
             // Calculate center pivot line (where stack should be centered)
             const centerLineStart = pivotBotCenter;
@@ -8441,15 +8699,11 @@ function solveLinkage(foldAngle) {
             
             const stackDirNorm = vNorm(stackDir);
             
-            // Calculate starting offset to center the stack
-            // The middle beam(s) should be at offsetValue = 0 (centered)
-            const startOffset = -totalThick / 2 + vW / 2;
-            
             // CRITICAL FIX: Calculate exact average position of all beam midpoints when stacked
             // Account for both pattern midpoints AND their stack offsets
             let totalPosition = {x: 0, y: 0, z: 0};
             for (let i = 0; i < state.vStackCount; i++) {
-                const offsetValue = startOffset + i * (vW + gap);
+                const offsetValue = getVStackBeamCenterOffset(i, stackBeamWidths);
                 const stackOffsetVec = vScale(stackDirNorm, offsetValue);
                 // Determine pattern: normally A, B, A, B... but reverse if vStackReverse is true
                 const isPatternA = state.vStackReverse ? (i % 2 !== 0) : (i % 2 === 0);
@@ -8472,8 +8726,9 @@ function solveLinkage(foldAngle) {
             
             for (let i = 0; i < state.vStackCount; i++) {
                 // Calculate stack offset (perpendicular to beam, centered around pivot)
-                const offsetValue = startOffset + i * (vW + gap);
+                const offsetValue = getVStackBeamCenterOffset(i, stackBeamWidths);
                 const stackOffset = vScale(stackDirNorm, offsetValue);
+                const beamDims = getVBeamDimsForStackIndex(i);
                 
                 // Determine which pattern this beam uses (alternating: A, B, A, B, ...)
                 // When vStackReverse is true, the order is reversed (B, A, B, A, ...)
@@ -8505,7 +8760,7 @@ function solveLinkage(foldAngle) {
                 const extStart = vAdd(beamStart, vScale(patternDir, -state.vertEndOffset));
                 const extEnd = vAdd(beamEnd, vScale(patternDir, state.vertEndOffset));
                 
-                beams.push(new Beam3D(extStart, extEnd, vW, vT, woodColor, {
+                beams.push(new Beam3D(extStart, extEnd, beamDims.w, beamDims.t, woodColor, {
                     moduleIndex: i,
                     stackType: 'vertical',
                     stackId: i  // Each module has one vertical stack
@@ -8552,7 +8807,7 @@ function solveLinkage(foldAngle) {
                 // Calculate centering offset for cap stack
                 let capTotalPosition = {x: 0, y: 0, z: 0};
                 for (let j = 0; j < state.vStackCount; j++) {
-                    const offsetValue = startOffset + j * (vW + gap);
+                    const offsetValue = getVStackBeamCenterOffset(j, stackBeamWidths);
                     const stackOffsetVec = vScale(capStackDirNorm, offsetValue);
                     const isPatternA = state.vStackReverse ? (j % 2 !== 0) : (j % 2 === 0);
                     const patternMid = isPatternA ? capPatternA_mid : capPatternB_mid;
@@ -8564,8 +8819,9 @@ function solveLinkage(foldAngle) {
                 
                 // Create cap upright beams
                 for (let j = 0; j < state.vStackCount; j++) {
-                    const offsetValue = startOffset + j * (vW + gap);
+                    const offsetValue = getVStackBeamCenterOffset(j, stackBeamWidths);
                     const stackOffset = vScale(capStackDirNorm, offsetValue);
+                    const beamDims = getVBeamDimsForStackIndex(j);
                     const isPatternA = state.vStackReverse ? (j % 2 !== 0) : (j % 2 === 0);
                     
                     let patternBot, patternTop, patternDir;
@@ -8584,7 +8840,7 @@ function solveLinkage(foldAngle) {
                     const extStart = vAdd(beamStart, vScale(patternDir, -state.vertEndOffset));
                     const extEnd = vAdd(beamEnd, vScale(patternDir, state.vertEndOffset));
                     
-                    beams.push(new Beam3D(extStart, extEnd, vW, vT, woodColor, {
+                    beams.push(new Beam3D(extStart, extEnd, beamDims.w, beamDims.t, woodColor, {
                         moduleIndex: i,
                         stackType: 'vertical-cap',
                         stackId: -1  // Cap stack has special ID
@@ -8597,8 +8853,8 @@ function solveLinkage(foldAngle) {
         // These are STRAIGHT vertical beams (not crossing like scissor uprights)
         // Each beam goes straight up from bottom to top at the same radial position
         if (state.useFixedBeams && zHeight > 1) {
-            const vW = state.vBeamW;
-            const vT = state.vBeamT;
+            const innerDims = getVBeamDimsForPivot(true);
+            const outerDims = getVBeamDimsForPivot(false);
             const hT = state.hBeamT; // Horizontal beam thickness for offset
             
             // Calculate Y positions for flush alignment with horizontal beams
@@ -8614,7 +8870,7 @@ function solveLinkage(foldAngle) {
             
             const innerBeamLen = vMag(vSub(innerBeamEnd, innerBeamStart));
             if (innerBeamLen > 0.1) {
-                beams.push(new Beam3D(innerBeamStart, innerBeamEnd, vW, vT, woodColor, {
+                beams.push(new Beam3D(innerBeamStart, innerBeamEnd, innerDims.w, innerDims.t, woodColor, {
                     moduleIndex: i,
                     stackType: 'fixed-beam',
                     stackId: i * 2 + 0
@@ -8627,7 +8883,7 @@ function solveLinkage(foldAngle) {
             
             const outerBeamLen = vMag(vSub(outerBeamEnd, outerBeamStart));
             if (outerBeamLen > 0.1) {
-                beams.push(new Beam3D(outerBeamStart, outerBeamEnd, vW, vT, woodColor, {
+                beams.push(new Beam3D(outerBeamStart, outerBeamEnd, outerDims.w, outerDims.t, woodColor, {
                     moduleIndex: i,
                     stackType: 'fixed-beam',
                     stackId: i * 2 + 1
@@ -8648,7 +8904,7 @@ function solveLinkage(foldAngle) {
                 
                 const capInnerLen = vMag(vSub(capInnerEnd, capInnerStart));
                 if (capInnerLen > 0.1) {
-                    beams.push(new Beam3D(capInnerStart, capInnerEnd, vW, vT, woodColor, {
+                    beams.push(new Beam3D(capInnerStart, capInnerEnd, innerDims.w, innerDims.t, woodColor, {
                         moduleIndex: i,
                         stackType: 'fixed-beam-cap',
                         stackId: -2
@@ -8661,7 +8917,7 @@ function solveLinkage(foldAngle) {
                 
                 const capOuterLen = vMag(vSub(capOuterEnd, capOuterStart));
                 if (capOuterLen > 0.1) {
-                    beams.push(new Beam3D(capOuterStart, capOuterEnd, vW, vT, woodColor, {
+                    beams.push(new Beam3D(capOuterStart, capOuterEnd, outerDims.w, outerDims.t, woodColor, {
                         moduleIndex: i,
                         stackType: 'fixed-beam-cap',
                         stackId: -3
@@ -8708,7 +8964,7 @@ function solveLinkage(foldAngle) {
                 if (vMag(stackDirNorm) < 0.1) {
                     stackDirNorm = vNorm(vCross(patternA_dir, up));
                 }
-                totalThick = state.vStackCount * state.vBeamW + (state.vStackCount - 1) * state.vStackGap;
+                totalThick = calculateVStackTotalThickness();
                 // Center mid point (midpoint between bottom and top center pivots)
                 const pivotBotCenter = vScale(vAdd(pBotInner, pBotOuter), 0.5);
                 const pivotTopCenter = vScale(vAdd(pTopOuter, pTopInner), 0.5);
@@ -8817,7 +9073,7 @@ function solveLinkage(foldAngle) {
                         headExtraThickness = 0;
                     }
                     
-                    const stackThickness = beamCount * state.vBeamW + Math.max(0, beamCount - 1) * (state.vStackGap || 0);
+                    const stackThickness = calculateVBoltStackBeamWidth(subType) + Math.max(0, beamCount - 1) * (state.vStackGap || 0);
                     
                     return {
                         start: vAdd(pos, vScale(dir, -length / 2)),
@@ -8978,11 +9234,14 @@ function solveLinkage(foldAngle) {
                         thickness: state.vWasherThickness
                     };
                     // Use the same stack direction as the vertical beams
-                    washers.push(...createWashersForBolt(botInnerBolt, state.vStackCount, state.vStackGap, state.vBeamW, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, state.vStackGap, state.vBeamW, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, state.vStackGap, state.vBeamW, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(topInnerBolt, state.vStackCount, state.vStackGap, state.vBeamW, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(centerBolt, state.vStackCount, state.vStackGap, state.vBeamW, vWasherConfig, stackDirNorm));
+                    const vWasherBeamSize = (needsSplitVBeamDimensions() && !isVBeamDimensionsLinked())
+                        ? getVStackBeamWidths()
+                        : state.vBeamW;
+                    washers.push(...createWashersForBolt(botInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(topInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(centerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
                 }
                 
                 // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
@@ -11834,7 +12093,19 @@ function updateHUD(data) {
 
     // Calculate individual costs (per-beam pricing)
     const hBeamCost = hBeams * state.costHBeam;
-    const vBeamCost = vBeams * state.costVBeam;
+    const vBeamCounts = getVBeamCountsByType();
+    let vBeamCost;
+    if (!vBeamCounts.linked) {
+        const innerUnitCost = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamInnerW, state.vBeamInnerT, state.vLengthFt)
+            : state.costVBeam;
+        const outerUnitCost = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamOuterW, state.vBeamOuterT, state.vLengthFt)
+            : state.costVBeam;
+        vBeamCost = (vBeamCounts.inner * innerUnitCost) + (vBeamCounts.outer * outerUnitCost);
+    } else {
+        vBeamCost = vBeams * state.costVBeam;
+    }
     const bracketCost = uBrackets * state.costBracket;
     
     // Calculate bolt costs by type
@@ -11850,7 +12121,13 @@ function updateHUD(data) {
     const costHSpec = document.getElementById('cost-h-spec');
     const costVSpec = document.getElementById('cost-v-spec');
     if (costHSpec) costHSpec.textContent = unitConverter.formatBeamSpecForCost(state.hLengthFt, state.hBeamW, state.hBeamT);
-    if (costVSpec) costVSpec.textContent = unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamW, state.vBeamT);
+    if (costVSpec) {
+        if (!vBeamCounts.linked) {
+            costVSpec.textContent = `${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamInnerW, state.vBeamInnerT)} / ${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamOuterW, state.vBeamOuterT)}`;
+        } else {
+            costVSpec.textContent = unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamW, state.vBeamT);
+        }
+    }
     
     // Update reference price per cubic inch display
     const refPriceDisplay = document.getElementById('ref-price-per-cu-in');
@@ -12137,9 +12414,8 @@ function updateHUD(data) {
     // Volume = width × thickness × length (all in inches)
     // Weight = volume × density
     const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
-    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
     const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-    const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
+    const vBeamWeight = calculateVBeamTotalWeight();
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
@@ -12165,10 +12441,9 @@ function updateHUD(data) {
     uiStats.weightU.innerText = uBrackets;
     // Calculate unit weights
     const hBeamWeightPerBeam = state.hLengthFt * hBeamWeightPerFoot;
-    const vBeamWeightPerBeam = state.vLengthFt * vBeamWeightPerFoot;
     uiStats.weightHUnit.innerText = unitConverter.formatWeightWithUnit(hBeamWeightPerBeam);
     uiStats.weightHVal.innerText = unitConverter.formatWeightWithUnit(hBeamWeight);
-    uiStats.weightVUnit.innerText = unitConverter.formatWeightWithUnit(vBeamWeightPerBeam);
+    uiStats.weightVUnit.innerText = unitConverter.formatWeightWithUnit(getVBeamWeightPerBeam());
     uiStats.weightVVal.innerText = unitConverter.formatWeightWithUnit(vBeamWeight);
     uiStats.weightUUnit.innerText = unitConverter.formatWeightWithUnit(state.weightBracket, 2);
     uiStats.weightUVal.innerText = unitConverter.formatWeightWithUnit(bracketWeight);
@@ -14106,7 +14381,7 @@ async function exportToSolarSimulator() {
     const costHPivot = state.costBoltHPivot || 0.75;
     
     const hBeamsCost = hBeams * state.costHBeam;
-    const vBeamsCost = vBeams * state.costVBeam;
+    const vBeamsCost = calculateVBeamsCost();
     const bracketCost = uBrackets * state.costBracket;
     const boltCost = vBoltsInner * costVInner + vBoltsOuter * costVOuter + vBoltsCenter * costVInner + hCenterBolts * costH + hPivotBolts * costHPivot;
     
@@ -14369,7 +14644,7 @@ function showBuildGuide() {
     }
     
     const hBeamsCost = hBeams * state.costHBeam;
-    const vBeamsCost = vBeams * state.costVBeam;
+    const vBeamsCost = calculateVBeamsCost();
     const bracketCost = uBrackets * state.costBracket;
     
     // Calculate bolt costs by type
@@ -14408,9 +14683,8 @@ function showBuildGuide() {
     // Volume = width × thickness × length (all in inches)
     // Weight = volume × density
     const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
-    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
     const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-    const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
+    const vBeamWeight = calculateVBeamTotalWeight();
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight;
@@ -14725,7 +14999,9 @@ function showBuildGuide() {
                         <div class="guide-subsection-title">Vertical Beams</div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Dimensions</span>
-                            <span class="guide-spec-value">${gD(state.vBeamW)} × ${gD(state.vBeamT)} × ${gD(state.vLengthFt * 12)}</span>
+                            <span class="guide-spec-value">${!getVBeamCountsByType().linked
+                                ? `Inner ${gD(state.vBeamInnerW)} × ${gD(state.vBeamInnerT)} / Outer ${gD(state.vBeamOuterW)} × ${gD(state.vBeamOuterT)} × ${gD(state.vLengthFt * 12)}`
+                                : `${gD(state.vBeamW)} × ${gD(state.vBeamT)} × ${gD(state.vLengthFt * 12)}`}</span>
                         </div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Stack Count</span>
@@ -15783,7 +16059,7 @@ function gatherBOMData() {
     }
 
     const hBeamsCost = hBeams * state.costHBeam;
-    const vBeamsCost = vBeams * state.costVBeam;
+    const vBeamsCost = calculateVBeamsCost();
     const bracketCost = uBrackets * state.costBracket;
 
     const vBoltInnerCost = vBoltsInner * costBoltVInner;
@@ -15816,9 +16092,8 @@ function gatherBOMData() {
     const totalCost = structureCost + solarPanelCost;
 
     const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
-    const vBeamWeightPerFoot = (state.vBeamW * state.vBeamT * INCHES_PER_FOOT) * state.woodDensity;
     const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-    const vBeamWeight = vBeams * state.vLengthFt * vBeamWeightPerFoot;
+    const vBeamWeight = calculateVBeamTotalWeight();
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
@@ -15842,7 +16117,19 @@ function gatherBOMData() {
     // Build structure line items
     const structureItems = [];
     structureItems.push({ qty: hBeams, item: `H-Beams (${unitConverter.formatBeamSpecForCost(state.hLengthFt, state.hBeamW, state.hBeamT)})`, unit: state.costHBeam, total: hBeamsCost });
-    structureItems.push({ qty: vBeams, item: `V-Beams (${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamW, state.vBeamT)})`, unit: state.costVBeam, total: vBeamsCost });
+    const vBeamCountsForBom = getVBeamCountsByType();
+    if (!vBeamCountsForBom.linked) {
+        const innerUnitCost = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamInnerW, state.vBeamInnerT, state.vLengthFt)
+            : state.costVBeam;
+        const outerUnitCost = state.autoLumberPricing
+            ? calculateBeamCostByVolume(state.vBeamOuterW, state.vBeamOuterT, state.vLengthFt)
+            : state.costVBeam;
+        structureItems.push({ qty: vBeamCountsForBom.inner, item: `V-Inner Beams (${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamInnerW, state.vBeamInnerT)})`, unit: innerUnitCost, total: vBeamCountsForBom.inner * innerUnitCost });
+        structureItems.push({ qty: vBeamCountsForBom.outer, item: `V-Outer Beams (${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamOuterW, state.vBeamOuterT)})`, unit: outerUnitCost, total: vBeamCountsForBom.outer * outerUnitCost });
+    } else {
+        structureItems.push({ qty: vBeams, item: `V-Beams (${unitConverter.formatBeamSpecForCost(state.vLengthFt, state.vBeamW, state.vBeamT)})`, unit: state.costVBeam, total: vBeamsCost });
+    }
     structureItems.push({ qty: uBrackets, item: 'U-Brackets', unit: state.costBracket, total: bracketCost });
 
     if (splitBolts) {
@@ -16150,7 +16437,9 @@ function exportGuidePDF() {
         ['Dimensions', `${unitConverter.formatDimensionWithUnit(state.hBeamW, 2)} x ${unitConverter.formatDimensionWithUnit(state.hBeamT, 2)} x ${unitConverter.formatDimensionWithUnit(state.hLengthFt * 12, 1)}`],
         ['Stack Count', `${state.hStackCount}`],
         [{ content: 'Vertical Beams', colSpan: 2, styles: { fontStyle: 'bold', fillColor: [230, 230, 235], textColor: colors.sectionBg } }],
-        ['Dimensions', `${unitConverter.formatDimensionWithUnit(state.vBeamW, 2)} x ${unitConverter.formatDimensionWithUnit(state.vBeamT, 2)} x ${unitConverter.formatDimensionWithUnit(state.vLengthFt * 12, 1)}`],
+        ['Dimensions', !getVBeamCountsByType().linked
+            ? `Inner ${unitConverter.formatDimensionWithUnit(state.vBeamInnerW, 2)} x ${unitConverter.formatDimensionWithUnit(state.vBeamInnerT, 2)} / Outer ${unitConverter.formatDimensionWithUnit(state.vBeamOuterW, 2)} x ${unitConverter.formatDimensionWithUnit(state.vBeamOuterT, 2)} x ${unitConverter.formatDimensionWithUnit(state.vLengthFt * 12, 1)}`
+            : `${unitConverter.formatDimensionWithUnit(state.vBeamW, 2)} x ${unitConverter.formatDimensionWithUnit(state.vBeamT, 2)} x ${unitConverter.formatDimensionWithUnit(state.vLengthFt * 12, 1)}`],
         ['Stack Count', `${state.vStackCount}`],
         ['H-Stack Gap', `${unitConverter.formatDimensionWithUnit(state.hStackGap, 2)}`],
         ['V-Stack Gap', `${unitConverter.formatDimensionWithUnit(state.vStackGap, 2)}`],
@@ -16643,6 +16932,7 @@ const CONFIG_KEYS = [
     'modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
     'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
     'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
+    'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT', 'vBeamDimensionsLinked',
     'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 'bracketHoleDistance',
     'costHBeam', 'costVBeam', 'costBolt', 'costBracket', 'costSolarPanel', 'orientation', 'archCapUprights',
     'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams'
@@ -16684,7 +16974,17 @@ function applyV30Config(config) {
             if (s.beamDimensions.horizontalThickness !== undefined) state.hBeamT = s.beamDimensions.horizontalThickness;
             if (s.beamDimensions.verticalWidth !== undefined) state.vBeamW = s.beamDimensions.verticalWidth;
             if (s.beamDimensions.verticalThickness !== undefined) state.vBeamT = s.beamDimensions.verticalThickness;
+            if (s.beamDimensions.verticalInnerWidth !== undefined) state.vBeamInnerW = s.beamDimensions.verticalInnerWidth;
+            if (s.beamDimensions.verticalInnerThickness !== undefined) state.vBeamInnerT = s.beamDimensions.verticalInnerThickness;
+            if (s.beamDimensions.verticalOuterWidth !== undefined) state.vBeamOuterW = s.beamDimensions.verticalOuterWidth;
+            if (s.beamDimensions.verticalOuterThickness !== undefined) state.vBeamOuterT = s.beamDimensions.verticalOuterThickness;
+            if (s.beamDimensions.verticalDimensionsLinked !== undefined) state.vBeamDimensionsLinked = s.beamDimensions.verticalDimensionsLinked;
         }
+        if (state.vBeamInnerW === undefined || state.vBeamInnerW === null) state.vBeamInnerW = state.vBeamW;
+        if (state.vBeamInnerT === undefined || state.vBeamInnerT === null) state.vBeamInnerT = state.vBeamT;
+        if (state.vBeamOuterW === undefined || state.vBeamOuterW === null) state.vBeamOuterW = state.vBeamW;
+        if (state.vBeamOuterT === undefined || state.vBeamOuterT === null) state.vBeamOuterT = state.vBeamT;
+        if (state.vBeamDimensionsLinked === undefined) state.vBeamDimensionsLinked = true;
         if (s.offsets) {
             if (s.offsets.top !== undefined) state.offsetTopIn = s.offsets.top;
             if (s.offsets.bottom !== undefined) state.offsetBotIn = s.offsets.bottom;
@@ -16962,7 +17262,12 @@ function getConfigSnapshot(includeMetadata = false) {
                 horizontalWidth: state.hBeamW,
                 horizontalThickness: state.hBeamT,
                 verticalWidth: state.vBeamW,
-                verticalThickness: state.vBeamT
+                verticalThickness: state.vBeamT,
+                verticalInnerWidth: state.vBeamInnerW,
+                verticalInnerThickness: state.vBeamInnerT,
+                verticalOuterWidth: state.vBeamOuterW,
+                verticalOuterThickness: state.vBeamOuterT,
+                verticalDimensionsLinked: state.vBeamDimensionsLinked
             },
             offsets: {
                 top: state.offsetTopIn,
@@ -17308,6 +17613,7 @@ function applyConfig(config, updateUI = true) {
         // Sync checkbox states
         const vstackReverseChk = document.getElementById('chk-vstack-reverse');
         if (vstackReverseChk) vstackReverseChk.checked = state.vStackReverse;
+        updateVBeamDimensionUIVisibility();
         
         // Sync visibility checkboxes
         const bracketsChk = document.getElementById('chk-brack');
@@ -19265,6 +19571,11 @@ function computeGeometryHash() {
         state.hBeamT,
         state.vBeamW,
         state.vBeamT,
+        state.vBeamDimensionsLinked,
+        state.vBeamInnerW,
+        state.vBeamInnerT,
+        state.vBeamOuterW,
+        state.vBeamOuterT,
         state.foldAngle.toFixed(6),
         state.orientation
     ];
@@ -19422,13 +19733,15 @@ function updateState(key, val) {
         }
 
         const validation = validateInput(key, val);
+        const k = Object.keys(idMap).find(k => idMap[k] === key);
         if (!validation.valid) {
             showToast(validation.error, 'error');
-            const k = Object.keys(idMap).find(k => idMap[k] === key);
             if (k && inputs[k]) {
                 inputs[k].nb?.classList.add('error');
                 setTimeout(() => inputs[k].nb?.classList.remove('error'), 2000);
             }
+        } else if (k && inputs[k]?.nb) {
+            inputs[k].nb.classList.remove('error');
         }
         
         const value = validation.value;
@@ -19437,6 +19750,16 @@ function updateState(key, val) {
             state.foldAngle = degToRad(value);
         } else {
             state[key] = value;
+        }
+
+        if (isVBeamDimensionsLinked() && (key === 'vBeamW' || key === 'vBeamT')) {
+            syncLinkedVBeamDimensions();
+            ['vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT'].forEach(k => syncUI(k));
+        }
+
+        if (key === 'vStackCount' && value !== 3) {
+            state.vBeamDimensionsLinked = true;
+            updateVBeamDimensionUIVisibility();
         }
         
         // Sync washer thickness with gaps when auto is enabled
@@ -19454,7 +19777,8 @@ function updateState(key, val) {
         // Invalidate cache when geometry-changing parameters are updated
         const geometryKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
                               'hStackCount', 'vStackCount', 'vStackReverse', 'offsetTopIn', 'offsetBotIn', 'vertEndOffset',
-                              'bracketHeight', 'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'foldAngle', 'orientation', 
+                              'bracketHeight', 'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
+                              'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT', 'vBeamDimensionsLinked', 'foldAngle', 'orientation', 
                               'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount',
                               'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 
                               'bracketHoleDiameter', 'bracketHoleDistance'];
@@ -19471,9 +19795,13 @@ function updateState(key, val) {
             invalidateGeometryCache();
             
             // Update auto bolt lengths and washer thicknesses when relevant parameters change
-            if (['hStackCount', 'vStackCount', 'hBeamT', 'vBeamW', 'hStackGap', 'vStackGap', 
-                 'bracketInnerWidth', 'vBeamW'].includes(key)) {
+            if (['hStackCount', 'vStackCount', 'hBeamT', 'vBeamW', 'vBeamT', 'hStackGap', 'vStackGap',
+                 'bracketInnerWidth', 'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT'].includes(key)) {
                 updateAutoBoltLengths();
+            }
+
+            if (key === 'vStackCount') {
+                updateVBeamDimensionUIVisibility();
             }
             
             // Regenerate roof face buttons when module count changes
@@ -19515,7 +19843,7 @@ function updateState(key, val) {
         }
         
         // Update auto beam pricing when relevant dimensions change
-        const beamPricingKeys = ['hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'hLengthFt', 'vLengthFt'];
+        const beamPricingKeys = ['hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT', 'hLengthFt', 'vLengthFt'];
         if (beamPricingKeys.includes(key) && state.autoLumberPricing) {
             updateAutoBeamPricing();
         }
@@ -19550,6 +19878,12 @@ function syncUI(key) {
             if (key.startsWith('cost')) {
                 decimals = 2;
             } else if (key.startsWith('bracket') || key === 'vStackGap' || key === 'hStackGap') {
+                decimals = 2;
+            } else if (key === 'offsetTopIn' || key === 'offsetBotIn' || key === 'vertEndOffset') {
+                decimals = 2;
+            } else if (['hBeamW', 'hBeamT', 'vBeamW', 'vBeamT', 'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT'].includes(key)) {
+                decimals = 2;
+            } else if (key === 'hLengthFt' || key === 'vLengthFt') {
                 decimals = 2;
             }
             // More decimals for metric meter values to preserve precision
@@ -21059,6 +21393,18 @@ document.getElementById('chk-vstack-reverse').onchange = e => {
     invalidateGeometryCache();
     requestRender();
 };
+document.getElementById('btn-vbeam-dim-link')?.addEventListener('click', () => {
+    if (!needsSplitVBeamDimensions()) return;
+    state.vBeamDimensionsLinked = !isVBeamDimensionsLinked();
+    syncLinkedVBeamDimensions();
+    ['vBeamW', 'vBeamT', 'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT'].forEach(k => syncUI(k));
+    updateVBeamDimensionUIVisibility();
+    updateAutoBoltLengths();
+    if (state.autoLumberPricing) updateAutoBeamPricing();
+    invalidateGeometryCache();
+    saveStateToHistory();
+    requestRender();
+});
 document.getElementById('chk-measure').onchange = e => {
     state.measureMode = e.target.checked;
     document.getElementById('measure-display').style.display = state.measureMode ? 'block' : 'none';
@@ -22207,12 +22553,12 @@ document.getElementById('btn-anim-reverse').onclick = () => {
 
 // Fold/Unfold buttons (similar to Actuator Open/Close)
 document.getElementById('btn-anim-fold').onclick = () => {
-    const closedAngle = getOptimalClosedAngleForAnimation();
+    const closedAngle = MIN_FOLD_ANGLE;
     animateActuatorFold(closedAngle, 3000);
     showToast('Folding to closed position...', 'info');
 };
 document.getElementById('btn-anim-unfold').onclick = () => {
-    const openAngle = MIN_FOLD_ANGLE;
+    const openAngle = getOptimalClosedAngleForAnimation();
     animateActuatorFold(openAngle, 3000);
     showToast('Unfolding to open position...', 'info');
 };
@@ -22604,11 +22950,10 @@ function updateBracketHoleDistance() {
     // This ensures proper calculation based on bracket inner width for vertical washers
     if (state.vWasherAuto && state.vWasherEnabled) {
         const bracketInnerWidth = state.bracketInnerWidth || 1.5;
-        const vBeamW = state.vBeamW || 1.5;
         const vStackCount = state.vStackCount || 3;
         
         if (vStackCount > 1) {
-            const totalBeamWidth = vStackCount * vBeamW;
+            const totalBeamWidth = calculateTotalVBeamWidth();
             const availableSpace = bracketInnerWidth;
             const extraSpace = availableSpace - totalBeamWidth;
             const washerThickness = Math.max(0, extraSpace / (vStackCount - 1));

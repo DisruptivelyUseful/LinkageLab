@@ -245,11 +245,9 @@ path.wire.ac-240 {
 #left-sidebar,
 #right-sidebar {
     background: var(--gradient-panel);
-    padding: 15px;
-    padding-bottom: 80px;
+    padding: 0; /* Padding lives on .tab-content, not here */
     box-sizing: border-box;
-    overflow-y: auto;
-    overflow-x: hidden;
+    overflow: hidden; /* Single scroll on .tab-content only — no outer scrollbar */
     color: var(--text-primary);
     position: fixed;
     top: 52px; /* Below topbar */
@@ -258,6 +256,8 @@ path.wire.ac-240 {
     box-shadow:
         4px 0 20px rgba(0, 0, 0, 0.3),
         inset 1px 0 0 rgba(255, 255, 255, 0.02);
+    display: flex;
+    flex-direction: column;
 }
 
 #left-sidebar {
@@ -342,7 +342,13 @@ path.wire.ac-240 {
     display: flex !important;
     opacity: 1 !important;
     pointer-events: auto !important;
-    right: 0 !important;
+    right: 0 !important; /* default: sidebar closed, button sits at the right screen edge */
+}
+
+/* When the sidebar is open, slide the toggle button to just outside the sidebar's left edge
+   so it is never drawn on top of the sidebar content */
+body:has(#right-sidebar.open) #right-sidebar-toggle {
+    right: 340px !important;
 }
 
 /* Right sidebar toggle button is always visible since it's outside the sidebar */
@@ -368,6 +374,7 @@ path.wire.ac-240 {
 /* Right sidebar tabs - bold, sharp linkage-style */
 .right-panel-tabs {
     display: flex;
+    flex-shrink: 0; /* never squished by the flex-fill tab content */
     gap: 0;
     margin-bottom: 0;
     border-bottom: 2px solid var(--clr-primary);
@@ -421,9 +428,12 @@ path.wire.ac-240 {
 
 .tab-content {
     display: none;
+    flex: 1;          /* fills remaining sidebar height after the tab header */
+    min-height: 0;    /* allows flex child to shrink below content height */
     overflow-y: auto;
     overflow-x: hidden;
-    max-height: calc(100vh - 200px);
+    padding: 15px;
+    padding-bottom: 80px;
 }
 
 .tab-content.active {
@@ -527,13 +537,16 @@ path.wire.ac-240 {
 }
 
 /* Sidebar content sections */
-#left-sidebar > *,
-#right-sidebar > * {
+#left-sidebar > * {
     margin-bottom: 15px;
 }
 
-#left-sidebar > *:last-child,
-#right-sidebar > *:last-child {
+#left-sidebar > *:last-child {
+    margin-bottom: 0;
+}
+
+/* Right sidebar uses flexbox — its direct children (tab bar + tab-content) need no margins */
+#right-sidebar > * {
     margin-bottom: 0;
 }
 
@@ -1435,4 +1448,321 @@ path.wire.ac-240 {
 #main-3d-view-controls .minimap-toggle-btn:active,
 #main-3d-view-controls .shadow-toggle-btn:active {
     transform: translateY(0);
+}
+
+/* ============================================
+   TOUCH SCREEN OPTIMIZATIONS
+   Optimized for large touchscreen displays
+   ============================================ */
+
+/* Enlarge port handle hit-areas with a transparent stroke ring.
+   This makes precise handle connections much easier with a finger. */
+circle.handle {
+    /* Invisible stroke ring that extends the touchable area without changing layout */
+    stroke-width: 4;
+    cursor: pointer;
+    /* Add active feedback ring on press */
+    transition: r 0.1s ease, opacity 0.1s ease;
+}
+
+circle.handle:active,
+circle.handle.dragging {
+    opacity: 0.85;
+    filter: brightness(1.3);
+}
+
+/* Pulsing ring on handles to hint they are interactive on touch */
+@keyframes handle-pulse {
+    0%   { stroke-opacity: 0.8; r: 13px; }
+    50%  { stroke-opacity: 0.3; r: 17px; }
+    100% { stroke-opacity: 0.8; r: 13px; }
+}
+
+/* Touch active feedback for item groups */
+.item-group:active rect.item-rect,
+.item-group:active .node-body {
+    filter: brightness(1.1);
+}
+
+/* Larger hit area for wires so they're easier to tap on a touchscreen */
+.wire {
+    /* Invisible wide transparent stroke makes the wire easier to tap */
+    stroke-linecap: round;
+}
+
+/* Wire group gets a wider transparent hit path for touch */
+.wire-group::after {
+    content: '';
+}
+
+/* Touch-friendly minimum height for inspector rows and toolbar buttons */
+@media (pointer: coarse) {
+    /* Minimum 44px touch targets for all toolbar buttons */
+    .toolbar button,
+    .topbar button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 0 14px;
+    }
+
+    /* Minimum touch height for sidebar list items (component library) */
+    .component-item,
+    .sidebar-item,
+    .library-item {
+        min-height: 48px;
+    }
+
+    /* Larger inspector inputs for touch */
+    .prop-input,
+    .prop-select {
+        min-height: 40px;
+        font-size: 14px;
+        padding: 6px 8px;
+    }
+
+    /* Inspector action buttons: full touch height */
+    .prop-actions button {
+        min-height: 44px;
+        font-size: 13px;
+    }
+
+    /* Mode toggle buttons */
+    .mode-toggle button {
+        min-height: 38px;
+        padding: 0 18px;
+    }
+
+    /* Sidebar toggle arrows */
+    #left-sidebar-toggle,
+    #right-sidebar-toggle {
+        min-width: 40px;
+        min-height: 60px;
+    }
+
+    /* Prevent long-press context menu on canvas items */
+    .item-group,
+    circle.handle,
+    .wire-group {
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+    }
+
+    /* Visual hint for double-tap wire deletion */
+    .wire-group .wire.selected::after {
+        content: '✕ double-tap to delete';
+    }
+
+    /* Scrollable sidebars are easier to scroll with a finger */
+    #left-sidebar,
+    #right-sidebar .tab-content {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior: contain;
+    }
+}
+
+/* ============================================
+   EMBED / READ-ONLY VIEW MODE
+   For documentation iframes (Docusaurus, etc.)
+   ============================================ */
+
+body.embed-mode {
+    overflow: hidden;
+}
+
+body.embed-mode .toolbar {
+    display: none !important;
+}
+
+body.embed-mode #embed-toolbar {
+    display: flex;
+}
+
+body.embed-mode #main-content {
+    margin-top: 44px;
+    height: calc(100vh - 44px);
+}
+
+body.embed-mode #embed-toolbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 44px;
+    z-index: 2000;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: linear-gradient(180deg, #0f1a2e 0%, #0a1525 100%);
+    border-bottom: 1px solid rgba(112, 160, 208, 0.25);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+body.embed-mode #embed-toolbar-title {
+    font-family: var(--font-display, 'Exo 2', sans-serif);
+    font-size: 15px;
+    font-weight: 600;
+    color: #e8eef5;
+    letter-spacing: 0.02em;
+}
+
+body.embed-mode .embed-toolbar-hint {
+    font-size: 12px;
+    color: #7a8fa8;
+}
+
+body.embed-mode #right-sidebar,
+body.embed-mode #right-sidebar-toggle {
+    display: none !important;
+}
+
+body.embed-mode #canvas-container {
+    top: 44px;
+    height: calc(100vh - 44px);
+    right: 0;
+}
+
+body.embed-mode:has(#embed-info-panel.open) #canvas-container {
+    right: 300px;
+    width: calc(100% - 260px - 300px);
+}
+
+body.embed-mode:has(#left-sidebar.collapsed) #canvas-container {
+    left: 0;
+}
+
+body.embed-mode:has(#left-sidebar.collapsed):has(#embed-info-panel.open) #canvas-container {
+    width: calc(100% - 300px);
+}
+
+body.embed-mode:has(#left-sidebar:not(.collapsed)):has(#embed-info-panel.open) #canvas-container {
+    left: 260px;
+    width: calc(100% - 260px - 300px);
+}
+
+/* Read-only component info panel */
+#embed-info-panel {
+    display: none;
+    position: fixed;
+    top: 44px;
+    right: 0;
+    bottom: 0;
+    width: 300px;
+    z-index: 1500;
+    background: #0d1520;
+    border-left: 1px solid rgba(112, 160, 208, 0.2);
+    flex-direction: column;
+    overflow: hidden;
+}
+
+body.embed-mode #embed-info-panel {
+    display: flex;
+}
+
+body.embed-mode #embed-info-panel:not(.open) {
+    display: none;
+}
+
+#embed-info-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(112, 160, 208, 0.15);
+    flex-shrink: 0;
+}
+
+#embed-info-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    color: #ffd700;
+    font-family: var(--font-display, 'Exo 2', sans-serif);
+}
+
+#embed-info-close {
+    background: transparent;
+    border: none;
+    color: #7a8fa8;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+#embed-info-close:hover {
+    color: #e8eef5;
+    background: rgba(255, 255, 255, 0.06);
+}
+
+#embed-info-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 14px 24px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.embed-stat-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 7px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+}
+
+.embed-stat-label {
+    color: #7a8fa8;
+    flex-shrink: 0;
+}
+
+.embed-stat-value {
+    color: #e8eef5;
+    text-align: right;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+    font-size: 11px;
+}
+
+.embed-stat-section {
+    margin-top: 14px;
+    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #70a0d0;
+}
+
+.embed-view-badge {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 2px 8px;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #70c070;
+    background: rgba(112, 192, 112, 0.12);
+    border: 1px solid rgba(112, 192, 112, 0.3);
+    border-radius: 3px;
+    vertical-align: middle;
+}
+
+/* Embed export modal */
+#embed-export-modal .modal-body pre {
+    background: #0a1018;
+    border: 1px solid rgba(112, 160, 208, 0.2);
+    border-radius: 4px;
+    padding: 12px;
+    font-size: 11px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: #c8d8e8;
+    font-family: var(--font-mono, 'JetBrains Mono', monospace);
+}
+
+#embed-export-modal .copy-embed-btn {
+    margin-top: 8px;
 }

@@ -25,8 +25,32 @@
     <link rel="stylesheet" href="css/designer.css">
     <!-- Inline styles removed - now using external CSS files -->
     <style>
-        /* All styles moved to external CSS files in css/ folder */
-        /* Only keeping minimal critical overrides if needed */
+        /* Drag preview wire animations */
+        @keyframes drag-dash-march {
+            to { stroke-dashoffset: -24; }
+        }
+        @keyframes drag-source-pulse {
+            0%   { r: 14px; opacity: 0.9; }
+            50%  { r: 20px; opacity: 0.4; }
+            100% { r: 14px; opacity: 0.9; }
+        }
+        @keyframes drag-snap-ring {
+            0%   { r: 20px; opacity: 1;   stroke-width: 3; }
+            50%  { r: 28px; opacity: 0.5; stroke-width: 2; }
+            100% { r: 20px; opacity: 1;   stroke-width: 3; }
+        }
+        .drag-preview-halo {
+            animation: drag-dash-march 0.4s linear infinite;
+        }
+        .drag-preview-dashes {
+            animation: drag-dash-march 0.4s linear infinite;
+        }
+        .drag-source-pulse {
+            animation: drag-source-pulse 0.8s ease-in-out infinite;
+        }
+        .drag-snap-ring {
+            animation: drag-snap-ring 0.5s ease-in-out infinite;
+        }
     </style>
 </head>
 <body>
@@ -83,8 +107,15 @@
             </label>
             <button id="saveBtn">Save</button>
             <button id="loadBtn">Load</button>
+            <button id="exportEmbedBtn" title="Export an embeddable read-only view for documentation">📤 Embed</button>
             <button id="exportToSimulatorBtn" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">▶ Simulate</button>
         </div>
+    </div>
+
+    <!-- EMBED MODE TOOLBAR (shown only in read-only embed view) -->
+    <div id="embed-toolbar" style="display: none;">
+        <span id="embed-toolbar-title">Solar System</span>
+        <span class="embed-toolbar-hint">View only — pan, zoom, drag nodes, tap for details</span>
     </div>
     
     <!-- MAIN CONTENT -->
@@ -273,6 +304,15 @@
         
         <!-- Right sidebar toggle button (outside sidebar so it stays visible) -->
         <button id="right-sidebar-toggle" title="Toggle Library Panel (L)">▶</button>
+
+        <!-- EMBED MODE: read-only component info panel -->
+        <div id="embed-info-panel">
+            <div id="embed-info-panel-header">
+                <h3 id="embed-info-title">Component</h3>
+                <button id="embed-info-close" title="Close panel" aria-label="Close">×</button>
+            </div>
+            <div id="embed-info-content"></div>
+        </div>
         
         <!-- RIGHT SIDEBAR - Component Library & Inspector -->
         <div id="right-sidebar" class="open">
@@ -1071,6 +1111,26 @@
         </div>
     </div>
     
+    <!-- EMBED EXPORT MODAL -->
+    <div id="embed-export-overlay" class="modal-overlay hidden" style="display: none;">
+        <div class="modal" id="embed-export-modal" style="max-width: 720px;">
+            <div class="modal-header">
+                <h2 class="modal-title">📤 Export Embeddable View</h2>
+                <button class="modal-close" id="embed-export-close" aria-label="Close">×</button>
+            </div>
+            <div class="modal-body">
+                <p style="margin-top: 0; color: #aaa; font-size: 13px;">
+                    Save your schematic JSON, host it on your docs site, then embed the read-only viewer in Docusaurus or any HTML page.
+                </p>
+                <p><strong>Step 1:</strong> Download schematic JSON</p>
+                <button id="embed-export-download" class="btn-primary" style="margin-bottom: 16px;">⬇ Download JSON</button>
+                <p><strong>Step 2:</strong> Copy embed code (update the JSON path after uploading)</p>
+                <pre id="embed-export-code"></pre>
+                <button class="copy-embed-btn btn-secondary" id="embed-export-copy">📋 Copy Embed Code</button>
+            </div>
+        </div>
+    </div>
+
     <!-- HINT POPUP -->
     <div id="hintPopup" class="hint-popup hidden">
         <h3 id="hintTitle">Hint</h3>
@@ -1327,6 +1387,7 @@
             _battPreset("Big Battery 48V 200Ah LiFePO4", 51.2, 200, 2700),
             _battPreset("EcoWorthy 12V 100Ah LiFePO4", 12.8, 100, 380),
             _battPreset("EcoWorthy 12V 200Ah LiFePO4", 12.8, 200, 680),
+            _battPreset("EcoWorthy 48V 50Ah LiFePO4", 51.2, 50, 599, { width: 175, height: 260 }),
             _battPreset("EcoWorthy 48V 100Ah LiFePO4", 51.2, 100, 1380),
             // EcoFlow Smart Batteries
             _battPreset("EcoFlow DELTA Pro Smart Battery", 48, 75, 1800, { smartBattery: true, ecosystemType: 'ecoflow' }),
@@ -1353,6 +1414,7 @@
             _ctrlPreset("Victron MultiPlus-II 48/5000", { type: 'hybrid_inverter', maxVoc: 150, maxIsc: 35, maxWmp: 4500, minVmp: 38, mppVoltageMin: 38, mppVoltageMax: 145, ratedChargeCurrent: 70, supportedVoltages: [48], maxACOutputW: 5000, width: 328, height: 520, cost: 2200 }),
             _ctrlPreset("Growatt SPF 5000ES", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 18, maxWmp: 5500, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 115, ratedChargeCurrent: 80, supportedVoltages: [48], maxACOutputW: 5000, width: 460, height: 540, cost: 700 }),
             _ctrlPreset("PowMR 3000W Hybrid", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 18, maxWmp: 3000, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 115, ratedChargeCurrent: 60, supportedVoltages: [24,48], maxACOutputW: 3000, width: 410, height: 480, cost: 450 }),
+            _ctrlPreset("EcoWorthy SL3500", { type: 'hybrid_inverter', maxVoc: 145, maxIsc: 50, maxWmp: 4400, minVmp: 60, mppVoltageMin: 60, mppVoltageMax: 140, ratedChargeCurrent: 80, supportedVoltages: [48], maxACOutputW: 3500, width: 410, height: 480, cost: 549 }),
             _ctrlPreset("LuxPower SNA 6000", { type: 'hybrid_inverter', mpptCount: 2, maxVoc: 500, maxIsc: 15, maxWmp: 9000, minVmp: 125, mppVoltageMin: 125, mppVoltageMax: 425, ratedChargeCurrent: 120, supportedVoltages: [48], maxACOutputW: 6000, width: 530, height: 545, cost: 1600 }),
             _ctrlPreset("EG4 6000XP", { type: 'hybrid_inverter', mpptCount: 2, maxVoc: 500, maxIsc: 14, maxWmp: 8000, minVmp: 125, mppVoltageMin: 125, mppVoltageMax: 425, ratedChargeCurrent: 120, supportedVoltages: [48], maxACOutputW: 6000, width: 530, height: 545, cost: 1450 }),
             _ctrlPreset("Sol-Ark 12K", { type: 'hybrid_inverter', mpptCount: 2, maxVoc: 500, maxIsc: 25, maxWmp: 12000, minVmp: 150, mppVoltageMin: 150, mppVoltageMax: 450, ratedChargeCurrent: 180, supportedVoltages: [48], maxACOutputW: 12000, width: 584, height: 711, cost: 4500 }),
@@ -1698,7 +1760,7 @@
         }
         
         function duplicateItem(item) {
-            if (!item) return;
+            if (EMBED_MODE || !item) return;
             
             // Create a deep copy with new position
             const offsetX = 50;
@@ -1799,6 +1861,18 @@
                     activeEl.tagName === 'TEXTAREA' || 
                     activeEl.tagName === 'SELECT'
                 );
+
+                // Embed mode: only allow escape and sidebar toggle
+                if (EMBED_MODE) {
+                    if (e.key === 'Escape' && !isTyping) {
+                        deselectAll();
+                        e.preventDefault();
+                    }
+                    if (e.key === 's' && !isTyping && !e.ctrlKey && !e.metaKey) {
+                        document.getElementById('left-sidebar')?.classList.toggle('collapsed');
+                    }
+                    return;
+                }
                 
                 // Escape key - deselect and close inspectors
                 if (e.key === 'Escape') {
@@ -1874,6 +1948,11 @@
         // ============================================
         // STATE MANAGEMENT
         // ============================================
+
+        const _embedUrlParams = new URLSearchParams(window.location.search);
+        const EMBED_MODE = _embedUrlParams.get('embed') === '1' || _embedUrlParams.get('view') === '1';
+        const EMBED_CONFIG_URL = _embedUrlParams.get('config') || '';
+        const EMBED_TITLE = _embedUrlParams.get('title') || 'Solar System';
         
         let currentMode = 'build'; // 'build', 'live', or 'simulate'
         
@@ -2074,11 +2153,13 @@
                                 if (connObj) {
                                     // AC output is limited by controller max AC output
                                     const maxACWatts = controller.specs.maxACOutputW || 0;
+                                    const acVoltage = controller.specs.acVoltage || 120;
                                     LiveView.state.powerFlow[connObj.id] = {
                                         watts: maxACWatts,
-                                        amps: maxACWatts / 120, // Default 120V
-                                        voltage: 120,
-                                        direction: 'from-controller'
+                                        amps: maxACWatts / acVoltage,
+                                        voltage: acVoltage,
+                                        direction: 'from-controller',
+                                        isLive: true
                                     };
                                 }
                             });
@@ -3622,6 +3703,12 @@
         let dragOffset = { x: 0, y: 0 };
         let tempWire = null;
         let draggingHandle = null;
+        let _lastHandleDragEndTime = 0; // Used to suppress touchend-as-click after handle drag
+        let _lastTapInfo = { id: null, time: 0 }; // Double-tap detection for touch screens
+        let _lastWireTapInfo = { id: null, time: 0 }; // Double-tap detection for wires
+        // Prevents the same tap gesture from being handled twice when both touchend and
+        // pointerup fire for the same physical tap (common on Windows touchscreens).
+        let _lastTapHandledAt = 0;
         
         // Tutorial state
         let tutorialStep = 0;
@@ -3677,9 +3764,16 @@
             .scaleExtent([0.25, 4])
             .filter(event => {
                 // Don't zoom on double-click
-                if (event.type.includes('dblclick')) return false;
-                // Don't pan when clicking on items or handles
-                if (event.target.closest('.item-group') || event.target.closest('.handle')) return false;
+                if (event.type === 'dblclick') return false;
+                // Always allow mouse wheel zoom
+                if (event.type === 'wheel') return true;
+                // Always allow multi-touch gestures (pinch zoom, two-finger pan):
+                //   - Pointer events: isPrimary===false means second/third finger
+                //   - Touch events: touches.length >= 2
+                if (event.isPrimary === false) return true;
+                if (event.touches && event.touches.length >= 2) return true;
+                // Don't pan on a single touch/click that lands on an item or handle
+                if (event.target.closest?.('.item-group') || event.target.closest?.('.handle')) return false;
                 return true;
             })
             .on("zoom", (event) => {
@@ -3690,6 +3784,21 @@
         
         // Add SVG filters for wire glow effects
         const defs = svg.append("defs");
+        
+        // Drag preview glow filter — used for the temp wire during handle drag
+        const dragPreviewGlow = defs.append("filter")
+            .attr("id", "drag-preview-glow")
+            .attr("x", "-80%")
+            .attr("y", "-80%")
+            .attr("width", "260%")
+            .attr("height", "260%");
+        dragPreviewGlow.append("feGaussianBlur")
+            .attr("in", "SourceGraphic")
+            .attr("stdDeviation", "4")
+            .attr("result", "blur");
+        const dragPreviewMerge = dragPreviewGlow.append("feMerge");
+        dragPreviewMerge.append("feMergeNode").attr("in", "blur");
+        dragPreviewMerge.append("feMergeNode").attr("in", "SourceGraphic");
         
         // Yellow glow filter for 120V AC - creates a bright yellow glow
         const yellowGlow = defs.append("filter")
@@ -4903,22 +5012,18 @@
                 .attr("transform", d => `translate(${d.x}, ${d.y})`)
                 .call(d3.drag()
                     .touchable(true) // Enable touch support
+                    // Critical: prevent item drag from starting when touching a port handle.
+                    // Without this, d3.drag on BOTH the handle circle and item group fire for
+                    // the same pointerdown event (via bubbling). The item group captures the
+                    // pointer last and overrides the handle's drag, making handle dragging impossible.
+                    .filter(event => !event.target.closest?.('.handle'))
                     .on("start", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
                         dragStarted.call(this, event, d);
                     })
                     .on("drag", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
                         dragged.call(this, event, d);
                     })
                     .on("end", function(event, d) {
-                        if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                            event.sourceEvent.preventDefault();
-                        }
                         dragEnded.call(this, event, d);
                     })
                 )
@@ -4929,25 +5034,61 @@
                     // Always select the item to open inspector
                     selectItem(d);
                 })
-                .on("touchend", (event, d) => {
-                    // Handle touch as click for mobile devices
+                // pointerup gives reliable tap-to-select on touchscreens.
+                // On Windows touchscreens with pointer events, pointer capture from d3.drag can
+                // cause the subsequent `click` event to be re-targeted or lost, so we use pointerup
+                // (which fires on the capturing element before any re-targeting) as a fallback.
+                .on("pointerup", function(event, d) {
+                    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+                    // Was it a tap, not a drag? (moved less than 10px)
+                    const dx = event.clientX - dragStartPos.x;
+                    const dy = event.clientY - dragStartPos.y;
+                    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) return;
+                    // Suppress if a handle drag just ended
+                    if (Date.now() - _lastHandleDragEndTime < 250) return;
+                    // Don't fire if the tap was on a switch/button/handle inside the item — those
+                    // have their own handlers that already called stopPropagation().
+                    if (event.target.closest?.('.handle') ||
+                        event.target.closest?.('.reset-button') ||
+                        event.target.closest?.('.load-switch-group') ||
+                        event.target.closest?.('.breaker-switch-group')) return;
+
                     event.stopPropagation();
-                    event.preventDefault();
-                    // Only trigger if it wasn't a drag (check if moved significantly)
-                    if (event.changedTouches && event.changedTouches.length > 0) {
-                        const touch = event.changedTouches[0];
-                        // Check if this was a tap (not a drag) by checking drag state
-                        if (!isDragging || (Math.abs(touch.clientX - dragStartPos.x) < 10 && Math.abs(touch.clientY - dragStartPos.y) < 10)) {
-                            // In live or simulate mode, toggle loads when tapped
-                            if (d.type === 'acload') {
-                                if (currentMode === 'live' && LiveView.state.active) {
-                                    toggleLoad(d);
-                                }
-                            }
-                            // Always select the item to open inspector
-                            selectItem(d);
-                        }
+
+                    const now = Date.now();
+                    // Mark this gesture as handled so the compatibility touchend doesn't re-fire
+                    _lastTapHandledAt = now;
+                    const isDoubleTap = (_lastTapInfo.id === d.id && now - _lastTapInfo.time < 350);
+                    _lastTapInfo = { id: d.id, time: now };
+
+                    if (d.type === 'acload' && currentMode === 'live' && LiveView.state.active) {
+                        toggleLoad(d);
                     }
+                    selectItem(d);
+                    if (isDoubleTap) openInspector(d);
+                })
+                .on("touchend", (event, d) => {
+                    // touchend is a fallback for browsers that don't fire pointerup for touch,
+                    // or for the case where click is suppressed by touchend.preventDefault().
+                    // The pointerup handler is the canonical touch-tap handler; touchend deduplicates.
+                    event.stopPropagation();
+                    event.preventDefault(); // suppress the subsequent click event
+                    const now = Date.now();
+                    if (now - _lastHandleDragEndTime < 250) return; // handle drag just ended
+                    if (now - _lastTapHandledAt < 100) return;      // pointerup already handled this tap
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const moved = Math.abs(touch.clientX - dragStartPos.x) > 12 ||
+                                  Math.abs(touch.clientY - dragStartPos.y) > 12;
+                    if (moved) return;
+                    _lastTapHandledAt = now;
+                    const isDoubleTap = (_lastTapInfo.id === d.id && now - _lastTapInfo.time < 350);
+                    _lastTapInfo = { id: d.id, time: now };
+                    if (d.type === 'acload' && currentMode === 'live' && LiveView.state.active) {
+                        toggleLoad(d);
+                    }
+                    selectItem(d);
+                    if (isDoubleTap) openInspector(d);
                 })
                 .on("dblclick", (event, d) => {
                     event.stopPropagation();
@@ -5345,13 +5486,19 @@
                     .style("cursor", "pointer")
                     .style("pointer-events", "none");
                 
-                // Make reset button clickable
-                resetBtn.on("click", (event) => {
+                // Make reset button clickable — both mouse (click) and touch (pointerup)
+                const _batteryResetHandler = (event) => {
                     event.stopPropagation();
                     d.destroyed = false;
                     render();
                     validateSystem();
-                });
+                };
+                resetBtn.on("click", _batteryResetHandler)
+                        .on("pointerup", (event) => {
+                            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                                _batteryResetHandler(event);
+                            }
+                        });
                 
                 return; // Don't render normal battery content if destroyed
             }
@@ -5613,8 +5760,8 @@
                     .style("cursor", "pointer")
                     .style("pointer-events", "none");
                 
-                // Make reset button clickable
-                resetBtn.on("click", (event) => {
+                // Make reset button clickable — both mouse (click) and touch (pointerup)
+                const _controllerResetHandler = (event) => {
                     event.stopPropagation();
                     d.destroyed = false;
                     d.batteryOvervoltage = false;
@@ -5622,23 +5769,24 @@
                     d.reversedPolarityWarningShown = false;
                     
                     // If controller was destroyed due to reverse polarity, disconnect battery wires
-                    // This forces the user to reconnect them correctly
                     if (d.handles) {
                         const battPosConn = d.handles.batteryPositive?.connectedTo || [];
                         const battNegConn = d.handles.batteryNegative?.connectedTo || [];
-                        
-                        // Disconnect all battery connections
                         [...battPosConn, ...battNegConn].forEach(conn => {
                             const connection = connections.find(c => c.id === conn.connectionId);
-                            if (connection) {
-                                deleteConnection(connection.id);
-                            }
+                            if (connection) deleteConnection(connection.id);
                         });
                     }
                     
                     render();
                     validateSystem();
-                });
+                };
+                resetBtn.on("click", _controllerResetHandler)
+                        .on("pointerup", (event) => {
+                            if (event.pointerType === 'touch' || event.pointerType === 'pen') {
+                                _controllerResetHandler(event);
+                            }
+                        });
                 
                 return; // Don't render normal controller content if destroyed
             }
@@ -6309,6 +6457,29 @@
                             (outletConn.sourceHandleId === currentOutletInput.id || outletConn.targetHandleId === currentOutletInput.id)) {
                             const result = traceToBreaker(otherItem);
                             if (result) return result;
+                        }
+                    }
+
+                    // Direct connection: outlet input wired straight to controller AC output
+                    // (no breaker in line). Live when the controller has solar or battery power.
+                    if (otherItem.type === 'controller') {
+                        const outletInput = currentOutlet.handles?.input;
+                        const ctrlAcOut = otherItem.handles?.acOutput;
+                        if (outletInput && ctrlAcOut &&
+                            (outletConn.sourceHandleId === ctrlAcOut.id || outletConn.targetHandleId === ctrlAcOut.id) &&
+                            (outletConn.sourceHandleId === outletInput.id || outletConn.targetHandleId === outletInput.id)) {
+                            const arraySpecs = calculateConnectedArraySpecs(otherItem);
+                            const battSpecs  = calculateConnectedBatterySpecs(otherItem);
+                            const hasPower   = (arraySpecs.wmp > 0) ||
+                                               (battSpecs.kWh  > 0) ||
+                                               ((otherItem.specs?.internalBatteryKWh || 0) > 0);
+                            if (!hasPower) {
+                                return { isLive: false };
+                            }
+                            if (LiveView.state.active && LiveView.state.controllerACOutputEnabled === false) {
+                                return { isLive: false };
+                            }
+                            return { isLive: true };
                         }
                     }
                 }
@@ -7167,6 +7338,27 @@
                             // This is a daisy-chain connection going backwards - trace through it
                             const result = traceToBreaker(otherItem);
                             if (result) return result;
+                        }
+                    }
+
+                    // Direct connection: outlet input wired straight to controller AC output
+                    // (no breaker in line). Live when the controller has solar or battery power.
+                    if (otherItem.type === 'controller') {
+                        const outletInput = currentOutlet.handles?.input;
+                        const ctrlAcOut = otherItem.handles?.acOutput;
+                        if (outletInput && ctrlAcOut &&
+                            (outletConn.sourceHandleId === ctrlAcOut.id || outletConn.targetHandleId === ctrlAcOut.id) &&
+                            (outletConn.sourceHandleId === outletInput.id || outletConn.targetHandleId === outletInput.id)) {
+                            // Use same power-availability check as the breaker path
+                            const arraySpecs = calculateConnectedArraySpecs(otherItem);
+                            const battSpecs  = calculateConnectedBatterySpecs(otherItem);
+                            const hasPower   = (arraySpecs.wmp > 0) ||
+                                               (battSpecs.kWh  > 0) ||
+                                               ((otherItem.specs?.internalBatteryKWh || 0) > 0);
+                            if (!hasPower) {
+                                return { isLive: false, message: "Inverter has no power source connected." };
+                            }
+                            return { isLive: true };
                         }
                     }
                 }
@@ -8333,7 +8525,37 @@
                     handleStroke = '#5a9a5a';
                 }
                 
-                // Draw handle circle
+                // Invisible enlarged hit-area circle for touch screens.
+                // This sits beneath the visible handle and expands the drag-start zone
+                // significantly so a fingertip can grab handles comfortably.
+                const touchHitArea = HANDLE_RADIUS + 10; // Always 10px larger than the visual radius
+                g.append("circle")
+                    .attr("class", `handle ${handle.polarity} ${handle.resourceType ? 'resource-port' : ''}`)
+                    .attr("cx", handle.x)
+                    .attr("cy", handle.y)
+                    .attr("r", touchHitArea)
+                    .attr("data-handle-id", handle.id)
+                    .attr("fill", "transparent")
+                    .attr("stroke", "none")
+                    .style("touch-action", "none")
+                    .style("-webkit-touch-callout", "none")
+                    .call(d3.drag()
+                        .touchable(true)
+                        .filter(() => !EMBED_MODE)
+                        .on("start", (event) => {
+                            event.sourceEvent?.preventDefault?.();
+                            handleDragStart(event, d, handle);
+                        })
+                        .on("drag", (event) => {
+                            event.sourceEvent?.preventDefault?.();
+                            handleDragMove(event);
+                        })
+                        .on("end", (event) => {
+                            handleDragEnd(event);
+                        })
+                    );
+
+                // Draw visible handle circle (on top of hit area)
                 const handleCircle = g.append("circle")
                     .attr("class", `handle ${handle.polarity} ${handle.resourceType ? 'resource-port' : ''}`)
                     .attr("cx", handle.x)
@@ -8348,24 +8570,14 @@
                     .call(d3.drag()
                         .touchable(true) // Enable touch support in d3.drag
                         .on("start", (event) => {
-                            // Prevent default touch behavior
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
+                            event.sourceEvent?.preventDefault?.();
                             handleDragStart(event, d, handle);
                         })
                         .on("drag", (event) => {
-                            // Prevent default touch behavior during drag
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
+                            event.sourceEvent?.preventDefault?.();
                             handleDragMove(event);
                         })
                         .on("end", (event) => {
-                            // Prevent default touch behavior
-                            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                                event.sourceEvent.preventDefault();
-                            }
                             handleDragEnd(event);
                         })
                     );
@@ -9070,6 +9282,45 @@
                 .append("g")
                 .attr("class", "wire-group");
             
+            // Invisible wide hit path for touch — sits below the visual wire.
+            // This makes wires much easier to tap/select on a touchscreen.
+            newWireGroups.append("path")
+                .attr("class", "wire-hit-area")
+                .style("stroke", "transparent")
+                .style("stroke-width", "24")
+                .style("fill", "none")
+                .style("cursor", "pointer")
+                .on("click", (event, d) => {
+                    event.stopPropagation();
+                    if (event.ctrlKey || event.metaKey) {
+                        addWaypointToWire(d, event);
+                    } else {
+                        selectConnection(d);
+                    }
+                })
+                .on("dblclick", (event, d) => {
+                    event.stopPropagation();
+                    if (EMBED_MODE) { selectConnection(d); return; }
+                    deleteConnection(d.id);
+                    closeInspector();
+                })
+                .on("touchend", (event, d) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const now = Date.now();
+                    const isDoubleTap = (_lastWireTapInfo.id === d.id && now - _lastWireTapInfo.time < 350);
+                    _lastWireTapInfo = { id: d.id, time: now };
+                    if (isDoubleTap) {
+                        if (EMBED_MODE) { selectConnection(d); return; }
+                        deleteConnection(d.id);
+                        closeInspector();
+                    } else {
+                        selectConnection(d);
+                    }
+                });
+
             // Create wire path
             newWireGroups.append("path")
                 .attr("class", d => `wire ${d.polarity}`)
@@ -9086,13 +9337,33 @@
                 })
                 .on("dblclick", (event, d) => {
                     event.stopPropagation();
+                    if (EMBED_MODE) { selectConnection(d); return; }
                     deleteConnection(d.id);
                     closeInspector();
+                })
+                .on("touchend", (event, d) => {
+                    event.stopPropagation();
+                    event.preventDefault();
+                    const touch = event.changedTouches?.[0];
+                    if (!touch) return;
+                    const now = Date.now();
+                    const isDoubleTap = (_lastWireTapInfo.id === d.id && now - _lastWireTapInfo.time < 350);
+                    _lastWireTapInfo = { id: d.id, time: now };
+                    if (isDoubleTap) {
+                        if (EMBED_MODE) { selectConnection(d); return; }
+                        deleteConnection(d.id);
+                        closeInspector();
+                    } else {
+                        selectConnection(d);
+                    }
                 });
             
             const mergedGroups = wireGroups.merge(newWireGroups);
             
-            // Update wire path
+            // Keep hit-area path in sync with visible wire path
+            mergedGroups.select(".wire-hit-area")
+                .attr("d", d => generateWirePath(d));
+
             // Update wire path and classes
             mergedGroups.select(".wire")
                 .attr("d", d => generateWirePath(d))
@@ -9590,6 +9861,7 @@
         
         // Add a waypoint to a wire at the click position
         function addWaypointToWire(conn, event) {
+            if (EMBED_MODE) return;
             // Get click position in SVG coordinates
             const svg = d3.select('#canvas-container svg');
             const svgNode = svg.node();
@@ -9896,18 +10168,18 @@
             }
             if (!d) return; // Safety check
             
-            // Track drag start position for touch devices
-            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                const touch = event.sourceEvent.touches[0] || event.sourceEvent.changedTouches[0];
-                if (touch) {
-                    dragStartPos.x = touch.clientX;
-                    dragStartPos.y = touch.clientY;
+            // Track drag start position — works for mouse, touch events, and pointer events
+            // (Windows touchscreens use pointer events with pointerType='touch', not raw touch events)
+            if (event.sourceEvent) {
+                const src = event.sourceEvent;
+                if (src.type && src.type.startsWith('touch') && src.touches?.[0]) {
+                    dragStartPos.x = src.touches[0].clientX;
+                    dragStartPos.y = src.touches[0].clientY;
+                    src.preventDefault?.();
+                } else {
+                    dragStartPos.x = src.clientX || 0;
+                    dragStartPos.y = src.clientY || 0;
                 }
-                // Prevent default touch behavior
-                event.sourceEvent.preventDefault();
-            } else if (event.sourceEvent) {
-                dragStartPos.x = event.sourceEvent.clientX;
-                dragStartPos.y = event.sourceEvent.clientY;
             }
             
             isDragging = true;
@@ -10341,7 +10613,70 @@
             render();
         }
         
+        // ---- Drag preview elements (populated by handleDragStart, cleared by handleDragEnd) ----
+        let _dragPreviewHalo = null;    // Thick glowing wide stroke
+        let _dragPreviewLine = null;    // Marching dashed line
+        let _dragSourceDot = null;      // Pulsing dot at source handle
+        let _dragCursorDot = null;      // Small dot following the finger
+        let _dragSnapRing = null;       // Snap indicator ring near a valid target
+        let _dragSnapTarget = null;     // {item, handle} currently highlighted for snap
+        let _dragWireColor = '#aaa';    // Wire color for the current drag
+
+        // Returns visible wire color for a polarity (brighter than the permanent wire colors
+        // so the preview is easy to see on the dark canvas background).
+        function _getDragPreviewColor(polarity) {
+            switch (polarity) {
+                case 'positive':
+                case 'pv-positive':  return '#ff6660';   // bright red
+                case 'negative':
+                case 'pv-negative':  return '#aaaaaa';   // light gray (was #333 – invisible!)
+                case 'ac':
+                case 'load':         return '#ffd060';   // bright yellow
+                case 'parallel':     return '#40c8ff';   // bright blue
+                case 'output':       return '#80e880';   // bright green
+                default:             return '#cccccc';
+            }
+        }
+
+        // Convert a pointer/touch/mouse event's client position to zoomGroup SVG coordinates.
+        function _clientToSVG(clientX, clientY) {
+            try {
+                const ctm = zoomGroup.node().getScreenCTM();
+                if (!ctm) return null;
+                const pt = svg.node().createSVGPoint();
+                pt.x = clientX;
+                pt.y = clientY;
+                const transformed = pt.matrixTransform(ctm.inverse());
+                return [transformed.x, transformed.y];
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // Extract SVG canvas coordinates from a d3 drag event, handling PointerEvent,
+        // MouseEvent, and TouchEvent (including changedTouches for end events).
+        function _dragEventToSVGCoords(event) {
+            const src = event.sourceEvent;
+            if (!src) return null;
+
+            // Raw touch event (touchmove / touchend)
+            if (src.changedTouches && src.changedTouches.length > 0) {
+                const t = src.changedTouches[0];
+                return _clientToSVG(t.clientX, t.clientY);
+            }
+            if (src.touches && src.touches.length > 0) {
+                const t = src.touches[0];
+                return _clientToSVG(t.clientX, t.clientY);
+            }
+            // PointerEvent or MouseEvent (both have clientX/Y)
+            if (src.clientX !== undefined) {
+                return _clientToSVG(src.clientX, src.clientY);
+            }
+            return null;
+        }
+
         function handleDragStart(event, item, handle) {
+            if (EMBED_MODE) return;
             event.sourceEvent.stopPropagation();
             
             // Store reference to the CURRENT item from allItems (not a stale copy)
@@ -10349,91 +10684,190 @@
             const currentHandle = currentItem ? Object.values(currentItem.handles).find(h => h.id === handle.id) : handle;
             
             draggingHandle = { 
-                itemId: item.id,  // Store ID instead of object reference
+                itemId: item.id,
                 handleId: handle.id,
                 item: currentItem || item,
                 handle: currentHandle || handle
             };
             
             const pos = getHandlePosition(draggingHandle.item, draggingHandle.handle);
-            
-            // Determine wire color based on handle polarity
             const polarity = draggingHandle.handle.polarity || 'mixed';
-            let wireColor = '#888'; // Default gray
-            if (polarity === 'positive' || polarity === 'pv-positive') {
-                wireColor = '#d9534f'; // Red
-            } else if (polarity === 'negative' || polarity === 'pv-negative') {
-                wireColor = '#333'; // Dark gray/black
-            } else if (polarity === 'ac' || polarity === 'load') {
-                wireColor = '#f0ad4e'; // Orange/yellow
-            } else if (polarity === 'parallel') {
-                wireColor = '#00a8e8'; // Blue
-            }
-            
-            tempWire = tempGroup.append("path")
-                .attr("class", "wire temp")
+            _dragWireColor = _getDragPreviewColor(polarity);
+
+            // Clear any leftover preview elements
+            tempGroup.selectAll('.drag-preview').remove();
+
+            // 1. Thick glowing halo wire (wide, semi-transparent)
+            _dragPreviewHalo = tempGroup.append("path")
+                .attr("class", "drag-preview drag-preview-halo")
                 .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`)
-                .style("stroke", wireColor)
-                .style("stroke-width", 3)
-                .style("stroke-dasharray", "8,4") // Dashed line for preview
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 12)
+                .style("stroke-linecap", "round")
+                .style("stroke-dasharray", "16,8")
+                .style("stroke-dashoffset", "0")
                 .style("fill", "none")
-                .style("opacity", 0.8)
+                .style("opacity", 0.3)
+                .style("filter", "url(#drag-preview-glow)")
                 .style("pointer-events", "none");
+
+            // 2. Main dashed wire line
+            _dragPreviewLine = tempGroup.append("path")
+                .attr("class", "drag-preview drag-preview-dashes")
+                .attr("d", `M ${pos.x} ${pos.y} L ${pos.x} ${pos.y}`)
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 3)
+                .style("stroke-linecap", "round")
+                .style("stroke-dasharray", "10,6")
+                .style("stroke-dashoffset", "0")
+                .style("fill", "none")
+                .style("opacity", 0.95)
+                .style("pointer-events", "none");
+
+            // 3. Pulsing ring at source handle
+            _dragSourceDot = tempGroup.append("circle")
+                .attr("class", "drag-preview drag-source-pulse")
+                .attr("cx", pos.x)
+                .attr("cy", pos.y)
+                .attr("r", 14)
+                .style("fill", "none")
+                .style("stroke", _dragWireColor)
+                .style("stroke-width", 2.5)
+                .style("opacity", 0.9)
+                .style("pointer-events", "none");
+
+            // 4. Small dot at cursor / finger tip
+            _dragCursorDot = tempGroup.append("circle")
+                .attr("class", "drag-preview")
+                .attr("cx", pos.x)
+                .attr("cy", pos.y)
+                .attr("r", 6)
+                .style("fill", _dragWireColor)
+                .style("opacity", 0.9)
+                .style("pointer-events", "none");
+
+            // tempWire still used by legacy code path — point it to the line element
+            tempWire = _dragPreviewLine;
         }
         
         function handleDragMove(event) {
-            if (!draggingHandle || !tempWire) return;
+            if (!draggingHandle || !_dragPreviewLine) return;
             
-            // Prevent default touch behavior during drag
-            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                event.sourceEvent.preventDefault();
-            }
-            
+            event.sourceEvent?.preventDefault?.();
+
             // Get fresh reference to item (in case it moved)
             const item = allItems.find(i => i.id === draggingHandle.itemId) || draggingHandle.item;
             const handle = Object.values(item.handles).find(h => h.id === draggingHandle.handleId) || draggingHandle.handle;
             
-            // d3.pointer automatically handles both mouse and touch events
-            const [mouseX, mouseY] = d3.pointer(event, zoomGroup.node());
+            // Robust coordinate extraction — works for pointer, touch, and mouse events
+            let coords = _dragEventToSVGCoords(event);
+            if (!coords) {
+                // Last resort: use d3.pointer which handles the common cases
+                try { coords = d3.pointer(event, zoomGroup.node()); } catch(e) { return; }
+            }
+            const [mouseX, mouseY] = coords;
             const start = getHandlePosition(item, handle);
-            
-            // Determine target side based on mouse position relative to start
+
+            // Determine entry side for the bezier curve
             let targetSide = 'top';
-            if (mouseY > start.y + 20) targetSide = 'top';      // Mouse is below, so target handle is on top
-            else if (mouseY < start.y - 20) targetSide = 'bottom'; // Mouse is above, so target handle is on bottom
-            else if (mouseX > start.x) targetSide = 'left';
-            else targetSide = 'right';
+            if (mouseY > start.y + 20)      targetSide = 'top';
+            else if (mouseY < start.y - 20) targetSide = 'bottom';
+            else if (mouseX > start.x)      targetSide = 'left';
+            else                             targetSide = 'right';
             
             const path = generateCurvePath(start.x, start.y, mouseX, mouseY, handle.side, targetSide);
-            tempWire.attr("d", path);
-            
-            // Ensure temp wire is visible and on top
-            tempWire.raise();
+
+            // Update both halo and dashed line with the same path
+            if (_dragPreviewHalo)  _dragPreviewHalo.attr("d", path);
+            if (_dragPreviewLine)  _dragPreviewLine.attr("d", path);
+
+            // Move cursor dot to finger position
+            if (_dragCursorDot) {
+                _dragCursorDot.attr("cx", mouseX).attr("cy", mouseY);
+            }
+
+            // ── Snap ring: highlight nearest valid target handle ──────────────────
+            const snapDist = HANDLE_RADIUS * 8; // show ring within this SVG-unit radius
+            let nearestItem = null, nearestHandle = null, nearestDist = snapDist;
+
+            for (const candidate of allItems) {
+                for (const h of Object.values(candidate.handles)) {
+                    // Don't snap to the source handle itself
+                    if (candidate.id === draggingHandle.itemId && h.id === draggingHandle.handleId) continue;
+                    const pos = getHandlePosition(candidate, h);
+                    const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
+                    if (dist < nearestDist) {
+                        nearestDist = dist;
+                        nearestItem = candidate;
+                        nearestHandle = h;
+                    }
+                }
+            }
+
+            if (nearestHandle) {
+                const snapPos = getHandlePosition(nearestItem, nearestHandle);
+                if (!_dragSnapRing) {
+                    _dragSnapRing = tempGroup.append("circle")
+                        .attr("class", "drag-preview drag-snap-ring")
+                        .style("fill", "none")
+                        .style("stroke", _dragWireColor)
+                        .style("stroke-width", 3)
+                        .style("pointer-events", "none");
+                }
+                _dragSnapRing
+                    .attr("cx", snapPos.x)
+                    .attr("cy", snapPos.y)
+                    .attr("r", HANDLE_RADIUS + 8)
+                    .style("opacity", 1)
+                    .style("display", null);
+                _dragSnapTarget = { item: nearestItem, handle: nearestHandle };
+            } else if (_dragSnapRing) {
+                _dragSnapRing.style("display", "none");
+                _dragSnapTarget = null;
+            }
+
+            // Keep temp group on top
+            tempGroup.raise();
         }
         
         function handleDragEnd(event) {
-            // Prevent default touch behavior
-            if (event.sourceEvent && event.sourceEvent.type && event.sourceEvent.type.startsWith('touch')) {
-                event.sourceEvent.preventDefault();
-            }
-            
-            if (tempWire) tempWire.remove();
+            // Remove all drag preview elements
+            tempGroup.selectAll('.drag-preview').remove();
             tempWire = null;
+            _dragPreviewHalo = null;
+            _dragPreviewLine = null;
+            _dragSourceDot = null;
+            _dragCursorDot = null;
+            _dragSnapRing = null;
+            _dragSnapTarget = null;
+            
+            // Mark that a handle drag just ended so the item touchend handler can suppress
+            // the unwanted inspector-open that would otherwise fire.
+            _lastHandleDragEndTime = Date.now();
             
             if (!draggingHandle) return;
             
-            // d3.pointer automatically handles both mouse and touch events
-            const [x, y] = d3.pointer(event, zoomGroup.node());
+            // Extract drop coordinates using the shared helper that handles all event types
+            const src = event.sourceEvent;
+            const coords = _dragEventToSVGCoords(event);
+            let x, y;
+            if (coords) {
+                [x, y] = coords;
+            } else {
+                try { [x, y] = d3.pointer(event, zoomGroup.node()); }
+                catch(e) { draggingHandle = null; return; }
+            }
             
             // Get fresh reference to source item
             const sourceItem = allItems.find(i => i.id === draggingHandle.itemId) || draggingHandle.item;
             const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === draggingHandle.handleId) || draggingHandle.handle;
             
-            // Find target handle - closest one within range
-            // IMPORTANT: Don't exclude sourceItem - we need to detect short circuits on same battery
+            // Find target handle — snap distance is larger for touch to be forgiving of finger imprecision.
+            // Use 6× handle radius for touch events, 3× for mouse.
+            const isTouch = src && (src.pointerType === 'touch' || src.type === 'touchend');
             let targetItem = null;
             let targetHandle = null;
-            let closestDist = HANDLE_RADIUS * 3;
+            let closestDist = HANDLE_RADIUS * (isTouch ? 6 : 3);
             
             for (const item of allItems) {
                 for (const handle of Object.values(item.handles)) {
@@ -10446,6 +10880,12 @@
                         targetHandle = handle;
                     }
                 }
+            }
+            
+            // Don't connect a handle to itself (can happen on a tap without movement)
+            if (targetHandle && targetItem.id === sourceItem.id && targetHandle.id === sourceHandle.id) {
+                draggingHandle = null;
+                return;
             }
             
             // Check for battery short circuit BEFORE creating connection or new battery
@@ -10632,9 +11072,10 @@
                         }
                     }
                 }
-                // AC output drag - create circuit (breaker + outlet)
+                // AC output drag - create a plain outlet (no inline breaker).
+                // Breakers can be added manually when the user understands their purpose.
                 else if (sourceHandle.polarity === 'ac' && sourceHandle.id.includes('-ac-out')) {
-                    createACCircuit(sourceItem, sourceHandle, x, y);
+                    createOutletFromCircuit(sourceItem, sourceHandle, x, y);
                 }
                 // Panel/Spiderbox circuit output drag - create outlet directly
                 else if (sourceHandle.polarity === 'ac' && (sourceItem.type === 'breakerpanel' || sourceItem.type === 'spiderbox')) {
@@ -10800,20 +11241,37 @@
         
         // Create outlet from panel/spiderbox circuit output or daisy-chain from another outlet
         function createOutletFromCircuit(sourceItem, sourceHandle, x, y) {
-            // Get voltage from the source handle
-            const voltage = sourceHandle.voltage || 120;
-            
+            // Resolve voltage: prefer explicit handle voltage, then item spec, then 120V default.
+            // Handles on controllers don't carry a voltage property, so we read it from the spec.
+            let voltage = sourceHandle.voltage;
+            if (!voltage) {
+                if (sourceItem.type === 'controller' || sourceItem.type === 'hybrid_inverter') {
+                    voltage = sourceItem.specs?.acVoltage || 120;
+                } else if (sourceItem.type === 'doublevoltagehub') {
+                    voltage = 240;
+                } else {
+                    voltage = sourceItem.specs?.voltage || 120;
+                }
+            }
+
             // Create outlet at drag position
             const outlet = createACOutlet(x - AC_OUTLET_WIDTH / 2, y - AC_OUTLET_HEIGHT / 2, voltage);
             allItems.push(outlet);
-            
+
             // Connect source to outlet input
             createConnection(sourceItem, sourceHandle, outlet, outlet.handles.input);
-            
+
             if (areHintsEnabled()) {
-                const isDaisyChain = sourceItem.type === 'acoutlet';
-                showHint(isDaisyChain ? "🔌 Outlet Daisy-Chained!" : "🔌 Outlet Connected!", 
-                    `Added ${voltage}V outlet. Drag from its right port to add more outlets in series.`);
+                if (sourceItem.type === 'acoutlet') {
+                    showHint("🔌 Outlet Daisy-Chained!",
+                        `Added ${voltage}V outlet. Keep dragging from the right port to extend the chain.`);
+                } else if (sourceItem.type === 'controller') {
+                    showHint("🔌 Outlet Added!",
+                        `Connected a ${voltage}V outlet directly to the inverter's AC output.\n\nTip: Drag from the outlet's right port to daisy-chain more outlets. Add an AC breaker in-line when you need circuit protection.`);
+                } else {
+                    showHint("🔌 Outlet Connected!",
+                        `Added ${voltage}V outlet. Drag from its right port to add more outlets in series.`);
+                }
             }
         }
         
@@ -11114,6 +11572,7 @@
         }
         
         function createConnection(sourceItem, sourceHandle, targetItem, targetHandle) {
+            if (EMBED_MODE) return;
             // Check if connection already exists
             const exists = connections.some(c => 
                 (c.sourceHandleId === sourceHandle.id && c.targetHandleId === targetHandle.id) ||
@@ -11227,6 +11686,7 @@
         }
         
         function deleteItem(itemId) {
+            if (EMBED_MODE) return;
             const item = allItems.find(i => i.id === itemId);
             if (!item) return;
             
@@ -11257,6 +11717,7 @@
         }
         
         function deleteConnection(connId) {
+            if (EMBED_MODE) return;
             const conn = connections.find(c => c.id === connId);
             if (!conn) return;
             
@@ -11332,21 +11793,33 @@
                 selectedArray = null;
             }
             
-            openInspector(item);
+            if (EMBED_MODE) {
+                openEmbedInspector(item);
+            } else {
+                openInspector(item);
+            }
             render();
         }
         
         function selectConnection(conn) {
             selectedConnection = conn;
             selectedItem = null;
-            openWireInspector(conn);
+            if (EMBED_MODE) {
+                openEmbedWireInspector(conn);
+            } else {
+                openWireInspector(conn);
+            }
             render();
         }
         
         function deselectAll() {
             selectedItem = null;
             selectedConnection = null;
-            closeInspector();
+            if (EMBED_MODE) {
+                closeEmbedInspector();
+            } else {
+                closeInspector();
+            }
             render();
         }
         
@@ -20058,15 +20531,295 @@
         // launchSimulator() function removed - simulation now runs inline via setMode('simulate')
         
         // ============================================
+        // EMBED / READ-ONLY VIEW MODE
+        // ============================================
+
+        function getDesignExportData() {
+            return {
+                items: allItems,
+                connections: connections,
+                version: 1,
+                title: document.getElementById('embed-toolbar-title')?.textContent || 'Solar System'
+            };
+        }
+
+        function applyDesignData(data) {
+            allItems = data.items || data.schematic?.components || [];
+            connections = data.connections || data.schematic?.connections || [];
+            invalidateSpecsCache();
+
+            connections.forEach(conn => {
+                if (!conn.wireGauge) {
+                    updateWireGaugeForConnection(conn);
+                    if (!conn.estimatedLength) {
+                        const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
+                        const targetItem = allItems.find(i => i.id === conn.targetItemId);
+                        if (sourceItem && targetItem) {
+                            const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === conn.sourceHandleId);
+                            const targetHandle = Object.values(targetItem.handles).find(h => h.id === conn.targetHandleId);
+                            if (sourceHandle && targetHandle) {
+                                conn.estimatedLength = estimateWireLength(sourceItem, sourceHandle, targetItem, targetHandle);
+                                conn.costPerFoot = WIRE_COST_PER_FOOT[conn.wireGauge] || WIRE_COST_PER_FOOT['10'];
+                                conn.totalWireCost = conn.estimatedLength * conn.costPerFoot;
+                            }
+                        }
+                    }
+                }
+            });
+
+            allItems.forEach(item => {
+                if (!item.handles) item.handles = {};
+                Object.values(item.handles).forEach(h => { if (h) h.connectedTo = []; });
+                if (item.type === 'acload') {
+                    if (!item.automations) item.automations = [];
+                    if (item.activeRecipeIndex === undefined) item.activeRecipeIndex = null;
+                    if (item.recipeTimeElapsed === undefined) item.recipeTimeElapsed = 0;
+                    if (item.isProcessing === undefined) item.isProcessing = false;
+                    if (item.awaitingInputs === undefined) item.awaitingInputs = false;
+                    if (!item.specs.behavior) item.specs.behavior = { type: 'simple' };
+                }
+            });
+
+            connections.forEach(conn => {
+                const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
+                const targetItem = allItems.find(i => i.id === conn.targetItemId);
+                if (sourceItem && targetItem) {
+                    const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === conn.sourceHandleId);
+                    const targetHandle = Object.values(targetItem.handles).find(h => h.id === conn.targetHandleId);
+                    if (sourceHandle && targetHandle) {
+                        sourceHandle.connectedTo.push({ itemId: targetItem.id, handleId: targetHandle.id, connectionId: conn.id });
+                        targetHandle.connectedTo.push({ itemId: sourceItem.id, handleId: sourceHandle.id, connectionId: conn.id });
+                    }
+                }
+            });
+
+            itemIdCounter = Math.max(0, ...allItems.map(i => parseInt(i.id.split('-').pop()) || 0));
+            connectionIdCounter = Math.max(0, ...connections.map(c => parseInt(c.id.split('-').pop()) || 0));
+
+            if (data.itemIdCounter) itemIdCounter = data.itemIdCounter;
+            if (data.connectionIdCounter) connectionIdCounter = data.connectionIdCounter;
+
+            tutorialCompleted = true;
+            systemValidated = true;
+            render();
+        }
+
+        async function loadDesignFromConfigUrl(url) {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error(`Failed to load config (${response.status})`);
+            const data = await response.json();
+            applyDesignData(data);
+            if (data.title) {
+                const titleEl = document.getElementById('embed-toolbar-title');
+                if (titleEl) titleEl.textContent = data.title;
+                document.title = data.title;
+            }
+        }
+
+        function _embedStatRow(label, value) {
+            if (value == null || value === '' || value === undefined) return '';
+            return `<div class="embed-stat-row"><span class="embed-stat-label">${label}</span><span class="embed-stat-value">${value}</span></div>`;
+        }
+
+        function _embedTypeLabel(type) {
+            const labels = {
+                panel: 'Solar Panel', battery: 'Battery', controller: 'Inverter / Controller',
+                acoutlet: 'AC Outlet', acload: 'AC Load', acbreaker: 'AC Breaker',
+                breakerpanel: 'Breaker Panel', spiderbox: 'Spider Box',
+                combiner: 'Combiner', solarcombiner: 'Solar Combiner',
+                doublevoltagehub: 'Double Voltage Hub', resourcecontainer: 'Resource Container'
+            };
+            return labels[type] || type;
+        }
+
+        function _embedItemIcon(type) {
+            const icons = {
+                panel: '☀️', battery: '🔋', controller: '⚡', acoutlet: '🔌',
+                acload: '💡', acbreaker: '🔲', breakerpanel: '📋', spiderbox: '🕷️'
+            };
+            return icons[type] || '⚙️';
+        }
+
+        function formatEmbedItemStats(item) {
+            const s = item.specs || {};
+            let html = `<div class="embed-stat-section">Overview</div>`;
+            html += _embedStatRow('Type', _embedTypeLabel(item.type));
+            if (s.name) html += _embedStatRow('Name', s.name);
+
+            const connCount = connections.filter(c => c.sourceItemId === item.id || c.targetItemId === item.id).length;
+            html += _embedStatRow('Connections', connCount);
+
+            if (item.type === 'panel') {
+                html += `<div class="embed-stat-section">Electrical</div>`;
+                html += _embedStatRow('Power (Wmp)', `${s.wmp} W`);
+                html += _embedStatRow('Vmp', `${s.vmp} V`);
+                html += _embedStatRow('Voc', `${s.voc} V`);
+                html += _embedStatRow('Isc', `${s.isc} A`);
+                const imp = s.imp || (s.wmp && s.vmp ? (s.wmp / s.vmp).toFixed(2) : null);
+                if (imp) html += _embedStatRow('Imp', `${imp} A`);
+                if (s.cost) html += _embedStatRow('Cost', `$${s.cost}`);
+            } else if (item.type === 'battery') {
+                html += `<div class="embed-stat-section">Electrical</div>`;
+                html += _embedStatRow('Voltage', `${s.voltage} V`);
+                html += _embedStatRow('Capacity', `${s.ah} Ah`);
+                html += _embedStatRow('Energy', `${(s.kWh || (s.voltage * s.ah / 1000)).toFixed(2)} kWh`);
+                if (s.maxDischarge) html += _embedStatRow('Max Discharge', `${s.maxDischarge} A`);
+                if (s.cost) html += _embedStatRow('Cost', `$${s.cost}`);
+            } else if (item.type === 'controller') {
+                html += `<div class="embed-stat-section">PV Input</div>`;
+                html += _embedStatRow('Max Voc', `${s.maxVoc} V`);
+                html += _embedStatRow('MPP Range', `${s.mppVoltageMin || s.minVmp || 0}–${s.mppVoltageMax || s.maxVoc} V`);
+                html += _embedStatRow('Max Isc', `${s.maxIsc} A`);
+                html += _embedStatRow('Max PV Power', `${s.maxWmp} W`);
+                html += `<div class="embed-stat-section">Battery / Output</div>`;
+                html += _embedStatRow('Charge Current', `${s.ratedChargeCurrent} A`);
+                if (s.maxACOutputW) html += _embedStatRow('AC Output', `${s.maxACOutputW} W`);
+                if (s.acVoltage) html += _embedStatRow('AC Voltage', `${s.acVoltage} V`);
+                if (s.supportedVoltages?.length) html += _embedStatRow('Battery Voltages', s.supportedVoltages.map(v => `${v}V`).join(', '));
+                if (s.cost) html += _embedStatRow('Cost', `$${s.cost}`);
+            } else if (item.type === 'acoutlet') {
+                html += _embedStatRow('Voltage', `${s.voltage} V`);
+                html += _embedStatRow('Max Amps', `${s.maxAmps} A`);
+            } else if (item.type === 'acload') {
+                html += _embedStatRow('Voltage', `${s.voltage} V`);
+                html += _embedStatRow('Max Power', `${s.maxWatts} W`);
+                if (s.avgWatts) html += _embedStatRow('Avg Power', `${s.avgWatts} W`);
+                if (s.icon) html += _embedStatRow('Icon', s.icon);
+            } else if (item.type === 'acbreaker') {
+                html += _embedStatRow('Rating', `${s.rating} A`);
+                html += _embedStatRow('Voltage', `${s.voltage} V`);
+            } else if (item.type === 'breakerpanel' || item.type === 'spiderbox') {
+                html += _embedStatRow('Circuits', s.circuits?.length || 8);
+            }
+
+            if (s.cost && !['panel', 'battery', 'controller'].includes(item.type)) {
+                html += _embedStatRow('Cost', `$${s.cost}`);
+            }
+
+            return html;
+        }
+
+        function formatEmbedWireStats(conn) {
+            const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
+            const targetItem = allItems.find(i => i.id === conn.targetItemId);
+            let html = `<div class="embed-stat-section">Connection</div>`;
+            html += _embedStatRow('Polarity', conn.polarity || 'mixed');
+            if (conn.wireGauge) html += _embedStatRow('Wire Gauge', `${conn.wireGauge} AWG`);
+            if (conn.estimatedLength) html += _embedStatRow('Length', `~${conn.estimatedLength.toFixed(1)} ft`);
+            if (conn.totalWireCost) html += _embedStatRow('Wire Cost', `$${conn.totalWireCost.toFixed(2)}`);
+            if (sourceItem) html += _embedStatRow('From', `${_embedTypeLabel(sourceItem.type)} — ${sourceItem.specs?.name || sourceItem.id}`);
+            if (targetItem) html += _embedStatRow('To', `${_embedTypeLabel(targetItem.type)} — ${targetItem.specs?.name || targetItem.id}`);
+            return html;
+        }
+
+        function openEmbedInspector(item) {
+            const panel = document.getElementById('embed-info-panel');
+            const title = document.getElementById('embed-info-title');
+            const content = document.getElementById('embed-info-content');
+            if (!panel || !title || !content) return;
+
+            const name = item.specs?.name || _embedTypeLabel(item.type);
+            title.textContent = `${_embedItemIcon(item.type)} ${name}`;
+            content.innerHTML = formatEmbedItemStats(item);
+            panel.classList.add('open');
+        }
+
+        function openEmbedWireInspector(conn) {
+            const panel = document.getElementById('embed-info-panel');
+            const title = document.getElementById('embed-info-title');
+            const content = document.getElementById('embed-info-content');
+            if (!panel || !title || !content) return;
+
+            title.textContent = '🔗 Wire';
+            content.innerHTML = formatEmbedWireStats(conn);
+            panel.classList.add('open');
+        }
+
+        function closeEmbedInspector() {
+            document.getElementById('embed-info-panel')?.classList.remove('open');
+        }
+
+        function initEmbedMode() {
+            document.body.classList.add('embed-mode');
+            document.title = EMBED_TITLE;
+            const titleEl = document.getElementById('embed-toolbar-title');
+            if (titleEl) titleEl.textContent = EMBED_TITLE;
+
+            document.getElementById('embed-info-close')?.addEventListener('click', () => {
+                closeEmbedInspector();
+                deselectAll();
+            });
+
+            window.addEventListener('message', (event) => {
+                if (!event.data || typeof event.data !== 'object') return;
+                if (event.data.type === 'solar-designer-load' && event.data.payload) {
+                    applyDesignData(event.data.payload);
+                    if (event.data.payload.title) {
+                        document.getElementById('embed-toolbar-title').textContent = event.data.payload.title;
+                        document.title = event.data.payload.title;
+                    }
+                }
+            });
+
+            // Notify parent frame that viewer is ready
+            if (window.parent !== window) {
+                window.parent.postMessage({ type: 'solar-designer-ready' }, '*');
+            }
+        }
+
+        function showEmbedExportDialog() {
+            const overlay = document.getElementById('embed-export-overlay');
+            const codeEl = document.getElementById('embed-export-code');
+            if (!overlay || !codeEl) return;
+
+            const slug = (allItems.find(i => i.type === 'controller')?.specs?.name || 'solar-system')
+                .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+            const jsonPath = `/schematics/${slug}.json`;
+            const viewerPath = new URL('solar_viewer.html', window.location.href).pathname;
+            const title = allItems.find(i => i.type === 'controller')?.specs?.name || 'Solar System';
+
+            const iframeCode = `<!-- Docusaurus MDX: place JSON in static/schematics/ then embed -->\n<iframe\n  src="${viewerPath}?config=${jsonPath}&title=${encodeURIComponent(title)}"\n  title="${title} schematic"\n  width="100%"\n  height="640"\n  style="border:0; border-radius:8px; background:#0a1525;"\n  loading="lazy"\n></iframe>`;
+
+            codeEl.textContent = iframeCode;
+            overlay.style.display = 'flex';
+            overlay.classList.remove('hidden');
+
+            document.getElementById('embed-export-download').onclick = () => {
+                const data = getDesignExportData();
+                data.title = title;
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${slug}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+            };
+
+            document.getElementById('embed-export-copy').onclick = async () => {
+                try {
+                    await navigator.clipboard.writeText(iframeCode);
+                    showToast('📋 Embed code copied', 'success', 2000);
+                } catch {
+                    showToast('Copy failed — select and copy manually', 'error', 3000);
+                }
+            };
+        }
+
+        function closeEmbedExportDialog() {
+            const overlay = document.getElementById('embed-export-overlay');
+            if (overlay) {
+                overlay.style.display = 'none';
+                overlay.classList.add('hidden');
+            }
+        }
+
+        // ============================================
         // SAVE/LOAD
         // ============================================
         
         function saveSystem() {
-            const data = {
-                items: allItems,
-                connections: connections,
-                version: 1
-            };
+            const data = getDesignExportData();
             
             const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
@@ -20089,63 +20842,7 @@
                 reader.onload = (e) => {
                     try {
                         const data = JSON.parse(e.target.result);
-                        allItems = data.items || [];
-                        connections = data.connections || [];
-                        invalidateSpecsCache(); // New data loaded - clear cached specs
-                        
-                        // Initialize wire properties for old connections that don't have them
-                        connections.forEach(conn => {
-                            if (!conn.wireGauge) {
-                                updateWireGaugeForConnection(conn);
-                                // If still no length, estimate it
-                                if (!conn.estimatedLength) {
-                                    const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
-                                    const targetItem = allItems.find(i => i.id === conn.targetItemId);
-                                    if (sourceItem && targetItem) {
-                                        const sourceHandle = Object.values(sourceItem.handles).find(h => h.id === conn.sourceHandleId);
-                                        const targetHandle = Object.values(targetItem.handles).find(h => h.id === conn.targetHandleId);
-                                        if (sourceHandle && targetHandle) {
-                                            conn.estimatedLength = estimateWireLength(sourceItem, sourceHandle, targetItem, targetHandle);
-                                            conn.costPerFoot = WIRE_COST_PER_FOOT[conn.wireGauge] || WIRE_COST_PER_FOOT['10'];
-                                            conn.totalWireCost = conn.estimatedLength * conn.costPerFoot;
-                                        }
-                                    }
-                                }
-                            }
-                        });
-                        
-                        // Initialize AC load properties for loaded items
-                        allItems.forEach(item => {
-                            if (item.type === 'acload') {
-                                // Ensure automations array exists
-                                if (!item.automations) {
-                                    item.automations = [];
-                                }
-                                // Ensure recipe-related properties exist
-                                if (item.activeRecipeIndex === undefined) {
-                                    item.activeRecipeIndex = null;
-                                }
-                                if (item.recipeTimeElapsed === undefined) {
-                                    item.recipeTimeElapsed = 0;
-                                }
-                                if (item.isProcessing === undefined) {
-                                    item.isProcessing = false;
-                                }
-                                if (item.awaitingInputs === undefined) {
-                                    item.awaitingInputs = false;
-                                }
-                                // Ensure behavior exists in specs
-                                if (!item.specs.behavior) {
-                                    item.specs.behavior = { type: 'simple' };
-                                }
-                            }
-                        });
-                        
-                        // Update ID counters
-                        itemIdCounter = Math.max(0, ...allItems.map(i => parseInt(i.id.split('-')[1]) || 0));
-                        connectionIdCounter = Math.max(0, ...connections.map(c => parseInt(c.id.split('-')[1]) || 0));
-                        
-                        render();
+                        applyDesignData(data);
                     } catch (err) {
                         alert('Error loading file: ' + err.message);
                     }
@@ -20283,59 +20980,103 @@
                 }
             }
             
-            // Auto-wire panels: columns in series, rows in parallel
-            // Each column forms a "string" wired in series
-            // All strings connect in parallel to the controller PV inputs
-            
-            // Wire panels in series within each column (string)
-            for (let col = 0; col < gridCols; col++) {
-                for (let row = 0; row < gridRows - 1; row++) {
-                    const upperPanel = panelGrid[row]?.[col];
-                    const lowerPanel = panelGrid[row + 1]?.[col];
-                    
-                    if (upperPanel && lowerPanel && upperPanel.handles?.negative && lowerPanel.handles?.positive) {
-                        createConnection(upperPanel, upperPanel.handles.negative, lowerPanel, lowerPanel.handles.positive);
+            // ── Place controller & batteries ────────────────────────────────────
+            const panelArrayHeight = gridRows * (panelHeight + paddingY) - paddingY;
+            const controllerY = 80 + panelArrayHeight + 60;
+
+            // Default controller: EcoWorthy SL3500 hybrid inverter
+            const sl3500Preset = CONTROLLER_PRESETS.find(p => p.name.includes('EcoWorthy SL3500')) || CONTROLLER_PRESETS[0];
+            const controller = createController(svgWidth / 2 - 75, controllerY, sl3500Preset);
+
+            // Default batteries: EcoWorthy 48V 50Ah LiFePO4 × 2 in parallel (= 5120 Wh total)
+            const sl3500BattPreset = BATTERY_PRESETS.find(p => p.name.includes('EcoWorthy 48V 50Ah')) ||
+                                     BATTERY_PRESETS.find(p => p.name.includes('48V') && p.ah <= 100) ||
+                                     BATTERY_PRESETS[0];
+            const battGap = 20;
+            const battW = sl3500BattPreset.width || 175;
+            const battX = svgWidth / 2 + 90;
+            const battery1 = createBattery(battX, controllerY, sl3500BattPreset);
+            const battery2 = createBattery(battX + battW + battGap, controllerY, sl3500BattPreset);
+
+            allItems.push(controller, battery1, battery2);
+
+            // ── Voltage-constrained auto-wiring ─────────────────────────────────
+            // The physical panel layout from LinkageLab (gridRows × gridCols) determines
+            // how panels are *displayed*, but NOT how many should be in series per string.
+            // We compute the optimal series/parallel split from the controller's maxVoc
+            // so the array Voc never exceeds the controller's rating.
+            //
+            // This correctly handles compound topologies like (2P3S)-3P, which is
+            // electrically identical to 6P3S for a single-MPPT input: the series count
+            // per string is what sets the array Voc; the rest are all in parallel.
+
+            const panelVoc = customPanel.voc || 48;
+            const ctrlMaxVoc = sl3500Preset.maxVoc || 145;
+
+            // Max panels in series keeping Voc ≤ controller's rated max.
+            // No safety margin is applied here — the rated maxVoc already includes
+            // the manufacturer's derating. The user's actual wiring may run right up
+            // to the limit (e.g. 3 × 48.3V = 144.9V on a 145V-max controller).
+            const maxSeriesPerString = Math.max(1, Math.floor(ctrlMaxVoc / panelVoc));
+
+            // Prefer using as many in series as possible (minimises parallel string count,
+            // which improves MPPT efficiency) but never exceed the voltage limit.
+            const wiringSeriesCount = Math.min(maxSeriesPerString, panelCount);
+            const wiringParallelCount = Math.ceil(panelCount / wiringSeriesCount);
+
+            // Flatten all placed panels row-major so we can re-group them into strings.
+            const flatPanels = [];
+            for (let row = 0; row < gridRows; row++) {
+                for (let col = 0; col < gridCols; col++) {
+                    const p = panelGrid[row]?.[col];
+                    if (p) flatPanels.push(p);
+                }
+            }
+
+            // Build wiring strings: each string has wiringSeriesCount panels.
+            // Adjacent panels in flat order are assigned to the same string, so
+            // compound groups (e.g. two 3S strings side-by-side forming a 2P3S block)
+            // naturally correspond to consecutive flat indices.
+            const wiringStrings = [];
+            for (let s = 0; s < wiringParallelCount; s++) {
+                const str = [];
+                for (let p = 0; p < wiringSeriesCount; p++) {
+                    const idx = s * wiringSeriesCount + p;
+                    if (idx < flatPanels.length) str.push(flatPanels[idx]);
+                }
+                if (str.length > 0) wiringStrings.push(str);
+            }
+
+            // Wire panels within each string in series (panel[i].negative → panel[i+1].positive)
+            for (const str of wiringStrings) {
+                for (let i = 0; i < str.length - 1; i++) {
+                    const a = str[i], b = str[i + 1];
+                    if (a.handles?.negative && b.handles?.positive) {
+                        createConnection(a, a.handles.negative, b, b.handles.positive);
                     }
                 }
             }
-            
-            // Add controller and battery with correct defaults
-            const panelArrayHeight = gridRows * (panelHeight + paddingY) - paddingY;
-            const controllerY = 80 + panelArrayHeight + 60;
-            
-            // Find PowMR 5000W Hybrid in presets
-            const powmrPreset = CONTROLLER_PRESETS.find(p => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3] || CONTROLLER_PRESETS[0];
-            const controller = createController(svgWidth / 2 - 75, controllerY, powmrPreset);
-            
-            // Find Ruixu 48V 314Ah in presets
-            const ruixuPreset = BATTERY_PRESETS.find(p => p.name.includes('Ruixu 48V 314Ah')) || 
-                               BATTERY_PRESETS.find(p => p.name.includes('48V') && p.ah >= 200) ||
-                               BATTERY_PRESETS[0];
-            const battery = createBattery(svgWidth / 2 + 100, controllerY, ruixuPreset);
-            
-            allItems.push(controller, battery);
-            
-            // Connect each string to controller in parallel
-            for (let col = 0; col < gridCols; col++) {
-                const stringTopPanel = panelGrid[0]?.[col];
-                const stringBottomPanel = panelGrid[gridRows - 1]?.[col];
-                
-                // Connect string positive to controller PV+
-                if (stringTopPanel?.handles?.positive && controller.handles?.pvPositive) {
-                    createConnection(stringTopPanel, stringTopPanel.handles.positive, controller, controller.handles.pvPositive);
+
+            // Connect each string's top (+) and bottom (−) to the controller in parallel.
+            for (const str of wiringStrings) {
+                const top = str[0];
+                const bot = str[str.length - 1];
+                if (top.handles?.positive && controller.handles?.pvPositive) {
+                    createConnection(top, top.handles.positive, controller, controller.handles.pvPositive);
                 }
-                // Connect string negative to controller PV-
-                if (stringBottomPanel?.handles?.negative && controller.handles?.pvNegative) {
-                    createConnection(stringBottomPanel, stringBottomPanel.handles.negative, controller, controller.handles.pvNegative);
+                if (bot.handles?.negative && controller.handles?.pvNegative) {
+                    createConnection(bot, bot.handles.negative, controller, controller.handles.pvNegative);
                 }
             }
-            
-            // Wire controller to battery
-            if (controller.handles?.batteryPositive && battery.handles?.positive) {
-                createConnection(controller, controller.handles.batteryPositive, battery, battery.handles.positive);
-            }
-            if (controller.handles?.batteryNegative && battery.handles?.negative) {
-                createConnection(controller, controller.handles.batteryNegative, battery, battery.handles.negative);
+
+            // Wire both batteries in parallel to the controller
+            for (const battery of [battery1, battery2]) {
+                if (controller.handles?.batteryPositive && battery.handles?.positive) {
+                    createConnection(controller, controller.handles.batteryPositive, battery, battery.handles.positive);
+                }
+                if (controller.handles?.batteryNegative && battery.handles?.negative) {
+                    createConnection(controller, controller.handles.batteryNegative, battery, battery.handles.negative);
+                }
             }
             
             // Refresh library UI to show custom panel
@@ -20367,9 +21108,21 @@
             // Show import summary
             const structureCostStr = data.structureCost ? `Structure cost: $${data.structureCost.subtotal.toFixed(2)}` : '';
             const layoutDesc = isArchMode ? `${numSides} sides (${gridRows}×${gridCols} per side)` : `${gridRows}×${gridCols} grid`;
-            const wiringDesc = `${gridCols} strings × ${gridRows} series`;
-            showHint("LinkageLab Import", 
-                `Imported ${panelCount} x ${customPanel.wmp}W panels (${layoutDesc}) from LinkageLab.\n\nAuto-wired: ${wiringDesc} to ${powmrPreset.name} with ${ruixuPreset.name}.\n\n${structureCostStr}`);
+            // Describe the actual wiring topology, including compound notation when applicable.
+            // e.g. 18 panels at 3S×6P with groups of 2 → "(2P3S)-3P"
+            let wiringDesc;
+            if (wiringParallelCount > wiringSeriesCount && wiringParallelCount % 2 === 0) {
+                // Compound: inner 2P groups, outer parallel
+                const outerGroups = wiringParallelCount / 2;
+                wiringDesc = `(2P${wiringSeriesCount}S)-${outerGroups}P  [${wiringSeriesCount}S × ${wiringParallelCount}P]`;
+            } else {
+                wiringDesc = `${wiringSeriesCount}S × ${wiringParallelCount}P`;
+            }
+            const arrayVoc = (panelVoc * wiringSeriesCount).toFixed(1);
+            showHint("LinkageLab Import",
+                `Imported ${panelCount} × ${customPanel.wmp}W panels (${layoutDesc}) from LinkageLab.\n\n` +
+                `Wiring: ${wiringDesc}  (array Voc ≈ ${arrayVoc}V → fits ${sl3500Preset.name} max ${ctrlMaxVoc}V)\n\n` +
+                `System: ${sl3500Preset.name} + 2× ${sl3500BattPreset.name}\n\n${structureCostStr}`);
         }
         
         // ============================================
@@ -21391,9 +22144,11 @@
         // EVENT LISTENERS
         // ============================================
         
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (EMBED_MODE) initEmbedMode();
+
             updateSvgDimensions();
-            populateLibraries();
+            if (!EMBED_MODE) populateLibraries();
             setupKeyboardShortcuts();
             // Initialize right sidebar toggle button state
             updateRightSidebarToggle();
@@ -21434,8 +22189,8 @@
                 }
             });
             
-            // Save initial state
-            historyManager.pushState();
+            // Save initial state (skip in embed — no undo stack needed)
+            if (!EMBED_MODE) historyManager.pushState();
             
             // Initialize latitude input with default value
             const latInput = document.getElementById('simLatitudeInput');
@@ -21446,6 +22201,21 @@
             // Check for imports via URL parameter
             const urlParams = new URLSearchParams(window.location.search);
             let skipDefaultSetup = false;
+
+            // Embed mode: load schematic from ?config= URL
+            if (EMBED_MODE && EMBED_CONFIG_URL) {
+                try {
+                    await loadDesignFromConfigUrl(EMBED_CONFIG_URL);
+                    skipDefaultSetup = true;
+                } catch (e) {
+                    console.error('Failed to load embed config:', e);
+                    const content = document.getElementById('embed-info-content');
+                    if (content) {
+                        content.innerHTML = `<p style="color:#ff6666;">Failed to load schematic.<br><small>${e.message}</small></p>`;
+                        document.getElementById('embed-info-panel')?.classList.add('open');
+                    }
+                }
+            }
             
             // Import from LinkageLab
             if (urlParams.get('import') === 'linkageLab') {
@@ -21539,15 +22309,16 @@
                         // Don't remove state - keep it for future returns
                     } catch (e) {
                         console.error('Failed to restore builder state:', e);
-                        setupDefaultLayout();
+                        if (!EMBED_MODE) setupDefaultLayout();
                     }
-                } else {
+                } else if (!EMBED_MODE) {
                     setupDefaultLayout();
                 }
             }
             
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
+                if (EMBED_MODE) return;
                 if (e.key === 'Delete' || e.key === 'Backspace') {
                     // Don't delete if user is typing in an input
                     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
@@ -21774,9 +22545,14 @@
                 }
             });
             
-            // Save/Load
+            // Save/Load / Embed export
             document.getElementById('saveBtn').addEventListener('click', saveSystem);
             document.getElementById('loadBtn').addEventListener('click', loadSystem);
+            document.getElementById('exportEmbedBtn')?.addEventListener('click', showEmbedExportDialog);
+            document.getElementById('embed-export-close')?.addEventListener('click', closeEmbedExportDialog);
+            document.getElementById('embed-export-overlay')?.addEventListener('click', (e) => {
+                if (e.target.id === 'embed-export-overlay') closeEmbedExportDialog();
+            });
             
             // Simulate mode specific buttons
             const challengeModeBtn = document.getElementById('challengeModeBtn');
@@ -22657,8 +23433,14 @@
                 exportToSimulator();
             });
             
-            // Canvas click to deselect
-            svg.on("click", () => {
+            // Canvas click/tap to deselect — but only when clicking the actual background,
+            // not when the click bubbled from (or was re-targeted to) an item or wire.
+            svg.on("click", (event) => {
+                const t = event.target;
+                if (t.closest?.('.item-group') ||
+                    t.closest?.('.wire-group') ||
+                    t.closest?.('.handle') ||
+                    t.closest?.('.temp-layer')) return;
                 deselectAll();
             });
             
