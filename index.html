@@ -14347,13 +14347,42 @@ function serializeGeometry(data) {
 }
 
 /**
+ * Attach GLB model to linkage export in the background (optional, non-blocking).
+ */
+async function attachGlbToLinkageExport(exportData) {
+    try {
+        if (typeof THREE === 'undefined' || typeof THREE.GLTFExporter === 'undefined') return;
+        const glbResult = await exportToGLTF('glb', 'meters', 'yup', { download: false, silent: true });
+        if (!glbResult || !glbResult.blob) return;
+
+        const glbBase64 = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result.split(',')[1]);
+            reader.onerror = reject;
+            reader.readAsDataURL(glbResult.blob);
+        });
+        exportData.structureGLB = {
+            data: glbBase64,
+            units: 'meters',
+            coordSys: 'yup'
+        };
+        localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
+        try {
+            localStorage.setItem('linkageLabGLB', glbBase64);
+        } catch (e) {
+            console.warn('[GLTF Export] Failed to store GLB in localStorage:', e);
+        }
+    } catch (e) {
+        console.warn('[GLTF Export] Failed to generate GLB for simulator:', e);
+    }
+}
+
+/**
  * Exports current design to Solar Designer for circuit design and simulation
  * Passes panel configuration, BOM costs, and 3D geometry
  */
-async function exportToSolarSimulator() {
-    // Open a placeholder window synchronously so popup blockers don't block us after async GLTF export.
+function exportToSolarSimulator() {
     const designerUrl = ExportFormat.buildImportURL('solar_designer.html', 'linkageLab');
-    const newWindow = window.open('about:blank', '_blank');
 
     try {
     // Get current linkage data with the same generated components shown in the viewport.
@@ -14451,53 +14480,22 @@ async function exportToSolarSimulator() {
         }
     };
     
-    // Include GLB export for simulator if available
-    try {
-        if (typeof THREE !== 'undefined' && typeof THREE.GLTFExporter !== 'undefined') {
-            const glbResult = await exportToGLTF('glb', 'meters', 'yup', { download: false, silent: true });
-            if (glbResult && glbResult.blob) {
-                const glbBase64 = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(glbResult.blob);
-                });
-                exportData.structureGLB = {
-                    data: glbBase64,
-                    units: 'meters',
-                    coordSys: 'yup'
-                };
-                try {
-                    localStorage.setItem('linkageLabGLB', glbBase64);
-                } catch (e) {
-                    console.warn('[GLTF Export] Failed to store GLB in localStorage:', e);
-                }
-            }
-        }
-    } catch (e) {
-        console.warn('[GLTF Export] Failed to generate GLB for simulator:', e);
-    }
-    
-    // Store in localStorage for the designer to read
+    // Store in localStorage for the designer to read (must happen before window.open)
     localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
     
-    // Navigate the pre-opened window (or retry if the placeholder was blocked)
-    if (newWindow && !newWindow.closed) {
-        newWindow.location.replace(designerUrl);
-    } else {
-        const retryWindow = window.open(designerUrl, '_blank');
-        if (!retryWindow) {
-            showToast('Popup blocked — allow popups for this site to open Solar Designer', 'warning');
-            return;
-        }
+    // Open Solar Designer synchronously while the click gesture is still active
+    const opened = window.open(designerUrl, '_blank');
+    if (!opened) {
+        showToast('Popup blocked — allow popups for this site to open Solar Designer', 'warning');
+        return;
     }
     
     showToast(`Exported ${panelCount} panels to Solar Designer`, 'info');
+    
+    // GLB export is optional and can finish after the designer tab opens
+    attachGlbToLinkageExport(exportData);
     } catch (e) {
         console.error('exportToSolarSimulator failed:', e);
-        if (newWindow && !newWindow.closed) {
-            newWindow.close();
-        }
         showToast('Failed to open Solar Designer', 'error');
     }
 }
