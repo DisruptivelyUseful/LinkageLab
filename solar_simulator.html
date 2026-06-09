@@ -23188,10 +23188,14 @@
                     maxZ = geo.maxRadius || 0;
                 }
                 
-                // Calculate structure center for PowerStation positioning
-                const structureCenter = {
+                // Prefer exported structure center (main-structure-only bbox); fall back to full bbox XZ
+                const structureCenter = geo.structureCenter ? {
+                    x: geo.structureCenter.x,
+                    y: geo.structureCenter.y != null ? geo.structureCenter.y : 0,
+                    z: geo.structureCenter.z
+                } : {
                     x: (minX + maxX) / 2,
-                    y: 0, // Ground level
+                    y: 0,
                     z: (minZ + maxZ) / 2
                 };
                 

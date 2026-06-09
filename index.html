@@ -671,6 +671,45 @@
                 <div id="anim-progress" style="font-size:0.6rem; color:#8899a6; margin-top:4px;">
                     <span id="anim-status">Stopped</span> · <span id="anim-direction">Expanding</span>
                 </div>
+                <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px;">Fold Limits</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Min Fold</span><span>°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-anim-min-fold" min="5" max="90" step="0.5" value="5">
+                        <input type="number" id="nb-anim-min-fold" min="5" max="90" step="0.5" value="5">
+                    </div>
+                </div>
+                <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 8px; line-height:1.3;">
+                    Lowest allowed fold angle. <span id="anim-min-fold-auto" style="color:#5ba8d8;">Auto (outer V-beam contact): —°</span> — adjust to fine-tune or lock in a fixed limit.
+                </div>
+                <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px;">Component Appearance Angles</div>
+                <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 8px; line-height:1.3;">
+                    Components become visible only once the structure exceeds these fold angles during deployment.
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Radial Beams</span><span>°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-anim-radial-angle" min="5" max="175" step="0.5" value="90">
+                        <input type="number" id="nb-anim-radial-angle" min="5" max="175" step="0.5" value="90">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>R-Beams</span><span>°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-anim-rcp-angle" min="5" max="175" step="0.5" value="90">
+                        <input type="number" id="nb-anim-rcp-angle" min="5" max="175" step="0.5" value="90">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Solar Panels</span><span>°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-anim-panels-angle" min="5" max="175" step="0.5" value="170">
+                        <input type="number" id="nb-anim-panels-angle" min="5" max="175" step="0.5" value="170">
+                    </div>
+                </div>
+                <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 4px; line-height:1.3;">
+                    Set Solar Panels angle to match your deploy angle so panels appear only when fully deployed.
+                </div>
             </div>
         </div>
 
@@ -1125,6 +1164,10 @@
                     <input type="checkbox" id="chk-support-beams" checked> Enable Support Beams
                 </label>
                 <div id="support-beam-controls" style="display:block; margin-top:12px;">
+                    <label class="chk-label">
+                        <input type="checkbox" id="chk-support-radial" checked> Show Radial Support Beams
+                    </label>
+                    <div id="support-radial-controls" style="display:block; margin-top:10px;">
                     <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Beam Dimensions</div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Length</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
@@ -1169,16 +1212,10 @@
                             <input type="number" id="nb-support-offset-v" min="-240" max="240" step="0.5" value="-6.8">
                         </div>
                     </div>
-                    <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                        <div class="input-wrap">
-                            <input type="range" id="sl-support-fold" min="-90" max="90" step="1" value="0">
-                            <input type="number" id="nb-support-fold" min="-90" max="90" step="1" value="0">
-                        </div>
                     </div>
                     <div style="border-top:1px solid #38444d; margin:12px 0 8px;"></div>
                     <label class="chk-label">
-                        <input type="checkbox" id="chk-support-parallel" checked> Reciprocal Parallel Beams
+                        <input type="checkbox" id="chk-support-parallel" checked> Show Reciprocal Beams
                     </label>
                     <div id="support-parallel-controls" style="display:block; margin-top:10px;">
                         <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Reciprocal Beam Dimensions</div>
@@ -1204,18 +1241,30 @@
                             </div>
                         </div>
                         <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px;">Position &amp; Angle</div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Fold Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-rcp-fold" min="-180" max="180" step="0.5" value="0">
-                                <input type="number" id="nb-rcp-fold" min="-180" max="180" step="0.5" value="0">
-                            </div>
-                        </div>
                         <div class="ctrl-row" style="margin-bottom:2px;">
                             <label class="chk-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
                                 <input type="checkbox" id="chk-rcp-kinematic" checked>
                                 <span>Solve folding kinematics</span>
                             </label>
+                        </div>
+                        <div class="ctrl-row" id="rcp-pivot-row">
+                            <div class="ctrl-head"><span>Folding Pivot</span><span style="font-size:0.75rem; color:#8899a6;">bolt hole</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-rcp-pivot-hole" style="width:100%; padding:4px 6px; background:#1b2733; color:#dfe7ee; border:1px solid #33424f; border-radius:4px; font-size:0.8rem;">
+                                    <option value="1">Hole 1 (nearest anchor)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            Crossing bolt holes are baked from the fully deployed layout. Pick which one is the bolted pivot that drives folding. Beams turn red when the fold stresses that pivot and disappear when the linkage becomes physically impossible.
+                        </div>
+                        <div id="rcp-diagnostics-panel" style="display:none; font-size:0.68rem; color:#a8b8c6; margin:4px 0 8px; padding:6px 8px; background:rgba(0,0,0,0.25); border-radius:4px; line-height:1.4;">
+                            <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.4px; color:#8899a6; margin-bottom:4px;">Kinematics</div>
+                            <div id="rcp-diag-status">—</div>
+                            <div id="rcp-diag-active">Active pivot error: —</div>
+                            <div id="rcp-diag-inactive">Inactive hole gaps: —</div>
+                            <div id="rcp-diag-final">Final bolt-up: —</div>
+                            <div id="rcp-diag-worst">Worst gap: —</div>
                         </div>
                         <div class="ctrl-row" id="rcp-swing-row">
                             <div class="ctrl-head"><span>Swing Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
@@ -1232,18 +1281,14 @@
                             </div>
                         </div>
                         <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Overlap</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="ctrl-head"><span>Anchor Distance</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-support-overlap" min="-240" max="240" step="0.5" value="64">
-                                <input type="number" id="nb-support-overlap" min="-240" max="240" step="0.5" value="64">
+                                <input type="range" id="sl-rcp-anchor-dist" min="0" max="120" step="0.5" value="20">
+                                <input type="number" id="nb-rcp-anchor-dist" min="0" max="240" step="0.5" value="20">
                             </div>
                         </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Inset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-support-inset" min="-240" max="120" step="0.5" value="-9.5">
-                                <input type="number" id="nb-support-inset" min="-360" max="240" step="0.5" value="-9.5">
-                            </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            Distance of each anchor from the H-center pivot, measured along the top scissor beam toward its inner end.
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>A/B Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
@@ -1251,6 +1296,16 @@
                                 <input type="range" id="sl-support-ab-offset" min="-24" max="24" step="0.25" value="-1.66">
                                 <input type="number" id="nb-support-ab-offset" min="-24" max="24" step="0.25" value="-1.66">
                             </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>End Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-end-offset" min="-12" max="24" step="0.25" value="0">
+                                <input type="number" id="nb-rcp-end-offset" min="-12" max="24" step="0.25" value="0">
+                            </div>
+                        </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            How far the beam extends past the anchor bolt hole at its tail end. Positive values add overhang; negative values trim the beam short of the hole.
                         </div>
                     </div>
                 </div>
@@ -3515,6 +3570,10 @@ function createBeamMesh(beam, isColliding = false, allBolts = null) {
     let woodColor;
     if (isColliding) {
         woodColor = new THREE.Color(0.9, 0.2, 0.1);
+    } else if (beam.kinematicState === 'error') {
+        woodColor = new THREE.Color(0.82, 0.28, 0.18);
+    } else if (beam.kinematicState === 'warning') {
+        woodColor = new THREE.Color(0.72, 0.52, 0.18);
     } else {
         // Darken and warm up the base color
         const base = beam.colorBase;
@@ -4016,8 +4075,17 @@ function createBoltMesh(bolt) {
     const headSide = bolt.headSide !== undefined ? bolt.headSide : 1;
     const headExtraThickness = bolt.headExtraThickness || 0;
     
-    const material = getCachedMaterial('bolt', () => {
-        const m = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
+    let boltColor = 0x1a1a1a;
+    if (bolt.boltType === 'rcp-cross') {
+        if (bolt.diagnosticState === 'active') boltColor = 0x5a2280;
+        else if (bolt.diagnosticState === 'inactive') boltColor = 0x8a6620;
+        else if (bolt.diagnosticState === 'error') boltColor = 0xcc3311;
+    } else if (bolt.boltType === 'rcp-ring') {
+        boltColor = 0x1a4ea0;
+    }
+    const materialKey = 'bolt_' + boltColor + '_' + (bolt.diagnosticState || '');
+    const material = getCachedMaterial(materialKey, () => {
+        const m = new THREE.MeshLambertMaterial({ color: boltColor });
         m.polygonOffset = true;
         m.polygonOffsetFactor = -1;
         m.polygonOffsetUnits = -1;
@@ -4339,7 +4407,7 @@ function exportToGLTF(format = 'glb', units = 'meters', coordSys = 'yup', option
         console.log('[GLTF Export] Geometry data transformed to Z-up');
     }
 
-    const exportBounds = calculateBeamBounds(data.beams);
+    const exportBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
     const exportCenter = exportBounds.center || { x: 0, y: 0, z: 0 };
     data.structureBounds = exportBounds;
     data.structureCenter = exportCenter;
@@ -6089,7 +6157,8 @@ const state = {
     
     // Support beams (independent of solar panels). Defaults match StarShade 8m reference (see project defaults).
     supportBeams: {
-        enabled: true,
+        enabled: true,          // master toggle for ALL support + reciprocal beams
+        showRadial: true,       // sub-toggle: show radial support (S) beams
         length: 120,            // inches
         width: 1.5,             // inches
         thickness: 3.5,         // inches
@@ -6103,12 +6172,22 @@ const state = {
         parallelThickness: 1.5, // independent thickness for reciprocal beams (inches)
         parallelFoldAngle: 0,  // up/down fold around anchor on top beam (degrees)
         parallelSwingAngle: 0, // side-to-side swing around anchor on top beam (degrees)
-        parallelOverlap: 64,   // tangential shift of each beam along top ring (inches)
-        parallelInset: -9.5,   // radial shift of anchor point from top beam midpoint (inches)
+        parallelOverlap: 64,   // legacy (unused) — superseded by anchorDist
+        parallelInset: -9.5,   // legacy (unused) — superseded by anchorDist
         parallelVOffset: -1.66,   // A/B vertical offset between the two beams (inches)
         parallelOffsetV: 4.5,  // vertical position offset for all reciprocal beams (inches)
-        rcpKinematicMode: true, // when true, solver drives swing angle to satisfy crossing constraints
-        rcpCrossings: null,     // [{beamAStackId, beamBStackId, tA, tB}] — seeded on first render
+        anchorDist: 20,         // distance of each anchor from the H-center pivot, along the top scissor beam (inches)
+        rcpKinematicMode: true, // when true, the selected bolted pivot drives folding (stress/impossible states)
+        rcpPivotHole: 0,        // legacy (unused)
+        rcpPivotT: 0.5,         // legacy (unused) — superseded by rcpActiveHole
+        rcpEndOffset: 0,        // how far the beam extends past the anchor bolt hole (inches, + = more overhang)
+        rcpActiveHole: 1,       // which baked crossing hole (1..N) is the bolted folding pivot
+        rcpMaxHoleCount: 1,     // number of baked crossing holes available per beam (set when seeding)
+        rcpCrossings: null,     // legacy crossing refs (tA/tB along beam)
+        rcpFinalTopology: null, // all crossing pairings from deployed closed-ring pattern
+        rcpHoleTsByBeam: null,  // stackId → [tHole1, tHole2, tHole3] from deployed layout
+        rcpDiagnostics: null,   // solver residual / gap readout
+        _lastPhi: null          // continuation state for reciprocal swing solver
     },
 
     // Structure rotation (rotates structure only, not solar panels)
@@ -6168,6 +6247,10 @@ const state = {
         frameId: null,
         lastTime: 0,      // For delta time calculation
         stopAngle: null,  // Stop angle in degrees (null = use closed angle)
+        minFoldAngle: null,       // Minimum fold angle in degrees (null = auto: outer V-beam contact point)
+        radialVisibleAngle: 90,   // Radial (S) beams appear above this fold angle (degrees)
+        rcpVisibleAngle: 90,      // Reciprocal (R) beams appear above this fold angle (degrees)
+        panelsVisibleAngle: null, // Solar panels appear only at/above this angle (null = at closed/deploy angle)
         cachedClosedAngle: undefined,  // Cached closed angle calculation
         fixedCenter: null,  // Fixed structure center during animation (prevents auto-repositioning)
         cachedModules: null,
@@ -6655,6 +6738,8 @@ class Beam3D {
         this.moduleIndex = metadata.moduleIndex !== undefined ? metadata.moduleIndex : -1;
         this.stackType = metadata.stackType || 'unknown';
         this.stackId = metadata.stackId !== undefined ? metadata.stackId : -1;
+        this.patternId = metadata.patternId || null;
+        this.kinematicState = metadata.kinematicState || null;
         
         // Calculate local coordinate system
         this.axisZ = vNorm(vSub(end, start));
@@ -7533,6 +7618,89 @@ function calculatePivotSpan(foldAngle) {
     const pivotSpan = Math.sqrt(dx * dx + dy * dy);
     
     return pivotSpan;
+}
+
+/**
+ * Computes the fold angle at which adjacent modules' outer V-beam tips (loc.tr) are
+ * separated by exactly one outer V-beam width in the horizontal plane. This is the
+ * physical "can't fold further" limit for the outer V-legs.
+ *
+ * Returns the minimum angle in radians, or MIN_FOLD_ANGLE if geometry can't be computed.
+ */
+function computeMinFoldAngleVBeamOverlap() {
+    const totalModules = state.modules;
+    if (!totalModules || totalModules < 2) return MIN_FOLD_ANGLE;
+
+    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
+    // Outer V-beam width is the larger of width/thickness in the tangential direction
+    const outerW = Math.max(state.vBeamOuterW || state.vBeamW || 1.5,
+                            state.vBeamOuterT || state.vBeamT || 3.5);
+
+    // Compute world-space positions of each module's outer pivot (tr) at a given fold angle.
+    const trPositions = (foldAngle) => {
+        const jr = calculateJointPositions(foldAngle, {
+            hActiveIn,
+            pivotPct: state.pivotPct,
+            hobermanAng: state.hobermanAng,
+            pivotAng: state.pivotAng
+        });
+        const loc = jr.joints;
+        const rel = jr.relativeRotation;
+        const pts = [];
+        let curRot = 0;
+        let curPos = { x: 0, y: 0 };
+        for (let i = 0; i < totalModules; i++) {
+            const rx = loc.tr.x * Math.cos(curRot) - loc.tr.y * Math.sin(curRot);
+            const rz = loc.tr.x * Math.sin(curRot) + loc.tr.y * Math.cos(curRot);
+            pts.push({ x: curPos.x + rx, z: curPos.y + rz });
+            const nextRot = curRot + rel;
+            const nextBlX = loc.bl.x * Math.cos(nextRot) - loc.bl.y * Math.sin(nextRot);
+            const nextBlY = loc.bl.x * Math.sin(nextRot) + loc.bl.y * Math.cos(nextRot);
+            const curBrX = loc.br.x * Math.cos(curRot) - loc.br.y * Math.sin(curRot);
+            const curBrY = loc.br.x * Math.sin(curRot) + loc.br.y * Math.cos(curRot);
+            curPos = { x: curPos.x + curBrX - nextBlX, y: curPos.y + curBrY - nextBlY };
+            curRot = nextRot;
+        }
+        return pts;
+    };
+
+    // Minimum gap between any pair of adjacent module tr points across the full ring.
+    const minAdjacentGap = (foldAngle) => {
+        let pts;
+        try { pts = trPositions(foldAngle); } catch (e) { return Infinity; }
+        let minGap = Infinity;
+        for (let i = 0; i < pts.length; i++) {
+            const a = pts[i], b = pts[(i + 1) % pts.length];
+            const d = Math.hypot(a.x - b.x, a.z - b.z);
+            if (d < minGap) minGap = d;
+        }
+        return minGap;
+    };
+
+    // Binary search: find the fold angle where the gap equals outerW (contact point).
+    // Higher fold angle → more open → larger gap. We want the angle where gap = outerW.
+    let lo = MIN_FOLD_ANGLE, hi = getOptimalClosedAngleForAnimation();
+    const gapAtHi = minAdjacentGap(hi);
+    if (gapAtHi <= outerW) return hi; // Already overlapping at deploy — unusual
+    const gapAtLo = minAdjacentGap(lo);
+    if (gapAtLo >= outerW) return lo; // Never overlaps in range
+
+    for (let iter = 0; iter < 40; iter++) {
+        const mid = (lo + hi) / 2;
+        if (minAdjacentGap(mid) < outerW) lo = mid; else hi = mid;
+        if (hi - lo < degToRad(0.05)) break;
+    }
+    return (lo + hi) / 2;
+}
+
+/**
+ * Returns the effective minimum fold angle in radians: user override if set,
+ * otherwise the computed V-beam contact angle.
+ */
+function getEffectiveMinFoldAngle() {
+    const userDeg = state.animation.minFoldAngle;
+    if (userDeg !== null && userDeg !== undefined) return degToRad(userDeg);
+    return computeMinFoldAngleVBeamOverlap();
 }
 
 /**
@@ -8702,11 +8870,11 @@ function solveLinkage(foldAngle) {
             // CRITICAL FIX: Calculate exact average position of all beam midpoints when stacked
             // Account for both pattern midpoints AND their stack offsets
             let totalPosition = {x: 0, y: 0, z: 0};
-            for (let i = 0; i < state.vStackCount; i++) {
-                const offsetValue = getVStackBeamCenterOffset(i, stackBeamWidths);
+            for (let vi = 0; vi < state.vStackCount; vi++) {
+                const offsetValue = getVStackBeamCenterOffset(vi, stackBeamWidths);
                 const stackOffsetVec = vScale(stackDirNorm, offsetValue);
                 // Determine pattern: normally A, B, A, B... but reverse if vStackReverse is true
-                const isPatternA = state.vStackReverse ? (i % 2 !== 0) : (i % 2 === 0);
+                const isPatternA = state.vStackReverse ? (vi % 2 !== 0) : (vi % 2 === 0);
                 const patternMid = isPatternA ? patternA_mid : patternB_mid;
                 // Actual position = pattern midpoint + stack offset (centering offset will be added later)
                 const actualPos = vAdd(patternMid, stackOffsetVec);
@@ -8724,15 +8892,15 @@ function solveLinkage(foldAngle) {
             const centeringOffsetA = globalCenteringOffset;
             const centeringOffsetB = globalCenteringOffset;
             
-            for (let i = 0; i < state.vStackCount; i++) {
+            for (let vi = 0; vi < state.vStackCount; vi++) {
                 // Calculate stack offset (perpendicular to beam, centered around pivot)
-                const offsetValue = getVStackBeamCenterOffset(i, stackBeamWidths);
+                const offsetValue = getVStackBeamCenterOffset(vi, stackBeamWidths);
                 const stackOffset = vScale(stackDirNorm, offsetValue);
-                const beamDims = getVBeamDimsForStackIndex(i);
+                const beamDims = getVBeamDimsForStackIndex(vi);
                 
                 // Determine which pattern this beam uses (alternating: A, B, A, B, ...)
                 // When vStackReverse is true, the order is reversed (B, A, B, A, ...)
-                const isPatternA = state.vStackReverse ? (i % 2 !== 0) : (i % 2 === 0);
+                const isPatternA = state.vStackReverse ? (vi % 2 !== 0) : (vi % 2 === 0);
                 
                 // Get the pattern endpoints (actual pivot connection points)
                 let patternBot, patternTop, patternDir, centeringOffset;
@@ -8763,7 +8931,8 @@ function solveLinkage(foldAngle) {
                 beams.push(new Beam3D(extStart, extEnd, beamDims.w, beamDims.t, woodColor, {
                     moduleIndex: i,
                     stackType: 'vertical',
-                    stackId: i  // Each module has one vertical stack
+                    stackId: i,
+                    patternId: isPatternA ? 'A' : 'B'
                 }));
             }
             
@@ -9379,7 +9548,7 @@ function solveLinkage(foldAngle) {
                     thickness: state.hWasherThickness
                 };
                 // Calculate radial direction for horizontal stack (perpendicular to vertical bolt)
-                const hCenterRadial = vNorm({x: hCenterBot.x, y: 0, z: hCenterBot.z});
+                let hCenterRadial = vNorm({x: hCenterBot.x, y: 0, z: hCenterBot.z});
                 if (vMag(hCenterRadial) < 0.1) hCenterRadial = {x: 1, y: 0, z: 0}; // Fallback
                 const hT = state.hBeamT || 1.5;
                 washers.push(...createWashersForBolt(hCenterBotBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hCenterRadial));
@@ -11013,6 +11182,7 @@ function calculateArchLayout(canopy, config, data) {
 /** Default support / reciprocal beam parameters (StarShade 8m 4-27-26 reference; `reset` restores these). */
 const DEFAULT_SUPPORT_BEAMS = {
     enabled: true,
+    showRadial: true,
     length: 120,
     width: 1.5,
     thickness: 3.5,
@@ -11030,8 +11200,18 @@ const DEFAULT_SUPPORT_BEAMS = {
     parallelInset: -9.5,
     parallelVOffset: -1.66,
     parallelOffsetV: 4.5,
+    anchorDist: 20,
     rcpKinematicMode: true,
-    rcpCrossings: null
+    rcpPivotHole: 0,
+    rcpPivotT: 0.5,
+    rcpEndOffset: 0,
+    rcpActiveHole: 1,
+    rcpMaxHoleCount: 1,
+    rcpCrossings: null,
+    rcpFinalTopology: null,
+    rcpHoleTsByBeam: null,
+    rcpDiagnostics: null,
+    _lastPhi: null
 };
 
 function resetSupportBeamsToDefaults() {
@@ -11042,6 +11222,7 @@ function resetSupportBeamsToDefaults() {
 function applySupportBeamsConfig(sb) {
     if (!sb || typeof sb !== 'object') return;
     if (sb.enabled !== undefined) state.supportBeams.enabled = sb.enabled;
+    if (sb.showRadial !== undefined) state.supportBeams.showRadial = sb.showRadial;
     if (sb.length !== undefined) state.supportBeams.length = sb.length;
     if (sb.width !== undefined) state.supportBeams.width = sb.width;
     if (sb.thickness !== undefined) state.supportBeams.thickness = sb.thickness;
@@ -11059,8 +11240,14 @@ function applySupportBeamsConfig(sb) {
     if (sb.parallelInset !== undefined) state.supportBeams.parallelInset = sb.parallelInset;
     if (sb.parallelVOffset !== undefined) state.supportBeams.parallelVOffset = sb.parallelVOffset;
     if (sb.parallelOffsetV !== undefined) state.supportBeams.parallelOffsetV = sb.parallelOffsetV;
+    if (sb.anchorDist !== undefined) state.supportBeams.anchorDist = sb.anchorDist;
     if (sb.rcpKinematicMode !== undefined) state.supportBeams.rcpKinematicMode = sb.rcpKinematicMode;
-    // rcpCrossings is intentionally not loaded from file — always re-seeded on first render
+    if (sb.rcpPivotHole !== undefined) state.supportBeams.rcpPivotHole = sb.rcpPivotHole;
+    if (sb.rcpPivotT !== undefined) state.supportBeams.rcpPivotT = sb.rcpPivotT;
+    if (sb.rcpEndOffset !== undefined) state.supportBeams.rcpEndOffset = sb.rcpEndOffset;
+    if (sb.rcpActiveHole !== undefined) state.supportBeams.rcpActiveHole = sb.rcpActiveHole;
+    // rcpCrossings/topology are not loaded from file — re-seeded on next render after config load
+    invalidateRcpCrossings();
 }
 
 /** Legacy `panels.support` (pre–top-level `supportBeams`). */
@@ -11177,6 +11364,789 @@ function computeSupportBomContribution(moduleCount, costBoltVInner) {
     };
 }
 
+/* =============================================================================
+ * SUPPORT / RECIPROCAL KINEMATICS LAYER
+ * Derives module frames from solved linkage geometry, places radial support beams
+ * via hinge+slider constraints, and solves reciprocal beams from moving anchors.
+ * ============================================================================= */
+
+const RCP_ACTIVE_PIVOT_TOL = 2.0;   // inches — active bolted pivot considered fully engaged below this
+const RCP_FINAL_ALIGN_TOL = 2.5;    // inches — all holes must align at deployment below this
+const RCP_STRESS_TOL = 12.0;        // inches — selected bolt holes separated past this = stressed (red)
+const RCP_IMPOSSIBLE_TOL = 84.0;    // inches — separation past this = physically impossible (hidden)
+/** Deploy swing applies only within this many degrees of the closed/deploy angle. */
+const RCP_DEPLOY_ANGLE_TOL_DEG = 0.15;
+
+/** True when fold angle is at (or within tolerance of) the fully deployed closed angle. */
+function isRcpAtDeployedAngle(foldAngleRad) {
+    const closedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
+        ? getOptimalClosedAngleForAnimation()
+        : foldAngleRad;
+    return Math.abs(foldAngleRad - closedAngle) < degToRad(RCP_DEPLOY_ANGLE_TOL_DEG);
+}
+
+/** Beams that belong to the main Hoberman linkage (excludes secondary support/reciprocal). */
+function isMainStructureBeam(beam) {
+    const t = beam && beam.stackType ? beam.stackType : '';
+    return !t.startsWith('support-beam');
+}
+
+/** Y elevation for radial support beams: top H-stack surface + beam half-thickness + offsetV. */
+function getSupportBeamPlaneY(frame, cfg) {
+    const hT = state.hBeamT || 1.5;
+    const hStackCount = state.hStackCount || 1;
+    const hStackGap = state.hStackGap || 0;
+    const hStackThick = hStackCount * hT + Math.max(0, hStackCount - 1) * hStackGap;
+    const beamY = (frame.topBeam.p1.y + frame.topBeam.p2.y) * 0.5;
+    const beamThick = cfg.thickness || 3.5;
+    const offsetV = cfg.offsetV || 0;
+    return beamY + hStackThick + beamThick / 2 + offsetV;
+}
+
+/** Point on a beam segment at a target Y (clamped to segment ends). */
+function pointOnBeamAtY(beam, targetY) {
+    const p1 = beam.p1, p2 = beam.p2;
+    if (!p1 || !p2) return null;
+    if (Math.abs(p2.y - p1.y) < 1e-6) {
+        return closestPointOnSegment3D(
+            { x: (p1.x + p2.x) * 0.5, y: targetY, z: (p1.z + p2.z) * 0.5 },
+            p1, p2
+        ).point;
+    }
+    const t = Math.max(0, Math.min(1, (targetY - p1.y) / (p2.y - p1.y)));
+    return {
+        x: p1.x + t * (p2.x - p1.x),
+        y: p1.y + t * (p2.y - p1.y),
+        z: p1.z + t * (p2.z - p1.z)
+    };
+}
+
+/** Outermost vertical cross beam for a module (farthest from structure centroid in XZ). */
+function pickOuterVerticalBeam(vertBeams, cx, cz) {
+    let best = null, bestR = -Infinity;
+    for (const vb of vertBeams) {
+        if (!vb.p1 || !vb.p2) continue;
+        const mx = (vb.p1.x + vb.p2.x) * 0.5;
+        const mz = (vb.p1.z + vb.p2.z) * 0.5;
+        const r = Math.hypot(mx - cx, mz - cz);
+        if (r > bestR) { bestR = r; best = vb; }
+    }
+    return best;
+}
+
+/**
+ * Extract per-module kinematic frame from solved linkage geometry.
+ * @returns {Object[]} ModuleFrame[]
+ */
+function extractModuleFrames(data) {
+    const frames = [];
+    const beams = data.beams || [];
+    const brackets = data.brackets || [];
+    const topBeams = beams.filter(b => b.stackType === 'horizontal-top');
+    const numModules = state.modules;
+
+    let cx = 0, cz = 0, n = 0;
+    topBeams.forEach(b => {
+        if (!b.p1 || !b.p2) return;
+        cx += (b.p1.x + b.p2.x) * 0.5;
+        cz += (b.p1.z + b.p2.z) * 0.5;
+        n++;
+    });
+    if (n > 0) { cx /= n; cz /= n; }
+
+    for (let i = 0; i < numModules; i++) {
+        const topBeam = getModuleTopBeam(topBeams, i);
+        if (!topBeam || !topBeam.p1 || !topBeam.p2) continue;
+
+        const midX = (topBeam.p1.x + topBeam.p2.x) * 0.5;
+        const midZ = (topBeam.p1.z + topBeam.p2.z) * 0.5;
+        let tangX = topBeam.p2.x - topBeam.p1.x;
+        let tangZ = topBeam.p2.z - topBeam.p1.z;
+        const tangLen = Math.hypot(tangX, tangZ) || 1;
+        tangX /= tangLen;
+        tangZ /= tangLen;
+        let outRadX = -tangZ, outRadZ = tangX;
+
+        const modBrackets = brackets.filter(b => b.moduleIndex === i && !b.isBottom);
+        const vertBeams = beams.filter(b =>
+            (b.stackType === 'vertical' || b.stackType === 'fixed-beam') && b.moduleIndex === i);
+
+        let innerBracket = null, outerBracket = null;
+        let innerR = Infinity, outerR = -Infinity;
+        for (const br of modBrackets) {
+            if (!br.pos) continue;
+            const r = Math.hypot(br.pos.x - cx, br.pos.z - cz);
+            if (r < innerR) { innerR = r; innerBracket = br; }
+            if (r > outerR) { outerR = r; outerBracket = br; }
+        }
+        if (!innerBracket && modBrackets.length) innerBracket = modBrackets[0];
+        if (!outerBracket && modBrackets.length > 1) outerBracket = modBrackets[modBrackets.length - 1];
+
+        const supportY = getSupportBeamPlaneY({ topBeam }, state.supportBeams);
+
+        // Hinge = OUTER-top pivot of this module. Among the module's vertical cross beams,
+        // take each beam's upper endpoint and keep the one farthest from the structure
+        // center. This reliably lands on the outer vertical leg's top joint regardless of
+        // which scissor pattern (A/B) the beam belongs to, so every module hinges at its
+        // outer ring joint (never the inner one) even on an open/spiral partial fold.
+        let hingePoint = null;
+        let hingeBeam = null;
+        let hingeR = -Infinity;
+        for (const vb of vertBeams) {
+            if (!vb.p1 || !vb.p2) continue;
+            const top = (vb.p1.y >= vb.p2.y) ? vb.p1 : vb.p2;
+            const r = Math.hypot(top.x - cx, top.z - cz);
+            if (r > hingeR) { hingeR = r; hingeBeam = vb; hingePoint = { x: top.x, y: supportY, z: top.z }; }
+        }
+        if (!hingePoint) {
+            // No vertical beams (fixed-beam edge cases): use the outer end of the top beam.
+            const e1 = Math.hypot(topBeam.p1.x - cx, topBeam.p1.z - cz);
+            const e2 = Math.hypot(topBeam.p2.x - cx, topBeam.p2.z - cz);
+            const outerEnd = e1 >= e2 ? topBeam.p1 : topBeam.p2;
+            hingePoint = outerBracket
+                ? { x: outerBracket.pos.x, y: supportY, z: outerBracket.pos.z }
+                : { x: outerEnd.x, y: supportY, z: outerEnd.z };
+        }
+
+        // Inward radial direction. The hinge sits on the OUTER vertical leg; that leg's
+        // own XZ axis (outer-top → inner-bottom) is the module's true local radial, so the
+        // beam follows its V-module inward even when the ring is an open/spiral partial fold.
+        // Fall back to "toward structure center" if the leg is too vertical to give a radial.
+        let inX = 0, inZ = 0;
+        if (hingeBeam && hingeBeam.p1 && hingeBeam.p2) {
+            const top = (hingeBeam.p1.y >= hingeBeam.p2.y) ? hingeBeam.p1 : hingeBeam.p2;
+            const bot = (hingeBeam.p1.y >= hingeBeam.p2.y) ? hingeBeam.p2 : hingeBeam.p1;
+            inX = bot.x - top.x;
+            inZ = bot.z - top.z;
+        }
+        if (Math.hypot(inX, inZ) < 1e-3) {
+            inX = cx - hingePoint.x;
+            inZ = cz - hingePoint.z;
+        }
+        const inLen = Math.hypot(inX, inZ) || 1;
+        inX /= inLen;
+        inZ /= inLen;
+        const guideOrigin = { x: hingePoint.x, y: supportY, z: hingePoint.z };
+        const guideDir = { x: inX, y: 0, z: inZ };
+
+        // --- Top-ring scissor beams (Pattern A / B) and their crossing (H-center) ---
+        // Reciprocal anchors slide along these two beams, measured from the H-center crossing
+        // toward each beam's inner (toward-structure-center) end joint.
+        const modTopBeams = topBeams.filter(b => b.moduleIndex === i);
+        const pickHighest = (pat) => {
+            let best = null;
+            for (const b of modTopBeams) {
+                if (b.patternId !== pat || !b.p1 || !b.p2) continue;
+                if (!best || b.center.y > best.center.y) best = b;
+            }
+            return best;
+        };
+        const beamA = pickHighest('A') || topBeam;
+        const beamB = pickHighest('B') || topBeam;
+        const innerEndOf = (b) => {
+            const d1 = Math.hypot(b.p1.x - cx, b.p1.z - cz);
+            const d2 = Math.hypot(b.p2.x - cx, b.p2.z - cz);
+            return d1 <= d2 ? b.p1 : b.p2;
+        };
+        const innerA = innerEndOf(beamA);
+        const innerB = innerEndOf(beamB);
+        // H-center = XZ crossing of the two scissor beams (fallback to shared inner-end midpoint).
+        let hCenter;
+        const isect = segSegIntersectParamsXZ(beamA.p1, beamA.p2, beamB.p1, beamB.p2);
+        if (isect && isect.t > -0.2 && isect.t < 1.2 && isect.s > -0.2 && isect.s < 1.2) {
+            hCenter = {
+                x: beamA.p1.x + isect.t * (beamA.p2.x - beamA.p1.x),
+                y: (beamA.center.y + beamB.center.y) * 0.5,
+                z: beamA.p1.z + isect.t * (beamA.p2.z - beamA.p1.z)
+            };
+        } else {
+            hCenter = {
+                x: (innerA.x + innerB.x) * 0.5,
+                y: (beamA.center.y + beamB.center.y) * 0.5,
+                z: (innerA.z + innerB.z) * 0.5
+            };
+        }
+        const scissorEnd = (innerEnd) => {
+            const dx = innerEnd.x - hCenter.x;
+            const dz = innerEnd.z - hCenter.z;
+            const len = Math.hypot(dx, dz) || 1;
+            return { innerEnd, dirX: dx / len, dirZ: dz / len, maxDist: len };
+        };
+
+        frames.push({
+            moduleIndex: i,
+            topBeam,
+            midX, midZ,
+            tangX, tangZ,
+            outRadX, outRadZ,
+            inX, inZ,
+            supportY,
+            hingePoint,
+            innerGuide: { origin: guideOrigin, dir: guideDir },
+            outerVert: { point: hingePoint },
+            innerBracket,
+            outerBracket,
+            structureCx: cx,
+            structureCz: cz,
+            hCenter,
+            scissorA: scissorEnd(innerA),
+            scissorB: scissorEnd(innerB)
+        });
+    }
+    return frames;
+}
+
+/**
+ * Place one radial support beam via hinge (outer vertical at support plane) + slider
+ * (inward radial through inner bracket). Beam tilt uses cfg.foldAngle like the legacy model.
+ */
+function solveRadialSupportBeamPlacement(frame, cfg) {
+    const L = cfg.length || 96;
+    const offsetH = cfg.offsetH || 0;
+    const supportY = frame.supportY;
+    const hinge = { ...frame.hingePoint, y: supportY };
+    // Fixed inward radial axis (horizontal). Radial offset slides the beam in/out
+    // ALONG this axis relative to its hinge — it never changes the beam's angle.
+    const dir = frame.innerGuide.dir;
+    const start = {
+        x: hinge.x + dir.x * offsetH,
+        y: supportY,
+        z: hinge.z + dir.z * offsetH
+    };
+    const end = {
+        x: start.x + dir.x * L,
+        y: supportY,
+        z: start.z + dir.z * L
+    };
+    return {
+        start,
+        end,
+        slideT: offsetH,
+        slideError: 0,
+        hinge
+    };
+}
+
+/**
+ * Build a reciprocal anchor for one beam side at a module.
+ * side 0 → scissor beam A, side 1 → scissor beam B. The anchor sits along that scissor
+ * beam at `anchorDist` inches from the H-center crossing toward the beam's inner end,
+ * clamped to the H-center→inner-end segment. Swing rotates the beam about this anchor;
+ * the active bolted pair adjusts swing during fold so fixed drill holes stay coincident.
+ */
+function buildRcpAnchorFromFrame(frame, cfg, side, numModules) {
+    const abOffset = cfg.parallelVOffset || 0;
+    const vertSign = side === 0 ? 1 : -1;
+    const swingSign = side === 0 ? 1 : -1;
+    const stackId = numModules + frame.moduleIndex * 2 + side;
+
+    const scissor = side === 0 ? frame.scissorA : frame.scissorB;
+    const hC = frame.hCenter;
+    const dist = Math.max(0, Math.min(cfg.anchorDist || 0, scissor.maxDist));
+    const anchorX = hC.x + scissor.dirX * dist;
+    const anchorZ = hC.z + scissor.dirZ * dist;
+    const anchorPos = computeRcpAnchorPosition(frame.topBeam, anchorX, anchorZ, cfg, vertSign);
+
+    // Each reciprocal beam rides its own top scissor leg (A or B): direction from the
+    // H-center toward that leg's inner end. Side A vs B legs form the mirrored X, so
+    // top-crossing and bottom-crossing beams stay distinct even with zero swing.
+    let radInX = scissor.dirX;
+    let radInZ = scissor.dirZ;
+    if (Math.hypot(radInX, radInZ) < 1e-6) {
+        radInX = frame.inX;
+        radInZ = frame.inZ;
+    }
+    if (Math.hypot(radInX, radInZ) < 1e-6) {
+        radInX = frame.structureCx - anchorX;
+        radInZ = frame.structureCz - anchorZ;
+    }
+    const rLen = Math.hypot(radInX, radInZ) || 1;
+    radInX /= rLen;
+    radInZ /= rLen;
+
+    return {
+        stackId,
+        moduleIndex: frame.moduleIndex,
+        side,
+        x: anchorPos.x, y: anchorPos.y, z: anchorPos.z,
+        radInX, radInZ,
+        swingSign
+    };
+}
+
+/** Assign hole index 1..3 from sorted crossing t per beam. */
+function buildRcpHoleTsByBeam(crossings) {
+    const raw = {};
+    for (const c of crossings) {
+        (raw[c.beamAStackId] = raw[c.beamAStackId] || []).push(c.tA);
+        (raw[c.beamBStackId] = raw[c.beamBStackId] || []).push(c.tB);
+    }
+    const out = {};
+    for (const id of Object.keys(raw)) {
+        const sorted = raw[id].slice().sort((a, b) => a - b);
+        const uniq = [];
+        for (const t of sorted) {
+            if (!uniq.length || Math.abs(t - uniq[uniq.length - 1]) > 0.02) uniq.push(t);
+        }
+        out[id] = uniq.slice(0, 3);
+    }
+    return out;
+}
+
+/** World-space midpoint of a topology crossing's fixed holes on two rendered beams. */
+function holeMidpointForCrossing(beamA, beamB, crossing) {
+    const tOn = (beam, stackId) => {
+        if (crossing.beamAStackId === stackId) return crossing.tA;
+        if (crossing.beamBStackId === stackId) return crossing.tB;
+        return 0.5;
+    };
+    const pivotA = vAdd(beamA.p1, vScale(vSub(beamA.p2, beamA.p1), tOn(beamA, beamA.stackId)));
+    const pivotB = vAdd(beamB.p1, vScale(vSub(beamB.p2, beamB.p1), tOn(beamB, beamB.stackId)));
+    return vScale(vAdd(pivotA, pivotB), 0.5);
+}
+
+/** Pick the single topology crossing whose average hole position is nearest pivotT. */
+function selectActiveRcpCrossing(topology, pivotT) {
+    if (!topology || topology.length === 0) return null;
+    let best = topology[0];
+    let bestDist = Infinity;
+    for (const c of topology) {
+        const avgT = (c.tA + c.tB) / 2;
+        const d = Math.abs(avgT - pivotT);
+        if (d < bestDist) {
+            bestDist = d;
+            best = c;
+        }
+    }
+    return best;
+}
+
+/** Enrich crossings with holeIndexA/B from per-beam sorted hole lists. */
+function enrichCrossingsWithHoleIndex(crossings, holeTsByBeam) {
+    return crossings.map(c => {
+        const holesA = holeTsByBeam[c.beamAStackId] || [];
+        const holesB = holeTsByBeam[c.beamBStackId] || [];
+        let holeIndexA = 0, holeIndexB = 0;
+        for (let i = 0; i < holesA.length; i++) {
+            if (Math.abs(holesA[i] - c.tA) < 1e-4) { holeIndexA = i + 1; break; }
+        }
+        for (let i = 0; i < holesB.length; i++) {
+            if (Math.abs(holesB[i] - c.tB) < 1e-4) { holeIndexB = i + 1; break; }
+        }
+        return Object.assign({}, c, { holeIndexA, holeIndexB });
+    });
+}
+
+/**
+ * Seed deployed reciprocal topology at closed fold angle (all three crossing holes).
+ */
+function seedFinalReciprocalTopology() {
+    const cfg = state.supportBeams;
+    if (!cfg || !cfg.enabled || !cfg.parallelEnabled || state.orientation === 'vertical') return null;
+
+    const closedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
+        ? getOptimalClosedAngleForAnimation()
+        : state.foldAngle;
+
+    const savedSwing = cfg.parallelSwingAngle;
+    const savedFold = state.foldAngle;
+    state.foldAngle = closedAngle;
+
+    let base;
+    try {
+        base = solveLinkage(closedAngle);
+    } catch (e) {
+        state.foldAngle = savedFold;
+        return null;
+    }
+    base = Object.assign({}, base, { beams: base.beams ? base.beams.slice() : [] });
+
+    const frames = extractModuleFrames(base);
+    const numModules = state.modules;
+    const rcpLen = cfg.parallelLength || 96;
+    const rcpFold = 0;
+
+    const buildRefsAtSwing = (swingDeg) => {
+        const swingRad = degToRad(swingDeg);
+        const rcpBeams = [];
+        for (const frame of frames) {
+            for (let side = 0; side < 2; side++) {
+                const anc = buildRcpAnchorFromFrame(frame, cfg, side, numModules);
+                const p1 = computeRcpPoint(anc, 0, swingRad, rcpFold, rcpLen);
+                const p2 = computeRcpPoint(anc, 1, swingRad, rcpFold, rcpLen);
+                rcpBeams.push({
+                    stackType: 'support-beam-reciprocal',
+                    stackId: anc.stackId,
+                    p1, p2,
+                    center: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2, z: (p1.z + p2.z) / 2 }
+                });
+            }
+        }
+        return computeRcpCrossingRefsFromBeams(rcpBeams);
+    };
+
+    let bestSwing = savedSwing ?? 0;
+    let bestRefs = buildRefsAtSwing(bestSwing);
+    if (bestRefs.length === 0) {
+        for (let sw = 0; sw <= 40; sw += 2) {
+            const refs = buildRefsAtSwing(sw);
+            if (refs.length > bestRefs.length) {
+                bestRefs = refs;
+                bestSwing = sw;
+            }
+        }
+    }
+
+    const holeTsByBeam = buildRcpHoleTsByBeam(bestRefs);
+    const topology = enrichCrossingsWithHoleIndex(bestRefs, holeTsByBeam);
+
+    // Number of bolt holes available per beam = max hole index across the baked topology.
+    let maxHoles = 1;
+    for (const c of topology) {
+        maxHoles = Math.max(maxHoles, c.holeIndexA || 0, c.holeIndexB || 0);
+    }
+
+    cfg._seedSwingDeg = bestSwing;
+    cfg.rcpHoleTsByBeam = holeTsByBeam;
+    cfg.rcpFinalTopology = topology;
+    cfg.rcpCrossings = bestRefs;
+    cfg.rcpMaxHoleCount = maxHoles;
+    cfg.rcpActiveHole = Math.max(1, Math.min(cfg.rcpActiveHole || 1, maxHoles));
+    state.foldAngle = savedFold;
+
+    return { topology, holeTsByBeam, seedSwing: bestSwing, maxHoles };
+}
+
+/**
+ * Select the active bolt-hole ring: every baked crossing that sits at the chosen hole
+ * index on either of its two beams. By module symmetry this is a ring of equivalent
+ * pivots — the bolts the user has chosen to keep engaged while folding.
+ */
+function selectActiveRcpRing(topology, activeHole) {
+    return topology.filter(c => c.holeIndexA === activeHole || c.holeIndexB === activeHole);
+}
+
+/**
+ * Gauss-Seidel solve of beam swing angles so the active bolted holes stay coincident.
+ * Only beams that participate in an active crossing rotate; the rest keep baseSwing
+ * (preserving the deployed spiral). Returns solved phi, the per-crossing world pivots
+ * and the worst residual gap (used to flag stress / impossible states).
+ */
+function solveReciprocalActiveRing(rcpAnchors, activeCrossings, baseSwing, foldRad, L, prevPhi) {
+    const phi = {};
+    for (const id in rcpAnchors) phi[id] = baseSwing;
+    if (!activeCrossings.length) return { phi, pivots: [], maxGap: 0 };
+
+    const beamCross = {};
+    const involved = new Set();
+    for (const c of activeCrossings) {
+        involved.add(c.beamAStackId);
+        involved.add(c.beamBStackId);
+        (beamCross[c.beamAStackId] = beamCross[c.beamAStackId] || []).push({ tHole: c.tA, partnerId: c.beamBStackId, partnerT: c.tB });
+        (beamCross[c.beamBStackId] = beamCross[c.beamBStackId] || []).push({ tHole: c.tB, partnerId: c.beamAStackId, partnerT: c.tA });
+    }
+    for (const id of involved) {
+        if (prevPhi && prevPhi[id] !== undefined) phi[id] = prevPhi[id];
+    }
+
+    const energy = (anc, list, swing) => {
+        let e = 0;
+        for (const c of list) {
+            const PA = computeRcpPoint(anc, c.tHole, swing, foldRad, L);
+            const partnerAnc = rcpAnchors[c.partnerId];
+            if (!partnerAnc) continue;
+            const Q = computeRcpPoint(partnerAnc, c.partnerT, phi[c.partnerId], foldRad, L);
+            e += (PA.x - Q.x) ** 2 + (PA.y - Q.y) ** 2 + (PA.z - Q.z) ** 2;
+        }
+        return e;
+    };
+    const solveOne = (id) => {
+        const anc = rcpAnchors[id];
+        const list = beamCross[id];
+        if (!anc || !list || !list.length) return;
+        const lo0 = -Math.PI / 2, hi0 = Math.PI / 2, n = 90;
+        let best = phi[id], bestd = Infinity;
+        for (let k = 0; k <= n; k++) {
+            const x = lo0 + (hi0 - lo0) * (k / n);
+            const d = energy(anc, list, x);
+            if (d < bestd) { bestd = d; best = x; }
+        }
+        const h = (hi0 - lo0) / n;
+        let a = best - h, b = best + h;
+        for (let r = 0; r < 30; r++) {
+            const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3;
+            if (energy(anc, list, m1) < energy(anc, list, m2)) b = m2; else a = m1;
+        }
+        phi[id] = (a + b) / 2;
+    };
+
+    const ids = [...involved];
+    for (let sweep = 0; sweep < 20; sweep++) {
+        for (const id of ids) solveOne(id);
+    }
+
+    let maxGap = 0;
+    const pivots = [];
+    for (const c of activeCrossings) {
+        const A = rcpAnchors[c.beamAStackId];
+        const B = rcpAnchors[c.beamBStackId];
+        if (!A || !B) continue;
+        const PA = computeRcpPoint(A, c.tA, phi[c.beamAStackId], foldRad, L);
+        const PB = computeRcpPoint(B, c.tB, phi[c.beamBStackId], foldRad, L);
+        const g = Math.hypot(PA.x - PB.x, PA.y - PB.y, PA.z - PB.z);
+        if (g > maxGap) maxGap = g;
+        pivots.push({
+            beamAStackId: c.beamAStackId,
+            beamBStackId: c.beamBStackId,
+            pivot: { x: (PA.x + PB.x) / 2, y: (PA.y + PB.y) / 2, z: (PA.z + PB.z) / 2 },
+            gap: g
+        });
+    }
+    return { phi, pivots, maxGap };
+}
+
+/**
+ * Single pipeline for reciprocal beam placement:
+ *   1. Anchors follow the top H-ring (caller supplies rcpAnchors).
+ *   2. Every beam sits at parallelSwingAngle — the accurate deployed/spiral shape, in both
+ *      manual and kinematic mode (kinematics no longer distorts the geometry).
+ *   3. Kinematic mode measures how far the SELECTED bolt-hole pair separates as the ring
+ *      folds (the holes are fixed fractions on each beam). That separation classifies:
+ *        normal  → bolt still effectively engaged (folds cleanly)
+ *        stress  → fold pulling the bolted holes apart (beams rendered red)
+ *        impossible → holes hopelessly apart (beams hidden, like the V-modules)
+ *      The active bolt is pinned to its hole on beam A, so it rides the beam (no drift).
+ */
+function buildReciprocalBeamKinematics(cfg, rcpAnchors, crossings, foldAngleRad) {
+    const L = cfg.parallelLength || 96;
+    const foldRad = 0;
+    const holeTsByBeam = cfg.rcpHoleTsByBeam || buildRcpHoleTsByBeam(crossings);
+    const topology = cfg.rcpFinalTopology || enrichCrossingsWithHoleIndex(crossings, holeTsByBeam);
+    const atDeployed = isRcpAtDeployedAngle(foldAngleRad);
+    const baseSwing = degToRad(cfg.parallelSwingAngle || 0);
+
+    const activeHole = Math.max(1, Math.min(cfg.rcpActiveHole || 1, cfg.rcpMaxHoleCount || 1));
+    const activeCrossings = cfg.rcpKinematicMode ? selectActiveRcpRing(topology, activeHole) : [];
+
+    // Beams keep the deployed swing at every fold angle (accurate spiral, matches manual mode).
+    const phi = {};
+    for (const id in rcpAnchors) phi[id] = baseSwing;
+
+    // Gaps at all baked holes (diagnostics) and the active bolt pivots (pinned to beam A's hole).
+    const activeSet = new Set(activeCrossings);
+    const gaps = { active: [], inactive: [], all: [] };
+    const pivots = [];
+    let maxActiveGap = 0;
+    let worstGap = 0, worstRef = null;
+    for (const ref of topology) {
+        const A = rcpAnchors[ref.beamAStackId];
+        const B = rcpAnchors[ref.beamBStackId];
+        if (!A || !B) continue;
+        const PA = computeRcpPoint(A, ref.tA, phi[ref.beamAStackId], foldRad, L);
+        const PB = computeRcpPoint(B, ref.tB, phi[ref.beamBStackId], foldRad, L);
+        const g = Math.hypot(PA.x - PB.x, PA.y - PB.y, PA.z - PB.z);
+        gaps.all.push(g);
+        if (activeSet.has(ref)) {
+            gaps.active.push(g);
+            if (g > maxActiveGap) maxActiveGap = g;
+            pivots.push({ beamAStackId: ref.beamAStackId, beamBStackId: ref.beamBStackId, pivot: PA, gap: g });
+        } else {
+            gaps.inactive.push(g);
+        }
+        if (g > worstGap) {
+            worstGap = g;
+            worstRef = { beamA: ref.beamAStackId, beamB: ref.beamBStackId, holeA: ref.holeIndexA, holeB: ref.holeIndexB, gap: +g.toFixed(2) };
+        }
+    }
+
+    // Visual state from how far the selected bolt holes have separated.
+    let visualState = 'normal';
+    if (cfg.rcpKinematicMode && !atDeployed && activeCrossings.length) {
+        if (maxActiveGap > RCP_IMPOSSIBLE_TOL) visualState = 'impossible';
+        else if (maxActiveGap > RCP_STRESS_TOL) visualState = 'stress';
+    }
+    cfg._rcpVisualState = visualState;
+    cfg._rcpActivePivots = (cfg.rcpKinematicMode && !atDeployed) ? pivots : [];
+    const avg = arr => arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : 0;
+    const max = arr => arr.length ? Math.max(...arr) : 0;
+
+    let diagnostics = null;
+    if (cfg.rcpKinematicMode) {
+        let status;
+        if (atDeployed) {
+            status = max(gaps.all) <= RCP_FINAL_ALIGN_TOL ? 'finalBoltUpAligned' : 'finalBoltUpFailed';
+        } else if (!activeCrossings.length) {
+            status = 'anchorTracking';
+        } else if (visualState === 'impossible') {
+            status = 'foldImpossible';
+        } else if (visualState === 'stress') {
+            status = 'pivotStressed';
+        } else {
+            status = 'activePivotSolved';
+        }
+        diagnostics = {
+            status,
+            activeHole,
+            activePivotErrorAvg: +avg(gaps.active).toFixed(2),
+            activePivotErrorMax: +max(gaps.active).toFixed(2),
+            inactiveGapAvg: +avg(gaps.inactive).toFixed(2),
+            inactiveGapMax: +max(gaps.inactive).toFixed(2),
+            finalAlignErrorAvg: atDeployed ? +avg(gaps.all).toFixed(2) : null,
+            finalAlignErrorMax: atDeployed ? +max(gaps.all).toFixed(2) : null,
+            crossingCount: topology.length,
+            activeCrossingCount: activeCrossings.length,
+            worstPair: worstRef
+        };
+    }
+    cfg.rcpDiagnostics = diagnostics;
+    cfg._lastPhi = Object.assign({}, phi);
+    return { phi, diagnostics, activeCrossings, pivots, visualState, atDeployed };
+}
+
+/** @deprecated Alias for buildReciprocalBeamKinematics */
+function solveReciprocalLinkage(cfg, rcpAnchors, crossings, foldAngleRad) {
+    return buildReciprocalBeamKinematics(cfg, rcpAnchors, crossings, foldAngleRad);
+}
+
+function updateRcpDiagnosticsUI() {
+    const panel = document.getElementById('rcp-diagnostics-panel');
+    const cfg = state.supportBeams;
+    if (!panel || !cfg) return;
+    if (typeof refreshRcpPivotHoleOptions === 'function') refreshRcpPivotHoleOptions();
+    const show = cfg.rcpKinematicMode && cfg.parallelEnabled;
+    panel.style.display = show ? 'block' : 'none';
+    if (!show) return;
+    const d = cfg.rcpDiagnostics;
+    const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+    if (!d) {
+        set('rcp-diag-status', 'Status: not solved yet');
+        return;
+    }
+    const statusLabels = {
+        manual: 'Manual swing',
+        anchorTracking: 'Anchor tracking (no active pivot)',
+        activePivotSolved: 'Pivot engaged — folding cleanly',
+        pivotStressed: 'Pivot stressed — fold resisting bolt',
+        foldImpossible: 'Fold impossible at this angle',
+        finalBoltUpAligned: 'Final bolt-up aligned',
+        finalBoltUpFailed: 'Final bolt-up failed'
+    };
+    set('rcp-diag-status', 'Status: ' + (statusLabels[d.status] || d.status) + ' (hole ' + (d.activeHole ?? '—') + ')');
+    set('rcp-diag-active', 'Active pivot error: avg ' + (d.activePivotErrorAvg ?? '—') + '", max ' + (d.activePivotErrorMax ?? '—') + '"');
+    set('rcp-diag-inactive', 'Other hole gaps: avg ' + (d.inactiveGapAvg ?? '—') + '", max ' + (d.inactiveGapMax ?? '—') + '"');
+    if (d.finalAlignErrorMax != null) {
+        set('rcp-diag-final', 'Final bolt-up: avg ' + d.finalAlignErrorAvg + '", max ' + d.finalAlignErrorMax + '"');
+    } else {
+        set('rcp-diag-final', 'Final bolt-up: check at deployed angle');
+    }
+    if (d.worstPair) {
+        const w = d.worstPair;
+        set('rcp-diag-worst', 'Worst gap: ' + w.gap + '" (beams ' + w.beamA + '/' + w.beamB + ', holes ' + w.holeA + '/' + w.holeB + ')');
+    } else {
+        set('rcp-diag-worst', 'Worst gap: —');
+    }
+}
+
+/**
+ * Regression sweep for reciprocal/support kinematics. Call from the browser console after
+ * loading a fixture config: `validateReciprocalKinematicsSweep({ pivotHole: 1 })`.
+ * @param {Object} [options]
+ * @returns {Object} report
+ */
+function validateReciprocalKinematicsSweep(options = {}) {
+    const anglesDeg = options.angles || [];
+    if (!anglesDeg.length) {
+        for (let d = 5; d <= 175; d += 5) anglesDeg.push(d);
+        if (!anglesDeg.includes(134.9)) anglesDeg.push(134.9);
+        if (!anglesDeg.includes(74.2)) anglesDeg.push(74.2);
+        anglesDeg.sort((a, b) => a - b);
+    }
+    const savedFold = state.foldAngle;
+    const savedPivot = state.supportBeams.rcpPivotT;
+    if (options.pivotT !== undefined) state.supportBeams.rcpPivotT = options.pivotT;
+    invalidateRcpCrossings();
+
+    const report = {
+        angles: [],
+        failures: [],
+        discontinuities: [],
+        supportHingeOk: 0,
+        supportHingeFail: 0,
+        reciprocalSeeded: false,
+        deployedFinalAlign: null
+    };
+
+    let prevPhi = null;
+    for (const deg of anglesDeg) {
+        const rad = degToRad(deg);
+        state.foldAngle = rad;
+        invalidateGeometryCache();
+        let data;
+        try {
+            data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: false, useCache: false, foldAngle: rad });
+        } catch (err) {
+            report.failures.push({ deg, error: String(err) });
+            continue;
+        }
+
+        const cfg = state.supportBeams;
+        if (!report.reciprocalSeeded && cfg.rcpCrossings && cfg.rcpCrossings.length > 0) {
+            report.reciprocalSeeded = true;
+        }
+
+        const frames = extractModuleFrames(data);
+        const supportBeams = (data.beams || []).filter(b => b.stackType === 'support-beam');
+        for (const sb of supportBeams) {
+            const frame = frames.find(f => f.moduleIndex === sb.moduleIndex);
+            if (!frame || !frame.outerVert || !frame.outerVert.point) continue;
+            // The beam slides in/out along its radial axis, so its hinge joint should lie
+            // on the beam's line. Measure how far the outer hinge point is from the beam segment.
+            const cp = closestPointOnSegment3D(frame.outerVert.point, sb.p1, sb.p2);
+            const hingeErr = Math.hypot(cp.point.x - frame.outerVert.point.x, cp.point.y - frame.outerVert.point.y, cp.point.z - frame.outerVert.point.z);
+            if (hingeErr < 2) report.supportHingeOk++;
+            else report.supportHingeFail++;
+        }
+
+        const phi = cfg._lastPhi || {};
+        const phiVals = Object.values(phi).map(v => v * 180 / Math.PI);
+        const entry = {
+            deg,
+            status: cfg.rcpDiagnostics ? cfg.rcpDiagnostics.status : 'n/a',
+            activeMax: cfg.rcpDiagnostics ? cfg.rcpDiagnostics.activePivotErrorMax : null,
+            inactiveMax: cfg.rcpDiagnostics ? cfg.rcpDiagnostics.inactiveGapMax : null,
+            swingRange: phiVals.length ? Math.max(...phiVals) - Math.min(...phiVals) : 0,
+            hasNaN: phiVals.some(v => !Number.isFinite(v))
+        };
+        report.angles.push(entry);
+        if (entry.hasNaN) report.failures.push({ deg, error: 'NaN swing' });
+
+        if (prevPhi) {
+            for (const id in phi) {
+                if (prevPhi[id] !== undefined && Math.abs(phi[id] - prevPhi[id]) > degToRad(45)) {
+                    report.discontinuities.push({ deg, stackId: id, deltaDeg: (phi[id] - prevPhi[id]) * 180 / Math.PI });
+                }
+            }
+        }
+        prevPhi = Object.assign({}, phi);
+
+        if (isRcpAtDeployedAngle(rad) && cfg.rcpDiagnostics) {
+            report.deployedFinalAlign = {
+                status: cfg.rcpDiagnostics.status,
+                max: cfg.rcpDiagnostics.finalAlignErrorMax
+            };
+        }
+    }
+
+    state.foldAngle = savedFold;
+    state.supportBeams.rcpPivotT = savedPivot;
+    invalidateRcpCrossings();
+    invalidateGeometryCache();
+    console.table(report.angles);
+    console.log('[rcp-validate]', report);
+    return report;
+}
+window.validateReciprocalKinematicsSweep = validateReciprocalKinematicsSweep;
+
 /**
  * Generates support beams independently of solar panels.
  * Beams sit on top of the top ring beams, radiating inward.
@@ -11185,51 +12155,285 @@ function computeSupportBomContribution(moduleCount, costBoltVInner) {
  * @param {Object} data - Linkage data with beams array
  * @returns {Beam3D[]} Array of support beams
  */
+/** Top horizontal-top beam for a module (highest Y in the H-stack). */
+function getModuleTopBeam(topBeams, moduleIndex) {
+    let best = null;
+    for (const beam of topBeams) {
+        if (beam.moduleIndex !== moduleIndex || !beam.p1 || !beam.p2) continue;
+        if (!best || beam.center.y > best.center.y) best = beam;
+    }
+    return best;
+}
+
+/** Structure center in XZ from top ring beam midpoints (tracks fold shrinkage). */
+function computeRcpStructureCenter(topBeams) {
+    let sumX = 0, sumZ = 0, count = 0;
+    for (const beam of topBeams) {
+        if (!beam.p1 || !beam.p2) continue;
+        sumX += (beam.p1.x + beam.p2.x) * 0.5;
+        sumZ += (beam.p1.z + beam.p2.z) * 0.5;
+        count++;
+    }
+    if (count === 0) return { x: 0, z: 0 };
+    return { x: sumX / count, z: sumZ / count };
+}
+
+/** Outward radial + tangential frame at an anchor (XZ plane). */
+function buildRcpHorizontalFrame(anchorX, anchorZ, centerX, centerZ) {
+    let dx = anchorX - centerX;
+    let dz = anchorZ - centerZ;
+    let len = Math.sqrt(dx * dx + dz * dz);
+    if (len < 1e-6) {
+        dx = 1;
+        dz = 0;
+        len = 1;
+    }
+    return {
+        outRadX: dx / len,
+        outRadZ: dz / len,
+        tangentX: -dz / len,
+        tangentZ: dx / len
+    };
+}
+
+/**
+ * Pin a reciprocal anchor to the top H-ring. The nominal XZ (already derived from the
+ * real beam midpoint + radial inset + tangential shift) is kept as-is so the radial
+ * inset is preserved; only the height is taken from the beam's top surface so the
+ * anchor rides the ring vertically as the structure folds and shortens.
+ */
+function computeRcpAnchorPosition(topBeam, targetX, targetZ, cfg, vertSign) {
+    const hT = state.hBeamT || 1.5;
+    const hStackCount = state.hStackCount || 1;
+    const hStackGap = state.hStackGap || 0;
+    const hStackThick = hStackCount * hT + Math.max(0, hStackCount - 1) * hStackGap;
+    const rcpT = cfg.parallelThickness || 1.5;
+    const rcpOffsetV = cfg.parallelOffsetV || 0;
+    const abOffset = cfg.parallelVOffset || 0;
+
+    const beamY = (topBeam.p1.y + topBeam.p2.y) * 0.5;
+    const topSurfaceY = beamY + hStackThick / 2;
+    const anchorY = topSurfaceY + rcpT / 2 + rcpOffsetV + vertSign * (abOffset / 2);
+
+    return { x: targetX, y: anchorY, z: targetZ };
+}
+
+/**
+ * Unit direction of a reciprocal beam: the radially-inward reference rotated by the
+ * (mirrored) swing angle about the vertical axis. Beams stay horizontal (fold removed).
+ * `foldRad` is accepted for signature compatibility but ignored.
+ */
+function computeRcpBeamUnitDir(anc, swingRad, foldRad) {
+    const eff = swingRad * (anc.swingSign || 1);
+    const c = Math.cos(eff);
+    const s = Math.sin(eff);
+    const rx = anc.radInX !== undefined ? anc.radInX : -(anc.outRadX || 0);
+    const rz = anc.radInZ !== undefined ? anc.radInZ : -(anc.outRadZ || 0);
+    return {
+        x: rx * c - rz * s,
+        y: 0,
+        z: rx * s + rz * c
+    };
+}
+
+/**
+ * Per-beam sorted parametric positions (t along the beam, 0=anchor end) of every
+ * crossing hole, derived from the seeded crossing references. Used to locate the
+ * hole the user selects as the active swing pivot.
+ * @param {Array} rcpCrossings - [{beamAStackId, beamBStackId, tA, tB}]
+ * @returns {Object} stackId → number[] (ascending crossing-hole t values)
+ */
+function buildRcpBeamCrossingTs(rcpCrossings) {
+    const map = {};
+    if (!Array.isArray(rcpCrossings)) return map;
+    for (const c of rcpCrossings) {
+        (map[c.beamAStackId] = map[c.beamAStackId] || []).push(c.tA);
+        (map[c.beamBStackId] = map[c.beamBStackId] || []).push(c.tB);
+    }
+    for (const id of Object.keys(map)) {
+        map[id] = map[id].slice().sort((a, b) => a - b);
+    }
+    return map;
+}
+
+/**
+ * Resolve the parametric pivot position for a beam.
+ * pivotHole 0 → anchor end (t=0). pivotHole 1..N → the Nth crossing hole along the
+ * beam. Falls back gracefully to the outermost available crossing hole, or the
+ * anchor when the beam has no recorded crossings.
+ */
+function getRcpPivotT(stackId, crossingTsMap, pivotHole) {
+    if (!pivotHole || pivotHole <= 0) return 0;
+    const ts = crossingTsMap[stackId];
+    if (!ts || ts.length === 0) return 0;
+    const idx = Math.min(pivotHole - 1, ts.length - 1);
+    return ts[idx];
+}
+
+/**
+ * Position of a point at parameter t along a reciprocal beam, swung by `swingRad`.
+ * The anchor end (p1, t=0) stays pinned to the ring; the beam swings about it.
+ */
+function computeRcpPoint(anc, t, swingRad, foldRad, L) {
+    const d = computeRcpBeamUnitDir(anc, swingRad, foldRad);
+    const s = t * L;
+    return { x: anc.x + s * d.x, y: anc.y + s * d.y, z: anc.z + s * d.z };
+}
+
+/**
+ * Weight a crossing constraint by whether it lands on a beam's currently selected
+ * active pivot hole. The pivot hole's crossing is prioritised so the solved swing
+ * keeps that hole aligned, while the anchor remains pinned to the ring.
+ * Returns 1 when no pivot hole is active (uniform least-squares = original behaviour).
+ */
+function rcpCrossingWeight(tA, tB, pivotTA, pivotTB, pivotHole) {
+    if (!pivotHole || pivotHole <= 0) return 1;
+    const HEAVY = 50;
+    const onA = pivotTA > 0 && Math.abs(tA - pivotTA) < 1e-6;
+    const onB = pivotTB > 0 && Math.abs(tB - pivotTB) < 1e-6;
+    return (onA || onB) ? HEAVY : 1;
+}
+
 /**
  * Given current anchor positions and stored reference crossing parameters (tA, tB per pair),
- * find the swing angle φ (radians) that minimises the total squared gap between the crossing
- * bolt positions predicted by each beam. Uses a ternary search over [-π/2, π/2].
+ * find the swing angle φ (radians) that minimises the total squared 3D gap between the
+ * crossing bolt positions predicted by each beam. Uses a ternary search over [-π/2, π/2].
  * @param {Object} cfg - state.supportBeams
- * @param {Object} rcpAnchors - map of stackId → {x, z, y, outRadX, outRadZ, tangentX, tangentZ}
+ * @param {Object} rcpAnchors - map of stackId → {x, z, y, outRadX, outRadZ, tangentX, tangentZ, sideSign}
  * @param {Array}  rcpCrossings - [{beamAStackId, beamBStackId, tA, tB}]
  * @returns {number} solved φ in radians
  */
 function solveReciprocalSwingAngle(cfg, rcpAnchors, rcpCrossings) {
     const L = cfg.parallelLength || 96;
-    const cosF = Math.cos(degToRad(cfg.parallelFoldAngle || 0));
+    const foldRad = degToRad(cfg.parallelFoldAngle || 0);
+    const pivotHole = cfg.rcpPivotHole || 0;
+    const crossingTsMap = buildRcpBeamCrossingTs(rcpCrossings);
 
     function residual(phi) {
-        const cosS = Math.cos(phi), sinS = Math.sin(phi);
         let r = 0;
         for (const { beamAStackId, beamBStackId, tA, tB } of rcpCrossings) {
             const A = rcpAnchors[beamAStackId];
             const B = rcpAnchors[beamBStackId];
             if (!A || !B) continue;
-            // Mirrored swing per side: tangent component is multiplied by ±1
-            // so the two scissor blades rotate in opposite directions about their anchors.
-            const sgnA = A.sideSign, sgnB = B.sideSign;
-            const dAx = (-A.outRadX * cosS + A.tangentX * sinS * sgnA) * cosF;
-            const dAz = (-A.outRadZ * cosS + A.tangentZ * sinS * sgnA) * cosF;
-            const dBx = (-B.outRadX * cosS + B.tangentX * sinS * sgnB) * cosF;
-            const dBz = (-B.outRadZ * cosS + B.tangentZ * sinS * sgnB) * cosF;
-            const PAx = A.x + tA * L * dAx, PAz = A.z + tA * L * dAz;
-            const PBx = B.x + tB * L * dBx, PBz = B.z + tB * L * dBz;
-            r += (PAx - PBx) ** 2 + (PAz - PBz) ** 2;
+            const PA = computeRcpPoint(A, tA, phi, foldRad, L);
+            const PB = computeRcpPoint(B, tB, phi, foldRad, L);
+            const pivotTA = getRcpPivotT(beamAStackId, crossingTsMap, pivotHole);
+            const pivotTB = getRcpPivotT(beamBStackId, crossingTsMap, pivotHole);
+            const w = rcpCrossingWeight(tA, tB, pivotTA, pivotTB, pivotHole);
+            r += w * ((PA.x - PB.x) ** 2 + (PA.y - PB.y) ** 2 + (PA.z - PB.z) ** 2);
         }
         return r;
     }
 
-    // Ternary search: 4 passes of 40 iterations over successively narrower intervals
-    let lo = -Math.PI / 2, hi = Math.PI / 2;
-    for (let pass = 0; pass < 4; pass++) {
-        for (let iter = 0; iter < 40; iter++) {
-            const m1 = lo + (hi - lo) / 3;
-            const m2 = hi - (hi - lo) / 3;
-            if (residual(m1) < residual(m2)) hi = m2;
-            else lo = m1;
-        }
+    // The weighted multi-crossing residual is multi-modal, so a plain ternary search
+    // can settle in a poor local minimum. Do a coarse global scan first, then refine
+    // locally around the best sample with a few ternary passes.
+    const scanLo = -Math.PI / 2, scanHi = Math.PI / 2;
+    const steps = 120;
+    let bestPhi = 0, bestR = Infinity;
+    for (let k = 0; k <= steps; k++) {
+        const phi = scanLo + (scanHi - scanLo) * (k / steps);
+        const r = residual(phi);
+        if (r < bestR) { bestR = r; bestPhi = phi; }
+    }
+
+    const halfStep = (scanHi - scanLo) / steps;
+    let lo = bestPhi - halfStep, hi = bestPhi + halfStep;
+    for (let iter = 0; iter < 60; iter++) {
+        const m1 = lo + (hi - lo) / 3;
+        const m2 = hi - (hi - lo) / 3;
+        if (residual(m1) < residual(m2)) hi = m2;
+        else lo = m1;
     }
     return (lo + hi) / 2;
+}
+
+/**
+ * Solve a PER-BEAM swing angle for each reciprocal beam.
+ *
+ * A reciprocal frame, once bolted at every crossing, is rigid/over-constrained: it
+ * cannot fold while keeping all bolts engaged (verified empirically — even free
+ * per-beam rotation cannot close the crossings away from the assembled ring). The
+ * physically meaningful question during folding therefore becomes "which bolt stays
+ * pinned?". That is what the active pivot hole selects:
+ *
+ *   - pivotHole 0 (anchor): every beam shares the single global least-squares swing
+ *     (the whole frame fans uniformly; no individual bolt is privileged).
+ *   - pivotHole 1..N: each beam rotates about its pinned anchor so that ITS selected
+ *     crossing hole stays coincident with its partner (that bolt remains engaged),
+ *     letting the other bolts separate. Because partners also move, the system is
+ *     relaxed with a few Gauss-Seidel sweeps.
+ *
+ * @returns {Object} stackId → swing angle φ (radians)
+ */
+function solveReciprocalPerBeamSwing(cfg, rcpAnchors, rcpCrossings) {
+    const L = cfg.parallelLength || 96;
+    const foldRad = degToRad(cfg.parallelFoldAngle || 0);
+    const pivotHole = cfg.rcpPivotHole || 0;
+
+    const globalSwing = solveReciprocalSwingAngle(cfg, rcpAnchors, rcpCrossings);
+    const phi = {};
+    for (const id in rcpAnchors) phi[id] = globalSwing;
+    if (!pivotHole) return phi;
+
+    const crossingTsMap = buildRcpBeamCrossingTs(rcpCrossings);
+    const HEAVY = 40;
+
+    // Per-beam list of {tHole, partnerId, partnerT, weight}. A crossing is weighted
+    // heavily when it lands on the selected pivot hole of EITHER participating beam, so
+    // both beams pull toward keeping that bolt engaged while the rest can separate.
+    const beamCrossings = {};
+    for (const id in rcpAnchors) beamCrossings[id] = [];
+    for (const ref of rcpCrossings) {
+        const { beamAStackId: a, beamBStackId: b, tA, tB } = ref;
+        const pivA = getRcpPivotT(a, crossingTsMap, pivotHole);
+        const pivB = getRcpPivotT(b, crossingTsMap, pivotHole);
+        const heavy = (pivA > 0 && Math.abs(tA - pivA) < 1e-6) ||
+                      (pivB > 0 && Math.abs(tB - pivB) < 1e-6);
+        const w = heavy ? HEAVY : 1;
+        if (beamCrossings[a]) beamCrossings[a].push({ tHole: tA, partnerId: b, partnerT: tB, weight: w });
+        if (beamCrossings[b]) beamCrossings[b].push({ tHole: tB, partnerId: a, partnerT: tA, weight: w });
+    }
+
+    // Minimise beam id's total weighted crossing energy in φ, holding partners fixed.
+    function solveOne(id) {
+        const A = rcpAnchors[id];
+        const list = beamCrossings[id];
+        if (!A || !list || list.length === 0) return;
+        const targets = list.map(c => ({
+            tHole: c.tHole,
+            weight: c.weight,
+            Q: computeRcpPoint(rcpAnchors[c.partnerId], c.partnerT, phi[c.partnerId], foldRad, L)
+        }));
+        const f = (x) => {
+            let e = 0;
+            for (const t of targets) {
+                const PA = computeRcpPoint(A, t.tHole, x, foldRad, L);
+                e += t.weight * ((PA.x - t.Q.x) ** 2 + (PA.y - t.Q.y) ** 2 + (PA.z - t.Q.z) ** 2);
+            }
+            return e;
+        };
+        const lo0 = -Math.PI / 2, hi0 = Math.PI / 2, n = 90;
+        let best = phi[id], bestd = Infinity;
+        for (let k = 0; k <= n; k++) {
+            const x = lo0 + (hi0 - lo0) * (k / n);
+            const d = f(x);
+            if (d < bestd) { bestd = d; best = x; }
+        }
+        const h = (hi0 - lo0) / n;
+        let a = best - h, b = best + h;
+        for (let r = 0; r < 40; r++) {
+            const m1 = a + (b - a) / 3, m2 = b - (b - a) / 3;
+            if (f(m1) < f(m2)) b = m2; else a = m1;
+        }
+        phi[id] = (a + b) / 2;
+    }
+
+    const ids = Object.keys(rcpAnchors);
+    for (let sweep = 0; sweep < 16; sweep++) {
+        for (const id of ids) solveOne(id);
+    }
+    return phi;
 }
 
 /**
@@ -11281,181 +12485,160 @@ function buildRcpCrossingRefs(data) {
     return refs;
 }
 
+/**
+ * Robustly derive crossing references directly from reciprocal beam centrelines
+ * (independent of bolt generation/dedup). For every beam pair that intersects in the
+ * XZ plane at interior parameters and whose 3D vertical separation is small (i.e. the
+ * two layers actually meet at a bolt), record {beamA, beamB, tA, tB}. This is used to
+ * seed the kinematic crossing constraints at the closed configuration.
+ * @param {Beam3D[]} rcpBeams
+ * @param {number} vGapTol - max vertical separation (in) to count as a real crossing
+ * @returns {Array} [{beamAStackId, beamBStackId, tA, tB}]
+ */
+function computeRcpCrossingRefsFromBeams(rcpBeams, vGapTol = 8) {
+    const refs = [];
+    const epsI = 0.02, epsE = 0.98;
+    for (let i = 0; i < rcpBeams.length; i++) {
+        for (let j = i + 1; j < rcpBeams.length; j++) {
+            const A = rcpBeams[i], B = rcpBeams[j];
+            if (!A.p1 || !A.p2 || !B.p1 || !B.p2) continue;
+            const isect = segSegIntersectParamsXZ(
+                { x: A.p1.x, z: A.p1.z }, { x: A.p2.x, z: A.p2.z },
+                { x: B.p1.x, z: B.p1.z }, { x: B.p2.x, z: B.p2.z }
+            );
+            if (!isect) continue;
+            const { t, s } = isect;
+            if (t <= epsI || t >= epsE || s <= epsI || s >= epsE) continue;
+            const yA = A.p1.y + t * (A.p2.y - A.p1.y);
+            const yB = B.p1.y + s * (B.p2.y - B.p1.y);
+            if (Math.abs(yA - yB) > vGapTol) continue;
+            const idA = Math.min(A.stackId, B.stackId);
+            const idB = Math.max(A.stackId, B.stackId);
+            const tA = idA === A.stackId ? t : s;
+            const tB = idA === A.stackId ? s : t;
+            refs.push({ beamAStackId: idA, beamBStackId: idB, tA, tB });
+        }
+    }
+    return refs;
+}
+
+/**
+ * Seed the reciprocal crossing constraints at the structure's CLOSED fold angle.
+ * The folded structure is only a symmetric ring near closure; seeding there gives every
+ * beam its full, regular set of crossing holes. A swing sweep picks the angle that
+ * yields the most uniform "each beam crosses ~3 neighbours" pattern. The user's swing
+ * setting is preserved (restored afterwards); kinematic mode measures constraint gaps at that swing.
+ * @returns {Array} crossing references, or [] when unavailable
+ */
+/** @deprecated Use seedFinalReciprocalTopology — kept for legacy call sites. */
+function seedRcpCrossings() {
+    const result = seedFinalReciprocalTopology();
+    return result ? (state.supportBeams.rcpCrossings || []) : [];
+}
+
 function generateSupportBeams(data) {
     const beams = [];
     const cfg = state.supportBeams;
     if (!cfg.enabled) return beams;
     if (state.orientation === 'vertical') return beams;
 
-    // Derive top ring geometry
     const topBeams = data.beams.filter(b => b.stackType === 'horizontal-top');
     if (topBeams.length === 0) return beams;
 
-    let topHeight = 0;
-    let maxRadius = 0;
-    let sumX = 0, sumZ = 0, cornerCount = 0;
-    topBeams.forEach(beam => {
-        const avgY = (beam.p1.y + beam.p2.y) / 2;
-        topHeight = Math.max(topHeight, avgY);
-    });
-    topBeams.forEach(beam => {
-        beam.corners.forEach(corner => {
-            if (Math.abs(corner.y - topHeight) < 5) {
-                const rad = Math.sqrt(corner.x * corner.x + corner.z * corner.z);
-                sumX += corner.x;
-                sumZ += corner.z;
-                cornerCount++;
-                if (rad > maxRadius) maxRadius = rad;
-            }
-        });
-    });
-    const centerX = cornerCount > 0 ? sumX / cornerCount : 0;
-    const centerZ = cornerCount > 0 ? sumZ / cornerCount : 0;
-
-    let topStackThick = 0;
-    topBeams.forEach(beam => {
-        beam.corners.forEach(corner => {
-            if (corner.y > topHeight) topStackThick = Math.max(topStackThick, corner.y - topHeight);
-        });
-    });
-
     const numModules = state.modules;
-    const angleStep = (2 * Math.PI) / numModules;
-    const rotationOffset = degToRad(cfg.rotation || 0);
-    const foldAngle = degToRad(cfg.foldAngle || 0);
-    const beamLength = cfg.length || 96;
     const beamWidth = cfg.width || 1.5;
     const beamThick = cfg.thickness || 3.5;
-    const offsetH = cfg.offsetH || 0;
-    const offsetV = cfg.offsetV || 0;
     const woodColor = WOOD_COLOR;
+    const moduleFrames = extractModuleFrames(data);
 
-    const baseY = topHeight + topStackThick + beamThick / 2 + offsetV;
+    const structureFoldDeg = radToDeg(data._structureFoldAngleRad !== undefined ? data._structureFoldAngleRad : state.foldAngle);
+    const radialMinDeg = state.animation.radialVisibleAngle ?? 90;
+    const showRadialAtAngle = structureFoldDeg >= radialMinDeg;
 
-    // Radial support beams always render when enabled
-    for (let i = 0; i < numModules; i++) {
-        const baseAngle = i * angleStep + angleStep / 2 + rotationOffset;
-        const radialCenter = maxRadius / 2 + offsetH;
-
-        const outX = Math.cos(baseAngle);
-        const outZ = Math.sin(baseAngle);
-        const hComp = Math.cos(foldAngle);
-        const vComp = -Math.sin(foldAngle);
-
-        const midX = centerX + radialCenter * outX;
-        const midZ = centerZ + radialCenter * outZ;
-
-        const startX = midX - (beamLength / 2) * outX * hComp;
-        const startY = baseY - (beamLength / 2) * vComp;
-        const startZ = midZ - (beamLength / 2) * outZ * hComp;
-        const endX = midX + (beamLength / 2) * outX * hComp;
-        const endY = baseY + (beamLength / 2) * vComp;
-        const endZ = midZ + (beamLength / 2) * outZ * hComp;
-
-        beams.push(new Beam3D(
-            { x: startX, y: startY, z: startZ },
-            { x: endX, y: endY, z: endZ },
-            beamWidth, beamThick, woodColor,
-            { moduleIndex: -1, stackType: 'support-beam', stackId: i }
-        ));
+    if (cfg.showRadial !== false && showRadialAtAngle) {
+        for (const frame of moduleFrames) {
+            const placement = solveRadialSupportBeamPlacement(frame, cfg);
+            beams.push(new Beam3D(
+                placement.start, placement.end,
+                beamWidth, beamThick, woodColor,
+                { moduleIndex: frame.moduleIndex, stackType: 'support-beam', stackId: frame.moduleIndex }
+            ));
+        }
     }
 
-    // Reciprocal beams (additive, rendered on top of radial beams)
     if (cfg.parallelEnabled) {
         const rcpLen = cfg.parallelLength || 96;
         const rcpW = cfg.parallelWidth || 1.5;
         const rcpT = cfg.parallelThickness || 3.5;
-        const rcpFold = degToRad(cfg.parallelFoldAngle || 0);
-        const overlap = cfg.parallelOverlap || 0;
-        const inset = cfg.parallelInset || 0;
-        const abOffset = cfg.parallelVOffset || 0;
-        const rcpOffsetV = cfg.parallelOffsetV || 0;
+        const rcpFold = 0; // fold-angle removed: reciprocal beams stay locked horizontally
+        const fallbackSwing = degToRad(cfg.parallelSwingAngle || 0);
 
-        let topBeamMidRadius = 0;
-        topBeams.forEach(beam => {
-            const cx = beam.center.x - centerX;
-            const cz = beam.center.z - centerZ;
-            topBeamMidRadius += Math.sqrt(cx * cx + cz * cz);
-        });
-        topBeamMidRadius /= topBeams.length;
-
-        const rcpBaseY = topHeight + topStackThick + rcpT / 2 + offsetV + rcpOffsetV;
-
-        // --- Pass 1: Build anchor table (positions only) ---
         const rcpAnchors = {};
-        for (let i = 0; i < numModules; i++) {
-            const angleStart = i * angleStep + rotationOffset;
-            const angleMid = angleStart + angleStep / 2;
-            const tangentX = -Math.sin(angleMid);
-            const tangentZ = Math.cos(angleMid);
-            const outRadX = Math.cos(angleMid);
-            const outRadZ = Math.sin(angleMid);
-            const pivotRadius = topBeamMidRadius + inset;
-            const pivotX = centerX + pivotRadius * Math.cos(angleMid);
-            const pivotZ = centerZ + pivotRadius * Math.sin(angleMid);
-
+        for (const frame of moduleFrames) {
             for (let side = 0; side < 2; side++) {
-                const lateralSign = side === 0 ? -1 : 1;
-                const vertSign = side === 0 ? 1 : -1;
-                const tangentialShift = lateralSign * overlap / 2;
-                const stackId = numModules + i * 2 + side;
-                // sideSign drives mirrored swing: side 0 (top layer) swings +φ,
-                // side 1 (bottom layer) swings -φ — the scissor constraint.
-                const sideSign = side === 0 ? 1 : -1;
-                rcpAnchors[stackId] = {
-                    x: pivotX + tangentialShift * tangentX,
-                    z: pivotZ + tangentialShift * tangentZ,
-                    y: rcpBaseY + vertSign * (abOffset / 2),
-                    outRadX, outRadZ, tangentX, tangentZ, sideSign
-                };
+                const anc = buildRcpAnchorFromFrame(frame, cfg, side, numModules);
+                rcpAnchors[anc.stackId] = anc;
             }
         }
 
-        // --- Solve kinematic swing angle if enabled and references are available ---
-        let effectiveSwing = degToRad(cfg.parallelSwingAngle || 0);
-        if (cfg.rcpKinematicMode && cfg.rcpCrossings && cfg.rcpCrossings.length > 0) {
-            effectiveSwing = solveReciprocalSwingAngle(cfg, rcpAnchors, cfg.rcpCrossings);
-            cfg._solvedSwingDeg = effectiveSwing * 180 / Math.PI;
-            // One-time-per-session log, then a few periodic samples so the user can verify
-            // the solver is producing non-trivial swing across fold range.
-            if (!window.__rcpSolverLogCount) window.__rcpSolverLogCount = 0;
-            if (window.__rcpSolverLogCount < 8) {
-                console.log(`[rcp-solver] foldAngle=${(state.foldAngle ?? 0).toFixed(2)}° → solvedSwing=${cfg._solvedSwingDeg.toFixed(3)}° (crossings=${cfg.rcpCrossings.length})`);
-                window.__rcpSolverLogCount++;
+        let swingByStack = null;
+        const crossings = cfg.rcpCrossings || [];
+        const structureFoldRad = data._structureFoldAngleRad !== undefined ? data._structureFoldAngleRad : state.foldAngle;
+        let visualState = 'normal';
+        if (crossings.length > 0) {
+            const kin = buildReciprocalBeamKinematics(cfg, rcpAnchors, crossings, structureFoldRad);
+            swingByStack = kin.phi;
+            visualState = kin.visualState;
+            cfg._solvedSwingDeg = cfg.parallelSwingAngle ?? cfg._seedSwingDeg ?? 0;
+            if (cfg.rcpKinematicMode) {
+                if (!window.__rcpSolverLogCount) window.__rcpSolverLogCount = 0;
+                if (window.__rcpSolverLogCount < 8) {
+                    const d = cfg.rcpDiagnostics || {};
+                    console.log(`[rcp-kin] fold=${radToDeg(structureFoldRad).toFixed(1)}° hole=${cfg.rcpActiveHole} state=${visualState} status=${d.status} activeMax=${d.activePivotErrorMax ?? '—'}`);
+                    window.__rcpSolverLogCount++;
+                }
             }
         } else {
-            cfg._solvedSwingDeg = null;
+            cfg._rcpActivePivots = [];
+            cfg._rcpVisualState = 'normal';
+            cfg._solvedSwingDeg = cfg.rcpKinematicMode ? (cfg.parallelSwingAngle || 0) : null;
+            if (!cfg.rcpKinematicMode) cfg.rcpDiagnostics = null;
         }
 
-        // --- Pass 2: Place beams using the solved (or user) swing angle ---
-        const cosF = Math.cos(rcpFold);
-        const sinF = Math.sin(rcpFold);
-        const cosS = Math.cos(effectiveSwing);
-        const sinS = Math.sin(effectiveSwing);
-
-        for (let i = 0; i < numModules; i++) {
-            for (let side = 0; side < 2; side++) {
-                const stackId = numModules + i * 2 + side;
-                const anc = rcpAnchors[stackId];
-
-                // Mirrored swing per side: top layer (side 0) swings +φ,
-                // bottom layer (side 1) swings -φ. Together they form a scissor
-                // about the crossing bolts.
-                const sgn = anc.sideSign;
-                const dirX = (-anc.outRadX * cosS + anc.tangentX * sinS * sgn) * cosF;
-                const dirY = sinF;
-                const dirZ = (-anc.outRadZ * cosS + anc.tangentZ * sinS * sgn) * cosF;
-
-                beams.push(new Beam3D(
-                    { x: anc.x, y: anc.y, z: anc.z },
-                    { x: anc.x + rcpLen * dirX, y: anc.y + rcpLen * dirY, z: anc.z + rcpLen * dirZ },
-                    rcpW, rcpT, woodColor,
-                    { moduleIndex: -1, stackType: 'support-beam-reciprocal', stackId }
-                ));
+        // Hide reciprocal beams below the user-configured minimum fold angle (always, regardless
+        // of kinematic mode), and when the kinematic solver declares the linkage impossible.
+        const rcpMinDeg = state.animation.rcpVisibleAngle ?? 90;
+        const belowMinAngle = radToDeg(structureFoldRad) < rcpMinDeg;
+        const hideReciprocal = belowMinAngle || (cfg.rcpKinematicMode && visualState === 'impossible');
+        if (!hideReciprocal) {
+            // Stressed pivot → render every reciprocal beam red to signal conflicting forces.
+            const stressed = cfg.rcpKinematicMode && visualState === 'stress';
+            for (const frame of moduleFrames) {
+                for (let side = 0; side < 2; side++) {
+                    const stackId = numModules + frame.moduleIndex * 2 + side;
+                    const anc = rcpAnchors[stackId];
+                    if (!anc) continue;
+                    const swing = swingByStack && (stackId in swingByStack) ? swingByStack[stackId] : fallbackSwing;
+                    const endOffset = cfg.rcpEndOffset || 0;
+                    const p1 = computeRcpPoint(anc, -endOffset / rcpLen, swing, rcpFold, rcpLen);
+                    const p2 = computeRcpPoint(anc, 1, swing, rcpFold, rcpLen);
+                    beams.push(new Beam3D(
+                        p1, p2,
+                        rcpW, rcpT, woodColor,
+                        {
+                            moduleIndex: frame.moduleIndex,
+                            stackType: 'support-beam-reciprocal',
+                            stackId,
+                            patternId: side === 0 ? 'A' : 'B',
+                            kinematicState: stressed ? 'error' : null
+                        }
+                    ));
+                }
             }
         }
     }
 
+    updateRcpDiagnosticsUI();
     return beams;
 }
 
@@ -11593,8 +12776,10 @@ function calculateSolarPanels(data) {
 /**
  * Calculates bounds and center from beam corner geometry.
  * Internal geometry uses inches and a Y-up coordinate system unless transformed for export.
+ * @param {Beam3D[]} beams
+ * @param {{ mainStructureOnly?: boolean }} [options] - When true, exclude support/reciprocal beams from center
  */
-function calculateBeamBounds(beams) {
+function calculateBeamBounds(beams, options = {}) {
     const bounds = {
         min: { x: 0, y: 0, z: 0 },
         max: { x: 0, y: 0, z: 0 },
@@ -11603,13 +12788,16 @@ function calculateBeamBounds(beams) {
         maxHeight: 0
     };
     if (!beams || beams.length === 0) return bounds;
+
+    const beamList = options.mainStructureOnly ? beams.filter(isMainStructureBeam) : beams;
+    if (beamList.length === 0) return bounds;
     
     let minX = Infinity, maxX = -Infinity;
     let minY = Infinity, maxY = -Infinity;
     let minZ = Infinity, maxZ = -Infinity;
     let maxRadius = 0;
     
-    beams.forEach(beam => {
+    beamList.forEach(beam => {
         const points = beam.corners && beam.corners.length > 0
             ? beam.corners
             : [beam.p1, beam.p2].filter(Boolean);
@@ -11634,6 +12822,163 @@ function calculateBeamBounds(beams) {
     bounds.maxRadius = maxRadius;
     bounds.maxHeight = maxY;
     return bounds;
+}
+
+/** Round a 3D vector for JSON export (null-safe). */
+function roundVec3ForExport(v, places = 2) {
+    if (!v) return null;
+    const f = Math.pow(10, places);
+    return {
+        x: Math.round(v.x * f) / f,
+        y: Math.round(v.y * f) / f,
+        z: Math.round(v.z * f) / f
+    };
+}
+
+/**
+ * Build a complete geometry snapshot of what the 3D viewer is showing.
+ * Includes beam identity (moduleIndex, stackId, stackType), structure center,
+ * and resolved support/reciprocal beam placement data for debugging.
+ * @param {Object} data - Output of buildLinkageGeometry()
+ * @returns {Object}
+ */
+function buildGeometrySnapshot(data) {
+    const cfg = state.supportBeams || {};
+    const moduleFrames = extractModuleFrames(data);
+
+    const snapshotBeam = (b) => {
+        const stackType = b.stackType || 'unknown';
+        const entry = {
+            // `type` kept for legacy importers; `stackType` is canonical.
+            type: stackType,
+            stackType,
+            moduleIndex: b.moduleIndex,
+            stackId: b.stackId,
+            patternId: b.patternId || null,
+            kinematicState: b.kinematicState || null,
+            center: roundVec3ForExport(b.center),
+            p1: b.p1 ? roundVec3ForExport(b.p1) : null,
+            p2: b.p2 ? roundVec3ForExport(b.p2) : null,
+            axisX: b.axisX ? roundVec3ForExport(b.axisX, 3) : null,
+            axisY: b.axisY ? roundVec3ForExport(b.axisY, 3) : null,
+            axisZ: b.axisZ ? roundVec3ForExport(b.axisZ, 3) : null,
+            w: b.w,
+            t: b.t
+        };
+        if (b.p1 && b.p2) {
+            entry.length = +Math.hypot(
+                b.p2.x - b.p1.x, b.p2.y - b.p1.y, b.p2.z - b.p1.z
+            ).toFixed(2);
+        }
+        return entry;
+    };
+
+    const supportBeamPlacements = [];
+    if (cfg.enabled && cfg.showRadial !== false) {
+        for (const frame of moduleFrames) {
+            const placement = solveRadialSupportBeamPlacement(frame, cfg);
+            supportBeamPlacements.push({
+                moduleIndex: frame.moduleIndex,
+                hinge: roundVec3ForExport(frame.hingePoint),
+                inwardDir: roundVec3ForExport(frame.innerGuide.dir, 3),
+                start: roundVec3ForExport(placement.start),
+                end: roundVec3ForExport(placement.end),
+                slideT: +placement.slideT.toFixed(2),
+                hCenter: roundVec3ForExport(frame.hCenter)
+            });
+        }
+    }
+
+    let reciprocalBeams = null;
+    if (cfg.enabled && cfg.parallelEnabled) {
+        const numModules = state.modules;
+        const anchors = [];
+        for (const frame of moduleFrames) {
+            for (let side = 0; side < 2; side++) {
+                const anc = buildRcpAnchorFromFrame(frame, cfg, side, numModules);
+                anchors.push({
+                    stackId: anc.stackId,
+                    moduleIndex: frame.moduleIndex,
+                    side: anc.side,
+                    position: roundVec3ForExport({ x: anc.x, y: anc.y, z: anc.z }),
+                    radInDir: roundVec3ForExport({ x: anc.radInX, y: 0, z: anc.radInZ }, 3)
+                });
+            }
+        }
+        reciprocalBeams = {
+            anchors,
+            swingAngleDeg: cfg._solvedSwingDeg != null ? +cfg._solvedSwingDeg.toFixed(2) : (cfg.parallelSwingAngle || 0),
+            activeHole: cfg.rcpActiveHole ?? 1,
+            maxHoleCount: cfg.rcpMaxHoleCount ?? 1,
+            visualState: cfg._rcpVisualState || 'normal',
+            anchorDist: cfg.anchorDist ?? 0,
+            kinematicMode: !!cfg.rcpKinematicMode,
+            diagnostics: cfg.rcpDiagnostics || null,
+            crossingCount: (cfg.rcpCrossings || []).length
+        };
+    }
+
+    const allBeams = data.beams || [];
+    const supportOnly = allBeams.filter(b => b.stackType && b.stackType.startsWith('support-beam'));
+
+    return {
+        schemaVersion: 2,
+        coordinateSystem: 'y-up-inches',
+        structureCenter: roundVec3ForExport(data.structureCenter || data.structureBounds?.center),
+        structureBounds: data.structureBounds ? {
+            min: roundVec3ForExport(data.structureBounds.min),
+            max: roundVec3ForExport(data.structureBounds.max),
+            center: roundVec3ForExport(data.structureBounds.center),
+            maxRadius: +(data.structureBounds.maxRadius || 0).toFixed(2),
+            maxHeight: +(data.structureBounds.maxHeight || 0).toFixed(2)
+        } : null,
+        fullBounds: data.fullBounds ? {
+            min: roundVec3ForExport(data.fullBounds.min),
+            max: roundVec3ForExport(data.fullBounds.max),
+            center: roundVec3ForExport(data.fullBounds.center)
+        } : null,
+        debugConfig: {
+            foldAngle: state.foldAngle ? +radToDeg(state.foldAngle).toFixed(1) : null,
+            archPanelSlide: state.solarPanels.archPanelSlide,
+            archPanelSeparation: state.solarPanels.archPanelSeparation,
+            archPanelOffset: state.solarPanels.archPanelOffset,
+            useFixedBeams: state.useFixedBeams,
+            archCapUprights: state.archCapUprights,
+            gridRotation: state.solarPanels.gridRotation || 0,
+            supportBeamCount: supportOnly.length,
+            radialSupportCount: supportOnly.filter(b => b.stackType === 'support-beam').length,
+            reciprocalSupportCount: supportOnly.filter(b => b.stackType === 'support-beam-reciprocal').length,
+            supportBeamsUnsupported: !!data.supportBeamsUnsupported
+        },
+        beams: allBeams.map(snapshotBeam),
+        supportBeams: supportOnly.map(snapshotBeam),
+        supportBeamPlacements,
+        reciprocalBeams,
+        panels: data.panels ? data.panels.map((p, i) => ({
+            index: i,
+            center: roundVec3ForExport(p.center),
+            normal: p.axisY ? roundVec3ForExport(p.axisY, 3) : null,
+            axisX: p.axisX ? roundVec3ForExport(p.axisX, 3) : null,
+            width: p.width,
+            length: p.length,
+            thickness: p.thickness
+        })) : [],
+        maxRadius: +((data.structureBounds?.maxRadius ?? data.maxRad) || 0).toFixed(2),
+        maxHeight: +((data.structureBounds?.maxHeight ?? data.maxHeight) || 0).toFixed(2),
+        fixedBeams: state.useFixedBeams ? allBeams
+            .filter(b => b.stackType === 'fixed-beam' || b.stackType === 'fixed-beam-cap')
+            .map(b => ({
+                stackType: b.stackType,
+                moduleIndex: b.moduleIndex,
+                stackId: b.stackId,
+                center: roundVec3ForExport(b.center),
+                p1: b.p1 ? roundVec3ForExport(b.p1) : null,
+                p2: b.p2 ? roundVec3ForExport(b.p2) : null,
+                length: (b.p1 && b.p2)
+                    ? +Math.hypot(b.p2.x - b.p1.x, b.p2.y - b.p1.y, b.p2.z - b.p1.z).toFixed(2)
+                    : null
+            })) : null
+    };
 }
 
 /**
@@ -11743,6 +13088,77 @@ function generateReciprocalSupportBolts(data) {
     const epsI = 0.001;
     const epsE = 0.999;
     const addDedup = [];
+    const topology = cfg.rcpFinalTopology || cfg.rcpCrossings || [];
+    const structureFoldRad = data._structureFoldAngleRad !== undefined ? data._structureFoldAngleRad : state.foldAngle;
+    if (radToDeg(structureFoldRad) < (state.animation.rcpVisibleAngle ?? 90)) return out;
+    const atDeployed = isRcpAtDeployedAngle(structureFoldRad);
+    const kinematic = cfg.rcpKinematicMode;
+    const activePivots = (kinematic && Array.isArray(cfg._rcpActivePivots)) ? cfg._rcpActivePivots : [];
+    const stressed = kinematic && cfg._rcpVisualState === 'stress';
+
+    const isActivePair = (stackA, stackB) => activePivots.some(p =>
+        (p.beamAStackId === stackA && p.beamBStackId === stackB)
+        || (p.beamAStackId === stackB && p.beamBStackId === stackA)
+    );
+
+    const pushCrossBolt = (useCenter, cDir, beamI, beamJ, diagnosticState, boltSubType) => {
+        if (vMag(cDir) < 0.08) return;
+        for (const q of addDedup) {
+            if (vMag(vSub(q, useCenter)) < 1.2) return;
+        }
+        addDedup.push(useCenter);
+        out.push({
+            start: vAdd(useCenter, vScale(cDir, -crossBoltLen / 2)),
+            end: vAdd(useCenter, vScale(cDir, crossBoltLen / 2)),
+            center: { ...useCenter },
+            dir: cDir,
+            length: crossBoltLen,
+            radius: boltRadius,
+            headRadius: boltRadius * 1.8,
+            headHeight: boltRadius * 1.2,
+            boltType: 'rcp-cross',
+            boltSubType,
+            stackThickness: crossBoltLen * 0.4,
+            headSide: 1,
+            headExtraThickness: 0,
+            z: useCenter.y,
+            moduleIndex: -1,
+            diagnosticState,
+            rcpStackA: rcpBeams[beamI].stackId,
+            rcpStackB: rcpBeams[beamJ].stackId
+        });
+    };
+
+    const crossDirForBeams = (beamA, beamB) => {
+        const dA3 = vNorm(vSub(beamA.p2, beamA.p1));
+        const dB3 = vNorm(vSub(beamB.p2, beamB.p1));
+        let cDir = vNorm(vCross(dA3, dB3));
+        if (vMag(cDir) < 0.08) {
+            const aH = { x: dA3.x, y: 0, z: dA3.z };
+            const bH = { x: dB3.x, y: 0, z: dB3.z };
+            if (vMag(aH) > 1e-4 && vMag(bH) > 1e-4) {
+                cDir = vNorm(vCross(vNorm(aH), vNorm(bH)));
+            }
+        }
+        return cDir;
+    };
+
+    // While folding (kinematic): only the bolted-pivot ring is engaged. Each active bolt sits
+    // at its solved world-space point (fixed as if drilled + bolted), red when stressed.
+    if (kinematic && !atDeployed) {
+        for (const p of activePivots) {
+            const beamA = rcpBeams.find(b => b.stackId === p.beamAStackId);
+            const beamB = rcpBeams.find(b => b.stackId === p.beamBStackId);
+            if (!beamA || !beamB || !beamA.p1 || !beamA.p2 || !beamB.p1 || !beamB.p2) continue;
+            const cDir = crossDirForBeams(beamA, beamB);
+            const idxA = rcpBeams.indexOf(beamA);
+            const idxB = rcpBeams.indexOf(beamB);
+            pushCrossBolt(p.pivot, cDir, idxA, idxB, stressed ? 'error' : 'active', 'pivot');
+        }
+        return out;
+    }
+
+    // Deployed (or manual): show every baked crossing as a potential bolt hole.
     for (let i = 0; i < rcpBeams.length; i++) {
         for (let j = i + 1; j < rcpBeams.length; j++) {
             const A0 = rcpBeams[i].p1, A1 = rcpBeams[i].p2;
@@ -11764,44 +13180,18 @@ function generateReciprocalSupportBolts(data) {
             const pA = vAdd(A0, vScale(vSub(A1, A0), t));
             const pB = vAdd(B0, vScale(vSub(B1, B0), s));
             const useCenter = vScale(vAdd(pA, pB), 0.5);
-
-            let cDir = vNorm(vCross(dA3, dB3));
-            if (vMag(cDir) < 0.08) {
-                const aH = { x: dA3.x, y: 0, z: dA3.z };
-                const bH = { x: dB3.x, y: 0, z: dB3.z };
-                if (vMag(aH) > 1e-4 && vMag(bH) > 1e-4) {
-                    cDir = vNorm(vCross(vNorm(aH), vNorm(bH)));
-                }
-            }
+            const active = isActivePair(rcpBeams[i].stackId, rcpBeams[j].stackId);
+            const cDir = crossDirForBeams(rcpBeams[i], rcpBeams[j]);
             if (vMag(cDir) < 0.08) continue;
 
-            let dup = false;
-            for (const q of addDedup) {
-                if (vMag(vSub(q, useCenter)) < 1.2) {
-                    dup = true;
-                    break;
-                }
+            let diagnosticState = null;
+            if (active) {
+                diagnosticState = stressed ? 'error' : 'active';
+            } else if (kinematic && topology.length > 0) {
+                diagnosticState = 'inactive';
             }
-            if (dup) continue;
-            addDedup.push(useCenter);
 
-            out.push({
-                start: vAdd(useCenter, vScale(cDir, -crossBoltLen / 2)),
-                end: vAdd(useCenter, vScale(cDir, crossBoltLen / 2)),
-                center: { ...useCenter },
-                dir: cDir,
-                length: crossBoltLen,
-                radius: boltRadius,
-                headRadius: boltRadius * 1.8,
-                headHeight: boltRadius * 1.2,
-                boltType: 'rcp-cross',
-                boltSubType: 'intersection',
-                stackThickness: crossBoltLen * 0.4,
-                headSide: 1,
-                headExtraThickness: 0,
-                z: useCenter.y,
-                moduleIndex: -1
-            });
+            pushCrossBolt(useCenter, cDir, i, j, diagnosticState, 'intersection');
         }
     }
     return out;
@@ -11825,7 +13215,8 @@ function buildLinkageGeometry(options = {}) {
         washers: base.washers ? base.washers.slice() : [],
         panels: [],
         canopy: null,
-        supportBeams: []
+        supportBeams: [],
+        _structureFoldAngleRad: foldAngle
     });
     
     if (includeSupportBeams) {
@@ -11837,39 +13228,57 @@ function buildLinkageGeometry(options = {}) {
         if (rcpBolts.length > 0) {
             data.bolts = (data.bolts || []).concat(rcpBolts);
         }
-        // Seed crossing-constraint references on first render (or after config reset)
+        // Seed deployed reciprocal topology at closed angle on first render (or after layout reset).
         if (state.supportBeams && state.supportBeams.rcpKinematicMode && !state.supportBeams.rcpCrossings) {
-            state.supportBeams.rcpCrossings = buildRcpCrossingRefs(data);
-            console.log('[rcp-solver] Seeded crossing refs:', state.supportBeams.rcpCrossings.map(c =>
-                `(${c.beamAStackId}↔${c.beamBStackId}, tA=${c.tA.toFixed(3)}, tB=${c.tB.toFixed(3)})`).join(' '));
-            // Reset solver log counter so we sample fresh after re-seed
-            window.__rcpSolverLogCount = 0;
-            // Rebuild beams now that references are available (so first frame uses solved angle)
-            if (state.supportBeams.rcpCrossings.length > 0) {
+            const seeded = seedFinalReciprocalTopology();
+            if (seeded && state.supportBeams.rcpCrossings && state.supportBeams.rcpCrossings.length > 0) {
+                const cnt = {};
+                state.supportBeams.rcpCrossings.forEach(c => {
+                    cnt[c.beamAStackId] = (cnt[c.beamAStackId] || 0) + 1;
+                    cnt[c.beamBStackId] = (cnt[c.beamBStackId] || 0) + 1;
+                });
+                const perBeam = Object.values(cnt);
+                console.log(`[rcp-kin] Seeded ${state.supportBeams.rcpCrossings.length} crossings at closed config (seedSwing=${(state.supportBeams._seedSwingDeg ?? 0).toFixed(1)}°), holes/beam: min=${perBeam.length ? Math.min(...perBeam) : 0} max=${perBeam.length ? Math.max(...perBeam) : 0}`);
+                window.__rcpSolverLogCount = 0;
                 const newSupportBeams = generateSupportBeams(data);
                 data.supportBeams = newSupportBeams;
-                // Replace reciprocal beams in data.beams
                 data.beams = data.beams.filter(b => b.stackType !== 'support-beam-reciprocal')
                     .concat(newSupportBeams.filter(b => b.stackType === 'support-beam-reciprocal'));
+                data.bolts = (data.bolts || []).filter(b => !(b && (b.boltType === 'rcp-cross' || b.boltType === 'rcp-ring')))
+                    .concat(generateReciprocalSupportBolts(data));
             }
         }
+        updateRcpDiagnosticsUI();
         data.supportBeamsUnsupported = !!(state.supportBeams && state.supportBeams.enabled && state.orientation === 'vertical');
     }
     
     if (includePanels && state.solarPanels && state.solarPanels.enabled) {
-        try {
-            const solarData = calculateSolarPanels(data);
-            data.panels = solarData.panels || [];
-            data.canopy = solarData.canopy || null;
-        } catch (e) {
-            console.warn('[Geometry] Could not calculate solar panels:', e);
-            data.panels = [];
-            data.canopy = null;
+        // Solar panels are the last piece installed — only show them once the structure
+        // has reached the user-defined panels-visible angle (default: at/near full deploy).
+        const panelMinRad = (() => {
+            const userDeg = state.animation.panelsVisibleAngle;
+            if (userDeg !== null && userDeg !== undefined) return degToRad(userDeg);
+            return (typeof getOptimalClosedAngleForAnimation === 'function')
+                ? getOptimalClosedAngleForAnimation() - degToRad(2)
+                : foldAngle;
+        })();
+        const panelsVisible = foldAngle >= panelMinRad;
+        if (panelsVisible) {
+            try {
+                const solarData = calculateSolarPanels(data);
+                data.panels = solarData.panels || [];
+                data.canopy = solarData.canopy || null;
+            } catch (e) {
+                console.warn('[Geometry] Could not calculate solar panels:', e);
+                data.panels = [];
+                data.canopy = null;
+            }
         }
     }
     
-    data.structureBounds = calculateBeamBounds(data.beams);
+    data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
     data.structureCenter = data.structureBounds.center;
+    data.fullBounds = calculateBeamBounds(data.beams);
     return data;
 }
 
@@ -11940,7 +13349,7 @@ function render() {
         
         updateHUD(data);
 
-        const currentCenter = data.structureCenter || calculateBeamBounds(data.beams).center;
+        const currentCenter = data.structureCenter || calculateBeamBounds(data.beams, { mainStructureOnly: true }).center;
         
         // For the main 3D view: use fixed center during animation to prevent auto-repositioning
         // For ortho views (top/side): always use current center for proper auto-zoom
@@ -17360,6 +18769,10 @@ function getConfigSnapshot(includeMetadata = false) {
         // Fold angle in degrees
         foldAngle: radToDeg(state.foldAngle),
         animationStopAngle: state.animation.stopAngle,
+        minFoldAngle: state.animation.minFoldAngle,
+        radialVisibleAngle: state.animation.radialVisibleAngle,
+        rcpVisibleAngle: state.animation.rcpVisibleAngle,
+        panelsVisibleAngle: state.animation.panelsVisibleAngle,
         
         ibc: {
             enabled: state.ibc.enabled,
@@ -17453,6 +18866,7 @@ function getConfigSnapshot(includeMetadata = false) {
         // Support beams (independent of solar panels)
         supportBeams: {
             enabled: state.supportBeams.enabled,
+            showRadial: state.supportBeams.showRadial,
             length: state.supportBeams.length,
             width: state.supportBeams.width,
             thickness: state.supportBeams.thickness,
@@ -17470,7 +18884,12 @@ function getConfigSnapshot(includeMetadata = false) {
             parallelInset: state.supportBeams.parallelInset,
             parallelVOffset: state.supportBeams.parallelVOffset,
             parallelOffsetV: state.supportBeams.parallelOffsetV,
-            rcpKinematicMode: state.supportBeams.rcpKinematicMode
+            anchorDist: state.supportBeams.anchorDist,
+            rcpKinematicMode: state.supportBeams.rcpKinematicMode,
+            rcpPivotHole: state.supportBeams.rcpPivotHole,
+            rcpPivotT: state.supportBeams.rcpPivotT,
+            rcpEndOffset: state.supportBeams.rcpEndOffset,
+            rcpActiveHole: state.supportBeams.rcpActiveHole
             // rcpCrossings deliberately omitted — re-seeded on first render after load
         },
         
@@ -17520,59 +18939,10 @@ function getConfigSnapshot(includeMetadata = false) {
         config.version = 'v30';
         config.timestamp = new Date().toISOString();
         
-        // Include 3D geometry snapshot for debugging panel/beam positions
+        // Full 3D geometry snapshot (same frame the viewer renders) for debugging and handoff
         try {
             const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
-            
-            // Extract essential geometry data for debugging
-            config.geometrySnapshot = {
-                // Key config parameters for debugging
-                debugConfig: {
-                    foldAngle: state.foldAngle ? +radToDeg(state.foldAngle).toFixed(1) : null,
-                    archPanelSlide: state.solarPanels.archPanelSlide,
-                    archPanelSeparation: state.solarPanels.archPanelSeparation,
-                    archPanelOffset: state.solarPanels.archPanelOffset,
-                    useFixedBeams: state.useFixedBeams,
-                    archCapUprights: state.archCapUprights,
-                    gridRotation: state.solarPanels.gridRotation || 0,
-                    supportBeamCount: data.supportBeams ? data.supportBeams.length : 0,
-                    supportBeamsUnsupported: !!data.supportBeamsUnsupported
-                },
-                // ALL beam positions with full orientation data
-                beams: data.beams.map(b => ({
-                    type: b.stackType,
-                    center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
-                    // Use actual p1/p2 endpoints, not corners (corners are box vertices, not centerline endpoints)
-                    p1: b.p1 ? {x: +b.p1.x.toFixed(2), y: +b.p1.y.toFixed(2), z: +b.p1.z.toFixed(2)} : null,
-                    p2: b.p2 ? {x: +b.p2.x.toFixed(2), y: +b.p2.y.toFixed(2), z: +b.p2.z.toFixed(2)} : null,
-                    axisX: b.axisX ? {x: +b.axisX.x.toFixed(3), y: +b.axisX.y.toFixed(3), z: +b.axisX.z.toFixed(3)} : null,
-                    axisY: b.axisY ? {x: +b.axisY.x.toFixed(3), y: +b.axisY.y.toFixed(3), z: +b.axisY.z.toFixed(3)} : null,
-                    axisZ: b.axisZ ? {x: +b.axisZ.x.toFixed(3), y: +b.axisZ.y.toFixed(3), z: +b.axisZ.z.toFixed(3)} : null,
-                    w: b.w,
-                    t: b.t
-                })),
-                // ALL panel positions and orientations (no truncation)
-                panels: data.panels ? data.panels.map((p, i) => ({
-                    index: i,
-                    center: {x: +p.center.x.toFixed(2), y: +p.center.y.toFixed(2), z: +p.center.z.toFixed(2)},
-                    normal: p.axisY ? {x: +p.axisY.x.toFixed(3), y: +p.axisY.y.toFixed(3), z: +p.axisY.z.toFixed(3)} : null,
-                    axisX: p.axisX ? {x: +p.axisX.x.toFixed(3), y: +p.axisX.y.toFixed(3), z: +p.axisX.z.toFixed(3)} : null,
-                    width: p.width,
-                    length: p.length,
-                    thickness: p.thickness
-                })) : [],
-                // Structure bounds
-                maxRadius: +((data.structureBounds?.maxRadius ?? data.maxRad).toFixed(2)),
-                maxHeight: +((data.structureBounds?.maxHeight ?? data.maxHeight).toFixed(2)),
-                // Fixed beam info if enabled
-                fixedBeams: state.useFixedBeams ? data.beams
-                    .filter(b => b.stackType === 'fixed-beam' || b.stackType === 'fixed-beam-cap')
-                    .map(b => ({
-                        type: b.stackType,
-                        center: {x: +b.center.x.toFixed(2), y: +b.center.y.toFixed(2), z: +b.center.z.toFixed(2)},
-                        length: b.corners ? +vMag(vSub(b.corners[0], b.corners[4])).toFixed(2) : 0
-                    })) : null
-            };
+            config.geometrySnapshot = buildGeometrySnapshot(data);
         } catch (e) {
             config.geometrySnapshot = { error: e.message };
         }
@@ -17614,6 +18984,16 @@ function applyConfig(config, updateUI = true) {
         const closedAngle = getOptimalClosedAngleForAnimation();
         state.animation.stopAngle = radToDeg(closedAngle);
     }
+    // Load min fold angle
+    if (config.hasOwnProperty('minFoldAngle'))
+        state.animation.minFoldAngle = config.minFoldAngle; // null = auto
+    // Load component appearance angles
+    if (config.hasOwnProperty('radialVisibleAngle') && config.radialVisibleAngle !== null)
+        state.animation.radialVisibleAngle = config.radialVisibleAngle;
+    if (config.hasOwnProperty('rcpVisibleAngle') && config.rcpVisibleAngle !== null)
+        state.animation.rcpVisibleAngle = config.rcpVisibleAngle;
+    if (config.hasOwnProperty('panelsVisibleAngle'))
+        state.animation.panelsVisibleAngle = config.panelsVisibleAngle;
     
     // Restore camera state if present (for debugging and default view)
     if (config.cameraState) {
@@ -17711,6 +19091,19 @@ function applyConfig(config, updateUI = true) {
             const stopAngle = state.animation.stopAngle !== null ? state.animation.stopAngle : radToDeg(getOptimalClosedAngleForAnimation());
             stopAngleNumber.value = stopAngle;
         }
+        // Sync component appearance angles
+        const syncAnimAngle = (slId, nbId, val) => {
+            const sl = document.getElementById(slId);
+            const nb = document.getElementById(nbId);
+            if (sl) sl.value = Math.max(5, Math.min(175, val));
+            if (nb) nb.value = val;
+        };
+        syncAnimAngle('sl-anim-radial-angle', 'nb-anim-radial-angle', state.animation.radialVisibleAngle ?? 90);
+        syncAnimAngle('sl-anim-rcp-angle',    'nb-anim-rcp-angle',    state.animation.rcpVisibleAngle    ?? 90);
+        syncAnimAngle('sl-anim-panels-angle', 'nb-anim-panels-angle', state.animation.panelsVisibleAngle ?? 170);
+        const minFoldVal = state.animation.minFoldAngle ?? radToDeg(computeMinFoldAngleVBeamOverlap());
+        syncAnimAngle('sl-anim-min-fold', 'nb-anim-min-fold', Math.max(5, Math.min(90, minFoldVal)));
+        if (window._refreshMinFoldAutoLabel) window._refreshMinFoldAutoLabel();
         
         // Sync solar panel controls
         const sp = state.solarPanels;
@@ -18222,8 +19615,8 @@ function animateFold(timestamp) {
     const deltaTime = timestamp - state.animation.lastTime;
     state.animation.lastTime = timestamp;
     
-    // Min angle = fully unfolded, Max angle = stop angle or optimal closed
-    const minAngle = degToRad(5);
+    // Min angle = user-set or auto-computed V-beam contact limit; Max angle = stop angle or optimal closed
+    const minAngle = getEffectiveMinFoldAngle();
     const closedAngle = getOptimalClosedAngleForAnimation();
     // Use stopAngle if set, otherwise use closed angle
     const stopAngleRad = state.animation.stopAngle !== null 
@@ -19159,6 +20552,7 @@ function getStructurePlanFootprintForReference(data) {
     let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity, minY = Infinity;
     if (data && data.beams) {
         data.beams.forEach(beam => {
+            if (!isMainStructureBeam(beam)) return;
             if (beam.corners) {
                 beam.corners.forEach(c => {
                     if (c) {
@@ -19639,7 +21033,12 @@ function invalidateGeometryCache() {
  * changes (beam length, overlap, inset, etc.) — NOT when only fold angle changes.
  */
 function invalidateRcpCrossings() {
-    if (state.supportBeams) state.supportBeams.rcpCrossings = null;
+    if (!state.supportBeams) return;
+    state.supportBeams.rcpCrossings = null;
+    state.supportBeams.rcpFinalTopology = null;
+    state.supportBeams.rcpHoleTsByBeam = null;
+    state.supportBeams.rcpDiagnostics = null;
+    state.supportBeams._lastPhi = null;
 }
 
 function invalidateHardwareCache() {
@@ -19775,7 +21174,7 @@ function updateState(key, val) {
         const value = validation.value;
         const previousFoldAngle = state.foldAngle; // Store for collision limiting
         if (key === 'foldAngle') {
-            state.foldAngle = degToRad(value);
+            state.foldAngle = Math.max(getEffectiveMinFoldAngle(), degToRad(value));
         } else {
             state[key] = value;
         }
@@ -20082,7 +21481,7 @@ function applyCameraDragDelta(dx, dy) {
         state.cam.panY += dy;
     } else if (drag.mode === 'fold') {
         let newAngle = state.foldAngle + dx * 0.005;
-        newAngle = clamp(newAngle, MIN_FOLD_ANGLE, MAX_FOLD_ANGLE);
+        newAngle = clamp(newAngle, getEffectiveMinFoldAngle(), MAX_FOLD_ANGLE);
 
         // If collision enforcement is enabled, limit to safe range
         if (state.enforceCollision) {
@@ -22266,10 +23665,19 @@ document.getElementById('nb-arch-panel-sep').onchange = e => {
 };
 
 
-// Support beams toggle
+// Support beams master toggle (all support + reciprocal beams)
 document.getElementById('chk-support-beams').onchange = e => {
     state.supportBeams.enabled = e.target.checked;
     document.getElementById('support-beam-controls').style.display = e.target.checked ? 'block' : 'none';
+    invalidateGeometryCache();
+    requestRender();
+};
+
+// Radial support beams sub-toggle (independent of reciprocal beams)
+document.getElementById('chk-support-radial').onchange = e => {
+    state.supportBeams.showRadial = e.target.checked;
+    const div = document.getElementById('support-radial-controls');
+    if (div) div.style.display = e.target.checked ? 'block' : 'none';
     invalidateGeometryCache();
     requestRender();
 };
@@ -22278,9 +23686,9 @@ document.getElementById('chk-support-beams').onchange = e => {
 // Properties that change the physical layout of reciprocal beams (anchor positions, lengths).
 // Changing these must re-seed the crossing constraint references.
 const RCP_LAYOUT_PROPS = new Set([
-    'parallelLength', 'parallelOverlap', 'parallelInset', 'parallelVOffset',
-    'parallelOffsetV', 'parallelFoldAngle', 'offsetV', 'offsetH', 'rotation',
-    'parallelThickness'
+    'parallelLength', 'anchorDist', 'parallelVOffset',
+    'parallelOffsetV', 'offsetV', 'offsetH', 'rotation',
+    'parallelThickness', 'parallelSwingAngle'
 ]);
 
 function bindSupportBeamControl(sliderId, numberId, prop, defaults) {
@@ -22316,16 +23724,14 @@ bindSupportBeamControl('sl-support-thickness', 'nb-support-thickness', 'thicknes
 bindSupportBeamControl('sl-support-rotation', 'nb-support-rotation', 'rotation', {def: 0, min: -180, max: 180});
 bindSupportBeamControl('sl-support-offset-h', 'nb-support-offset-h', 'offsetH', {def: -46.5, min: -240, max: 240});
 bindSupportBeamControl('sl-support-offset-v', 'nb-support-offset-v', 'offsetV', {def: -6.8, min: -240, max: 240});
-bindSupportBeamControl('sl-support-fold', 'nb-support-fold', 'foldAngle', {def: 0, min: -90, max: 90});
 bindSupportBeamControl('sl-rcp-length', 'nb-rcp-length', 'parallelLength', {def: 96, min: 12, max: 360});
 bindSupportBeamControl('sl-rcp-width', 'nb-rcp-width', 'parallelWidth', {def: 2.5, min: 0.5, max: 12});
 bindSupportBeamControl('sl-rcp-thickness', 'nb-rcp-thickness', 'parallelThickness', {def: 1.5, min: 0.5, max: 12});
-bindSupportBeamControl('sl-rcp-fold', 'nb-rcp-fold', 'parallelFoldAngle', {def: 0, min: -180, max: 180});
 bindSupportBeamControl('sl-rcp-swing', 'nb-rcp-swing', 'parallelSwingAngle', {def: 0, min: -180, max: 180});
 bindSupportBeamControl('sl-rcp-voffset', 'nb-rcp-voffset', 'parallelOffsetV', {def: 4.5, min: -120, max: 120});
-bindSupportBeamControl('sl-support-overlap', 'nb-support-overlap', 'parallelOverlap', {def: 64, min: -240, max: 240});
-bindSupportBeamControl('sl-support-inset', 'nb-support-inset', 'parallelInset', {def: -9.5, min: -360, max: 240});
+bindSupportBeamControl('sl-rcp-anchor-dist', 'nb-rcp-anchor-dist', 'anchorDist', {def: 20, min: 0, max: 240});
 bindSupportBeamControl('sl-support-ab-offset', 'nb-support-ab-offset', 'parallelVOffset', {def: -1.66, min: -24, max: 24});
+bindSupportBeamControl('sl-rcp-end-offset', 'nb-rcp-end-offset', 'rcpEndOffset', {def: 0, min: -12, max: 24});
 
 function syncSupportBeamsUIFromState() {
     const sb = state.supportBeams;
@@ -22340,13 +23746,16 @@ function syncSupportBeamsUIFromState() {
     if (chkB) chkB.checked = !!sb.enabled;
     const divB = document.getElementById('support-beam-controls');
     if (divB) divB.style.display = sb.enabled ? 'block' : 'none';
+    const chkR = document.getElementById('chk-support-radial');
+    if (chkR) chkR.checked = sb.showRadial !== false;
+    const divR = document.getElementById('support-radial-controls');
+    if (divR) divR.style.display = (sb.showRadial !== false) ? 'block' : 'none';
     setPair('sl-support-length', 'nb-support-length', sb.length ?? 120);
     setPair('sl-support-width', 'nb-support-width', sb.width ?? 1.5);
     setPair('sl-support-thickness', 'nb-support-thickness', sb.thickness ?? 3.5);
     setPair('sl-support-rotation', 'nb-support-rotation', sb.rotation ?? 0);
     setPair('sl-support-offset-h', 'nb-support-offset-h', sb.offsetH ?? 0);
     setPair('sl-support-offset-v', 'nb-support-offset-v', sb.offsetV ?? 0);
-    setPair('sl-support-fold', 'nb-support-fold', sb.foldAngle ?? 0);
     const chkP = document.getElementById('chk-support-parallel');
     if (chkP) chkP.checked = !!sb.parallelEnabled;
     const divP = document.getElementById('support-parallel-controls');
@@ -22354,14 +23763,17 @@ function syncSupportBeamsUIFromState() {
     setPair('sl-rcp-length', 'nb-rcp-length', sb.parallelLength ?? 96);
     setPair('sl-rcp-width', 'nb-rcp-width', sb.parallelWidth ?? 2.5);
     setPair('sl-rcp-thickness', 'nb-rcp-thickness', sb.parallelThickness ?? 1.5);
-    setPair('sl-rcp-fold', 'nb-rcp-fold', sb.parallelFoldAngle ?? 0);
     setPair('sl-rcp-swing', 'nb-rcp-swing', sb.parallelSwingAngle ?? 0);
     setPair('sl-rcp-voffset', 'nb-rcp-voffset', sb.parallelOffsetV ?? 4.5);
-    setPair('sl-support-overlap', 'nb-support-overlap', sb.parallelOverlap ?? 64);
-    setPair('sl-support-inset', 'nb-support-inset', sb.parallelInset ?? 0);
+    setPair('sl-rcp-anchor-dist', 'nb-rcp-anchor-dist', sb.anchorDist ?? 20);
     setPair('sl-support-ab-offset', 'nb-support-ab-offset', sb.parallelVOffset ?? 0);
+    setPair('sl-rcp-end-offset', 'nb-rcp-end-offset', sb.rcpEndOffset ?? 0);
     const chkK = document.getElementById('chk-rcp-kinematic');
     if (chkK) chkK.checked = sb.rcpKinematicMode !== false;
+    if (typeof refreshRcpPivotHoleOptions === 'function') refreshRcpPivotHoleOptions();
+    // Re-apply enable/disable for the folding-pivot selector so loading a config with
+    // kinematics OFF/ON updates the control state.
+    if (typeof applyRcpKinematicUI === 'function') applyRcpKinematicUI(sb.rcpKinematicMode !== false);
 }
 syncSupportBeamsUIFromState();
 
@@ -22375,21 +23787,57 @@ document.getElementById('chk-support-parallel').onchange = e => {
 
 // Reciprocal kinematic solver toggle
 function applyRcpKinematicUI(enabled) {
-    const swingRow = document.getElementById('rcp-swing-row');
-    const slSwing = document.getElementById('sl-rcp-swing');
-    const nbSwing = document.getElementById('nb-rcp-swing');
-    if (swingRow) swingRow.style.opacity = enabled ? '0.4' : '1';
-    if (slSwing) slSwing.disabled = enabled;
-    if (nbSwing) nbSwing.disabled = enabled;
+    // Swing angle sets the deployed layout in both modes; kinematic mode adds the bolted-pivot solve.
+    const pivotRow = document.getElementById('rcp-pivot-row');
+    const sel = document.getElementById('sel-rcp-pivot-hole');
+    if (pivotRow) pivotRow.style.opacity = enabled ? '1' : '0.4';
+    if (sel) sel.disabled = !enabled;
+}
+
+/** Rebuild the folding-pivot hole dropdown to match the number of baked crossing holes. */
+function refreshRcpPivotHoleOptions() {
+    const sel = document.getElementById('sel-rcp-pivot-hole');
+    const cfg = state.supportBeams;
+    if (!sel || !cfg) return;
+    const count = Math.max(1, cfg.rcpMaxHoleCount || 1);
+    const active = Math.max(1, Math.min(cfg.rcpActiveHole || 1, count));
+    if (sel._renderedCount !== count) {
+        const labels = ['', 'Hole 1 (nearest anchor)', 'Hole 2 (middle)', 'Hole 3 (nearest free end)'];
+        sel.innerHTML = '';
+        for (let k = 1; k <= count; k++) {
+            const opt = document.createElement('option');
+            opt.value = String(k);
+            opt.textContent = labels[k] || ('Hole ' + k);
+            sel.appendChild(opt);
+        }
+        sel._renderedCount = count;
+    }
+    sel.value = String(active);
 }
 
 document.getElementById('chk-rcp-kinematic').onchange = e => {
     state.supportBeams.rcpKinematicMode = e.target.checked;
+    if (e.target.checked) invalidateRcpCrossings();
     applyRcpKinematicUI(e.target.checked);
     invalidateGeometryCache();
     requestRender();
 };
 applyRcpKinematicUI(!!state.supportBeams.rcpKinematicMode);
+
+// Folding-pivot hole selector: which baked crossing bolt is the engaged folding pivot.
+(function bindRcpPivotHole() {
+    const sel = document.getElementById('sel-rcp-pivot-hole');
+    if (!sel) return;
+    sel.onchange = e => {
+        const v = parseInt(e.target.value, 10);
+        if (!isNaN(v)) {
+            state.supportBeams.rcpActiveHole = v;
+            state.supportBeams._lastPhi = null; // restart continuation from the new pivot
+            invalidateGeometryCache();
+            requestRender();
+        }
+    };
+})();
 
 document.getElementById('chk-anim-loop').onchange = e => {
     state.animation.loop = e.target.checked;
@@ -22711,6 +24159,99 @@ document.getElementById('nb-anim-stop').onchange = e => {
     state.animation.stopAngle = val;
     document.getElementById('sl-anim-stop').value = val;
 };
+
+// Component appearance angle bindings
+(function bindAnimAngle(slId, nbId, stateKey, def) {
+    const sl = document.getElementById(slId);
+    const nb = document.getElementById(nbId);
+    const update = val => {
+        state.animation[stateKey] = val;
+        invalidateGeometryCache();
+        requestRender();
+    };
+    if (sl) sl.oninput = e => { const v = parseFloat(e.target.value); if (nb) nb.value = v; update(v); };
+    if (nb) nb.onchange = e => {
+        let v = parseFloat(e.target.value);
+        if (isNaN(v)) v = def;
+        v = Math.max(5, Math.min(175, v));
+        e.target.value = v;
+        if (sl) sl.value = v;
+        update(v);
+    };
+})('sl-anim-radial-angle', 'nb-anim-radial-angle', 'radialVisibleAngle', 90);
+
+(function bindAnimAngle(slId, nbId, stateKey, def) {
+    const sl = document.getElementById(slId);
+    const nb = document.getElementById(nbId);
+    const update = val => {
+        state.animation[stateKey] = val;
+        invalidateGeometryCache();
+        requestRender();
+    };
+    if (sl) sl.oninput = e => { const v = parseFloat(e.target.value); if (nb) nb.value = v; update(v); };
+    if (nb) nb.onchange = e => {
+        let v = parseFloat(e.target.value);
+        if (isNaN(v)) v = def;
+        v = Math.max(5, Math.min(175, v));
+        e.target.value = v;
+        if (sl) sl.value = v;
+        update(v);
+    };
+})('sl-anim-panels-angle', 'nb-anim-panels-angle', 'panelsVisibleAngle', 170);
+
+(function bindAnimAngle(slId, nbId, stateKey, def) {
+    const sl = document.getElementById(slId);
+    const nb = document.getElementById(nbId);
+    const update = val => {
+        state.animation[stateKey] = val;
+        invalidateGeometryCache();
+        requestRender();
+    };
+    if (sl) sl.oninput = e => { const v = parseFloat(e.target.value); if (nb) nb.value = v; update(v); };
+    if (nb) nb.onchange = e => {
+        let v = parseFloat(e.target.value);
+        if (isNaN(v)) v = def;
+        v = Math.max(5, Math.min(175, v));
+        e.target.value = v;
+        if (sl) sl.value = v;
+        update(v);
+    };
+})('sl-anim-rcp-angle', 'nb-anim-rcp-angle', 'rcpVisibleAngle', 90);
+
+// Min fold angle binding
+(function() {
+    const sl = document.getElementById('sl-anim-min-fold');
+    const nb = document.getElementById('nb-anim-min-fold');
+    const autoLabel = document.getElementById('anim-min-fold-auto');
+
+    // Populate auto label once the page is ready
+    const refreshAutoLabel = () => {
+        if (!autoLabel) return;
+        try {
+            const autoDeg = radToDeg(computeMinFoldAngleVBeamOverlap());
+            autoLabel.textContent = `Auto (outer V-beam contact): ${autoDeg.toFixed(1)}°`;
+        } catch (e) { /* geometry not ready yet */ }
+    };
+    // Defer until after first render so state is fully initialized
+    setTimeout(refreshAutoLabel, 500);
+
+    const update = val => {
+        state.animation.minFoldAngle = val;
+        invalidateGeometryCache();
+        requestRender();
+    };
+    if (sl) sl.oninput = e => { const v = parseFloat(e.target.value); if (nb) nb.value = v; update(v); };
+    if (nb) nb.onchange = e => {
+        let v = parseFloat(e.target.value);
+        if (isNaN(v)) v = 5;
+        v = Math.max(5, Math.min(90, v));
+        e.target.value = v;
+        if (sl) sl.value = v;
+        update(v);
+    };
+    // Expose so syncUI can call it after loading a config
+    window._refreshMinFoldAutoLabel = refreshAutoLabel;
+})();
 
 // Undo/Redo buttons
 document.getElementById('btn-undo').onclick = undo;
