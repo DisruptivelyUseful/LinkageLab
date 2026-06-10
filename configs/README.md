@@ -4,6 +4,13 @@ This directory contains default configuration JSON files that are automatically 
 
 ## Files
 
+### `presets.json`
+Manifest for the **Presets** dropdown in the LinkageLab Designer sidebar. Lists built-in presets that appear under the "Built-in Presets" optgroup in the dropdown. Each entry has two fields:
+- `name` — display label shown in the dropdown
+- `file` — filename of the JSON config in this directory
+
+To add a new built-in preset: export a config from the designer, save it here, and add an entry to `presets.json`.
+
 ### `starshade-default.json`
 Default configuration for the LinkageLab Designer (`index.html`). This should include:
 - Complete structure configuration (modules, beam lengths, etc.)
@@ -34,6 +41,7 @@ Default configuration for the Solar Simulator (`solar_simulator.html`). This sho
 
 - **LinkageLab Designer**: On first load (no localStorage), it will attempt to load `configs/starshade-default.json`
 - **Solar Simulator**: On first load (no localStorage), it will attempt to load `configs/simulator-default.json`
+- **Presets dropdown**: On every load, the designer fetches `configs/presets.json` and populates the "Built-in Presets" optgroup. User-saved presets appear below in a separate "My Presets" optgroup.
 
 If the files don't exist, the tools will fall back to their hardcoded defaults.
 

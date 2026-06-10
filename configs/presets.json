@@ -1,0 +1,14 @@
+[
+  {
+    "name": "StarShade V1 - SOAK 2026",
+    "file": "StarShade 8m Cylinder 18p - soak 26 actual.json"
+  },
+  {
+    "name": "StarShade Default — 8-mod Cylinder, 18 Panels (3960W)",
+    "file": "starshade-default.json"
+  },
+  {
+    "name": "StarShade Compact — 8-mod Cylinder, 12 Panels (3000W)",
+    "file": "StarShade Compact 12p.json"
+  }
+]

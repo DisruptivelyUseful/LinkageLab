@@ -1,0 +1,5200 @@
+{
+  "structure": {
+    "modules": 8,
+    "beamLengths": {
+      "horizontal": 8,
+      "vertical": 8
+    },
+    "pivotPercent": 41.4,
+    "stackCounts": {
+      "horizontal": 2,
+      "vertical": 3
+    },
+    "beamDimensions": {
+      "horizontalWidth": 3.5,
+      "horizontalThickness": 1.5,
+      "verticalWidth": 1.5,
+      "verticalThickness": 3.5,
+      "verticalInnerWidth": 1.5,
+      "verticalInnerThickness": 3.5,
+      "verticalOuterWidth": 1.5,
+      "verticalOuterThickness": 3.5,
+      "verticalDimensionsLinked": true
+    },
+    "offsets": {
+      "top": 1.75,
+      "bottom": 2,
+      "vertEnd": 1,
+      "hStackGap": 0.1,
+      "vStackGap": 0.45
+    },
+    "bracketDimensions": {
+      "width": 2.17,
+      "depth": 1.6,
+      "height": 3.82,
+      "wallThickness": 0.18,
+      "innerWidth": 1.8,
+      "holeDistance": 2.69
+    },
+    "brackets": {
+      "width": 2.17,
+      "depth": 1.6,
+      "height": 3.82,
+      "wallThickness": 0.18,
+      "innerWidth": 1.8,
+      "holeDiameter": 0.3125,
+      "zRotation": 0
+    },
+    "bolts": {
+      "diameter": 0.5,
+      "vStackLength": 6.4,
+      "hStackLength": 3,
+      "vStackAuto": false,
+      "hStackAuto": false,
+      "hPivotBoltLength": 3,
+      "hPivotBoltAuto": false
+    },
+    "washers": {
+      "vEnabled": true,
+      "vID": 0.5,
+      "vOD": 1.5,
+      "vThickness": 0.45,
+      "vAuto": false,
+      "hEnabled": true,
+      "hID": 0.5,
+      "hOD": 1.5,
+      "hThickness": 0.1,
+      "hAuto": false
+    },
+    "hobermanAngle": 0,
+    "pivotAngle": 0,
+    "vStackReverse": true
+  },
+  "mode": {
+    "type": "cylinder",
+    "flipVertical": false,
+    "rotation": 0,
+    "useFixedBeams": false,
+    "capUprights": true,
+    "arrayCount": 1
+  },
+  "foldAngle": 134.89999999999978,
+  "animationStopAngle": 134.89999999999978,
+  "ibc": {
+    "enabled": true,
+    "count": 2,
+    "stackGapIn": 0,
+    "verticalOffsetAIn": 2.25,
+    "verticalOffsetBIn": 0,
+    "rotationYDeg": -67.5,
+    "scale": 39.37007874015748
+  },
+  "panels": {
+    "enabled": false,
+    "topPanels": {
+      "enabled": true,
+      "size": {
+        "width": 61.4,
+        "length": 31.3,
+        "thickness": 1.8
+      },
+      "electrical": {
+        "ratedWatts": 220,
+        "voc": 48.3,
+        "vmp": 39.8,
+        "isc": 5.95,
+        "imp": 5.53
+      },
+      "padding": {
+        "x": 1,
+        "y": 0
+      },
+      "grid": {
+        "rows": 6,
+        "cols": 3
+      },
+      "lift": 0.3
+    },
+    "sidePanels": {
+      "enabled": false,
+      "size": {
+        "width": 48,
+        "length": 96,
+        "thickness": 0.5
+      },
+      "electrical": {
+        "ratedWatts": 180,
+        "voc": 49.5,
+        "vmp": 41.5,
+        "isc": 10.2,
+        "imp": 9.65
+      },
+      "padding": {
+        "x": 0,
+        "y": -0.5
+      },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      }
+    },
+    "layoutMode": "rectangular",
+    "gridRotation": -22.5,
+    "positioning": {
+      "lift": -3,
+      "slide": 37,
+      "separation": -4.5
+    },
+    "radial": {
+      "count": 4,
+      "offset": 72,
+      "rotation": -22.5,
+      "lateralOffset": 59,
+      "pinwheelAngle": 0
+    },
+    "spiral": {
+      "armCount": 3,
+      "secondaryEnabled": true,
+      "secondaryRadialOffset": -39,
+      "secondaryLateralOffset": 0,
+      "secondaryPinwheel": -2,
+      "secondaryRotation": 2,
+      "armRadialStep": -39,
+      "armLateralStep": 0,
+      "armPinwheelStep": 0,
+      "armRotationStep": 0
+    },
+    "enabledFaces": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "supportBeams": {
+    "enabled": true,
+    "showRadial": true,
+    "length": 120,
+    "width": 1.5,
+    "thickness": 3.5,
+    "rotation": 0,
+    "offsetH": 0,
+    "offsetV": -10,
+    "foldAngle": 0,
+    "parallelEnabled": true,
+    "parallelLength": 96,
+    "parallelWidth": 3.5,
+    "parallelThickness": 1.5,
+    "parallelFoldAngle": 0,
+    "parallelSwingAngle": 45,
+    "parallelOverlap": 62.5,
+    "parallelInset": -9,
+    "parallelVOffset": -1.66,
+    "parallelOffsetV": -3,
+    "anchorDist": 6,
+    "rcpKinematicMode": false,
+    "rcpPivotHole": 0,
+    "rcpPivotT": 1,
+    "rcpActiveHole": 2
+  },
+  "costs": {
+    "hBeam": 3.7,
+    "vBeam": 3.7,
+    "bolt": 1.5,
+    "boltVInner": 1.25,
+    "boltVOuter": 1,
+    "boltH": 1.25,
+    "boltHPivot": 1.25,
+    "washerV": 0.5,
+    "washerH": 0.5,
+    "bracket": 5.38,
+    "solarPanel": 15,
+    "autoLumber": true,
+    "refBeam": {
+      "width": 3.5,
+      "thickness": 1.5,
+      "length": 8,
+      "price": 3.7
+    }
+  },
+  "visibility": {
+    "brackets": true,
+    "bolts": true,
+    "solarPanels": false,
+    "ibc": true
+  },
+  "cameraState": {
+    "yaw": -94.72904752731426,
+    "pitch": 0.9755582274980079,
+    "dist": 262.1408649875253,
+    "panX": 0,
+    "panY": 0,
+    "structureRotation": 0
+  },
+  "version": "v30",
+  "timestamp": "2026-06-09T01:23:58.416Z",
+  "geometrySnapshot": {
+    "schemaVersion": 2,
+    "coordinateSystem": "y-up-inches",
+    "structureCenter": {
+      "x": -99.8,
+      "y": 47.16,
+      "z": 0
+    },
+    "structureBounds": {
+      "min": {
+        "x": -223.21,
+        "y": -1.55,
+        "z": -123.42
+      },
+      "max": {
+        "x": 23.62,
+        "y": 95.88,
+        "z": 123.42
+      },
+      "center": {
+        "x": -99.8,
+        "y": 47.16,
+        "z": 0
+      },
+      "maxRadius": 228.36,
+      "maxHeight": 95.88
+    },
+    "fullBounds": {
+      "min": {
+        "x": -223.21,
+        "y": -1.55,
+        "z": -123.42
+      },
+      "max": {
+        "x": 23.62,
+        "y": 96.01,
+        "z": 123.42
+      },
+      "center": {
+        "x": -99.8,
+        "y": 47.23,
+        "z": 0
+      }
+    },
+    "debugConfig": {
+      "foldAngle": 134.9,
+      "archPanelSlide": 37,
+      "archPanelSeparation": -4.5,
+      "archPanelOffset": -3,
+      "useFixedBeams": false,
+      "archCapUprights": true,
+      "gridRotation": -22.5,
+      "supportBeamCount": 24,
+      "radialSupportCount": 8,
+      "reciprocalSupportCount": 16,
+      "supportBeamsUnsupported": false
+    },
+    "beams": [
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": 2.99,
+          "y": -0.8,
+          "z": -7.21
+        },
+        "p1": {
+          "x": -15.41,
+          "y": -0.8,
+          "z": 37.12
+        },
+        "p2": {
+          "x": 21.4,
+          "y": -0.8,
+          "z": -51.54
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 2.99,
+          "y": 0.8,
+          "z": 7.21
+        },
+        "p1": {
+          "x": -15.41,
+          "y": 0.8,
+          "z": -37.12
+        },
+        "p2": {
+          "x": 21.4,
+          "y": 0.8,
+          "z": 51.54
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 0,
+        "stackId": 1,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": 2.99,
+          "y": 95.13,
+          "z": -7.21
+        },
+        "p1": {
+          "x": -15.41,
+          "y": 95.13,
+          "z": 37.12
+        },
+        "p2": {
+          "x": 21.4,
+          "y": 95.13,
+          "z": -51.54
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 0,
+        "stackId": 1,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 2.99,
+          "y": 93.53,
+          "z": 7.21
+        },
+        "p1": {
+          "x": -15.41,
+          "y": 93.53,
+          "z": -37.12
+        },
+        "p2": {
+          "x": 21.4,
+          "y": 93.53,
+          "z": 51.54
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 2.3,
+          "y": 47.16,
+          "z": -44.4
+        },
+        "p1": {
+          "x": 20.36,
+          "y": 3.33,
+          "z": -51.88
+        },
+        "p2": {
+          "x": -15.77,
+          "y": 91,
+          "z": -36.92
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": 3.04,
+          "y": 47.16,
+          "z": -42.6
+        },
+        "p1": {
+          "x": -15.02,
+          "y": 3.33,
+          "z": -35.12
+        },
+        "p2": {
+          "x": 21.11,
+          "y": 91,
+          "z": -50.08
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 3.79,
+          "y": 47.16,
+          "z": -40.8
+        },
+        "p1": {
+          "x": 21.85,
+          "y": 3.33,
+          "z": -48.28
+        },
+        "p2": {
+          "x": -14.28,
+          "y": 91,
+          "z": -33.31
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical-cap",
+        "stackType": "vertical-cap",
+        "moduleIndex": 0,
+        "stackId": -1,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": 3.79,
+          "y": 47.16,
+          "z": 40.8
+        },
+        "p1": {
+          "x": 21.85,
+          "y": 3.33,
+          "z": 48.28
+        },
+        "p2": {
+          "x": -14.28,
+          "y": 91,
+          "z": 33.31
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical-cap",
+        "stackType": "vertical-cap",
+        "moduleIndex": 0,
+        "stackId": -1,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": 3.04,
+          "y": 47.16,
+          "z": 42.6
+        },
+        "p1": {
+          "x": -15.02,
+          "y": 3.33,
+          "z": 35.12
+        },
+        "p2": {
+          "x": 21.11,
+          "y": 91,
+          "z": 50.08
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical-cap",
+        "stackType": "vertical-cap",
+        "moduleIndex": 0,
+        "stackId": -1,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": 2.3,
+          "y": 47.16,
+          "z": 44.4
+        },
+        "p1": {
+          "x": 20.36,
+          "y": 3.33,
+          "z": 51.88
+        },
+        "p2": {
+          "x": -15.77,
+          "y": 91,
+          "z": 36.92
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 1,
+        "stackId": 2,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -32.21,
+          "y": -0.8,
+          "z": -77.79
+        },
+        "p1": {
+          "x": -13.88,
+          "y": -0.8,
+          "z": -33.42
+        },
+        "p2": {
+          "x": -50.54,
+          "y": -0.8,
+          "z": -122.15
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 1,
+        "stackId": 2,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -22.01,
+          "y": 0.8,
+          "z": -67.59
+        },
+        "p1": {
+          "x": -66.38,
+          "y": 0.8,
+          "z": -85.92
+        },
+        "p2": {
+          "x": 22.35,
+          "y": 0.8,
+          "z": -49.26
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 1,
+        "stackId": 3,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -32.21,
+          "y": 95.13,
+          "z": -77.79
+        },
+        "p1": {
+          "x": -13.88,
+          "y": 95.13,
+          "z": -33.42
+        },
+        "p2": {
+          "x": -50.54,
+          "y": 95.13,
+          "z": -122.15
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 1,
+        "stackId": 3,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -22.01,
+          "y": 93.53,
+          "z": -67.59
+        },
+        "p1": {
+          "x": -66.38,
+          "y": 93.53,
+          "z": -85.92
+        },
+        "p2": {
+          "x": 22.35,
+          "y": 93.53,
+          "z": -49.26
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 1,
+        "stackId": 1,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -59,
+          "y": 47.16,
+          "z": -103.59
+        },
+        "p1": {
+          "x": -51.52,
+          "y": 3.33,
+          "z": -121.65
+        },
+        "p2": {
+          "x": -66.49,
+          "y": 91,
+          "z": -85.52
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.349,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 1,
+        "stackId": 1,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -57.2,
+          "y": 47.16,
+          "z": -102.84
+        },
+        "p1": {
+          "x": -64.68,
+          "y": 3.33,
+          "z": -84.78
+        },
+        "p2": {
+          "x": -49.72,
+          "y": 91,
+          "z": -120.91
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.349,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 1,
+        "stackId": 1,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -55.4,
+          "y": 47.16,
+          "z": -102.09
+        },
+        "p1": {
+          "x": -47.92,
+          "y": 3.33,
+          "z": -120.16
+        },
+        "p2": {
+          "x": -62.88,
+          "y": 91,
+          "z": -84.03
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.349,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 2,
+        "stackId": 4,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -107.01,
+          "y": -0.8,
+          "z": -102.79
+        },
+        "p1": {
+          "x": -62.68,
+          "y": -0.8,
+          "z": -84.39
+        },
+        "p2": {
+          "x": -151.34,
+          "y": -0.8,
+          "z": -121.2
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 2,
+        "stackId": 4,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -92.59,
+          "y": 0.8,
+          "z": -102.79
+        },
+        "p1": {
+          "x": -136.92,
+          "y": 0.8,
+          "z": -84.38
+        },
+        "p2": {
+          "x": -48.26,
+          "y": 0.8,
+          "z": -121.2
+        },
+        "axisX": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 2,
+        "stackId": 5,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -107.01,
+          "y": 95.13,
+          "z": -102.79
+        },
+        "p1": {
+          "x": -62.68,
+          "y": 95.13,
+          "z": -84.39
+        },
+        "p2": {
+          "x": -151.34,
+          "y": 95.13,
+          "z": -121.2
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 2,
+        "stackId": 5,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -92.59,
+          "y": 93.53,
+          "z": -102.79
+        },
+        "p1": {
+          "x": -136.92,
+          "y": 93.53,
+          "z": -84.38
+        },
+        "p2": {
+          "x": -48.26,
+          "y": 93.53,
+          "z": -121.2
+        },
+        "axisX": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 2,
+        "stackId": 2,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -144.2,
+          "y": 47.16,
+          "z": -102.09
+        },
+        "p1": {
+          "x": -151.68,
+          "y": 3.33,
+          "z": -120.16
+        },
+        "p2": {
+          "x": -136.72,
+          "y": 91,
+          "z": -84.03
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.35,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 2,
+        "stackId": 2,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -142.4,
+          "y": 47.16,
+          "z": -102.84
+        },
+        "p1": {
+          "x": -134.92,
+          "y": 3.33,
+          "z": -84.77
+        },
+        "p2": {
+          "x": -149.88,
+          "y": 91,
+          "z": -120.9
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.35,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 2,
+        "stackId": 2,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -140.6,
+          "y": 47.16,
+          "z": -103.58
+        },
+        "p1": {
+          "x": -148.08,
+          "y": 3.33,
+          "z": -121.65
+        },
+        "p2": {
+          "x": -133.11,
+          "y": 91,
+          "z": -85.52
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.35,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 3,
+        "stackId": 6,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -177.58,
+          "y": -0.8,
+          "z": -67.58
+        },
+        "p1": {
+          "x": -133.22,
+          "y": -0.8,
+          "z": -85.91
+        },
+        "p2": {
+          "x": -221.95,
+          "y": -0.8,
+          "z": -49.25
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 3,
+        "stackId": 6,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -167.39,
+          "y": 0.8,
+          "z": -77.78
+        },
+        "p1": {
+          "x": -185.71,
+          "y": 0.8,
+          "z": -33.42
+        },
+        "p2": {
+          "x": -149.06,
+          "y": 0.8,
+          "z": -122.14
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 3,
+        "stackId": 7,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -177.58,
+          "y": 95.13,
+          "z": -67.58
+        },
+        "p1": {
+          "x": -133.22,
+          "y": 95.13,
+          "z": -85.91
+        },
+        "p2": {
+          "x": -221.95,
+          "y": 95.13,
+          "z": -49.25
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 3,
+        "stackId": 7,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -167.39,
+          "y": 93.53,
+          "z": -77.78
+        },
+        "p1": {
+          "x": -185.71,
+          "y": 93.53,
+          "z": -33.42
+        },
+        "p2": {
+          "x": -149.06,
+          "y": 93.53,
+          "z": -122.14
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 3,
+        "stackId": 3,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -203.39,
+          "y": 47.16,
+          "z": -40.79
+        },
+        "p1": {
+          "x": -221.45,
+          "y": 3.33,
+          "z": -48.27
+        },
+        "p2": {
+          "x": -185.32,
+          "y": 91,
+          "z": -33.31
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 3,
+        "stackId": 3,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -202.64,
+          "y": 47.16,
+          "z": -42.59
+        },
+        "p1": {
+          "x": -184.57,
+          "y": 3.33,
+          "z": -35.11
+        },
+        "p2": {
+          "x": -220.7,
+          "y": 91,
+          "z": -50.07
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 3,
+        "stackId": 3,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -201.89,
+          "y": 47.16,
+          "z": -44.39
+        },
+        "p1": {
+          "x": -219.96,
+          "y": 3.33,
+          "z": -51.88
+        },
+        "p2": {
+          "x": -183.83,
+          "y": 91,
+          "z": -36.91
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 4,
+        "stackId": 8,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -202.59,
+          "y": -0.8,
+          "z": 7.22
+        },
+        "p1": {
+          "x": -184.18,
+          "y": -0.8,
+          "z": -37.11
+        },
+        "p2": {
+          "x": -220.99,
+          "y": -0.8,
+          "z": 51.55
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 4,
+        "stackId": 8,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -202.59,
+          "y": 0.8,
+          "z": -7.21
+        },
+        "p1": {
+          "x": -184.18,
+          "y": 0.8,
+          "z": 37.12
+        },
+        "p2": {
+          "x": -221,
+          "y": 0.8,
+          "z": -51.53
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 4,
+        "stackId": 9,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -202.59,
+          "y": 95.13,
+          "z": 7.22
+        },
+        "p1": {
+          "x": -184.18,
+          "y": 95.13,
+          "z": -37.11
+        },
+        "p2": {
+          "x": -220.99,
+          "y": 95.13,
+          "z": 51.55
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 4,
+        "stackId": 9,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -202.59,
+          "y": 93.53,
+          "z": -7.21
+        },
+        "p1": {
+          "x": -184.18,
+          "y": 93.53,
+          "z": 37.12
+        },
+        "p2": {
+          "x": -221,
+          "y": 93.53,
+          "z": -51.53
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 4,
+        "stackId": 4,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -201.89,
+          "y": 47.16,
+          "z": 44.41
+        },
+        "p1": {
+          "x": -219.95,
+          "y": 3.33,
+          "z": 51.89
+        },
+        "p2": {
+          "x": -183.82,
+          "y": 91,
+          "z": 36.92
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": 0.35
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 4,
+        "stackId": 4,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -202.63,
+          "y": 47.16,
+          "z": 42.6
+        },
+        "p1": {
+          "x": -184.57,
+          "y": 3.33,
+          "z": 35.12
+        },
+        "p2": {
+          "x": -220.7,
+          "y": 91,
+          "z": 50.09
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": -0.35
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 4,
+        "stackId": 4,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -203.38,
+          "y": 47.16,
+          "z": 40.8
+        },
+        "p1": {
+          "x": -221.45,
+          "y": 3.33,
+          "z": 48.29
+        },
+        "p2": {
+          "x": -185.32,
+          "y": 91,
+          "z": 33.32
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": 0.35
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 5,
+        "stackId": 10,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -167.38,
+          "y": -0.8,
+          "z": 77.79
+        },
+        "p1": {
+          "x": -185.71,
+          "y": -0.8,
+          "z": 33.43
+        },
+        "p2": {
+          "x": -149.04,
+          "y": -0.8,
+          "z": 122.15
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 5,
+        "stackId": 10,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -177.58,
+          "y": 0.8,
+          "z": 67.59
+        },
+        "p1": {
+          "x": -133.21,
+          "y": 0.8,
+          "z": 85.92
+        },
+        "p2": {
+          "x": -221.94,
+          "y": 0.8,
+          "z": 49.26
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 5,
+        "stackId": 11,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -167.38,
+          "y": 95.13,
+          "z": 77.79
+        },
+        "p1": {
+          "x": -185.71,
+          "y": 95.13,
+          "z": 33.43
+        },
+        "p2": {
+          "x": -149.04,
+          "y": 95.13,
+          "z": 122.15
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 5,
+        "stackId": 11,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -177.58,
+          "y": 93.53,
+          "z": 67.59
+        },
+        "p1": {
+          "x": -133.21,
+          "y": 93.53,
+          "z": 85.92
+        },
+        "p2": {
+          "x": -221.94,
+          "y": 93.53,
+          "z": 49.26
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 5,
+        "stackId": 5,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -140.59,
+          "y": 47.16,
+          "z": 103.59
+        },
+        "p1": {
+          "x": -148.07,
+          "y": 3.33,
+          "z": 121.66
+        },
+        "p2": {
+          "x": -133.1,
+          "y": 91,
+          "z": 85.52
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.349,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 5,
+        "stackId": 5,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -142.39,
+          "y": 47.16,
+          "z": 102.84
+        },
+        "p1": {
+          "x": -134.91,
+          "y": 3.33,
+          "z": 84.78
+        },
+        "p2": {
+          "x": -149.87,
+          "y": 91,
+          "z": 120.91
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.349,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 5,
+        "stackId": 5,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -144.19,
+          "y": 47.16,
+          "z": 102.1
+        },
+        "p1": {
+          "x": -151.67,
+          "y": 3.33,
+          "z": 120.16
+        },
+        "p2": {
+          "x": -136.71,
+          "y": 91,
+          "z": 84.03
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.349,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 6,
+        "stackId": 12,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -92.58,
+          "y": -0.8,
+          "z": 102.79
+        },
+        "p1": {
+          "x": -136.91,
+          "y": -0.8,
+          "z": 84.39
+        },
+        "p2": {
+          "x": -48.25,
+          "y": -0.8,
+          "z": 121.19
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 6,
+        "stackId": 12,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -107,
+          "y": 0.8,
+          "z": 102.79
+        },
+        "p1": {
+          "x": -62.67,
+          "y": 0.8,
+          "z": 84.38
+        },
+        "p2": {
+          "x": -151.33,
+          "y": 0.8,
+          "z": 121.2
+        },
+        "axisX": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 6,
+        "stackId": 13,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -92.58,
+          "y": 95.13,
+          "z": 102.79
+        },
+        "p1": {
+          "x": -136.91,
+          "y": 95.13,
+          "z": 84.39
+        },
+        "p2": {
+          "x": -48.25,
+          "y": 95.13,
+          "z": 121.19
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 6,
+        "stackId": 13,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -107,
+          "y": 93.53,
+          "z": 102.79
+        },
+        "p1": {
+          "x": -62.67,
+          "y": 93.53,
+          "z": 84.38
+        },
+        "p2": {
+          "x": -151.33,
+          "y": 93.53,
+          "z": 121.2
+        },
+        "axisX": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 6,
+        "stackId": 6,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -55.39,
+          "y": 47.16,
+          "z": 102.09
+        },
+        "p1": {
+          "x": -47.9,
+          "y": 3.33,
+          "z": 120.15
+        },
+        "p2": {
+          "x": -62.87,
+          "y": 91,
+          "z": 84.03
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.35,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 6,
+        "stackId": 6,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -57.19,
+          "y": 47.16,
+          "z": 102.84
+        },
+        "p1": {
+          "x": -64.67,
+          "y": 3.33,
+          "z": 84.77
+        },
+        "p2": {
+          "x": -49.71,
+          "y": 91,
+          "z": 120.9
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": -0.35,
+          "y": 0.407,
+          "z": -0.844
+        },
+        "axisZ": {
+          "x": 0.156,
+          "y": 0.913,
+          "z": 0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 6,
+        "stackId": 6,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -58.99,
+          "y": 47.16,
+          "z": 103.58
+        },
+        "p1": {
+          "x": -51.51,
+          "y": 3.33,
+          "z": 121.65
+        },
+        "p2": {
+          "x": -66.48,
+          "y": 91,
+          "z": 85.52
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0.35,
+          "y": 0.407,
+          "z": 0.844
+        },
+        "axisZ": {
+          "x": -0.156,
+          "y": 0.913,
+          "z": -0.376
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 7,
+        "stackId": 14,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -22.01,
+          "y": -0.8,
+          "z": 67.58
+        },
+        "p1": {
+          "x": -66.37,
+          "y": -0.8,
+          "z": 85.91
+        },
+        "p2": {
+          "x": 22.35,
+          "y": -0.8,
+          "z": 49.24
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-bottom",
+        "stackType": "horizontal-bottom",
+        "moduleIndex": 7,
+        "stackId": 14,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -32.2,
+          "y": 0.8,
+          "z": 77.78
+        },
+        "p1": {
+          "x": -13.88,
+          "y": 0.8,
+          "z": 33.41
+        },
+        "p2": {
+          "x": -50.53,
+          "y": 0.8,
+          "z": 122.14
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 7,
+        "stackId": 15,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -22.01,
+          "y": 95.13,
+          "z": 67.58
+        },
+        "p1": {
+          "x": -66.37,
+          "y": 95.13,
+          "z": 85.91
+        },
+        "p2": {
+          "x": 22.35,
+          "y": 95.13,
+          "z": 49.24
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "horizontal-top",
+        "stackType": "horizontal-top",
+        "moduleIndex": 7,
+        "stackId": 15,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -32.2,
+          "y": 93.53,
+          "z": 77.78
+        },
+        "p1": {
+          "x": -13.88,
+          "y": 93.53,
+          "z": 33.41
+        },
+        "p2": {
+          "x": -50.53,
+          "y": 93.53,
+          "z": 122.14
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 7,
+        "stackId": 7,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 3.79,
+          "y": 47.16,
+          "z": 40.79
+        },
+        "p1": {
+          "x": 21.86,
+          "y": 3.33,
+          "z": 48.27
+        },
+        "p2": {
+          "x": -14.27,
+          "y": 91,
+          "z": 33.3
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 7,
+        "stackId": 7,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": 3.05,
+          "y": 47.16,
+          "z": 42.59
+        },
+        "p1": {
+          "x": -15.02,
+          "y": 3.33,
+          "z": 35.11
+        },
+        "p2": {
+          "x": 21.11,
+          "y": 91,
+          "z": 50.07
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": -0.844,
+          "y": 0.407,
+          "z": -0.349
+        },
+        "axisZ": {
+          "x": 0.376,
+          "y": 0.913,
+          "z": 0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "vertical",
+        "stackType": "vertical",
+        "moduleIndex": 7,
+        "stackId": 7,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": 2.3,
+          "y": 47.16,
+          "z": 44.39
+        },
+        "p1": {
+          "x": 20.37,
+          "y": 3.33,
+          "z": 51.87
+        },
+        "p2": {
+          "x": -15.76,
+          "y": 91,
+          "z": 36.91
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0.844,
+          "y": 0.407,
+          "z": 0.349
+        },
+        "axisZ": {
+          "x": -0.376,
+          "y": 0.913,
+          "z": -0.156
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -34.33,
+          "y": 89.98,
+          "z": -27.12
+        },
+        "p1": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": -50.08
+        },
+        "p2": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 1,
+        "stackId": 1,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -72.68,
+          "y": 89.98,
+          "z": -65.47
+        },
+        "p1": {
+          "x": -49.72,
+          "y": 89.98,
+          "z": -120.91
+        },
+        "p2": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 2,
+        "stackId": 2,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -126.92,
+          "y": 89.98,
+          "z": -65.47
+        },
+        "p1": {
+          "x": -149.88,
+          "y": 89.98,
+          "z": -120.9
+        },
+        "p2": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 3,
+        "stackId": 3,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -165.27,
+          "y": 89.98,
+          "z": -27.12
+        },
+        "p1": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": -50.07
+        },
+        "p2": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 4,
+        "stackId": 4,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -165.27,
+          "y": 89.98,
+          "z": 27.12
+        },
+        "p1": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": 50.09
+        },
+        "p2": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 5,
+        "stackId": 5,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -126.91,
+          "y": 89.98,
+          "z": 65.47
+        },
+        "p1": {
+          "x": -149.87,
+          "y": 89.98,
+          "z": 120.91
+        },
+        "p2": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 6,
+        "stackId": 6,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -72.67,
+          "y": 89.98,
+          "z": 65.47
+        },
+        "p1": {
+          "x": -49.71,
+          "y": 89.98,
+          "z": 120.9
+        },
+        "p2": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 7,
+        "stackId": 7,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -34.32,
+          "y": 89.98,
+          "z": 27.11
+        },
+        "p1": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": 50.07
+        },
+        "p2": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 0,
+        "stackId": 8,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -46.66,
+          "y": 93.6,
+          "z": 23.87
+        },
+        "p1": {
+          "x": -2.3,
+          "y": 93.6,
+          "z": 5.54
+        },
+        "p2": {
+          "x": -91.03,
+          "y": 93.6,
+          "z": 42.2
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 0,
+        "stackId": 9,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -46.66,
+          "y": 95.26,
+          "z": -23.87
+        },
+        "p1": {
+          "x": -2.3,
+          "y": 95.26,
+          "z": -5.54
+        },
+        "p2": {
+          "x": -91.03,
+          "y": 95.26,
+          "z": -42.2
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 1,
+        "stackId": 10,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -45.35,
+          "y": 93.6,
+          "z": -20.69
+        },
+        "p1": {
+          "x": -26.94,
+          "y": 93.6,
+          "z": -65.02
+        },
+        "p2": {
+          "x": -63.75,
+          "y": 93.6,
+          "z": 23.64
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 1,
+        "stackId": 11,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -79.11,
+          "y": 95.26,
+          "z": -54.45
+        },
+        "p1": {
+          "x": -34.78,
+          "y": 95.26,
+          "z": -72.86
+        },
+        "p2": {
+          "x": -123.44,
+          "y": 95.26,
+          "z": -36.04
+        },
+        "axisX": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 2,
+        "stackId": 12,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -75.93,
+          "y": 93.6,
+          "z": -53.13
+        },
+        "p1": {
+          "x": -94.26,
+          "y": 93.6,
+          "z": -97.5
+        },
+        "p2": {
+          "x": -57.6,
+          "y": 93.6,
+          "z": -8.77
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 2,
+        "stackId": 13,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -123.67,
+          "y": 95.26,
+          "z": -53.13
+        },
+        "p1": {
+          "x": -105.34,
+          "y": 95.26,
+          "z": -97.5
+        },
+        "p2": {
+          "x": -142,
+          "y": 95.26,
+          "z": -8.77
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 3,
+        "stackId": 14,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -120.49,
+          "y": 93.6,
+          "z": -54.45
+        },
+        "p1": {
+          "x": -164.82,
+          "y": 93.6,
+          "z": -72.86
+        },
+        "p2": {
+          "x": -76.16,
+          "y": 93.6,
+          "z": -36.04
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 3,
+        "stackId": 15,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -154.25,
+          "y": 95.26,
+          "z": -20.69
+        },
+        "p1": {
+          "x": -172.66,
+          "y": 95.26,
+          "z": -65.02
+        },
+        "p2": {
+          "x": -135.84,
+          "y": 95.26,
+          "z": 23.64
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 4,
+        "stackId": 16,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -152.93,
+          "y": 93.6,
+          "z": -23.87
+        },
+        "p1": {
+          "x": -197.29,
+          "y": 93.6,
+          "z": -5.54
+        },
+        "p2": {
+          "x": -108.57,
+          "y": 93.6,
+          "z": -42.2
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 4,
+        "stackId": 17,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -152.93,
+          "y": 95.26,
+          "z": 23.87
+        },
+        "p1": {
+          "x": -197.29,
+          "y": 95.26,
+          "z": 5.55
+        },
+        "p2": {
+          "x": -108.57,
+          "y": 95.26,
+          "z": 42.2
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 5,
+        "stackId": 18,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -154.25,
+          "y": 93.6,
+          "z": 20.7
+        },
+        "p1": {
+          "x": -172.65,
+          "y": 93.6,
+          "z": 65.03
+        },
+        "p2": {
+          "x": -135.84,
+          "y": 93.6,
+          "z": -23.64
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 5,
+        "stackId": 19,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -120.49,
+          "y": 95.26,
+          "z": 54.45
+        },
+        "p1": {
+          "x": -164.81,
+          "y": 95.26,
+          "z": 72.86
+        },
+        "p2": {
+          "x": -76.16,
+          "y": 95.26,
+          "z": 36.04
+        },
+        "axisX": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 6,
+        "stackId": 20,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -123.66,
+          "y": 93.6,
+          "z": 53.14
+        },
+        "p1": {
+          "x": -105.33,
+          "y": 93.6,
+          "z": 97.5
+        },
+        "p2": {
+          "x": -142,
+          "y": 93.6,
+          "z": 8.78
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 6,
+        "stackId": 21,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -75.92,
+          "y": 95.26,
+          "z": 53.13
+        },
+        "p1": {
+          "x": -94.25,
+          "y": 95.26,
+          "z": 97.5
+        },
+        "p2": {
+          "x": -57.6,
+          "y": 95.26,
+          "z": 8.77
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 7,
+        "stackId": 22,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -79.1,
+          "y": 93.6,
+          "z": 54.45
+        },
+        "p1": {
+          "x": -34.77,
+          "y": 93.6,
+          "z": 72.85
+        },
+        "p2": {
+          "x": -123.43,
+          "y": 93.6,
+          "z": 36.05
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 7,
+        "stackId": 23,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -45.34,
+          "y": 95.26,
+          "z": 20.69
+        },
+        "p1": {
+          "x": -26.93,
+          "y": 95.26,
+          "z": 65.01
+        },
+        "p2": {
+          "x": -63.76,
+          "y": 95.26,
+          "z": -23.64
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      }
+    ],
+    "supportBeams": [
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 0,
+        "stackId": 0,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -34.33,
+          "y": 89.98,
+          "z": -27.12
+        },
+        "p1": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": -50.08
+        },
+        "p2": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 1,
+        "stackId": 1,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -72.68,
+          "y": 89.98,
+          "z": -65.47
+        },
+        "p1": {
+          "x": -49.72,
+          "y": 89.98,
+          "z": -120.91
+        },
+        "p2": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 2,
+        "stackId": 2,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -126.92,
+          "y": 89.98,
+          "z": -65.47
+        },
+        "p1": {
+          "x": -149.88,
+          "y": 89.98,
+          "z": -120.9
+        },
+        "p2": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 3,
+        "stackId": 3,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -165.27,
+          "y": 89.98,
+          "z": -27.12
+        },
+        "p1": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": -50.07
+        },
+        "p2": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 4,
+        "stackId": 4,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -165.27,
+          "y": 89.98,
+          "z": 27.12
+        },
+        "p1": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": 50.09
+        },
+        "p2": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 5,
+        "stackId": 5,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -126.91,
+          "y": 89.98,
+          "z": 65.47
+        },
+        "p1": {
+          "x": -149.87,
+          "y": 89.98,
+          "z": 120.91
+        },
+        "p2": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 6,
+        "stackId": 6,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -72.67,
+          "y": 89.98,
+          "z": 65.47
+        },
+        "p1": {
+          "x": -49.71,
+          "y": 89.98,
+          "z": 120.9
+        },
+        "p2": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam",
+        "stackType": "support-beam",
+        "moduleIndex": 7,
+        "stackId": 7,
+        "patternId": null,
+        "kinematicState": null,
+        "center": {
+          "x": -34.32,
+          "y": 89.98,
+          "z": 27.11
+        },
+        "p1": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": 50.07
+        },
+        "p2": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 1.5,
+        "t": 3.5,
+        "length": 120
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 0,
+        "stackId": 8,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -46.66,
+          "y": 93.6,
+          "z": 23.87
+        },
+        "p1": {
+          "x": -2.3,
+          "y": 93.6,
+          "z": 5.54
+        },
+        "p2": {
+          "x": -91.03,
+          "y": 93.6,
+          "z": 42.2
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 0,
+        "stackId": 9,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -46.66,
+          "y": 95.26,
+          "z": -23.87
+        },
+        "p1": {
+          "x": -2.3,
+          "y": 95.26,
+          "z": -5.54
+        },
+        "p2": {
+          "x": -91.03,
+          "y": 95.26,
+          "z": -42.2
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 1,
+        "stackId": 10,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -45.35,
+          "y": 93.6,
+          "z": -20.69
+        },
+        "p1": {
+          "x": -26.94,
+          "y": 93.6,
+          "z": -65.02
+        },
+        "p2": {
+          "x": -63.75,
+          "y": 93.6,
+          "z": 23.64
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 1,
+        "stackId": 11,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -79.11,
+          "y": 95.26,
+          "z": -54.45
+        },
+        "p1": {
+          "x": -34.78,
+          "y": 95.26,
+          "z": -72.86
+        },
+        "p2": {
+          "x": -123.44,
+          "y": 95.26,
+          "z": -36.04
+        },
+        "axisX": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 2,
+        "stackId": 12,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -75.93,
+          "y": 93.6,
+          "z": -53.13
+        },
+        "p1": {
+          "x": -94.26,
+          "y": 93.6,
+          "z": -97.5
+        },
+        "p2": {
+          "x": -57.6,
+          "y": 93.6,
+          "z": -8.77
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 2,
+        "stackId": 13,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -123.67,
+          "y": 95.26,
+          "z": -53.13
+        },
+        "p1": {
+          "x": -105.34,
+          "y": 95.26,
+          "z": -97.5
+        },
+        "p2": {
+          "x": -142,
+          "y": 95.26,
+          "z": -8.77
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 3,
+        "stackId": 14,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -120.49,
+          "y": 93.6,
+          "z": -54.45
+        },
+        "p1": {
+          "x": -164.82,
+          "y": 93.6,
+          "z": -72.86
+        },
+        "p2": {
+          "x": -76.16,
+          "y": 93.6,
+          "z": -36.04
+        },
+        "axisX": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 3,
+        "stackId": 15,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -154.25,
+          "y": 95.26,
+          "z": -20.69
+        },
+        "p1": {
+          "x": -172.66,
+          "y": 95.26,
+          "z": -65.02
+        },
+        "p2": {
+          "x": -135.84,
+          "y": 95.26,
+          "z": 23.64
+        },
+        "axisX": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 4,
+        "stackId": 16,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -152.93,
+          "y": 93.6,
+          "z": -23.87
+        },
+        "p1": {
+          "x": -197.29,
+          "y": 93.6,
+          "z": -5.54
+        },
+        "p2": {
+          "x": -108.57,
+          "y": 93.6,
+          "z": -42.2
+        },
+        "axisX": {
+          "x": 0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 4,
+        "stackId": 17,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -152.93,
+          "y": 95.26,
+          "z": 23.87
+        },
+        "p1": {
+          "x": -197.29,
+          "y": 95.26,
+          "z": 5.55
+        },
+        "p2": {
+          "x": -108.57,
+          "y": 95.26,
+          "z": 42.2
+        },
+        "axisX": {
+          "x": -0.382,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 5,
+        "stackId": 18,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -154.25,
+          "y": 93.6,
+          "z": 20.7
+        },
+        "p1": {
+          "x": -172.65,
+          "y": 93.6,
+          "z": 65.03
+        },
+        "p2": {
+          "x": -135.84,
+          "y": 93.6,
+          "z": -23.64
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 5,
+        "stackId": 19,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -120.49,
+          "y": 95.26,
+          "z": 54.45
+        },
+        "p1": {
+          "x": -164.81,
+          "y": 95.26,
+          "z": 72.86
+        },
+        "p2": {
+          "x": -76.16,
+          "y": 95.26,
+          "z": 36.04
+        },
+        "axisX": {
+          "x": 0.384,
+          "y": 0,
+          "z": 0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 6,
+        "stackId": 20,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -123.66,
+          "y": 93.6,
+          "z": 53.14
+        },
+        "p1": {
+          "x": -105.33,
+          "y": 93.6,
+          "z": 97.5
+        },
+        "p2": {
+          "x": -142,
+          "y": 93.6,
+          "z": 8.78
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 6,
+        "stackId": 21,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -75.92,
+          "y": 95.26,
+          "z": 53.13
+        },
+        "p1": {
+          "x": -94.25,
+          "y": 95.26,
+          "z": 97.5
+        },
+        "p2": {
+          "x": -57.6,
+          "y": 95.26,
+          "z": 8.77
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.382
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": 0.382,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 7,
+        "stackId": 22,
+        "patternId": "A",
+        "kinematicState": null,
+        "center": {
+          "x": -79.1,
+          "y": 93.6,
+          "z": 54.45
+        },
+        "p1": {
+          "x": -34.77,
+          "y": 93.6,
+          "z": 72.85
+        },
+        "p2": {
+          "x": -123.43,
+          "y": 93.6,
+          "z": 36.05
+        },
+        "axisX": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      },
+      {
+        "type": "support-beam-reciprocal",
+        "stackType": "support-beam-reciprocal",
+        "moduleIndex": 7,
+        "stackId": 23,
+        "patternId": "B",
+        "kinematicState": null,
+        "center": {
+          "x": -45.34,
+          "y": 95.26,
+          "z": 20.69
+        },
+        "p1": {
+          "x": -26.93,
+          "y": 95.26,
+          "z": 65.01
+        },
+        "p2": {
+          "x": -63.76,
+          "y": 95.26,
+          "z": -23.64
+        },
+        "axisX": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.384
+        },
+        "axisY": {
+          "x": 0,
+          "y": 1,
+          "z": 0
+        },
+        "axisZ": {
+          "x": -0.384,
+          "y": 0,
+          "z": -0.924
+        },
+        "w": 3.5,
+        "t": 1.5,
+        "length": 96
+      }
+    ],
+    "supportBeamPlacements": [
+      {
+        "moduleIndex": 0,
+        "hinge": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": -50.08
+        },
+        "inwardDir": {
+          "x": -0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "start": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": -50.08
+        },
+        "end": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": 0,
+          "y": 94.33,
+          "z": 0
+        }
+      },
+      {
+        "moduleIndex": 1,
+        "hinge": {
+          "x": -49.72,
+          "y": 89.98,
+          "z": -120.91
+        },
+        "inwardDir": {
+          "x": -0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "start": {
+          "x": -49.72,
+          "y": 89.98,
+          "z": -120.91
+        },
+        "end": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -29.23,
+          "y": 94.33,
+          "z": -70.57
+        }
+      },
+      {
+        "moduleIndex": 2,
+        "hinge": {
+          "x": -149.88,
+          "y": 89.98,
+          "z": -120.9
+        },
+        "inwardDir": {
+          "x": 0.383,
+          "y": 0,
+          "z": 0.924
+        },
+        "start": {
+          "x": -149.88,
+          "y": 89.98,
+          "z": -120.9
+        },
+        "end": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": -10.04
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -99.8,
+          "y": 94.33,
+          "z": -99.8
+        }
+      },
+      {
+        "moduleIndex": 3,
+        "hinge": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": -50.07
+        },
+        "inwardDir": {
+          "x": 0.924,
+          "y": 0,
+          "z": 0.383
+        },
+        "start": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": -50.07
+        },
+        "end": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": -4.16
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -170.37,
+          "y": 94.33,
+          "z": -70.56
+        }
+      },
+      {
+        "moduleIndex": 4,
+        "hinge": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": 50.09
+        },
+        "inwardDir": {
+          "x": 0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "start": {
+          "x": -220.7,
+          "y": 89.98,
+          "z": 50.09
+        },
+        "end": {
+          "x": -109.84,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -199.59,
+          "y": 94.33,
+          "z": 0.01
+        }
+      },
+      {
+        "moduleIndex": 5,
+        "hinge": {
+          "x": -149.87,
+          "y": 89.98,
+          "z": 120.91
+        },
+        "inwardDir": {
+          "x": 0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "start": {
+          "x": -149.87,
+          "y": 89.98,
+          "z": 120.91
+        },
+        "end": {
+          "x": -103.96,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -170.36,
+          "y": 94.33,
+          "z": 70.57
+        }
+      },
+      {
+        "moduleIndex": 6,
+        "hinge": {
+          "x": -49.71,
+          "y": 89.98,
+          "z": 120.9
+        },
+        "inwardDir": {
+          "x": -0.383,
+          "y": 0,
+          "z": -0.924
+        },
+        "start": {
+          "x": -49.71,
+          "y": 89.98,
+          "z": 120.9
+        },
+        "end": {
+          "x": -95.64,
+          "y": 89.98,
+          "z": 10.04
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -99.79,
+          "y": 94.33,
+          "z": 99.8
+        }
+      },
+      {
+        "moduleIndex": 7,
+        "hinge": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": 50.07
+        },
+        "inwardDir": {
+          "x": -0.924,
+          "y": 0,
+          "z": -0.383
+        },
+        "start": {
+          "x": 21.11,
+          "y": 89.98,
+          "z": 50.07
+        },
+        "end": {
+          "x": -89.76,
+          "y": 89.98,
+          "z": 4.16
+        },
+        "slideT": 0,
+        "hCenter": {
+          "x": -29.22,
+          "y": 94.33,
+          "z": 70.56
+        }
+      }
+    ],
+    "reciprocalBeams": {
+      "anchors": [
+        {
+          "stackId": 8,
+          "moduleIndex": 0,
+          "side": 0,
+          "position": {
+            "x": -2.3,
+            "y": 93.6,
+            "z": 5.54
+          },
+          "radInDir": {
+            "x": -0.383,
+            "y": 0,
+            "z": 0.924
+          }
+        },
+        {
+          "stackId": 9,
+          "moduleIndex": 0,
+          "side": 1,
+          "position": {
+            "x": -2.3,
+            "y": 95.26,
+            "z": -5.54
+          },
+          "radInDir": {
+            "x": -0.383,
+            "y": 0,
+            "z": -0.924
+          }
+        },
+        {
+          "stackId": 10,
+          "moduleIndex": 1,
+          "side": 0,
+          "position": {
+            "x": -26.94,
+            "y": 93.6,
+            "z": -65.02
+          },
+          "radInDir": {
+            "x": 0.382,
+            "y": 0,
+            "z": 0.924
+          }
+        },
+        {
+          "stackId": 11,
+          "moduleIndex": 1,
+          "side": 1,
+          "position": {
+            "x": -34.78,
+            "y": 95.26,
+            "z": -72.86
+          },
+          "radInDir": {
+            "x": -0.924,
+            "y": 0,
+            "z": -0.382
+          }
+        },
+        {
+          "stackId": 12,
+          "moduleIndex": 2,
+          "side": 0,
+          "position": {
+            "x": -94.26,
+            "y": 93.6,
+            "z": -97.5
+          },
+          "radInDir": {
+            "x": 0.924,
+            "y": 0,
+            "z": 0.383
+          }
+        },
+        {
+          "stackId": 13,
+          "moduleIndex": 2,
+          "side": 1,
+          "position": {
+            "x": -105.34,
+            "y": 95.26,
+            "z": -97.5
+          },
+          "radInDir": {
+            "x": -0.924,
+            "y": 0,
+            "z": 0.384
+          }
+        },
+        {
+          "stackId": 14,
+          "moduleIndex": 3,
+          "side": 0,
+          "position": {
+            "x": -164.82,
+            "y": 93.6,
+            "z": -72.86
+          },
+          "radInDir": {
+            "x": 0.924,
+            "y": 0,
+            "z": -0.382
+          }
+        },
+        {
+          "stackId": 15,
+          "moduleIndex": 3,
+          "side": 1,
+          "position": {
+            "x": -172.66,
+            "y": 95.26,
+            "z": -65.02
+          },
+          "radInDir": {
+            "x": -0.382,
+            "y": 0,
+            "z": 0.924
+          }
+        },
+        {
+          "stackId": 16,
+          "moduleIndex": 4,
+          "side": 0,
+          "position": {
+            "x": -197.29,
+            "y": 93.6,
+            "z": -5.54
+          },
+          "radInDir": {
+            "x": 0.383,
+            "y": 0,
+            "z": -0.924
+          }
+        },
+        {
+          "stackId": 17,
+          "moduleIndex": 4,
+          "side": 1,
+          "position": {
+            "x": -197.29,
+            "y": 95.26,
+            "z": 5.55
+          },
+          "radInDir": {
+            "x": 0.384,
+            "y": 0,
+            "z": 0.924
+          }
+        },
+        {
+          "stackId": 18,
+          "moduleIndex": 5,
+          "side": 0,
+          "position": {
+            "x": -172.65,
+            "y": 93.6,
+            "z": 65.03
+          },
+          "radInDir": {
+            "x": -0.382,
+            "y": 0,
+            "z": -0.924
+          }
+        },
+        {
+          "stackId": 19,
+          "moduleIndex": 5,
+          "side": 1,
+          "position": {
+            "x": -164.81,
+            "y": 95.26,
+            "z": 72.86
+          },
+          "radInDir": {
+            "x": 0.924,
+            "y": 0,
+            "z": 0.382
+          }
+        },
+        {
+          "stackId": 20,
+          "moduleIndex": 6,
+          "side": 0,
+          "position": {
+            "x": -105.33,
+            "y": 93.6,
+            "z": 97.5
+          },
+          "radInDir": {
+            "x": -0.924,
+            "y": 0,
+            "z": -0.383
+          }
+        },
+        {
+          "stackId": 21,
+          "moduleIndex": 6,
+          "side": 1,
+          "position": {
+            "x": -94.25,
+            "y": 95.26,
+            "z": 97.5
+          },
+          "radInDir": {
+            "x": 0.924,
+            "y": 0,
+            "z": -0.384
+          }
+        },
+        {
+          "stackId": 22,
+          "moduleIndex": 7,
+          "side": 0,
+          "position": {
+            "x": -34.77,
+            "y": 93.6,
+            "z": 72.85
+          },
+          "radInDir": {
+            "x": -0.924,
+            "y": 0,
+            "z": 0.382
+          }
+        },
+        {
+          "stackId": 23,
+          "moduleIndex": 7,
+          "side": 1,
+          "position": {
+            "x": -26.93,
+            "y": 95.26,
+            "z": 65.01
+          },
+          "radInDir": {
+            "x": 0.382,
+            "y": 0,
+            "z": -0.924
+          }
+        }
+      ],
+      "swingAngleDeg": 45,
+      "activeHole": 2,
+      "maxHoleCount": 3,
+      "visualState": "normal",
+      "anchorDist": 6,
+      "kinematicMode": false,
+      "diagnostics": null,
+      "crossingCount": 0
+    },
+    "panels": [],
+    "maxRadius": 228.36,
+    "maxHeight": 95.88,
+    "fixedBeams": null
+  },
+  "appVersion": "StarShade Linkage Lab v2.0",
+  "exportType": "unified",
+  "summary": {
+    "modules": 8,
+    "mode": "cylinder",
+    "foldAngle": 134.9,
+    "panelCount": 0,
+    "totalWatts": 0,
+    "structureDimensions": {
+      "maxRadius": 228.4,
+      "maxHeight": 95.9
+    }
+  }
+}

@@ -13198,6 +13198,77 @@ function generateReciprocalSupportBolts(data) {
 }
 
 /**
+ * Translates all position-bearing fields in a geometry data object by (-dx, 0, -dz).
+ * Creates new spread-cloned objects so the solver cache is never mutated.
+ * Used to re-center the ring at world origin after every solve, keeping the IBC
+ * at a fixed position while the structure expands symmetrically from both sides.
+ *
+ * @param {Object} data  - Geometry data (mutates arrays in-place, but each element is a new object)
+ * @param {number} dx    - X shift to subtract
+ * @param {number} dz    - Z shift to subtract
+ */
+function shiftGeometryXZ(data, dx, dz) {
+    if (!dx && !dz) return;
+
+    // Shift a single {x,y,z} point (returns a new object, Y is unchanged)
+    const sp = (p) => p ? { ...p, x: p.x - dx, z: p.z - dz } : p;
+
+    // Beams (includes support beams merged in via data.beams.concat)
+    data.beams = (data.beams || []).map(b => !b ? b : {
+        ...b,
+        corners: b.corners ? b.corners.map(sp) : b.corners,
+        center:  sp(b.center),
+        p1:      sp(b.p1),
+        p2:      sp(b.p2),
+    });
+
+    // Brackets
+    data.brackets = (data.brackets || []).map(br => !br ? br : {
+        ...br,
+        pos:       sp(br.pos),
+        bottomPos: br.bottomPos ? sp(br.bottomPos) : br.bottomPos,
+    });
+
+    // Bolts
+    data.bolts = (data.bolts || []).map(bolt => !bolt ? bolt : {
+        ...bolt,
+        center: sp(bolt.center),
+        start:  bolt.start ? sp(bolt.start) : bolt.start,
+        end:    bolt.end   ? sp(bolt.end)   : bolt.end,
+    });
+
+    // Washers
+    data.washers = (data.washers || []).map(w => !w ? w : {
+        ...w,
+        center: sp(w.center),
+    });
+
+    // Support beams sub-array (elements are the same objects now in data.beams, but keep
+    // the array reference consistent so callers iterating data.supportBeams also get shifted data)
+    if (data.supportBeams) {
+        data.supportBeams = data.supportBeams.map(b => !b ? b : {
+            ...b,
+            corners: b.corners ? b.corners.map(sp) : b.corners,
+            center:  sp(b.center),
+            p1:      sp(b.p1),
+            p2:      sp(b.p2),
+        });
+    }
+
+    // Solar panels
+    data.panels = (data.panels || []).map(panel => !panel ? panel : {
+        ...panel,
+        corners: panel.corners ? panel.corners.map(sp) : panel.corners,
+        center:  sp(panel.center),
+    });
+
+    // Canopy metadata (center used for stats/display)
+    if (data.canopy && data.canopy.center) {
+        data.canopy = { ...data.canopy, center: sp(data.canopy.center) };
+    }
+}
+
+/**
  * Builds the observed LinkageLab geometry component set.
  * This keeps display, JSON snapshots, simulator export, and GLB export from drifting apart.
  */
@@ -13279,6 +13350,31 @@ function buildLinkageGeometry(options = {}) {
     data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
     data.structureCenter = data.structureBounds.center;
     data.fullBounds = calculateBeamBounds(data.beams);
+
+    // Anchor the IBC at the ring center of the fully-deployed configuration.
+    // By using a CONSTANT shift (the deployed ring center, not the current frame's center),
+    // the IBC stays fixed at world origin while the folded structure sits off to one side,
+    // then sweeps around and wraps around the IBC as it deploys.
+    if (!state._deployedRingCenter) {
+        // Compute the bbox center of the ring at the fully-closed (deployed) fold angle.
+        // getOptimalClosedAngleForAnimation uses only calculateJointPositions, no recursion risk.
+        const deployedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
+            ? getOptimalClosedAngleForAnimation()
+            : foldAngle;
+        const deployedBase = solveLinkage(deployedAngle);
+        const deployedBounds = calculateBeamBounds(deployedBase.beams, { mainStructureOnly: true });
+        state._deployedRingCenter = deployedBounds.center;
+    }
+    const _shiftX = state._deployedRingCenter.x;
+    const _shiftZ = state._deployedRingCenter.z;
+    if (_shiftX !== 0 || _shiftZ !== 0) {
+        shiftGeometryXZ(data, _shiftX, _shiftZ);
+        // Recompute bounds after the constant shift
+        data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+        data.structureCenter = data.structureBounds.center;
+        data.fullBounds = calculateBeamBounds(data.beams);
+    }
+
     return data;
 }
 
@@ -19445,56 +19541,113 @@ function savePreset() {
 }
 
 /**
- * Loads a preset
+ * Loads a preset — handles both built-in file presets (value starts with "builtin:")
+ * and user presets stored in localStorage.
  */
-function loadPreset(name) {
-    const preset = localStorage.getItem(`linkageLab_preset_${name}`);
+function loadPreset(value) {
+    if (value.startsWith('builtin:')) {
+        const filename = value.slice('builtin:'.length);
+        fetch(`configs/${filename}`)
+            .then(r => {
+                if (!r.ok) throw new Error('Preset file not found');
+                return r.json();
+            })
+            .then(config => {
+                applyConfig(config);
+                saveStateToHistory();
+                const select = document.getElementById('preset-select');
+                const label = select.options[select.selectedIndex]
+                    ? select.options[select.selectedIndex].textContent
+                    : filename;
+                showToast(`Preset "${label}" loaded`, 'info');
+            })
+            .catch(() => showToast('Error loading preset', 'error'));
+        return;
+    }
+
+    const preset = localStorage.getItem(`linkageLab_preset_${value}`);
     if (!preset) {
         showToast('Preset not found', 'error');
         return;
     }
-    
     try {
         const config = JSON.parse(preset);
         applyConfig(config);
         saveStateToHistory();
-        showToast(`Preset "${config.name || name}" loaded`, 'info');
+        showToast(`Preset "${config.name || value}" loaded`, 'info');
     } catch (error) {
         showToast('Error loading preset', 'error');
     }
 }
 
 /**
- * Deletes a preset
+ * Deletes a user preset. Built-in presets cannot be deleted.
  */
 function deletePreset() {
     const select = document.getElementById('preset-select');
-    const name = select.value;
-    if (!name) {
+    const value = select.value;
+    if (!value) {
         showToast('No preset selected', 'error');
         return;
     }
-    
-    if (confirm(`Delete preset "${name}"?`)) {
-        localStorage.removeItem(`linkageLab_preset_${name}`);
+
+    if (value.startsWith('builtin:')) {
+        showToast('Built-in presets cannot be deleted', 'error');
+        return;
+    }
+
+    const displayName = select.options[select.selectedIndex]
+        ? select.options[select.selectedIndex].textContent
+        : value;
+    if (confirm(`Delete preset "${displayName}"?`)) {
+        localStorage.removeItem(`linkageLab_preset_${value}`);
         updatePresetSelect();
         showToast('Preset deleted', 'info');
     }
 }
 
 /**
- * Updates the preset select dropdown
+ * Rebuilds the preset dropdown. Built-in presets (from configs/presets.json) are listed
+ * first in a dedicated optgroup; user presets follow in their own optgroup.
  */
-function updatePresetSelect() {
+async function updatePresetSelect() {
     const select = document.getElementById('preset-select');
-    const presets = getPresets();
     select.innerHTML = '<option value="">Select Preset...</option>';
-    presets.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p.key.replace('linkageLab_preset_', '');
-        option.textContent = p.name;
-        select.appendChild(option);
-    });
+
+    // Built-in presets from the manifest
+    try {
+        const response = await fetch('configs/presets.json');
+        if (response.ok) {
+            const builtins = await response.json();
+            if (Array.isArray(builtins) && builtins.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = 'Built-in Presets';
+                builtins.forEach(p => {
+                    const option = document.createElement('option');
+                    option.value = `builtin:${p.file}`;
+                    option.textContent = p.name;
+                    group.appendChild(option);
+                });
+                select.appendChild(group);
+            }
+        }
+    } catch (e) {
+        // No manifest found — built-in presets section simply omitted
+    }
+
+    // User presets from localStorage
+    const userPresets = getPresets();
+    if (userPresets.length > 0) {
+        const group = document.createElement('optgroup');
+        group.label = 'My Presets';
+        userPresets.forEach(p => {
+            const option = document.createElement('option');
+            option.value = p.key.replace('linkageLab_preset_', '');
+            option.textContent = p.name;
+            group.appendChild(option);
+        });
+        select.appendChild(group);
+    }
 }
 
 // ============================================================================
@@ -20597,10 +20750,14 @@ function updateIbcGlbReference(data, structureCenter) {
 
     threeRenderer.ibcReferenceGroup.visible = true;
     const pos = getStructurePlanFootprintForReference(data);
+    // Target world position (0, pos.minY, 0) — the deployed ring center.
+    // pos.centerX/Z equal sc.x/z (same bbox calculation on same beams), so using them would
+    // always cancel to zero and place the IBC at the drifting bbox center.
+    // Instead subtract sc directly so the IBC stays fixed while the ring folds away from it.
     threeRenderer.ibcReferenceGroup.position.set(
-        pos.centerX - sc.x,
+        -sc.x,
         pos.minY - sc.y,
-        pos.centerZ - sc.z
+        -sc.z
     );
     threeRenderer.ibcPivot.rotation.y = (ibc.rotationYDeg || 0) * Math.PI / 180;
 
@@ -20762,8 +20919,9 @@ function updateHumanScaleFigure(data, structureCenter) {
     labelSprite.scale.set(24, 9, 1);
     humanGroup.add(labelSprite);
     
-    // Position the human figure at the center of the structure (same footprint as IBC reference)
-    humanGroup.position.set(footprint.centerX, footprint.minY, footprint.centerZ);
+    // Position the human figure at the deployed ring center (world origin XZ),
+    // matching the IBC anchor so both stay fixed as the structure folds/deploys.
+    humanGroup.position.set(0, footprint.minY, 0);
     
     // No rotation needed - human will be visible from all angles
     humanGroup.rotation.y = 0;
@@ -21022,6 +21180,7 @@ function invalidateGeometryCache() {
     cachedGeometryHash = null;
     cachedCollisions = null;
     cachedCollisionFoldAngle = null;
+    state._deployedRingCenter = null; // invalidate IBC anchor cache
     // NOTE: rcpCrossings is intentionally NOT cleared here.
     // It encodes a fixed physical constraint (bolt hole positions) that must remain
     // stable across fold angle changes. Clear it only when the beam layout itself changes.
