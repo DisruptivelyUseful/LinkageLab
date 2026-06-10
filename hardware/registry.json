@@ -1,0 +1,65 @@
+[
+  {
+    "id": "bracket-unistrut-trolley",
+    "name": "U-Bracket (Unistrut Trolley)",
+    "type": "bracket",
+    "file": "bracket-unistrut-trolley.json",
+    "link": ""
+  },
+  {
+    "id": "bushing-516-625-125",
+    "name": "Bushing 5/16\"ID 5/8\"OD 1.25\"",
+    "type": "bushing",
+    "file": "bushing-516-625-125.json",
+    "link": ""
+  },
+  {
+    "id": "lock-washer-516-split",
+    "name": "5/16\" Split Lock Washer",
+    "type": "lockWasher",
+    "file": "lock-washer-516-split.json",
+    "link": ""
+  },
+  {
+    "id": "bolt-m8x60-button",
+    "name": "Outer V-Beam Bolt (8x60mm button)",
+    "type": "bolt",
+    "file": "bolt-m8x60-button.json",
+    "link": ""
+  },
+  {
+    "id": "bolt-half-hex-3-hpivot",
+    "name": "H-Pivot Bolt 1/2\"x3\" Hex",
+    "type": "bolt",
+    "file": "bolt-half-hex-3-hpivot.json",
+    "link": ""
+  },
+  {
+    "id": "washer-58-1316-inner",
+    "name": "Inner Washer 5/8\"ID 1-5/16\"OD",
+    "type": "washer",
+    "file": "washer-58-1316-inner.json",
+    "link": ""
+  },
+  {
+    "id": "washer-516-150-outer",
+    "name": "Outer Washer 5/16\"ID 1.5\"OD",
+    "type": "washer",
+    "file": "washer-516-150-outer.json",
+    "link": ""
+  },
+  {
+    "id": "rivet-nut-half-13",
+    "name": "1/2\"-13 Rivet Nut",
+    "type": "nut",
+    "file": "rivet-nut-half-13.json",
+    "link": ""
+  },
+  {
+    "id": "beam-outer-v-sync",
+    "name": "Outer V-Beam (sync structure)",
+    "type": "beam",
+    "file": "beam-outer-v-sync.json",
+    "link": ""
+  }
+]

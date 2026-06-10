@@ -1,0 +1,18 @@
+{
+  "id": "sunpower-maxeon-430w",
+  "name": "SunPower Maxeon 430W",
+  "label": "SunPower Maxeon 430W",
+  "wmp": 430,
+  "vmp": 39.8,
+  "voc": 47.6,
+  "isc": 11.5,
+  "imp": 10.81,
+  "widthMm": 1872,
+  "heightMm": 1032,
+  "panelLengthIn": 73.701,
+  "panelWidthIn": 40.63,
+  "panelThicknessIn": 1.5,
+  "cost": 450,
+  "weight": 77,
+  "link": ""
+}

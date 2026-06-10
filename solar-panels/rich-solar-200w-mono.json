@@ -1,0 +1,18 @@
+{
+  "id": "rich-solar-200w-mono",
+  "name": "Rich Solar 200W Mono",
+  "label": "Rich Solar 200W Mono",
+  "wmp": 200,
+  "vmp": 20.5,
+  "voc": 24.6,
+  "isc": 10.8,
+  "imp": 9.76,
+  "widthMm": 1150,
+  "heightMm": 770,
+  "panelLengthIn": 45.276,
+  "panelWidthIn": 30.315,
+  "panelThicknessIn": 1.5,
+  "cost": 150,
+  "weight": 36,
+  "link": ""
+}

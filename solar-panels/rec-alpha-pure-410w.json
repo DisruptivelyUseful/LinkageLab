@@ -1,0 +1,18 @@
+{
+  "id": "rec-alpha-pure-410w",
+  "name": "REC Alpha Pure 410W",
+  "label": "REC Alpha Pure 410W",
+  "wmp": 410,
+  "vmp": 34.2,
+  "voc": 40.5,
+  "isc": 12.7,
+  "imp": 12,
+  "widthMm": 1821,
+  "heightMm": 1016,
+  "panelLengthIn": 71.693,
+  "panelWidthIn": 40,
+  "panelThicknessIn": 1.5,
+  "cost": 350,
+  "weight": 74,
+  "link": ""
+}

@@ -1,0 +1,18 @@
+{
+  "id": "renogy-175w-mono",
+  "name": "Renogy 175W Mono",
+  "label": "Renogy 175W Mono",
+  "wmp": 175,
+  "vmp": 19.3,
+  "voc": 23,
+  "isc": 10.2,
+  "imp": 9.07,
+  "widthMm": 1580,
+  "heightMm": 700,
+  "panelLengthIn": 62.205,
+  "panelWidthIn": 27.559,
+  "panelThicknessIn": 1.5,
+  "cost": 170,
+  "weight": 32,
+  "link": ""
+}

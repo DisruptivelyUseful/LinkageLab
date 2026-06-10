@@ -1,0 +1,18 @@
+{
+  "id": "ecoflow-100w-portable",
+  "name": "EcoFlow 100W Portable",
+  "label": "EcoFlow 100W Portable",
+  "wmp": 100,
+  "vmp": 18,
+  "voc": 21.6,
+  "isc": 6.1,
+  "imp": 5.56,
+  "widthMm": 1050,
+  "heightMm": 540,
+  "panelLengthIn": 41.339,
+  "panelWidthIn": 21.26,
+  "panelThicknessIn": 1.5,
+  "cost": 85,
+  "weight": 18,
+  "link": ""
+}

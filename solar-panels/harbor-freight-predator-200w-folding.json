@@ -1,0 +1,23 @@
+﻿{
+  "id": "harbor-freight-predator-200w-folding",
+  "name": "Harbor Freight Predator 200W (4-fold)",
+  "label": "Harbor Freight Predator 200W (4-fold)",
+  "formFactor": "folding",
+  "foldCount": 4,
+  "wmp": 200,
+  "vmp": 20.0,
+  "voc": 24.0,
+  "isc": 10.5,
+  "imp": 10.0,
+  "widthMm": 539.75,
+  "heightMm": 2413,
+  "panelLengthIn": 95,
+  "panelWidthIn": 21.25,
+  "panelThicknessIn": 0.75,
+  "foldedLengthIn": 25.25,
+  "foldedWidthIn": 21.25,
+  "foldedThicknessIn": 2.5,
+  "cost": 160,
+  "weight": 36,
+  "link": "https://www.harborfreight.com/"
+}

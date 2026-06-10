@@ -1,0 +1,18 @@
+{
+  "id": "sunpower-m-series-420w",
+  "name": "SunPower M Series 420W",
+  "label": "SunPower M Series 420W",
+  "wmp": 420,
+  "vmp": 66.8,
+  "voc": 79,
+  "isc": 6.58,
+  "imp": 6.29,
+  "widthMm": 1690,
+  "heightMm": 1046,
+  "panelLengthIn": 66.535,
+  "panelWidthIn": 41.181,
+  "panelThicknessIn": 1.5,
+  "cost": 400,
+  "weight": 76,
+  "link": ""
+}

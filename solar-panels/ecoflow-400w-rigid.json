@@ -1,0 +1,18 @@
+{
+  "id": "ecoflow-400w-rigid",
+  "name": "EcoFlow 400W Rigid",
+  "label": "EcoFlow 400W Rigid",
+  "wmp": 400,
+  "vmp": 41,
+  "voc": 48,
+  "isc": 11,
+  "imp": 9.76,
+  "widthMm": 1723,
+  "heightMm": 1134,
+  "panelLengthIn": 67.835,
+  "panelWidthIn": 44.646,
+  "panelThicknessIn": 1.5,
+  "cost": 300,
+  "weight": 72,
+  "link": ""
+}

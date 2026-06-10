@@ -1,0 +1,18 @@
+{
+  "id": "rich-solar-400w-bifacial",
+  "name": "Rich Solar 400W Bifacial",
+  "label": "Rich Solar 400W Bifacial",
+  "wmp": 400,
+  "vmp": 40,
+  "voc": 48,
+  "isc": 11.5,
+  "imp": 10,
+  "widthMm": 1722,
+  "heightMm": 1134,
+  "panelLengthIn": 67.795,
+  "panelWidthIn": 44.646,
+  "panelThicknessIn": 1.5,
+  "cost": 250,
+  "weight": 72,
+  "link": ""
+}

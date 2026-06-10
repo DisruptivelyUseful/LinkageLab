@@ -1,0 +1,18 @@
+{
+  "id": "rivet-nut-half-13",
+  "name": "1/2\"-13 Rivet Nut",
+  "type": "nut",
+  "label": "1/2\"-13 Rivet Nut",
+  "cost": 0.40,
+  "link": "",
+  "params": {
+    "id": 0.5,
+    "od": 0.6693,
+    "length": 0.5,
+    "flangeOd": 0.7087,
+    "flangeThickness": 0.0394,
+    "style": "rivet",
+    "thread": "1/2-13"
+  },
+  "extras": {}
+}

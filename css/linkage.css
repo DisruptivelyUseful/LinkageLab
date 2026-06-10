@@ -1652,3 +1652,38 @@ input.error {
 .hw-part-card .hw-part-type { user-select: none; }
 .hw-part-card.hw-drop-before { box-shadow: inset 0 3px 0 0 var(--clr-primary); }
 .hw-part-card.hw-drop-after { box-shadow: inset 0 -3px 0 0 var(--clr-primary); }
+
+.hw-preset-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    padding: 0 2px;
+}
+.hw-preset-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    flex: 0 0 52px;
+}
+.hw-preset-select {
+    flex: 1;
+    min-width: 0;
+    background: var(--bg-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 4px 6px;
+    font-size: 0.72rem;
+}
+.hw-preset-save { flex: 0 0 auto; }
+.hw-preset-link {
+    font-size: 0.65rem;
+    color: var(--clr-primary);
+    text-decoration: none;
+    flex: 0 0 auto;
+}
+.sp-preset-row { margin-bottom: 10px; }
+.sp-form-factor-row { margin-bottom: 8px; }
+.sp-folding-controls { margin-bottom: 10px; padding-bottom: 4px; border-bottom: 1px solid var(--border-color); }

@@ -1,0 +1,14 @@
+{
+  "id": "washer-58-1316-inner",
+  "name": "Inner Washer 5/8\"ID 1-5/16\"OD",
+  "type": "washer",
+  "label": "Inner Washer 5/8\"ID 1-5/16\"OD",
+  "cost": 0.08,
+  "link": "",
+  "params": {
+    "id": 0.625,
+    "od": 1.3125,
+    "thickness": 0.0625
+  },
+  "extras": {}
+}

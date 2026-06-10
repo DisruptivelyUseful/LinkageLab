@@ -1,0 +1,18 @@
+{
+  "id": "alrska-120w-rigid",
+  "name": "Alrska 120W Rigid",
+  "label": "Alrska 120W Rigid",
+  "wmp": 120,
+  "vmp": 20,
+  "voc": 24,
+  "isc": 6.5,
+  "imp": 6,
+  "widthMm": 1200,
+  "heightMm": 600,
+  "panelLengthIn": 47.244,
+  "panelWidthIn": 23.622,
+  "panelThicknessIn": 1.5,
+  "cost": 90,
+  "weight": 22,
+  "link": ""
+}

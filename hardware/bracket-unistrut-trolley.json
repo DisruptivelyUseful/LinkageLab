@@ -1,0 +1,27 @@
+{
+  "id": "bracket-unistrut-trolley",
+  "name": "U-Bracket (Unistrut Trolley)",
+  "type": "bracket",
+  "label": "U-Bracket (Unistrut Trolley)",
+  "cost": 5.0,
+  "link": "",
+  "params": {
+    "useGlb": true,
+    "height": 3.77,
+    "width": 2.15,
+    "depth": 1.57,
+    "wallThickness": 0.12,
+    "holeDiameter": 0.41,
+    "bottomLip": 1.01,
+    "sideHoleFromTop": 1.1875,
+    "cutoffHeight": 0,
+    "glbScaleMul": 1,
+    "glbRotX": 0,
+    "glbRotY": 90,
+    "glbRotZ": 0,
+    "posX": 0,
+    "posY": 0,
+    "posZ": 0
+  },
+  "extras": {}
+}

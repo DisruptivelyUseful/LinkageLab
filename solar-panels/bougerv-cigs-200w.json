@@ -1,0 +1,18 @@
+{
+  "id": "bougerv-cigs-200w",
+  "name": "BougeRV CIGS 200W",
+  "label": "BougeRV CIGS 200W",
+  "wmp": 200,
+  "vmp": 28,
+  "voc": 34,
+  "isc": 7.5,
+  "imp": 7.14,
+  "widthMm": 1420,
+  "heightMm": 1060,
+  "panelLengthIn": 55.906,
+  "panelWidthIn": 41.732,
+  "panelThicknessIn": 1.5,
+  "cost": 280,
+  "weight": 36,
+  "link": ""
+}

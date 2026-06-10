@@ -1,0 +1,19 @@
+{
+  "id": "alrska-flexible-100w",
+  "name": "Alrska Flexible 100W",
+  "label": "Alrska Flexible 100W",
+  "wmp": 100,
+  "vmp": 18,
+  "voc": 21.6,
+  "isc": 6.1,
+  "imp": 5.56,
+  "widthMm": 1050,
+  "heightMm": 540,
+  "panelLengthIn": 41.339,
+  "panelWidthIn": 21.26,
+  "panelThicknessIn": 1.5,
+  "cost": 80,
+  "weight": 18,
+  "link": "",
+  "formFactor": "flexible"
+}

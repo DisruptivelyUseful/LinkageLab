@@ -107,6 +107,7 @@
             <label class="chk-label"><input type="checkbox" id="chk-collide"> Physics Check</label>
             <label class="chk-label"><input type="checkbox" id="chk-brack" checked> Brackets</label>
             <label class="chk-label"><input type="checkbox" id="chk-bolts"> Bolts</label>
+            <label class="chk-label"><input type="checkbox" id="chk-hw-full-detail"> Full Detail</label>
         </div>
         
         <div class="ctrl-row" style="padding: 6px 0;">
@@ -819,8 +820,46 @@
                             Top Panels
                         </div>
                         <div class="panel-accordion-body">
+                            <!-- Panel preset catalog -->
+                            <div class="sp-preset-row hw-preset-row" id="sp-preset-row-top">
+                                <span class="hw-preset-label">Panel</span>
+                                <select id="sel-panel-preset-top" class="hw-preset-select" title="Select a solar panel from the catalog"></select>
+                                <button type="button" id="btn-save-panel-preset-top" class="hw-mini-btn hw-preset-save" title="Save current specs as a reusable preset">Save</button>
+                                <a id="link-panel-preset-top" class="hw-preset-link" style="display:none" target="_blank" rel="noopener noreferrer">Link</a>
+                            </div>
+                            <div class="ctrl-row sp-form-factor-row">
+                                <div class="ctrl-head"><span>Type</span></div>
+                                <select id="sel-panel-form-top" class="hw-preset-select" title="Panel form factor">
+                                    <option value="framed">Framed (rigid aluminum)</option>
+                                    <option value="flexible">Flexible (thin film)</option>
+                                    <option value="folding">Folding (multi-segment)</option>
+                                </select>
+                            </div>
+                            <div id="sp-folding-controls-top" class="sp-folding-controls" style="display:none;">
+                                <div class="section-label">Folding</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Deploy</span><span style="font-size:0.75rem; color:#8899a6;">%</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-fold-deploy-top" min="0" max="100" step="1" value="100">
+                                        <input type="number" id="nb-fold-deploy-top" min="0" max="100" step="1" value="100">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Folds</span></div>
+                                    <select id="sel-fold-count-top" class="hw-preset-select" style="max-width:120px;">
+                                        <option value="2">2-fold</option>
+                                        <option value="4" selected>4-fold</option>
+                                    </select>
+                                </div>
+                                <div class="section-label">Folded Size (stowed)</div>
+                                <div class="mini-input-grid">
+                                    <div class="mini-input"><span>L</span><input type="number" id="nb-folded-length-top" step="0.01" value="25.25"><span>in</span></div>
+                                    <div class="mini-input"><span>W</span><input type="number" id="nb-folded-width-top" step="0.01" value="21.25"><span>in</span></div>
+                                    <div class="mini-input"><span>H</span><input type="number" id="nb-folded-thick-top" step="0.01" value="2.5"><span>in</span></div>
+                                </div>
+                            </div>
                             <!-- Dimensions -->
-                            <div class="section-label">Dimensions</div>
+                            <div class="section-label" id="sp-dim-label-top">Dimensions</div>
                             <div class="ctrl-row">
                                 <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
@@ -858,8 +897,13 @@
                                 <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-top" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
                                 <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-top" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
                             </div>
-                            
-                            <!-- Layout Mode -->
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Weight</span><span style="font-size:0.75rem; color:#8899a6;">lbs</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-weight-top" min="5" max="150" step="1" value="45">
+                                    <input type="number" id="nb-panel-weight-top" min="1" max="500" step="0.1" value="45">
+                                </div>
+                            </div>
                             <div class="section-label">Layout</div>
                             <div class="ctrl-row" style="position:relative; z-index:1000; isolation:isolate;">
                                 <select id="sel-panel-layout" style="flex:1; padding:6px 10px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer; -webkit-appearance:menulist; appearance:menulist;">
@@ -1037,8 +1081,46 @@
                             Side / Arch Panels
                         </div>
                         <div class="panel-accordion-body">
+                            <!-- Panel preset catalog -->
+                            <div class="sp-preset-row hw-preset-row" id="sp-preset-row-side">
+                                <span class="hw-preset-label">Panel</span>
+                                <select id="sel-panel-preset-side" class="hw-preset-select" title="Select a solar panel from the catalog"></select>
+                                <button type="button" id="btn-save-panel-preset-side" class="hw-mini-btn hw-preset-save" title="Save current specs as a reusable preset">Save</button>
+                                <a id="link-panel-preset-side" class="hw-preset-link" style="display:none" target="_blank" rel="noopener noreferrer">Link</a>
+                            </div>
+                            <div class="ctrl-row sp-form-factor-row">
+                                <div class="ctrl-head"><span>Type</span></div>
+                                <select id="sel-panel-form-side" class="hw-preset-select" title="Panel form factor">
+                                    <option value="framed">Framed (rigid aluminum)</option>
+                                    <option value="flexible">Flexible (thin film)</option>
+                                    <option value="folding">Folding (multi-segment)</option>
+                                </select>
+                            </div>
+                            <div id="sp-folding-controls-side" class="sp-folding-controls" style="display:none;">
+                                <div class="section-label">Folding</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Deploy</span><span style="font-size:0.75rem; color:#8899a6;">%</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-fold-deploy-side" min="0" max="100" step="1" value="100">
+                                        <input type="number" id="nb-fold-deploy-side" min="0" max="100" step="1" value="100">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Folds</span></div>
+                                    <select id="sel-fold-count-side" class="hw-preset-select" style="max-width:120px;">
+                                        <option value="2">2-fold</option>
+                                        <option value="4" selected>4-fold</option>
+                                    </select>
+                                </div>
+                                <div class="section-label">Folded Size (stowed)</div>
+                                <div class="mini-input-grid">
+                                    <div class="mini-input"><span>L</span><input type="number" id="nb-folded-length-side" step="0.01" value="25.25"><span>in</span></div>
+                                    <div class="mini-input"><span>W</span><input type="number" id="nb-folded-width-side" step="0.01" value="21.25"><span>in</span></div>
+                                    <div class="mini-input"><span>H</span><input type="number" id="nb-folded-thick-side" step="0.01" value="2.5"><span>in</span></div>
+                                </div>
+                            </div>
                             <!-- Dimensions -->
-                            <div class="section-label">Dimensions</div>
+                            <div class="section-label" id="sp-dim-label-side">Dimensions</div>
                             <div class="ctrl-row">
                                 <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
                                 <div class="input-wrap">
@@ -1075,6 +1157,13 @@
                                 <div class="mini-input"><span>VMP</span><input type="number" id="nb-panel-vmp-side" min="0" max="100" step="0.1" value="41.5"><span>V</span></div>
                                 <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-side" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
                                 <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-side" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Weight</span><span style="font-size:0.75rem; color:#8899a6;">lbs</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-weight-side" min="5" max="150" step="1" value="45">
+                                    <input type="number" id="nb-panel-weight-side" min="1" max="500" step="0.1" value="45">
+                                </div>
                             </div>
                             
                             <!-- Grid -->
@@ -1151,6 +1240,7 @@
                         <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
                             <span style="color:#8899a6;">Panels:</span><span id="stat-panel-count">0</span>
                             <span style="color:#8899a6;">Panel Area:</span><span id="stat-panel-area">0 sq ft</span>
+                            <span style="color:#8899a6;">Array Weight:</span><span id="stat-panel-weight">0 lbs</span>
                             <span style="color:#8899a6;">Canopy Area:</span><span id="stat-canopy-area">0 sq ft</span>
                             <span style="color:#8899a6;">Coverage:</span><span id="stat-coverage">0%</span>
                         </div>
@@ -1941,6 +2031,9 @@ const MIN_FOLD_ANGLE = 5 * Math.PI / 180;
 /** Maximum fold angle in radians (175 degrees) */
 const MAX_FOLD_ANGLE = 175 * Math.PI / 180;
 
+/** Duration for folding-panel deploy after structure is fully open (ms at speed 1.0) */
+const FOLDING_PANEL_DEPLOY_MS = 1500;
+
 /** Default camera distance */
 const DEFAULT_CAM_DIST = 450;
 
@@ -2401,6 +2494,7 @@ const threeRenderer = {
     bracketGroup: null,    // Group for bracket meshes
     boltGroup: null,       // Group for bolt meshes
     washerGroup: null,    // Group for washer meshes
+    hardwareAssemblyGroup: null, // Full-detail hardware assembly instances
     structureGroup: null,  // Wrapper group for structure meshes (beams, brackets, bolts - for structure rotation)
     panelGroupRoot: null,  // Root group for panels (separate from structure rotation)
     actuatorLineGroup: null,  // Group for actuator visualization lines
@@ -2536,6 +2630,7 @@ function initThreeJS() {
     threeRenderer.bracketGroup = new THREE.Group();
     threeRenderer.boltGroup = new THREE.Group();
     threeRenderer.washerGroup = new THREE.Group();
+    threeRenderer.hardwareAssemblyGroup = new THREE.Group();
     
     // Create wrapper group for structure rotation (beams, brackets, bolts only - not panels)
     threeRenderer.structureGroup = new THREE.Group();
@@ -2543,6 +2638,7 @@ function initThreeJS() {
     threeRenderer.structureGroup.add(threeRenderer.bracketGroup);
     threeRenderer.structureGroup.add(threeRenderer.boltGroup);
     threeRenderer.structureGroup.add(threeRenderer.washerGroup);
+    threeRenderer.structureGroup.add(threeRenderer.hardwareAssemblyGroup);
     
     // Create separate root group for panels (not affected by structure rotation)
     threeRenderer.panelGroupRoot = new THREE.Group();
@@ -3634,6 +3730,9 @@ function createBeamMesh(beam, isColliding = false, allBolts = null) {
  * - Dark aluminum frame edges
  */
 function createPanelMesh(panel) {
+    if (panel.formFactor === 'folding') return createFoldingPanelMesh(panel);
+    if (panel.formFactor === 'flexible') return createFlexiblePanelMesh(panel);
+
     const group = new THREE.Group();
     const c = panel.corners;
     
@@ -4316,7 +4415,9 @@ function hwBindNumberScrub(input, onChange) {
         e.preventDefault();
         scrub.val += steps * scrub.step;
         scrub.x = e.clientX;
-        const decimals = (input.step && String(input.step).includes('.')) ? String(input.step).split('.')[1].length : 2;
+        const decimals = input.dataset.decimals != null
+            ? parseInt(input.dataset.decimals, 10)
+            : ((input.step && String(input.step).includes('.')) ? String(input.step).split('.')[1].length : 2);
         input.value = scrub.val.toFixed(decimals);
         onChange(parseFloat(input.value) || 0);
     });
@@ -4471,6 +4572,18 @@ function hwGetBracketStackOrigin(bracketPart, axisKey) {
 }
 
 // Default parameter sets used when adding a new part of a given type in the editor.
+function getRivetNutDefaults() {
+    return {
+        id: 0.5,
+        od: 17 * HW_MM_TO_IN,
+        length: 0.5,
+        flangeOd: 18 * HW_MM_TO_IN,
+        flangeThickness: HW_MM_TO_IN,
+        style: 'rivet',
+        thread: '1/2-13'
+    };
+}
+
 function getHardwarePartDefaults(type) {
     switch (type) {
         case 'bolt':
@@ -4483,10 +4596,12 @@ function getHardwarePartDefaults(type) {
             return { id: 0.3125, od: 0.5, thickness: 0.078, style: 'split' };
         case 'nut':
             return { id: 0.5, widthAcrossFlats: 0.75, height: 0.4375, style: 'hex', thread: '' };
+        case 'rivetNut':
+            return getRivetNutDefaults();
         case 'bracket':
             return { useGlb: true, height: 3.77, width: 2.15, depth: 1.57, wallThickness: 0.12, holeDiameter: 0.41, bottomLip: 1.01, sideHoleFromTop: 1.1875, cutoffHeight: 0, glbScaleMul: 1, glbRotX: 0, glbRotY: 90, glbRotZ: 0, posX: 0, posY: 0, posZ: 0 };
         case 'beam':
-            return { width: 3.5, thickness: 1.5, length: 96, holeOffset: 1.5, holeDiameter: 8 / 25.4, rotDeg: 90, syncStructure: true, color: 0x8B6914 };
+            return { width: 3.5, thickness: 1.5, length: 96, holeOffset: 1.5, holeDiameter: 8 / 25.4, holeAlign: 'near', rotDeg: 90, syncStructure: true, color: 0x8B6914 };
         default:
             return {};
     }
@@ -4582,6 +4697,10 @@ function ensureHardwareAssemblies() {
                 if (p.params.rotDeg == null) p.params.rotDeg = 90;
                 if (p.params.holeOffset == null) p.params.holeOffset = state.vertEndOffset || 1.5;
                 if (p.params.holeDiameter == null) p.params.holeDiameter = 8 / 25.4;
+                if (p.params.holeAlign == null) {
+                    const hasBracket = asm.parts.some(x => x.type === 'bracket');
+                    p.params.holeAlign = hasBracket ? 'near' : 'center';
+                }
             }
         });
         if (asm.id === 'outerVBeam' && !asm.parts.some(p => p.id === 'r-beam')) {
@@ -4825,12 +4944,15 @@ function createHWBeamMesh(p) {
     const L = Math.max(2, p.length || 96);
     const holeOff = Math.max(0.25, p.holeOffset != null ? p.holeOffset : (state.vertEndOffset || 1.5));
     const holeR = Math.max(0.04, (p.holeDiameter || (8 / 25.4)) / 2);
+    const holeAlign = p.holeAlign || 'near';
     const rotDeg = p.rotDeg != null ? p.rotDeg : 90;
     const color = p.color || 0x8B6914;
     const mat = getCachedMaterial('hw_beam_' + color, () => new THREE.MeshStandardMaterial({
         color, metalness: 0.05, roughness: 0.85,
         transparent: true, opacity: 0.38, depthWrite: false, side: THREE.DoubleSide
     }));
+
+    const alignHoleX = hwGetBeamAlignHoleX(p, L, holeOff);
 
     // Cross-section in shape XY: X = beam length, Y = width. Extruded along Z (= bolt-axis thickness).
     // After rotateX(-90°): length→X, thickness→Y (stack axis), width→Z.
@@ -4849,11 +4971,14 @@ function createHWBeamMesh(p) {
     };
     addHole(holeOff);
     addHole(L - holeOff);
+    if (holeAlign === 'center' && Math.abs(alignHoleX - holeOff) > holeR * 2 && Math.abs(alignHoleX - (L - holeOff)) > holeR * 2) {
+        addHole(alignHoleX);
+    }
 
     const geo = new THREE.ExtrudeGeometry(shape, { depth: T, bevelEnabled: false });
     geo.rotateX(-Math.PI / 2);
-    // Anchor stack origin at the near hole (vertEndOffset from beam end), not at the beam tip.
-    geo.translate(-holeOff, 0, 0);
+    // Anchor stack origin at the selected alignment hole (near end, far end, or center).
+    geo.translate(-alignHoleX, 0, 0);
     inner.add(new THREE.Mesh(geo, mat));
 
     // Center bolt axis (mid-thickness) on local origin for stack alignment.
@@ -4863,6 +4988,15 @@ function createHWBeamMesh(p) {
     group.add(inner);
     group.userData.axialLength = T;
     return group;
+}
+
+function hwGetBeamAlignHoleX(p, length, holeOff) {
+    const L = length != null ? length : Math.max(2, p.length || 96);
+    const off = holeOff != null ? holeOff : Math.max(0.25, p.holeOffset != null ? p.holeOffset : (state.vertEndOffset || 1.5));
+    const align = p.holeAlign || 'near';
+    if (align === 'center') return L / 2;
+    if (align === 'far') return L - off;
+    return off;
 }
 
 function hwSyncBeamPartFromState(part) {
@@ -5009,6 +5143,9 @@ function createHWBracketMesh(p) {
             if (document.getElementById('hardware-detail-modal')?.classList.contains('visible')) {
                 buildHardwareAssemblyScene();
             }
+            if (state.showHardwareFullDetail) {
+                requestRender();
+            }
         });
     }
     return buildParametricBracketMesh(p);
@@ -5028,6 +5165,17 @@ function createHardwarePartMesh(part) {
     }
     g.userData.partId = part.id;
     return g;
+}
+
+/** Beam rotDeg is applied in part-local space; mirrored axes flip stack direction, so reflect rotDeg about 90° on mirror.to. */
+function hwCreatePartMeshForAxis(part, axisKey, assembly) {
+    if (part.type === 'beam' && assembly && assembly.mirror && axisKey === assembly.mirror.to && part.params) {
+        const rotDeg = part.params.rotDeg != null ? part.params.rotDeg : 90;
+        const g = createHWBeamMesh(Object.assign({}, part.params, { rotDeg: 180 - rotDeg }));
+        g.userData.partId = part.id;
+        return g;
+    }
+    return createHardwarePartMesh(part);
 }
 
 // ---------------------------------------------------------------------------
@@ -5174,20 +5322,155 @@ function getActiveHardwareAssembly() {
     return ha.assemblies[ha.activeId];
 }
 
-function buildHardwareAssemblyScene() {
-    if (!hwDetail.initialized) return;
-    const group = hwDetail.assemblyGroup;
-    clearGroup(group);
+function hwUseFullDetailAssemblies() {
+    if (!state.showHardwareFullDetail) return false;
+    ensureHardwareAssemblies();
+    const asm = state.hardwareAssemblies.assemblies.outerVBeam;
+    return !!(asm && asm.detailed && asm.parts && asm.parts.length);
+}
 
-    const assembly = getActiveHardwareAssembly();
-    if (!assembly) return;
-    const explode = hwExplodeFactor();
-    const gap = assembly.explodeGap || 1.4;
+function hwGetOuterVBeamAssembly() {
+    ensureHardwareAssemblies();
+    return state.hardwareAssemblies.assemblies.outerVBeam;
+}
 
-    assembly.parts.filter(p => p.type === 'beam').forEach(p => {
-        hwSyncBeamPartFromState(p);
-        hwSyncHBeamPartFromState(p);
+function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPivot) {
+    placements.push({
+        assemblyId: 'outerVBeam',
+        pos: { x: bracketData.pos.x, y: bracketData.pos.y, z: bracketData.pos.z },
+        bottomY: bracketData.bottomY,
+        isBottom: bracketData.isBottom,
+        beamDir: { x: bracketData.beamDir.x, y: bracketData.beamDir.y, z: bracketData.beamDir.z },
+        right: { x: bracketData.right.x, y: bracketData.right.y, z: bracketData.right.z },
+        vBoltDir: { x: vBoltDir.x, y: vBoltDir.y, z: vBoltDir.z },
+        sideHoleY: bracketData.sideHoleY,
+        vBoltPivot: vBoltPivot ? { x: vBoltPivot.x, y: vBoltPivot.y, z: vBoltPivot.z } : null
     });
+}
+
+function hwComputeAssemblyQuaternion(placement) {
+    const beamDir = vNorm(placement.beamDir);
+    let right = vNorm(placement.right);
+    if (vMag(right) < 0.001) right = vNorm(vCross(beamDir, { x: 0, y: 1, z: 0 }));
+
+    let hwX, hwY, hwZ, quaternion;
+
+    if (!placement.bottomPos && vMag(beamDir) > 0.001) {
+        // Horizontal cylinder mode: match createBracketMesh Y-rotation, then map V-bolt axis to +X.
+        const beamX = beamDir.x, beamZ = beamDir.z;
+        const yRot = Math.hypot(beamX, beamZ) > 0.001 ? Math.atan2(beamX, beamZ) : 0;
+        quaternion = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yRot);
+        if (!placement.isBottom) {
+            quaternion.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI));
+        }
+        const basis = new THREE.Matrix4().makeRotationFromQuaternion(quaternion);
+        const legacyX = new THREE.Vector3(1, 0, 0).applyMatrix4(basis);
+        const legacyY = new THREE.Vector3(0, 1, 0).applyMatrix4(basis);
+        hwX = vNorm(placement.vBoltDir);
+        if (vMag(hwX) < 0.001) hwX = { x: legacyX.x, y: legacyX.y, z: legacyX.z };
+        if (hwX.x * legacyX.x + hwX.y * legacyX.y + hwX.z * legacyX.z < 0) hwX = vScale(hwX, -1);
+        hwY = { x: legacyY.x, y: legacyY.y, z: legacyY.z };
+        hwZ = vNorm(vCross(hwX, hwY));
+        if (vMag(hwZ) < 0.001) hwZ = vNorm(beamDir);
+        hwY = vNorm(vCross(hwZ, hwX));
+    } else {
+        // Arch / transformed mode: full 3D frame from bracket vectors.
+        let up = vNorm(vCross(right, beamDir));
+        if (!placement.isBottom) up = vScale(up, -1);
+        hwX = vNorm(placement.vBoltDir);
+        if (vMag(hwX) < 0.001) hwX = right;
+        if (hwX.x * right.x + hwX.y * right.y + hwX.z * right.z < 0) hwX = vScale(hwX, -1);
+        hwY = up;
+        if (vMag(hwY) < 0.001) hwY = { x: 0, y: 1, z: 0 };
+        hwZ = vNorm(vCross(hwX, hwY));
+        if (vMag(hwZ) < 0.001) hwZ = beamDir;
+        hwY = vNorm(vCross(hwZ, hwX));
+    }
+
+    const matrix = new THREE.Matrix4();
+    matrix.set(
+        hwX.x, hwY.x, hwZ.x, 0,
+        hwX.y, hwY.y, hwZ.y, 0,
+        hwX.z, hwY.z, hwZ.z, 0,
+        0, 0, 0, 1
+    );
+    quaternion = new THREE.Quaternion().setFromRotationMatrix(matrix);
+
+    const manualYRot = (state.bracketZRotation || 0) * (Math.PI / 180);
+    if (Math.abs(manualYRot) > 0.001) {
+        const yAxis = new THREE.Vector3(hwY.x, hwY.y, hwY.z);
+        const manualQuat = new THREE.Quaternion().setFromAxisAngle(yAxis, manualYRot);
+        quaternion.multiply(manualQuat);
+    }
+
+    return { quaternion, hwX, hwY, hwZ };
+}
+
+function hwComputeOuterAssemblyTransform(placement) {
+    const asm = hwGetOuterVBeamAssembly();
+    const bracketPart = asm && asm.parts.find(p => p.type === 'bracket');
+    const bp = bracketPart && bracketPart.params ? bracketPart.params : {};
+    const { quaternion } = hwComputeAssemblyQuaternion(placement);
+
+    const applyLocalNudge = (posVec) => {
+        const nudge = new THREE.Vector3(bp.posX || 0, bp.posY || 0, bp.posZ || 0);
+        nudge.applyQuaternion(quaternion);
+        posVec.add(nudge);
+        return posVec;
+    };
+
+    // Anchor bracket side hole to the V-stack bolt pivot (exact horizontal stack alignment).
+    if (placement.vBoltPivot) {
+        const bracketHoleY = hwGetBracketHoleY(bracketPart);
+        const sideHoleLocal = new THREE.Vector3(0, bracketHoleY, 0);
+        sideHoleLocal.applyQuaternion(quaternion);
+        const position = applyLocalNudge(new THREE.Vector3(
+            placement.vBoltPivot.x - sideHoleLocal.x,
+            placement.vBoltPivot.y - sideHoleLocal.y,
+            placement.vBoltPivot.z - sideHoleLocal.z
+        ));
+        return { position: { x: position.x, y: position.y, z: position.z }, quaternion };
+    }
+
+    // Fallback: seat bracket base on the horizontal ring (matches createBracketMesh).
+    const bracketH = bp.height || 3.77;
+    const wallT = bp.wallThickness || 0.12;
+    const centerOff = bracketH / 2 + wallT / 2;
+    const { hwY } = hwComputeAssemblyQuaternion(placement);
+    const up = new THREE.Vector3(hwY.x, hwY.y, hwY.z);
+    let bottom;
+    if (placement.bottomPos) bottom = placement.bottomPos;
+    else {
+        bottom = {
+            x: placement.pos.x,
+            y: placement.bottomY != null ? placement.bottomY : placement.pos.y,
+            z: placement.pos.z
+        };
+    }
+    const center = applyLocalNudge(new THREE.Vector3(
+        bottom.x + up.x * centerOff,
+        bottom.y + up.y * centerOff,
+        bottom.z + up.z * centerOff
+    ));
+    return { position: { x: center.x, y: center.y, z: center.z }, quaternion };
+}
+
+function buildHardwareAssemblyGroup(assembly, options = {}) {
+    const group = new THREE.Group();
+    if (!assembly) return group;
+
+    const explode = options.explode != null ? options.explode : 0;
+    const gap = assembly.explodeGap || 1.4;
+    const selectedPartId = options.selectedPartId || null;
+    const syncFromState = options.syncFromState !== false;
+    const excludeBeams = options.excludeBeams === true;
+
+    if (syncFromState && !excludeBeams) {
+        assembly.parts.filter(p => p.type === 'beam').forEach(p => {
+            hwSyncBeamPartFromState(p);
+            hwSyncHBeamPartFromState(p);
+        });
+    }
 
     const selectedMat = () => getCachedMaterial('hw_selected', () => new THREE.MeshStandardMaterial({ color: 0xffb347, metalness: 0.6, roughness: 0.35, emissive: 0x3a2400 }));
 
@@ -5195,12 +5478,13 @@ function buildHardwareAssemblyScene() {
     const bracketHoleY = bracketPart ? hwGetBracketHoleY(bracketPart) : 0;
 
     const applySelection = (mesh, part) => {
-        if (part.id === hwDetail.selectedPartId) {
+        if (selectedPartId && part.id === selectedPartId) {
             mesh.traverse(ch => { if (ch.isMesh) ch.material = selectedMat(); });
         }
     };
 
-    // Bracket at center (optional posX/Y/Z nudge in params).
+    const shouldIncludePart = (part) => !(excludeBeams && part.type === 'beam');
+
     assembly.parts.filter(p => p.type === 'bracket').forEach(part => {
         const mesh = createHardwarePartMesh(part);
         const bp = part.params || {};
@@ -5211,7 +5495,7 @@ function buildHardwareAssemblyScene() {
     });
 
     const byAxis = {};
-    assembly.parts.filter(p => p.type !== 'bracket').forEach(part => {
+    assembly.parts.filter(p => p.type !== 'bracket' && shouldIncludePart(p)).forEach(part => {
         const ax = part.axis || 'right';
         (byAxis[ax] = byAxis[ax] || []).push(part);
     });
@@ -5245,7 +5529,7 @@ function buildHardwareAssemblyScene() {
             const partAssembledBase = stackPos;
             const len = hwGetPartAxialLength(part);
             for (let c = 0; c < qty; c++) {
-                const mesh = createHardwarePartMesh(part);
+                const mesh = hwCreatePartMeshForAxis(part, axisKey, assembly);
                 const assembledPos = hwQtyCopyAssembledPos(partAssembledBase, posAsm, len, c);
                 const explodedPos = qty > 1
                     ? hwPartCopyExplodedPos(part, stackOrigin, partRank, gap, c)
@@ -5265,6 +5549,22 @@ function buildHardwareAssemblyScene() {
             rank = partRank + 1;
         });
     });
+
+    return group;
+}
+
+function buildHardwareAssemblyScene() {
+    if (!hwDetail.initialized) return;
+    const group = hwDetail.assemblyGroup;
+    clearGroup(group);
+
+    const assembly = getActiveHardwareAssembly();
+    if (!assembly) return;
+    hwDetail.assemblyGroup.add(buildHardwareAssemblyGroup(assembly, {
+        explode: hwExplodeFactor(),
+        selectedPartId: hwDetail.selectedPartId,
+        syncFromState: true
+    }));
     hwPersistHardwareConfig();
 }
 
@@ -5322,11 +5622,371 @@ const HW_PARAM_FIELDS = {
         { key: 'length', label: 'Length (in)' },
         { key: 'holeOffset', label: 'Hole Ext (in)' },
         { key: 'holeDiameter', label: 'Hole Dia (in)' },
-        { key: 'rotDeg', label: 'Rot (deg)' }
+        { key: 'rotDeg', label: 'Rot (deg)', step: 1, decimals: 2 }
     ]
 };
 
-const HW_TYPE_LABELS = { bolt: 'Bolt', bushing: 'Bushing', washer: 'Washer', lockWasher: 'Lock Washer', nut: 'Nut', bracket: 'Bracket', beam: 'Beam' };
+const HW_TYPE_LABELS = { bolt: 'Bolt', bushing: 'Bushing', washer: 'Washer', lockWasher: 'Lock Washer', nut: 'Nut', rivetNut: 'Rivet Nut', bracket: 'Bracket', beam: 'Beam' };
+
+function hwResolveAddPartType(selectValue) {
+    if (selectValue === 'rivetNut') {
+        return {
+            type: 'nut',
+            label: '1/2"-13 Rivet Nut',
+            params: getRivetNutDefaults(),
+            cost: 0.40,
+            presetId: 'rivet-nut-half-13'
+        };
+    }
+    return {
+        type: selectValue,
+        label: HW_TYPE_LABELS[selectValue] || selectValue,
+        params: getHardwarePartDefaults(selectValue),
+        cost: 0.10
+    };
+}
+
+function hwEnsurePartBomKey(part) {
+    if (!part.bomKey) part.bomKey = part.presetId || ('bom-' + part.id);
+    return part.bomKey;
+}
+
+// ---------------------------------------------------------------------------
+// Hardware preset library (hardware/registry.json + localStorage + assemblies)
+// ---------------------------------------------------------------------------
+
+const hwPresetCatalog = { loaded: false, loading: null, builtins: [] };
+const HW_PRESET_STORAGE_KEY = 'linkageLab_hwPresetLibrary';
+
+function hwShortHash(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+    return Math.abs(h).toString(36);
+}
+
+function hwSlugifyPresetId(name) {
+    return String(name || 'preset').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'preset';
+}
+
+function hwPresetSignature(part) {
+    const p = part.params || {};
+    return [
+        part.type,
+        part.label || '',
+        part.cost || 0,
+        JSON.stringify(p),
+        part.flipAxis ? 1 : 0,
+        p.holeAlign || '',
+        p.headAtInsert ? 1 : 0
+    ].join('|');
+}
+
+function hwExtractPartExtras(part) {
+    const extras = {};
+    if (part.flipAxis) extras.flipAxis = true;
+    if (part.params && part.params.holeAlign) extras.holeAlign = part.params.holeAlign;
+    if (part.params && part.params.headAtInsert != null) extras.headAtInsert = part.params.headAtInsert;
+    if (part.type === 'beam' && part.params && part.params.syncStructure != null) extras.syncStructure = part.params.syncStructure;
+    return extras;
+}
+
+function hwLoadUserPresetsMap() {
+    try {
+        const raw = localStorage.getItem(HW_PRESET_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return (parsed && parsed.presets && typeof parsed.presets === 'object') ? parsed.presets : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function hwSaveUserPreset(preset) {
+    const map = hwLoadUserPresetsMap();
+    map[preset.id] = preset;
+    localStorage.setItem(HW_PRESET_STORAGE_KEY, JSON.stringify({ presets: map }));
+}
+
+function hwPartToPreset(part, id, sourceLabel) {
+    return {
+        id,
+        name: part.label || HW_TYPE_LABELS[part.type] || part.type,
+        type: part.type,
+        label: part.label,
+        cost: part.cost || 0,
+        link: part.link || '',
+        params: JSON.parse(JSON.stringify(part.params || {})),
+        extras: hwExtractPartExtras(part),
+        source: 'assembly',
+        assemblyLabel: sourceLabel || ''
+    };
+}
+
+function hwCollectAssemblyPresetsMap() {
+    const map = new Map();
+    ensureHardwareAssemblies();
+    Object.values(state.hardwareAssemblies.assemblies).forEach(asm => {
+        (asm.parts || []).forEach(part => {
+            if (!part || !part.type) return;
+            const sig = hwPresetSignature(part);
+            const id = part.presetId || ('asm-' + hwShortHash(sig));
+            if (!map.has(id)) map.set(id, hwPartToPreset(part, id, asm.label || asm.id));
+        });
+    });
+    return map;
+}
+
+async function hwLoadPresetCatalog() {
+    if (hwPresetCatalog.loaded) return hwPresetCatalog;
+    if (hwPresetCatalog.loading) return hwPresetCatalog.loading;
+
+    hwPresetCatalog.loading = (async () => {
+        const builtins = [];
+        try {
+            const regResp = await fetch('hardware/registry.json');
+            if (regResp.ok) {
+                const registry = await regResp.json();
+                if (Array.isArray(registry)) {
+                    for (const entry of registry) {
+                        if (!entry || !entry.file || !entry.id) continue;
+                        try {
+                            const fileResp = await fetch('hardware/' + entry.file);
+                            if (!fileResp.ok) continue;
+                            const data = await fileResp.json();
+                            builtins.push(Object.assign({}, data, entry, { source: 'builtin' }));
+                        } catch (e) { /* skip broken preset file */ }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[HW] Could not load hardware/registry.json', e);
+        }
+        hwPresetCatalog.builtins = builtins;
+        hwPresetCatalog.loaded = true;
+        hwPresetCatalog.loading = null;
+        return hwPresetCatalog;
+    })();
+
+    return hwPresetCatalog.loading;
+}
+
+function hwFindPresetById(id) {
+    if (!id) return null;
+    const user = hwLoadUserPresetsMap()[id];
+    if (user) return user;
+    const builtin = hwPresetCatalog.builtins.find(p => p.id === id);
+    if (builtin) return builtin;
+    return hwCollectAssemblyPresetsMap().get(id) || null;
+}
+
+function hwGetPresetsForType(type) {
+    const byId = new Map();
+    const add = (preset) => {
+        if (!preset || preset.type !== type || !preset.id) return;
+        if (!byId.has(preset.id)) byId.set(preset.id, preset);
+    };
+    hwPresetCatalog.builtins.forEach(add);
+    Object.values(hwLoadUserPresetsMap()).forEach(add);
+    hwCollectAssemblyPresetsMap().forEach(add);
+    return Array.from(byId.values()).sort((a, b) => {
+        const order = { builtin: 0, user: 1, assembly: 2 };
+        const sa = order[a.source] != null ? order[a.source] : 1;
+        const sb = order[b.source] != null ? order[b.source] : 1;
+        if (sa !== sb) return sa - sb;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+}
+
+function hwApplyPresetToPart(part, preset) {
+    if (!part || !preset) return;
+    part.presetId = preset.id;
+    part.bomKey = preset.id;
+    if (preset.label != null) part.label = preset.label;
+    if (preset.cost != null) part.cost = preset.cost;
+    if (preset.link != null) part.link = preset.link;
+    if (preset.params) part.params = JSON.parse(JSON.stringify(preset.params));
+    const extras = preset.extras || {};
+    if (extras.flipAxis != null) part.flipAxis = !!extras.flipAxis;
+    if (extras.holeAlign != null && part.params) part.params.holeAlign = extras.holeAlign;
+    if (extras.headAtInsert != null && part.params) part.params.headAtInsert = extras.headAtInsert;
+    if (part.type === 'beam' && extras.syncStructure != null && part.params) part.params.syncStructure = extras.syncStructure;
+    if (part.type === 'beam' && part.params && part.params.syncStructure !== 'hBeam' && part.params.syncStructure !== false) {
+        part.params.syncStructure = false;
+    }
+}
+
+function hwMaybeAutoApplyPreset(part) {
+    if (!part || part.presetId || part.presetManual) return;
+    const presets = hwGetPresetsForType(part.type);
+    if (presets.length !== 1) return;
+    const preset = presets[0];
+    // Do not force a rivet-nut preset onto a newly added standard hex nut.
+    if (part.type === 'nut' && part.params && part.params.style === 'hex' && preset.params && preset.params.style === 'rivet') return;
+    hwApplyPresetToPart(part, preset);
+}
+
+function hwLinkPartsToKnownPresets() {
+    ensureHardwareAssemblies();
+    const signatureToPreset = new Map();
+    ['bolt', 'bushing', 'washer', 'lockWasher', 'nut', 'beam', 'bracket'].forEach(type => {
+        hwGetPresetsForType(type).forEach(preset => {
+            const fakePart = {
+                type: preset.type,
+                label: preset.label,
+                cost: preset.cost,
+                params: Object.assign({}, preset.params || {}),
+                flipAxis: preset.extras && preset.extras.flipAxis
+            };
+            if (preset.extras && preset.extras.holeAlign) fakePart.params.holeAlign = preset.extras.holeAlign;
+            if (preset.extras && preset.extras.headAtInsert != null) fakePart.params.headAtInsert = preset.extras.headAtInsert;
+            signatureToPreset.set(hwPresetSignature(fakePart), preset);
+        });
+    });
+    Object.values(state.hardwareAssemblies.assemblies).forEach(asm => {
+        (asm.parts || []).forEach(part => {
+            if (!part || part.presetId) return;
+            const match = signatureToPreset.get(hwPresetSignature(part));
+            if (match) {
+                part.presetId = match.id;
+                part.bomKey = match.id;
+            }
+        });
+    });
+}
+
+function hwDownloadJsonFile(filename, obj) {
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function hwSavePartAsPreset(partId) {
+    const assembly = getActiveHardwareAssembly();
+    const part = assembly && assembly.parts.find(p => p.id === partId);
+    if (!part) return;
+
+    const defaultName = part.label || HW_TYPE_LABELS[part.type] || part.type;
+    const name = prompt('Preset name (for library and BOM):', defaultName);
+    if (!name) return;
+    const link = prompt('Product link (optional, leave blank to skip):', part.link || '') || '';
+
+    let id = hwSlugifyPresetId(name);
+    const userMap = hwLoadUserPresetsMap();
+    if (userMap[id]) id = id + '-' + Date.now().toString(36).slice(-4);
+
+    const preset = {
+        id,
+        name,
+        type: part.type,
+        label: part.label || name,
+        cost: part.cost || 0,
+        link,
+        params: JSON.parse(JSON.stringify(part.params || {})),
+        extras: hwExtractPartExtras(part),
+        source: 'user'
+    };
+
+    hwSaveUserPreset(preset);
+    hwApplyPresetToPart(part, preset);
+    hwDownloadJsonFile(id + '.json', preset);
+
+    const registryEntry = { id, name, type: part.type, file: id + '.json', link };
+    console.log('[HW] Add this entry to hardware/registry.json:', JSON.stringify(registryEntry, null, 2));
+    if (typeof showToast === 'function') {
+        showToast('Preset saved locally and downloaded. Add registry entry from console to ship via GitHub.', 'info');
+    }
+    hwRefreshAll();
+}
+
+function hwAppendPresetRow(card, part) {
+    const presets = hwGetPresetsForType(part.type);
+    const row = document.createElement('div');
+    row.className = 'hw-preset-row';
+
+    const label = document.createElement('span');
+    label.className = 'hw-preset-label';
+    label.textContent = 'Preset';
+    row.appendChild(label);
+
+    const sel = document.createElement('select');
+    sel.className = 'hw-preset-select';
+    const customOpt = document.createElement('option');
+    customOpt.value = '';
+    customOpt.textContent = presets.length ? 'Custom / manual…' : 'No presets yet';
+    sel.appendChild(customOpt);
+
+    const addGroup = (groupLabel, items) => {
+        if (!items.length) return;
+        const group = document.createElement('optgroup');
+        group.label = groupLabel;
+        items.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = p.name || p.label || p.id;
+            if (part.presetId === p.id) opt.selected = true;
+            group.appendChild(opt);
+        });
+        sel.appendChild(group);
+    };
+
+    addGroup('Built-in Library', presets.filter(p => p.source === 'builtin'));
+    addGroup('From Assemblies', presets.filter(p => p.source === 'assembly'));
+    addGroup('My Presets', presets.filter(p => !p.source || p.source === 'user'));
+
+    if (part.presetId && !presets.some(p => p.id === part.presetId)) {
+        const missing = document.createElement('option');
+        missing.value = part.presetId;
+        missing.textContent = part.presetId + ' (missing)';
+        missing.selected = true;
+        sel.appendChild(missing);
+    } else if (!part.presetId && presets.length === 1) {
+        sel.value = presets[0].id;
+    }
+
+    sel.onchange = () => {
+        if (!sel.value) {
+            part.presetId = null;
+            part.presetManual = true;
+            part.bomKey = hwEnsurePartBomKey(part);
+            return;
+        }
+        part.presetManual = false;
+        const preset = hwFindPresetById(sel.value);
+        if (preset) {
+            hwApplyPresetToPart(part, preset);
+            buildHardwareAssemblyScene();
+            renderHardwareEditPanel();
+        }
+    };
+    row.appendChild(sel);
+
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'hw-mini-btn hw-preset-save';
+    saveBtn.textContent = 'Save';
+    saveBtn.title = 'Save as reusable preset (local + download for GitHub)';
+    saveBtn.onclick = (e) => { e.stopPropagation(); hwSavePartAsPreset(part.id); };
+    row.appendChild(saveBtn);
+
+    if (part.link) {
+        const link = document.createElement('a');
+        link.className = 'hw-preset-link';
+        link.href = part.link;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'Link';
+        link.onclick = (e) => e.stopPropagation();
+        row.appendChild(link);
+    }
+
+    card.appendChild(row);
+}
 
 const hwPersistConfigDebounced = debounce(() => {
     try {
@@ -5391,7 +6051,7 @@ function buildHardwarePartCard(part) {
     const card = document.createElement('div');
     card.className = 'hw-part-card' + (part.id === hwDetail.selectedPartId ? ' selected' : '');
     card.onclick = (e) => {
-        if (e.target.closest('input, select, button, label, .hw-part-grip')) return;
+        if (e.target.closest('input, select, button, label, .hw-part-grip, a')) return;
         hwDetail.selectedPartId = (hwDetail.selectedPartId === part.id) ? null : part.id;
         hwRefreshAll();
     };
@@ -5442,7 +6102,9 @@ function buildHardwarePartCard(part) {
     }
     const typeSpan = document.createElement('span');
     typeSpan.className = 'hw-part-type';
-    typeSpan.textContent = HW_TYPE_LABELS[part.type] || part.type;
+    typeSpan.textContent = (part.type === 'nut' && part.params && part.params.style === 'rivet')
+        ? 'Rivet Nut'
+        : (HW_TYPE_LABELS[part.type] || part.type);
     head.appendChild(typeSpan);
     const labelInput = document.createElement('input');
     labelInput.type = 'text';
@@ -5450,6 +6112,14 @@ function buildHardwarePartCard(part) {
     labelInput.value = part.label || '';
     labelInput.oninput = () => { part.label = labelInput.value; };
     head.appendChild(labelInput);
+    if (!isBracket) {
+        const dup = document.createElement('button');
+        dup.className = 'hw-mini-btn hw-dup';
+        dup.textContent = '⧉';
+        dup.title = 'Duplicate part (same BOM item, independent placement)';
+        dup.onclick = (e) => { e.stopPropagation(); hwDuplicatePart(part.id); };
+        head.appendChild(dup);
+    }
     const del = document.createElement('button');
     del.className = 'hw-mini-btn hw-del';
     del.textContent = '✕';
@@ -5457,6 +6127,8 @@ function buildHardwarePartCard(part) {
     del.onclick = () => { hwRemovePart(part.id); };
     head.appendChild(del);
     card.appendChild(head);
+
+    hwAppendPresetRow(card, part);
 
     // Param grid
     const grid = document.createElement('div');
@@ -5475,11 +6147,15 @@ function buildHardwarePartCard(part) {
         cell.innerHTML = `<span>${f.label}</span>`;
         const inp = document.createElement('input');
         inp.type = 'number';
-        inp.step = '0.01';
-        inp.value = (part.params[f.key] != null ? part.params[f.key] : 0);
+        inp.step = String(f.step != null ? f.step : 0.01);
+        const rawVal = part.params[f.key] != null ? part.params[f.key] : 0;
+        const decimals = f.decimals != null ? f.decimals : null;
+        if (decimals != null) inp.dataset.decimals = String(decimals);
+        inp.value = decimals != null ? Number(rawVal).toFixed(decimals) : rawVal;
         hwBindNumberInput(inp, (val) => {
             part.params[f.key] = val;
             if (part.type === 'beam') part.params.syncStructure = false;
+            if (decimals != null) inp.value = Number(val).toFixed(decimals);
             buildHardwareAssemblyScene();
         });
         cell.appendChild(inp);
@@ -5489,6 +6165,24 @@ function buildHardwarePartCard(part) {
 
     if (part.type === 'beam') {
         const isHBeam = part.params.syncStructure === 'hBeam' || /hbeam/i.test(part.id);
+        const alignRow = document.createElement('label');
+        alignRow.className = 'hw-param';
+        alignRow.style.gridColumn = '1 / -1';
+        alignRow.innerHTML = '<span>Bolt axis hole</span>';
+        const alignSel = document.createElement('select');
+        alignSel.innerHTML = [
+            ['near', 'Near end (End Offset)'],
+            ['center', 'Center'],
+            ['far', 'Far end']
+        ].map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+        alignSel.value = part.params.holeAlign || 'near';
+        alignSel.onchange = () => {
+            part.params.holeAlign = alignSel.value;
+            buildHardwareAssemblyScene();
+        };
+        alignRow.appendChild(alignSel);
+        card.appendChild(alignRow);
+
         const syncRow = document.createElement('label');
         syncRow.className = 'hw-param hw-check-row';
         const chk = document.createElement('input');
@@ -5619,6 +6313,26 @@ function hwRemovePart(partId) {
     hwRefreshAll();
 }
 
+function hwDuplicatePart(partId) {
+    const assembly = getActiveHardwareAssembly();
+    if (!assembly) return;
+    const source = assembly.parts.find(p => p.id === partId);
+    if (!source || source.type === 'bracket') return;
+
+    const bomKey = hwEnsurePartBomKey(source);
+    const id = 'part-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = id;
+    copy.bomKey = bomKey;
+    copy.seq = (source.seq || 0) + 0.5;
+
+    assembly.parts.push(copy);
+    hwRenumberAxis(assembly, copy.axis);
+    assembly.detailed = true;
+    hwDetail.selectedPartId = id;
+    hwRefreshAll();
+}
+
 // Drag-and-drop reorder state + helpers
 const hwDrag = { id: null };
 
@@ -5646,15 +6360,36 @@ function hwHandleDrop(draggedId, targetId, after) {
 function hwAddPart() {
     const assembly = getActiveHardwareAssembly();
     if (!assembly) return;
-    const type = document.getElementById('hw-add-type').value;
+    const selectValue = document.getElementById('hw-add-type').value;
+    const resolved = hwResolveAddPartType(selectValue);
+    const type = resolved.type;
     // Brackets always live on the center axis (rendered at origin, not exploded).
     const axis = (type === 'bracket') ? 'center' : document.getElementById('hw-add-axis').value;
     const maxSeq = assembly.parts.filter(p => p.axis === axis).reduce((m, p) => Math.max(m, p.seq || 0), 0);
     const id = 'part-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     assembly.parts.push(Object.assign({
-        id, type, label: HW_TYPE_LABELS[type], axis, seq: maxSeq + 1, qty: 1, perModule: 1, cost: 0.10,
-        params: getHardwarePartDefaults(type)
+        id,
+        type,
+        label: resolved.label,
+        axis,
+        seq: maxSeq + 1,
+        qty: 1,
+        perModule: 1,
+        cost: resolved.cost,
+        params: JSON.parse(JSON.stringify(resolved.params)),
+        presetId: resolved.presetId || null
     }, type !== 'bracket' ? hwDefaultPartPos() : {}));
+    const newPart = assembly.parts[assembly.parts.length - 1];
+    if (resolved.presetId) {
+        const preset = hwFindPresetById(resolved.presetId);
+        if (preset) hwApplyPresetToPart(newPart, preset);
+        else {
+            newPart.presetId = resolved.presetId;
+            newPart.bomKey = resolved.presetId;
+        }
+    } else {
+        hwMaybeAutoApplyPreset(newPart);
+    }
     assembly.detailed = true;
     hwDetail.selectedPartId = id;
     hwRefreshAll();
@@ -5749,11 +6484,15 @@ function openHardwareDetail() {
     if (slv) slv.textContent = Math.round((state.hardwareAssemblies.explode || 0) * 100) + '%';
 
     initHardwareDetailScene();
-    // Defer sizing until the modal has laid out
-    requestAnimationFrame(() => {
-        resizeHardwareDetail();
-        buildHardwareAssemblyScene();
-        renderHardwareEditPanel();
+    hwLoadPresetCatalog().then(() => {
+        hwLinkPartsToKnownPresets();
+        const assembly = getActiveHardwareAssembly();
+        if (assembly) (assembly.parts || []).forEach(p => hwMaybeAutoApplyPreset(p));
+        requestAnimationFrame(() => {
+            resizeHardwareDetail();
+            buildHardwareAssemblyScene();
+            renderHardwareEditPanel();
+        });
     });
 }
 
@@ -5771,22 +6510,27 @@ function closeHardwareDetail() {
 // ---------------------------------------------------------------------------
 // BOM contribution — adds the "extra" hardware types (bushings, lock washers,
 // nuts) introduced by detailed assemblies. Bolts/washers continue to use the
-// legacy formula lines for now (see plan note).
+// legacy formula lines for now. Parts share presetId/bomKey so identical extras
+// roll up across assemblies.
 // ---------------------------------------------------------------------------
 
 function getAssemblyHardwareItems(moduleCount) {
     ensureHardwareAssemblies();
-    const extraTypes = { bushing: 1, lockWasher: 1, nut: 1 };
+    const assemblyBomTypes = { bushing: 1, lockWasher: 1, nut: 1 };
     const agg = {};
     Object.values(state.hardwareAssemblies.assemblies).forEach(asm => {
         if (!asm.detailed) return;
         asm.parts.forEach(part => {
-            if (!extraTypes[part.type]) return;
+            if (!assemblyBomTypes[part.type]) return;
             const per = part.perModule || 0;
             if (per <= 0) return;
-            const key = (part.label || part.type) + '|' + (part.cost || 0);
-            if (!agg[key]) agg[key] = { label: part.label || HW_TYPE_LABELS[part.type], qty: 0, unit: part.cost || 0 };
-            agg[key].qty += per * moduleCount;
+            const preset = part.presetId ? hwFindPresetById(part.presetId) : null;
+            const key = part.presetId || part.bomKey || ((part.label || part.type) + '|' + (part.cost || 0));
+            const stackQty = Math.max(1, part.qty || 1);
+            const label = (preset && (preset.name || preset.label)) || part.label || HW_TYPE_LABELS[part.type];
+            const unit = (preset && preset.cost != null) ? preset.cost : (part.cost || 0);
+            if (!agg[key]) agg[key] = { label, qty: 0, unit };
+            agg[key].qty += per * stackQty * moduleCount;
         });
     });
     return Object.values(agg).map(a => ({ qty: a.qty, item: a.label, unit: a.unit, total: a.qty * a.unit }));
@@ -6846,6 +7590,8 @@ function createBoltMeshForExport(bolt, isZup = false) {
  * @param {boolean} isZup - Whether we're exporting to Z-up coordinate system
  */
 function createPanelMeshForExport(panel, isZup = false) {
+    if (panel.formFactor === 'folding') return createFoldingPanelMesh(panel);
+    if (panel.formFactor === 'flexible') return createFlexiblePanelMesh(panel);
     // Validate panel data
     if (!panel || !panel.center) {
         console.warn('Invalid panel for export - missing center');
@@ -7132,6 +7878,7 @@ function updateThreeJSScenes(data, structureCenter) {
     clearGroup(threeRenderer.bracketGroup);
     clearGroup(threeRenderer.boltGroup);
     clearGroup(threeRenderer.washerGroup);
+    clearGroup(threeRenderer.hardwareAssemblyGroup);
     
     // Check if a beam is colliding
     const isColliding = (beam) => state.collisions.some(c => c.beam === beam || c.other === beam);
@@ -7190,6 +7937,32 @@ function updateThreeJSScenes(data, structureCenter) {
                 threeRenderer.washerGroup.add(mesh);
             }
         });
+    }
+
+    // Full-detail hardware assemblies (replace outer bracket/bolt stacks)
+    if (state.showHardwareFullDetail && data.hardwareAssemblyPlacements && data.hardwareAssemblyPlacements.length) {
+        const asm = hwGetOuterVBeamAssembly();
+        if (asm) {
+            data.hardwareAssemblyPlacements.forEach(placement => {
+                if (placement.assemblyId !== 'outerVBeam') return;
+                const xf = hwComputeOuterAssemblyTransform(placement);
+                const instance = buildHardwareAssemblyGroup(asm, {
+                    explode: 0,
+                    syncFromState: false,
+                    excludeBeams: true
+                });
+                instance.position.set(xf.position.x, xf.position.y, xf.position.z);
+                instance.quaternion.copy(xf.quaternion);
+                instance.traverse(ch => {
+                    if (ch.isMesh) {
+                        ch.castShadow = state.shadowsEnabled || false;
+                        ch.receiveShadow = state.shadowsEnabled || false;
+                    }
+                });
+                offsetMesh(instance);
+                threeRenderer.hardwareAssemblyGroup.add(instance);
+            });
+        }
     }
     
     // Render actuator visualization lines if one is selected
@@ -7679,6 +8452,7 @@ const state = {
     
     showBrackets: true,
     showBolts: false,
+    showHardwareFullDetail: false,
     
     // Orientation: 'horizontal' (cylinder standing up) or 'vertical' (arch/bridge mode)
     orientation: 'horizontal',
@@ -7791,7 +8565,11 @@ const state = {
         cachedClosedAngle: undefined,  // Cached closed angle calculation
         fixedCenter: null,  // Fixed structure center during animation (prevents auto-repositioning)
         cachedModules: null,
-        cachedPivotPct: null
+        cachedPivotPct: null,
+        foldingPanelsUnfoldPhase: false,
+        foldingPanelPhase: 'idle',       // idle | stowed | structure_deploy | panel_deploy
+        foldingPanelDeploy: 0,           // 0 = stowed, 1 = flat (animated independently of structure)
+        foldingPanelDeployStart: 0       // rAF timestamp when panel_deploy phase began
     },
     
     // Solar panel configuration
@@ -7814,7 +8592,13 @@ const state = {
             gridRows: 2,             // rows for top panels
             gridCols: 2,             // columns for top panels
             panelLift: 0,            // inches above closed structure
-            weight: 45.0             // Weight per panel in lbs (typical 250W panel)
+            weight: 45.0,            // Weight per panel in lbs (typical 250W panel)
+            formFactor: 'framed',    // framed | flexible | folding
+            foldCount: 4,
+            foldDeploy: 1,           // 0 = stowed/folded, 1 = deployed flat
+            foldedLength: 25.25,
+            foldedWidth: 21.25,
+            foldedThickness: 2.5
         },
         
         // Side/Arch panel configuration (arch mode or cylinder side walls)
@@ -7832,7 +8616,13 @@ const state = {
             paddingY: 2,             // inches between panels (Y direction)
             gridRows: 2,             // rows for side/arch panels
             gridCols: 2,             // columns for side/arch panels
-            weight: 45.0             // Weight per panel in lbs (typical 250W panel)
+            weight: 45.0,            // Weight per panel in lbs (typical 250W panel)
+            formFactor: 'framed',
+            foldCount: 4,
+            foldDeploy: 1,
+            foldedLength: 25.25,
+            foldedWidth: 21.25,
+            foldedThickness: 2.5
         },
         
         // Layout mode for top surface panels (cylinder mode)
@@ -8479,6 +9269,326 @@ class Panel3D {
     }
 }
 
+/** Solar panel form factors (commercial categories). */
+const SP_FORM_FACTORS = {
+    framed: { label: 'Framed (rigid aluminum)' },
+    flexible: { label: 'Flexible (thin film)' },
+    folding: { label: 'Folding (multi-segment)' }
+};
+
+/**
+ * Build a solar panel instance with form-factor metadata for 3D rendering.
+ */
+function makeSolarPanel(center, width, length, thickness, rotation, normal, spec) {
+    const panel = new Panel3D(center, width, length, thickness, rotation, normal);
+    const s = spec || {};
+    panel.formFactor = s.formFactor || 'framed';
+    panel.foldCount = s.foldCount || 4;
+    panel.foldDeploy = s.foldDeploy != null ? s.foldDeploy : 1;
+    panel.foldDirection = s.foldDirection != null ? s.foldDirection : 1;
+    panel.foldedLength = s.foldedLength;
+    panel.foldedWidth = s.foldedWidth;
+    panel.foldedThickness = s.foldedThickness;
+    panel.weight = s.weight != null ? s.weight : 45;
+    if (panel.formFactor === 'flexible') {
+        panel.borderWidth = 0.15;
+    }
+    return panel;
+}
+
+function spPanelSpecFromConfig(cfg) {
+    if (!cfg) return {};
+    return {
+        formFactor: cfg.formFactor || 'framed',
+        foldCount: cfg.foldCount || 4,
+        foldDeploy: cfg.foldDeploy != null ? cfg.foldDeploy : 1,
+        foldedLength: cfg.foldedLength,
+        foldedWidth: cfg.foldedWidth,
+        foldedThickness: cfg.foldedThickness,
+        weight: cfg.weight != null ? cfg.weight : 45
+    };
+}
+
+function getPanelWeightLbs(panel) {
+    if (panel && panel.weight != null && panel.weight > 0) return panel.weight;
+    return 0;
+}
+
+function calculateSolarPanelArrayWeight(panels) {
+    if (!panels || !panels.length) return 0;
+    return panels.reduce((sum, p) => sum + getPanelWeightLbs(p), 0);
+}
+
+function getSolarPanelWeightSummary(data) {
+    const panels = data && data.panels;
+    const count = panels ? panels.length : 0;
+    if (count > 0) {
+        const total = calculateSolarPanelArrayWeight(panels);
+        return { count, total, perUnit: total / count };
+    }
+    const cfg = getActivePanelConfig();
+    const perUnit = cfg.weight != null ? cfg.weight : 0;
+    return { count: 0, total: 0, perUnit };
+}
+
+/** Row index → fold direction so multi-row grids meet at the center (±1). */
+function spFoldDirectionForGridRow(row, gridRows) {
+    if (gridRows <= 1) return 1;
+    const rowOffset = row - (gridRows - 1) / 2;
+    return rowOffset <= 0 ? 1 : -1;
+}
+
+function spPanelSpecForGridCell(config, row) {
+    const spec = spPanelSpecFromConfig(config);
+    if (spec.formFactor === 'folding') {
+        spec.foldDirection = spFoldDirectionForGridRow(row, config.gridRows || 1);
+    }
+    return spec;
+}
+
+function hasFoldingSolarPanels() {
+    if (!state.solarPanels || !state.solarPanels.enabled) return false;
+    const top = state.solarPanels.topPanels;
+    const side = state.solarPanels.sidePanels;
+    return !!(top && top.formFactor === 'folding') || !!(side && side.formFactor === 'folding');
+}
+
+/** Structure fully folded (minimum angle). */
+function getStructureFoldedAngle() {
+    return getEffectiveMinFoldAngle();
+}
+
+/** Structure fully deployed / open (360° ring angle). */
+function getStructureDeployedAngle() {
+    return getOptimalClosedAngleForAnimation();
+}
+
+/** Auto animation deploy: structure deploys first (panels stay stowed), then unfold at deployed angle. */
+function getFoldingPanelDeployForAnimation() {
+    if (!useFoldingPanelStructureDeploy()) return null;
+    const phase = state.animation.foldingPanelPhase;
+    if (phase === 'panel_deploy') {
+        return state.animation.foldingPanelDeploy;
+    }
+    return 0;
+}
+
+function useFoldingPanelAutoAnim() {
+    if (!hasFoldingSolarPanels()) return false;
+    if (state.animation && state.animation.playing) return true;
+    if (state.actuatorAnimation && state.actuatorAnimation.isPlaying) return true;
+    const phase = state.animation && state.animation.foldingPanelPhase;
+    return phase === 'stowed' || phase === 'structure_deploy' || phase === 'panel_deploy';
+}
+
+function useFoldingPanelStructureDeploy() {
+    return useFoldingPanelAutoAnim();
+}
+
+function getFoldingPanelsVisibleAtAngle(foldAngleRad) {
+    if (!hasFoldingSolarPanels()) return false;
+    if (!useFoldingPanelAutoAnim()) {
+        return true;
+    }
+    const phase = state.animation.foldingPanelPhase;
+    const deployedA = getStructureDeployedAngle();
+    const tol = degToRad(1.5);
+    if (phase === 'panel_deploy') {
+        return foldAngleRad >= deployedA - tol;
+    }
+    return false;
+}
+
+function applyFoldingPanelAnimationState(panels, foldAngleRad, useStructureDeploy) {
+    if (!panels || !panels.length) return;
+    const deploy = useStructureDeploy ? getFoldingPanelDeployForAnimation() : null;
+    panels.forEach(p => {
+        if (!p || p.formFactor !== 'folding') return;
+        if (useStructureDeploy) p.foldDeploy = deploy;
+    });
+}
+
+function animateFoldingPanelDeploy(from, to, duration, onComplete) {
+    state.actuatorAnimation.isPlaying = true;
+    state.animation.foldingPanelPhase = 'panel_deploy';
+    state.animation.foldingPanelsUnfoldPhase = true;
+    const startTime = Date.now();
+    const speed = state.actuatorAnimation.speed || 1.0;
+    const adjustedDuration = duration / speed;
+
+    function step() {
+        if (!state.actuatorAnimation.isPlaying) return;
+        const elapsed = Date.now() - startTime;
+        const t = Math.min(1, elapsed / adjustedDuration);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        state.animation.foldingPanelDeploy = from + (to - from) * eased;
+        invalidateGeometryCache();
+        requestRender();
+        if (t < 1) {
+            requestAnimationFrame(step);
+        } else {
+            state.animation.foldingPanelDeploy = to;
+            state.actuatorAnimation.isPlaying = false;
+            if (to >= 1 - 1e-6) {
+                state.animation.foldingPanelPhase = 'idle';
+                state.animation.foldingPanelsUnfoldPhase = false;
+            } else {
+                state.animation.foldingPanelPhase = 'stowed';
+                state.animation.foldingPanelDeploy = 0;
+            }
+            invalidateGeometryCache();
+            requestRender();
+            if (onComplete) onComplete();
+        }
+    }
+    step();
+}
+
+function runFoldingPanelUnfoldSequence(structureDuration = 3000) {
+    if (state.actuatorAnimation.isPlaying) return;
+    const deployedAngle = getStructureDeployedAngle();
+    const foldedAngle = getStructureFoldedAngle();
+    const tol = degToRad(0.5);
+
+    const beginPanelDeploy = () => {
+        animateFoldingPanelDeploy(0, 1, FOLDING_PANEL_DEPLOY_MS);
+    };
+
+    if (state.foldAngle < deployedAngle - tol) {
+        state.animation.foldingPanelPhase = 'structure_deploy';
+        state.animation.foldingPanelDeploy = 0;
+        state.animation.foldingPanelsUnfoldPhase = true;
+        if (state.foldAngle <= foldedAngle + tol) {
+            state.animation.foldingPanelPhase = 'stowed';
+        }
+        animateActuatorFold(deployedAngle, structureDuration, beginPanelDeploy);
+    } else {
+        state.animation.foldingPanelsUnfoldPhase = true;
+        state.animation.foldingPanelDeploy = 0;
+        beginPanelDeploy();
+    }
+}
+
+function runFoldingPanelFoldSequence(structureDuration = 3000) {
+    if (state.actuatorAnimation.isPlaying) return;
+    const foldedAngle = getStructureFoldedAngle();
+
+    const foldStructure = () => {
+        animateActuatorFold(foldedAngle, structureDuration, () => {
+            state.animation.foldingPanelPhase = 'stowed';
+            state.animation.foldingPanelDeploy = 0;
+            state.animation.foldingPanelsUnfoldPhase = true;
+            invalidateGeometryCache();
+            requestRender();
+        });
+    };
+
+    const manualDeploy = (() => {
+        let d = 0;
+        const sp = state.solarPanels;
+        if (sp.topPanels && sp.topPanels.formFactor === 'folding') {
+            d = Math.max(d, sp.topPanels.foldDeploy != null ? sp.topPanels.foldDeploy : 0);
+        }
+        if (sp.sidePanels && sp.sidePanels.formFactor === 'folding') {
+            d = Math.max(d, sp.sidePanels.foldDeploy != null ? sp.sidePanels.foldDeploy : 0);
+        }
+        return d;
+    })();
+    const currentDeploy = Math.max(state.animation.foldingPanelDeploy || 0, manualDeploy);
+    if (currentDeploy > 0.05) {
+        state.animation.foldingPanelsUnfoldPhase = true;
+        animateFoldingPanelDeploy(currentDeploy, 0, 800, foldStructure);
+    } else {
+        foldStructure();
+    }
+}
+
+function applyPanelAxesToThreeGroup(group, panel) {
+    const mat = new THREE.Matrix4();
+    mat.makeBasis(
+        new THREE.Vector3(panel.axisX.x, panel.axisX.y, panel.axisX.z),
+        new THREE.Vector3(panel.axisY.x, panel.axisY.y, panel.axisY.z),
+        new THREE.Vector3(panel.axisZ.x, panel.axisZ.y, panel.axisZ.z)
+    );
+    group.quaternion.setFromRotationMatrix(mat);
+}
+
+function getPanelSurfaceMaterials(panel) {
+    const cellColor = rgbToThreeColor(panel.colorBase);
+    return {
+        cell: new THREE.MeshPhongMaterial({ color: cellColor, specular: 0x888899, shininess: 80, side: THREE.DoubleSide }),
+        back: new THREE.MeshLambertMaterial({ color: 0xf5f5f5, side: THREE.DoubleSide }),
+        edge: new THREE.MeshPhongMaterial({ color: 0x404045, specular: 0x333333, shininess: 20, side: THREE.DoubleSide }),
+        hinge: new THREE.MeshLambertMaterial({ color: 0x252528, side: THREE.DoubleSide })
+    };
+}
+
+/**
+ * Multi-segment folding panel mesh (2-fold or 4-fold accordion).
+ * foldDeploy 0 = stowed/folded, 1 = fully deployed flat.
+ * Hinges run along panel width (local X); segments rotate around that axis
+ * and stack in +Y (panel normal / away from the roof), not downward into beams.
+ */
+function createFoldingPanelMesh(panel) {
+    const root = new THREE.Group();
+    root.position.set(panel.center.x, panel.center.y, panel.center.z);
+    applyPanelAxesToThreeGroup(root, panel);
+
+    const n = Math.max(2, panel.foldCount || 4);
+    const deploy = Math.max(0, Math.min(1, panel.foldDeploy != null ? panel.foldDeploy : 1));
+    const segLen = panel.length / n;
+    const foldAngle = (1 - deploy) * Math.PI;
+    const mats = getPanelSurfaceMaterials(panel);
+    const flip = (panel.foldDirection != null ? panel.foldDirection : 1) < 0;
+
+    let arm = root;
+    for (let i = 0; i < n; i++) {
+        const pivot = new THREE.Group();
+        if (i === 0) {
+            pivot.position.z = flip ? panel.length / 2 : -panel.length / 2;
+        } else {
+            pivot.position.z = flip ? -segLen : segLen;
+            const sign = (i % 2 === 1 ? -1 : 1) * (flip ? -1 : 1);
+            pivot.rotation.x = sign * foldAngle;
+        }
+        arm.add(pivot);
+
+        const segGeo = new THREE.BoxGeometry(panel.width, panel.thickness, segLen);
+        const segMesh = new THREE.Mesh(segGeo, mats.cell);
+        segMesh.position.z = flip ? -segLen / 2 : segLen / 2;
+        pivot.add(segMesh);
+
+        // Hinge accent at the fold line (skip first segment start)
+        if (i > 0 && deploy < 0.98) {
+            const hingeGeo = new THREE.BoxGeometry(panel.width * 0.98, panel.thickness * 1.05, 0.08);
+            const hinge = new THREE.Mesh(hingeGeo, mats.hinge);
+            pivot.add(hinge);
+        }
+
+        arm = pivot;
+    }
+
+    root.userData.panel = panel;
+    root.userData.type = 'panel';
+    root.renderOrder = 2;
+    root.traverse(ch => {
+        if (ch.isMesh) {
+            ch.castShadow = state.shadowsEnabled || false;
+            ch.receiveShadow = state.shadowsEnabled || false;
+        }
+    });
+    return root;
+}
+
+/** Thin flexible panel — same mesh as framed but without rigid frame edges. */
+function createFlexiblePanelMesh(panel) {
+    const saved = panel.formFactor;
+    panel.formFactor = 'framed';
+    const group = createPanelMesh(panel);
+    panel.formFactor = saved;
+    return group;
+}
+
 // ============================================================================
 // STRUCTURE GEOMETRY CLASSES (Refactored Architecture)
 // ============================================================================
@@ -8966,6 +10076,7 @@ class PanelPlacer {
         this.slide = config.archPanelSlide || 0;
         this.separation = config.archPanelSeparation || 0;
         this.separationBaseline = 4.6;  // Built-in alignment offset
+        this.panelSpec = spPanelSpecFromConfig(config);
     }
     
     /**
@@ -9003,13 +10114,14 @@ class PanelPlacer {
                 );
                 
                 // Create panel with face orientation
-                const panel = new Panel3D(
+                const panel = makeSolarPanel(
                     panelCenter,
                     this.panelWidth,
                     this.panelLength,
                     this.panelThickness,
                     0,
-                    face.normal
+                    face.normal,
+                    spPanelSpecForGridCell({ gridRows: this.rows, formFactor: this.panelSpec.formFactor, foldCount: this.panelSpec.foldCount, foldDeploy: this.panelSpec.foldDeploy, foldedLength: this.panelSpec.foldedLength, foldedWidth: this.panelSpec.foldedWidth, foldedThickness: this.panelSpec.foldedThickness, weight: this.panelSpec.weight }, row)
                 );
                 
                 // Override axes to match face
@@ -9403,11 +10515,9 @@ function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
     // Add solar panel weights (only if includeSolarPanels is true)
     // Note: For actuator analysis, panels are added after unfolding, so exclude them
     if (includeSolarPanels && data.panels && data.panels.length > 0) {
-        const panelConfig = getActivePanelConfig();
-        const panelWeight = panelConfig.weight || 0;
-        
         data.panels.forEach(panel => {
             if (panel.center) {
+                const panelWeight = getPanelWeightLbs(panel);
                 com.x += panel.center.x * panelWeight;
                 com.y += panel.center.y * panelWeight;
                 com.z += panel.center.z * panelWeight;
@@ -10065,6 +11175,7 @@ function solveLinkage(foldAngle) {
     let brackets = [];
     let bolts = [];
     let washers = [];
+    let hardwareAssemblyPlacements = [];
     let curPos = {x:0, y:0};
     let curRot = 0;
     
@@ -10866,16 +11977,23 @@ function solveLinkage(foldAngle) {
                     };
             };
             
-            if(state.showBrackets) {
+            if(state.showBrackets || hwUseFullDetailAssemblies()) {
                 // Bottom ring brackets (U opens upward)
                 // Inner brackets sit on Pattern A beams, outer brackets sit on Pattern B beams
-                // Pass the correct pattern direction for each bracket position
-                brackets.push(createBracket(hPivotBotInner, true, patternA_dir, curRot, i));
-                brackets.push(createBracket(hPivotBotOuter, true, patternB_dir, curRot, i));
-                
-                // Top ring brackets (U opens downward - handled by isBottom flag in createBracketMesh)
-                brackets.push(createBracket(hPivotTopInner, false, patternA_dir, curRot, i));
-                brackets.push(createBracket(hPivotTopOuter, false, patternB_dir, curRot, i));
+                if (state.showBrackets) {
+                    brackets.push(createBracket(hPivotBotInner, true, patternA_dir, curRot, i));
+                    brackets.push(createBracket(hPivotTopInner, false, patternA_dir, curRot, i));
+                }
+                const outerBotBracket = createBracket(hPivotBotOuter, true, patternB_dir, curRot, i);
+                const outerTopBracket = createBracket(hPivotTopOuter, false, patternB_dir, curRot, i);
+                if (hwUseFullDetailAssemblies()) {
+                    if (window.__hwDebug) window.__hwDebug.push({mod:i, hPivotBotOuter:{...hPivotBotOuter}, outerBotBracketPos:{...outerBotBracket.pos}, pBotOuter:{...pBotOuter}});
+                    hwAddOuterAssemblyPlacement(hardwareAssemblyPlacements, outerBotBracket, vBoltDir, pBotOuter);
+                    hwAddOuterAssemblyPlacement(hardwareAssemblyPlacements, outerTopBracket, vBoltDir, pTopOuter);
+                } else if (state.showBrackets) {
+                    brackets.push(outerBotBracket);
+                    brackets.push(outerTopBracket);
+                }
             }
             
             if(state.showBolts) {
@@ -10888,9 +12006,9 @@ function solveLinkage(foldAngle) {
                 const hPivotTopOuterBolt = createHPivotBolt(hPivotTopOuter, false);
                 
                 bolts.push(hPivotBotInnerBolt);
-                bolts.push(hPivotBotOuterBolt);
+                if (!hwUseFullDetailAssemblies()) bolts.push(hPivotBotOuterBolt);
                 bolts.push(hPivotTopInnerBolt);
-                bolts.push(hPivotTopOuterBolt);
+                if (!hwUseFullDetailAssemblies()) bolts.push(hPivotTopOuterBolt);
                 
                 // H-stack washers for H-pivot bolts
                 if (state.hWasherEnabled && state.hStackCount > 1) {
@@ -10906,9 +12024,9 @@ function solveLinkage(foldAngle) {
                     if (vMag(hPivotRadialInner) < 0.1) hPivotRadialInner = {x: 1, y: 0, z: 0};
                     if (vMag(hPivotRadialOuter) < 0.1) hPivotRadialOuter = {x: 1, y: 0, z: 0};
                     washers.push(...createWashersForBolt(hPivotBotInnerBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialInner));
-                    washers.push(...createWashersForBolt(hPivotBotOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotBotOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
                     washers.push(...createWashersForBolt(hPivotTopInnerBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialInner));
-                    washers.push(...createWashersForBolt(hPivotTopOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotTopOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
                 }
                 
                 // === VERTICAL MODULE BOLTS (horizontal orientation) ===
@@ -10919,12 +12037,12 @@ function solveLinkage(foldAngle) {
                 const botInnerBolt = createHorizontalBolt(pBotInner, vBoltDir, vBoltInnerLength, 'inner');
                 const botOuterBolt = createHorizontalBolt(pBotOuter, vBoltDir, vBoltOuterLength, 'outer');
                 bolts.push(botInnerBolt);
-                bolts.push(botOuterBolt);
+                if (!hwUseFullDetailAssemblies()) bolts.push(botOuterBolt);
                 
                 // 2. Top pivot bolts - at yMax (where vertical beams attach to top ring)
                 const topOuterBolt = createHorizontalBolt(pTopOuter, vBoltDir, vBoltOuterLength, 'outer');
                 const topInnerBolt = createHorizontalBolt(pTopInner, vBoltDir, vBoltInnerLength, 'inner');
-                bolts.push(topOuterBolt);
+                if (!hwUseFullDetailAssemblies()) bolts.push(topOuterBolt);
                 bolts.push(topInnerBolt);
                 
                 // 3. CENTER pivot bolt (horizontal, where ALL beams cross - uses full length)
@@ -10944,8 +12062,8 @@ function solveLinkage(foldAngle) {
                         ? getVStackBeamWidths()
                         : state.vBeamW;
                     washers.push(...createWashersForBolt(botInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
                     washers.push(...createWashersForBolt(topInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
                     washers.push(...createWashersForBolt(centerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
                 }
@@ -10974,10 +12092,10 @@ function solveLinkage(foldAngle) {
                         
                         // Bottom pivot bolts for cap uprights (same inner/outer logic)
                         bolts.push(createHorizontalBolt(capBotInner, capBoltDir, vBoltInnerLength, 'inner'));
-                        bolts.push(createHorizontalBolt(capBotOuter, capBoltDir, vBoltOuterLength, 'outer'));
+                        if (!hwUseFullDetailAssemblies()) bolts.push(createHorizontalBolt(capBotOuter, capBoltDir, vBoltOuterLength, 'outer'));
                         
                         // Top pivot bolts for cap uprights
-                        bolts.push(createHorizontalBolt(capTopOuter, capBoltDir, vBoltOuterLength, 'outer'));
+                        if (!hwUseFullDetailAssemblies()) bolts.push(createHorizontalBolt(capTopOuter, capBoltDir, vBoltOuterLength, 'outer'));
                         bolts.push(createHorizontalBolt(capTopInner, capBoltDir, vBoltInnerLength, 'inner'));
                         
                     // Center pivot bolt for cap uprights (full length)
@@ -10986,7 +12104,7 @@ function solveLinkage(foldAngle) {
             }
             
             // CAP UPRIGHT brackets (for first module when cap uprights enabled)
-            if (i === 0 && state.archCapUprights && state.showBrackets) {
+            if (i === 0 && state.archCapUprights && (state.showBrackets || hwUseFullDetailAssemblies())) {
                     const capBotInner = map(loc.bl, 0);
                     const capBotOuter = map(loc.tl, 0);
                     const capTopInner = map(loc.bl, topH);
@@ -10995,15 +12113,28 @@ function solveLinkage(foldAngle) {
                     // Cap pattern directions (same logic as main vertical modules)
                     const capPatternA_dir = vNorm(vSub(capTopOuter, capBotInner));
                     const capPatternB_dir = vNorm(vSub(capTopInner, capBotOuter));
+                    let capStackDir = vNorm(vCross(capPatternA_dir, capPatternB_dir));
+                    if (vMag(capStackDir) < 0.1) {
+                        const capAvgDir = vNorm(vScale(vAdd(capPatternA_dir, capPatternB_dir), 0.5));
+                        capStackDir = vNorm(vCross(capAvgDir, {x:0, y:1, z:0}));
+                    }
+                    const capBoltDir = vNorm(capStackDir);
                     
                     // Bottom ring brackets for cap uprights
                     // Inner brackets on Pattern A, outer brackets on Pattern B
-                    brackets.push(createBracket(capBotInner, true, capPatternA_dir, curRot, i));
-                    brackets.push(createBracket(capBotOuter, true, capPatternB_dir, curRot, i));
-                    
-                    // Top ring brackets for cap uprights
-                    brackets.push(createBracket(capTopInner, false, capPatternA_dir, curRot, i));
-                    brackets.push(createBracket(capTopOuter, false, capPatternB_dir, curRot, i));
+                    if (state.showBrackets) {
+                        brackets.push(createBracket(capBotInner, true, capPatternA_dir, curRot, i));
+                        brackets.push(createBracket(capTopInner, false, capPatternA_dir, curRot, i));
+                    }
+                    const capOuterBotBracket = createBracket(capBotOuter, true, capPatternB_dir, curRot, i);
+                    const capOuterTopBracket = createBracket(capTopOuter, false, capPatternB_dir, curRot, i);
+                    if (hwUseFullDetailAssemblies()) {
+                        hwAddOuterAssemblyPlacement(hardwareAssemblyPlacements, capOuterBotBracket, capBoltDir, map(loc.tl, yMin));
+                        hwAddOuterAssemblyPlacement(hardwareAssemblyPlacements, capOuterTopBracket, capBoltDir, map(loc.tl, yMax));
+                    } else if (state.showBrackets) {
+                        brackets.push(capOuterBotBracket);
+                        brackets.push(capOuterTopBracket);
+                    }
             }
         }
         
@@ -11316,6 +12447,27 @@ function solveLinkage(foldAngle) {
                 bracket.bottomY = bracket.pos.y; // Use pos.y as base; offset handled via bottomPos
             }
         });
+
+        hardwareAssemblyPlacements.forEach(pl => {
+            let bottomOffset = null;
+            if (pl.pos && typeof pl.bottomY === 'number') {
+                bottomOffset = { x: 0, y: pl.bottomY - pl.pos.y, z: 0 };
+            }
+            if (pl.pos) pl.pos = transformPoint(pl.pos);
+            if (pl.beamDir) pl.beamDir = transformDir(pl.beamDir);
+            if (pl.right) pl.right = transformDir(pl.right);
+            if (pl.vBoltDir) pl.vBoltDir = transformDir(pl.vBoltDir);
+            if (pl.vBoltPivot) pl.vBoltPivot = transformPoint(pl.vBoltPivot);
+            if (bottomOffset && pl.pos) {
+                const transformedOffset = transformDir(bottomOffset);
+                pl.bottomPos = {
+                    x: pl.pos.x + transformedOffset.x,
+                    y: pl.pos.y + transformedOffset.y,
+                    z: pl.pos.z + transformedOffset.z
+                };
+                pl.bottomY = pl.pos.y;
+            }
+        });
         
         bolts.forEach(bolt => {
             if (bolt.start) bolt.start = transformPoint(bolt.start);
@@ -11357,6 +12509,13 @@ function solveLinkage(foldAngle) {
             if (bracket.baseY !== undefined) bracket.baseY -= feetY;
             if (typeof bracket.bottomY === 'number') bracket.bottomY -= feetY;
             if (bracket.bottomPos) bracket.bottomPos = groundPoint(bracket.bottomPos);
+        });
+
+        hardwareAssemblyPlacements.forEach(pl => {
+            if (pl.pos) pl.pos = groundPoint(pl.pos);
+            if (typeof pl.bottomY === 'number') pl.bottomY -= feetY;
+            if (pl.bottomPos) pl.bottomPos = groundPoint(pl.bottomPos);
+            if (pl.vBoltPivot) pl.vBoltPivot = groundPoint(pl.vBoltPivot);
         });
         
         bolts.forEach(bolt => {
@@ -11415,12 +12574,14 @@ function solveLinkage(foldAngle) {
         const originalBrackets = [...brackets];
         const originalBolts = [...bolts];
         const originalWashers = [...washers];
+        const originalHardwarePlacements = [...hardwareAssemblyPlacements];
         
         // Clear arrays for rebuilding
         beams = [];
         brackets = [];
         bolts = [];
         washers = [];
+        hardwareAssemblyPlacements = [];
         
         // Create arrayCount copies, extending in Z direction (back)
         // Center the array around Z=0
@@ -11514,13 +12675,29 @@ function solveLinkage(foldAngle) {
                 }
                 washers.push(newWasher);
             });
+
+            originalHardwarePlacements.forEach(pl => {
+                const newPl = {
+                    assemblyId: pl.assemblyId,
+                    pos: pl.pos ? { x: pl.pos.x, y: pl.pos.y, z: pl.pos.z + offsetZ } : null,
+                    bottomY: pl.bottomY,
+                    isBottom: pl.isBottom,
+                    beamDir: pl.beamDir ? { ...pl.beamDir } : null,
+                    right: pl.right ? { ...pl.right } : null,
+                    vBoltDir: pl.vBoltDir ? { ...pl.vBoltDir } : null,
+                    sideHoleY: pl.sideHoleY,
+                    vBoltPivot: pl.vBoltPivot ? { x: pl.vBoltPivot.x, y: pl.vBoltPivot.y, z: pl.vBoltPivot.z + offsetZ } : null,
+                    bottomPos: pl.bottomPos ? { x: pl.bottomPos.x, y: pl.bottomPos.y, z: pl.bottomPos.z + offsetZ } : null
+                };
+                hardwareAssemblyPlacements.push(newPl);
+            });
         }
     } // End of array duplication block
 
     // Build StructureGeometry from the generated beams for panel placement
     const structureGeometry = buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight);
     
-    return { beams, brackets, bolts, washers, maxRad, maxHeight, structureGeometry };
+    return { beams, brackets, bolts, washers, hardwareAssemblyPlacements, maxRad, maxHeight, structureGeometry };
 }
 
 /**
@@ -12348,6 +13525,499 @@ function getActivePanelConfig() {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Solar panel preset library (solar-panels/registry.json + localStorage)
+// ---------------------------------------------------------------------------
+
+const spPresetCatalog = { loaded: false, loading: null, builtins: [] };
+const SP_PRESET_STORAGE_KEY = 'linkageLab_spPresetLibrary';
+
+function spSlugifyId(name) {
+    return String(name || 'panel').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'panel';
+}
+
+function spPresetFromRaw(raw, source) {
+    if (!raw) return null;
+    const id = raw.id || spSlugifyId(raw.name);
+    const widthMm = raw.widthMm != null ? raw.widthMm : raw.width;
+    const heightMm = raw.heightMm != null ? raw.heightMm : raw.height;
+    return {
+        id,
+        name: raw.name || raw.label || id,
+        label: raw.label || raw.name || id,
+        wmp: raw.wmp,
+        vmp: raw.vmp,
+        voc: raw.voc,
+        isc: raw.isc,
+        imp: raw.imp,
+        widthMm,
+        heightMm,
+        panelWidthIn: raw.panelWidthIn != null ? raw.panelWidthIn : (heightMm != null ? +(heightMm / 25.4).toFixed(3) : null),
+        panelLengthIn: raw.panelLengthIn != null ? raw.panelLengthIn : (widthMm != null ? +(widthMm / 25.4).toFixed(3) : null),
+        formFactor: raw.formFactor || 'framed',
+        foldCount: raw.foldCount || 4,
+        foldedLengthIn: raw.foldedLengthIn,
+        foldedWidthIn: raw.foldedWidthIn,
+        foldedThicknessIn: raw.foldedThicknessIn,
+        panelThicknessIn: raw.panelThicknessIn != null ? raw.panelThicknessIn : 1.5,
+        cost: raw.cost != null ? raw.cost : 0,
+        weight: raw.weight != null ? raw.weight : Math.round((raw.wmp || 250) * 0.18),
+        link: raw.link || '',
+        source: source || raw.source || 'builtin'
+    };
+}
+
+function spLoadUserPresetsMap() {
+    try {
+        const raw = localStorage.getItem(SP_PRESET_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return (parsed && parsed.presets && typeof parsed.presets === 'object') ? parsed.presets : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function spSaveUserPreset(preset) {
+    const map = spLoadUserPresetsMap();
+    map[preset.id] = preset;
+    localStorage.setItem(SP_PRESET_STORAGE_KEY, JSON.stringify({ presets: map }));
+}
+
+function spSeedPresetsFromConstants() {
+    if (typeof PANEL_PRESETS === 'undefined' || !Array.isArray(PANEL_PRESETS)) return [];
+    return PANEL_PRESETS.map(p => spPresetFromRaw(p, 'builtin')).filter(Boolean);
+}
+
+async function spLoadPresetCatalog() {
+    if (spPresetCatalog.loaded) return spPresetCatalog;
+    if (spPresetCatalog.loading) return spPresetCatalog.loading;
+
+    spPresetCatalog.loading = (async () => {
+        const builtins = [];
+        try {
+            const regResp = await fetch('solar-panels/registry.json');
+            if (regResp.ok) {
+                const registry = await regResp.json();
+                if (Array.isArray(registry)) {
+                    for (const entry of registry) {
+                        if (!entry || !entry.file || !entry.id) continue;
+                        try {
+                            const fileResp = await fetch('solar-panels/' + entry.file);
+                            if (!fileResp.ok) continue;
+                            const data = await fileResp.json();
+                            builtins.push(spPresetFromRaw(Object.assign({}, data, entry), 'builtin'));
+                        } catch (e) { /* skip broken preset */ }
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('[SP] Could not load solar-panels/registry.json', e);
+        }
+        if (!builtins.length) builtins.push(...spSeedPresetsFromConstants());
+        spPresetCatalog.builtins = builtins;
+        spPresetCatalog.loaded = true;
+        spPresetCatalog.loading = null;
+        return spPresetCatalog;
+    })();
+
+    return spPresetCatalog.loading;
+}
+
+function spGetAllPresets() {
+    const byId = new Map();
+    const add = (preset) => {
+        if (!preset || !preset.id) return;
+        if (!byId.has(preset.id)) byId.set(preset.id, preset);
+    };
+    spPresetCatalog.builtins.forEach(add);
+    Object.values(spLoadUserPresetsMap()).forEach(p => add(spPresetFromRaw(p, 'user')));
+    return Array.from(byId.values()).sort((a, b) => {
+        const order = { builtin: 0, user: 1 };
+        const sa = order[a.source] != null ? order[a.source] : 1;
+        const sb = order[b.source] != null ? order[b.source] : 1;
+        if (sa !== sb) return sa - sb;
+        return (a.name || '').localeCompare(b.name || '');
+    });
+}
+
+function spFindPresetById(id) {
+    if (!id) return null;
+    const user = spLoadUserPresetsMap()[id];
+    if (user) return spPresetFromRaw(user, 'user');
+    const builtin = spPresetCatalog.builtins.find(p => p.id === id);
+    return builtin || null;
+}
+
+function spPanelConfigSignature(cfg) {
+    if (!cfg) return '';
+    return [
+        cfg.panelLength || 0,
+        cfg.panelWidth || 0,
+        cfg.panelThickness || 0,
+        cfg.ratedWatts || 0,
+        cfg.voc || 0,
+        cfg.vmp || 0,
+        cfg.isc || 0,
+        cfg.imp || 0
+    ].join('|');
+}
+
+function spPresetSignature(preset) {
+    const fake = {
+        panelLength: preset.panelLengthIn,
+        panelWidth: preset.panelWidthIn,
+        panelThickness: preset.panelThicknessIn,
+        ratedWatts: preset.wmp,
+        voc: preset.voc,
+        vmp: preset.vmp,
+        isc: preset.isc,
+        imp: preset.imp
+    };
+    return spPanelConfigSignature(fake);
+}
+
+function spLinkConfigsToKnownPresets() {
+    const sigMap = new Map();
+    spGetAllPresets().forEach(preset => sigMap.set(spPresetSignature(preset), preset));
+    ['topPanels', 'sidePanels'].forEach(key => {
+        const cfg = state.solarPanels[key];
+        if (!cfg || cfg.presetId || cfg.presetManual) return;
+        const match = sigMap.get(spPanelConfigSignature(cfg));
+        if (match) cfg.presetId = match.id;
+    });
+}
+
+function spGetPanelConfig(section) {
+    return section === 'side' ? state.solarPanels.sidePanels : state.solarPanels.topPanels;
+}
+
+function spApplyPresetToPanelConfig(panelConfig, preset) {
+    if (!panelConfig || !preset) return;
+    panelConfig.presetId = preset.id;
+    panelConfig.presetManual = false;
+    if (preset.panelLengthIn != null) panelConfig.panelLength = +preset.panelLengthIn.toFixed(2);
+    if (preset.panelWidthIn != null) panelConfig.panelWidth = +preset.panelWidthIn.toFixed(2);
+    if (preset.panelThicknessIn != null) panelConfig.panelThickness = preset.panelThicknessIn;
+    panelConfig.ratedWatts = preset.wmp;
+    panelConfig.voc = preset.voc;
+    panelConfig.vmp = preset.vmp;
+    panelConfig.isc = preset.isc;
+    panelConfig.imp = preset.imp;
+    if (preset.weight != null) panelConfig.weight = preset.weight;
+    if (preset.formFactor) panelConfig.formFactor = preset.formFactor;
+    if (preset.foldCount != null) panelConfig.foldCount = preset.foldCount;
+    if (preset.foldedLengthIn != null) panelConfig.foldedLength = preset.foldedLengthIn;
+    if (preset.foldedWidthIn != null) panelConfig.foldedWidth = preset.foldedWidthIn;
+    if (preset.foldedThicknessIn != null) panelConfig.foldedThickness = preset.foldedThicknessIn;
+    if (preset.formFactor === 'folding' && panelConfig.foldDeploy == null) panelConfig.foldDeploy = 1;
+    if (preset.formFactor === 'folding') panelConfig.foldDeploy = 1;
+    if (preset.cost != null) {
+        state.costSolarPanel = preset.cost;
+        const costInput = document.getElementById('nb-cost-solar');
+        if (costInput) costInput.value = preset.cost.toFixed(2);
+    }
+}
+
+function spSyncPanelSectionUI(section) {
+    const cfg = spGetPanelConfig(section);
+    const suffix = section === 'side' ? 'side' : 'top';
+    const setPair = (slId, nbId, val) => {
+        const sl = document.getElementById(slId);
+        const nb = document.getElementById(nbId);
+        if (sl && val != null) sl.value = val;
+        if (nb && val != null) nb.value = val;
+    };
+    setPair('sl-panel-length-' + suffix, 'nb-panel-length-' + suffix, cfg.panelLength);
+    setPair('sl-panel-width-' + suffix, 'nb-panel-width-' + suffix, cfg.panelWidth);
+    setPair('sl-panel-thick-' + suffix, 'nb-panel-thick-' + suffix, cfg.panelThickness);
+    setPair('sl-panel-watts-' + suffix, 'nb-panel-watts-' + suffix, cfg.ratedWatts);
+    setPair('sl-panel-weight-' + suffix, 'nb-panel-weight-' + suffix, cfg.weight != null ? cfg.weight : 45);
+    const nbVoc = document.getElementById('nb-panel-voc-' + suffix);
+    const nbVmp = document.getElementById('nb-panel-vmp-' + suffix);
+    const nbIsc = document.getElementById('nb-panel-isc-' + suffix);
+    const nbImp = document.getElementById('nb-panel-imp-' + suffix);
+    if (nbVoc) nbVoc.value = cfg.voc;
+    if (nbVmp) nbVmp.value = cfg.vmp;
+    if (nbIsc) nbIsc.value = cfg.isc;
+    if (nbImp) nbImp.value = cfg.imp;
+    spUpdatePresetLink(section);
+    spSyncFormFactorControlsFromState(section);
+}
+
+function spUpdatePresetLink(section) {
+    const suffix = section === 'side' ? 'side' : 'top';
+    const linkEl = document.getElementById('link-panel-preset-' + suffix);
+    const cfg = spGetPanelConfig(section);
+    if (!linkEl) return;
+    const preset = cfg.presetId ? spFindPresetById(cfg.presetId) : null;
+    const href = (preset && preset.link) || cfg.link || '';
+    if (href) {
+        linkEl.href = href;
+        linkEl.style.display = '';
+    } else {
+        linkEl.style.display = 'none';
+    }
+}
+
+function spSuffix(section) {
+    return section === 'side' ? 'side' : 'top';
+}
+
+function spUpdateFormFactorUI(section) {
+    const suffix = spSuffix(section);
+    const cfg = spGetPanelConfig(section);
+    const foldingEl = document.getElementById('sp-folding-controls-' + suffix);
+    const dimLabel = document.getElementById('sp-dim-label-' + suffix);
+    const isFolding = cfg.formFactor === 'folding';
+    if (foldingEl) foldingEl.style.display = isFolding ? 'block' : 'none';
+    if (dimLabel) dimLabel.textContent = isFolding ? 'Unfolded Dimensions' : 'Dimensions';
+}
+
+function spSyncFormFactorControlsFromState(section) {
+    const suffix = spSuffix(section);
+    const cfg = spGetPanelConfig(section);
+    const selForm = document.getElementById('sel-panel-form-' + suffix);
+    if (selForm) selForm.value = cfg.formFactor || 'framed';
+    const slDeploy = document.getElementById('sl-fold-deploy-' + suffix);
+    const nbDeploy = document.getElementById('nb-fold-deploy-' + suffix);
+    const deployPct = Math.round((cfg.foldDeploy != null ? cfg.foldDeploy : 1) * 100);
+    if (slDeploy) slDeploy.value = deployPct;
+    if (nbDeploy) nbDeploy.value = deployPct;
+    const selFold = document.getElementById('sel-fold-count-' + suffix);
+    if (selFold) selFold.value = String(cfg.foldCount || 4);
+    const nbFL = document.getElementById('nb-folded-length-' + suffix);
+    const nbFW = document.getElementById('nb-folded-width-' + suffix);
+    const nbFT = document.getElementById('nb-folded-thick-' + suffix);
+    if (nbFL) nbFL.value = cfg.foldedLength != null ? cfg.foldedLength : 25.25;
+    if (nbFW) nbFW.value = cfg.foldedWidth != null ? cfg.foldedWidth : 21.25;
+    if (nbFT) nbFT.value = cfg.foldedThickness != null ? cfg.foldedThickness : 2.5;
+    spUpdateFormFactorUI(section);
+}
+
+function spRefreshSolarPanelScene() {
+    invalidateGeometryCache();
+    requestRender();
+    debouncedPanelSync();
+}
+
+function spBindFormFactorUI(section) {
+    const suffix = spSuffix(section);
+    const cfg = () => spGetPanelConfig(section);
+
+    const selForm = document.getElementById('sel-panel-form-' + suffix);
+    if (selForm && !selForm.dataset.spBound) {
+        selForm.dataset.spBound = '1';
+        selForm.onchange = () => {
+            cfg().formFactor = selForm.value || 'framed';
+            spUpdateFormFactorUI(section);
+            spRefreshSolarPanelScene();
+        };
+    }
+
+    const bindDeploy = (slId, nbId) => {
+        const sl = document.getElementById(slId);
+        const nb = document.getElementById(nbId);
+        if (sl && !sl.dataset.spBound) {
+            sl.dataset.spBound = '1';
+            sl.oninput = () => {
+                const v = parseFloat(sl.value) || 0;
+                cfg().foldDeploy = Math.max(0, Math.min(1, v / 100));
+                if (nb) nb.value = v;
+                spRefreshSolarPanelScene();
+            };
+        }
+        if (nb && !nb.dataset.spBound) {
+            nb.dataset.spBound = '1';
+            nb.onchange = () => {
+                let v = parseFloat(nb.value) || 0;
+                v = Math.max(0, Math.min(100, v));
+                cfg().foldDeploy = v / 100;
+                if (sl) sl.value = v;
+                nb.value = v;
+                spRefreshSolarPanelScene();
+            };
+        }
+    };
+    bindDeploy('sl-fold-deploy-' + suffix, 'nb-fold-deploy-' + suffix);
+
+    const selFold = document.getElementById('sel-fold-count-' + suffix);
+    if (selFold && !selFold.dataset.spBound) {
+        selFold.dataset.spBound = '1';
+        selFold.onchange = () => {
+            cfg().foldCount = parseInt(selFold.value, 10) || 4;
+            spRefreshSolarPanelScene();
+        };
+    }
+
+    const bindFolded = (id, key) => {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.spBound) {
+            el.dataset.spBound = '1';
+            el.onchange = () => {
+                cfg()[key] = parseFloat(el.value) || 0;
+            };
+        }
+    };
+    bindFolded('nb-folded-length-' + suffix, 'foldedLength');
+    bindFolded('nb-folded-width-' + suffix, 'foldedWidth');
+    bindFolded('nb-folded-thick-' + suffix, 'foldedThickness');
+}
+
+function spRefreshPresetDropdown(section) {
+    const suffix = section === 'side' ? 'side' : 'top';
+    const sel = document.getElementById('sel-panel-preset-' + suffix);
+    if (!sel) return;
+    const cfg = spGetPanelConfig(section);
+    const presets = spGetAllPresets();
+    sel.innerHTML = '';
+    const customOpt = document.createElement('option');
+    customOpt.value = '';
+    customOpt.textContent = presets.length ? 'Custom / manual…' : 'No presets yet';
+    sel.appendChild(customOpt);
+
+    const addGroup = (label, items) => {
+        if (!items.length) return;
+        const group = document.createElement('optgroup');
+        group.label = label;
+        items.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = (p.name || p.id) + (p.wmp ? ' (' + p.wmp + 'W)' : '');
+            if (cfg.presetId === p.id) opt.selected = true;
+            group.appendChild(opt);
+        });
+        sel.appendChild(group);
+    };
+
+    addGroup('Built-in Library', presets.filter(p => p.source === 'builtin'));
+    addGroup('My Presets', presets.filter(p => p.source === 'user'));
+
+    if (cfg.presetId && !presets.some(p => p.id === cfg.presetId)) {
+        const missing = document.createElement('option');
+        missing.value = cfg.presetId;
+        missing.textContent = cfg.presetId + ' (missing)';
+        missing.selected = true;
+        sel.appendChild(missing);
+    }
+    spUpdatePresetLink(section);
+}
+
+function spRefreshPresetDropdowns() {
+    spRefreshPresetDropdown('top');
+    spRefreshPresetDropdown('side');
+}
+
+function spMarkPanelConfigManual(section) {
+    const cfg = spGetPanelConfig(section);
+    if (!cfg.presetId && !cfg.presetManual) return;
+    cfg.presetId = null;
+    cfg.presetManual = true;
+    spRefreshPresetDropdown(section);
+}
+
+function spOnPresetSelect(section) {
+    const suffix = section === 'side' ? 'side' : 'top';
+    const sel = document.getElementById('sel-panel-preset-' + suffix);
+    const cfg = spGetPanelConfig(section);
+    if (!sel) return;
+    if (!sel.value) {
+        cfg.presetId = null;
+        cfg.presetManual = true;
+        spUpdatePresetLink(section);
+        return;
+    }
+    const preset = spFindPresetById(sel.value);
+    if (!preset) return;
+    spApplyPresetToPanelConfig(cfg, preset);
+    spSyncPanelSectionUI(section);
+    spRefreshSolarPanelScene();
+}
+
+function spSavePanelConfigAsPreset(section) {
+    const cfg = spGetPanelConfig(section);
+    const defaultName = cfg.presetId ? (spFindPresetById(cfg.presetId)?.name || 'Custom Panel') : ('Custom ' + (cfg.ratedWatts || 250) + 'W Panel');
+    const name = prompt('Panel preset name:', defaultName);
+    if (!name) return;
+    const link = prompt('Product link (optional):', '') || '';
+
+    let id = spSlugifyId(name);
+    const userMap = spLoadUserPresetsMap();
+    if (userMap[id]) id = id + '-' + Date.now().toString(36).slice(-4);
+
+    const preset = spPresetFromRaw({
+        id,
+        name,
+        label: name,
+        wmp: cfg.ratedWatts,
+        vmp: cfg.vmp,
+        voc: cfg.voc,
+        isc: cfg.isc,
+        imp: cfg.imp,
+        panelLengthIn: cfg.panelLength,
+        panelWidthIn: cfg.panelWidth,
+        panelThicknessIn: cfg.panelThickness,
+        formFactor: cfg.formFactor || 'framed',
+        foldCount: cfg.foldCount || 4,
+        foldedLengthIn: cfg.foldedLength,
+        foldedWidthIn: cfg.foldedWidth,
+        foldedThicknessIn: cfg.foldedThickness,
+        cost: state.costSolarPanel,
+        weight: cfg.weight,
+        link
+    }, 'user');
+
+    spSaveUserPreset(preset);
+    spApplyPresetToPanelConfig(cfg, preset);
+    hwDownloadJsonFile(id + '.json', preset);
+    console.log('[SP] Add this entry to solar-panels/registry.json:', JSON.stringify({ id, name, file: id + '.json', link }, null, 2));
+    if (typeof showToast === 'function') {
+        showToast('Panel preset saved locally and downloaded. Add registry entry from console to ship via GitHub.', 'info');
+    }
+    spRefreshPresetDropdowns();
+    spSyncPanelSectionUI(section);
+    spSyncFormFactorControlsFromState(section);
+}
+
+function spInitPanelPresetUI() {
+    const bindSection = (section) => {
+        const suffix = section === 'side' ? 'side' : 'top';
+        const sel = document.getElementById('sel-panel-preset-' + suffix);
+        const saveBtn = document.getElementById('btn-save-panel-preset-' + suffix);
+        const accordion = section === 'side' ? document.getElementById('side-panels-accordion') : document.getElementById('top-panels-accordion');
+        if (sel && !sel.dataset.spBound) {
+            sel.dataset.spBound = '1';
+            sel.onchange = () => spOnPresetSelect(section);
+        }
+        if (saveBtn && !saveBtn.dataset.spBound) {
+            saveBtn.dataset.spBound = '1';
+            saveBtn.onclick = (e) => { e.preventDefault(); spSavePanelConfigAsPreset(section); };
+        }
+        if (accordion && !accordion.dataset.spManualBound) {
+            accordion.dataset.spManualBound = '1';
+            accordion.addEventListener('input', (e) => {
+                if (e.target.closest('.sp-preset-row, .hw-preset-row')) return;
+                if (e.target.matches('input, select') && !String(e.target.id || '').startsWith('sel-panel-preset')) {
+                    spMarkPanelConfigManual(section);
+                }
+            });
+            accordion.addEventListener('change', (e) => {
+                if (e.target.closest('.sp-preset-row, .hw-preset-row')) return;
+                if (e.target.matches('input, select') && !String(e.target.id || '').startsWith('sel-panel-preset')) {
+                    spMarkPanelConfigManual(section);
+                }
+            });
+        }
+    };
+    bindSection('top');
+    bindSection('side');
+    spBindFormFactorUI('top');
+    spBindFormFactorUI('side');
+    spSyncFormFactorControlsFromState('top');
+    spSyncFormFactorControlsFromState('side');
+    spRefreshPresetDropdowns();
+}
+
 /**
  * Updates the UI for wall face selection buttons in arch mode
  */
@@ -12487,7 +14157,7 @@ function calculateRectangularLayout(canopy, config) {
             
             // Create panel with grid rotation applied to both position and rotation
             // Position is rotated around grid center, and panel rotation matches so it aligns with rotated structure
-            panels.push(new Panel3D(center, panelWidth, panelLength, panelThickness, rotationRad));
+            panels.push(makeSolarPanel(center, panelWidth, panelLength, panelThickness, rotationRad, { x: 0, y: 1, z: 0 }, spPanelSpecForGridCell(config, row)));
         }
     }
     
@@ -12544,7 +14214,7 @@ function calculateRadialLayout(canopy, config) {
         // Radial direction points outward from center, panel length aligned with it
         const rotation = baseAngle + Math.PI / 2 + pinwheelRad;
         
-        panels.push(new Panel3D(center, panelWidth, panelLength, panelThickness, rotation));
+        panels.push(makeSolarPanel(center, panelWidth, panelLength, panelThickness, rotation, { x: 0, y: 1, z: 0 }, spPanelSpecFromConfig(config)));
     }
     
     return panels;
@@ -12614,7 +14284,7 @@ function calculateSpiralLayout(canopy, config) {
         const pz = canopy.center.z + radialDir.z * primaryRadius + lateralDir.z * primaryLateral;
         const primaryCenter = { x: px, y: panelY, z: pz };
         const primaryRotation = baseAngle + pinwheelRad + Math.PI / 2;
-        panels.push(new Panel3D(primaryCenter, panelWidth, panelLength, panelThickness, primaryRotation));
+        panels.push(makeSolarPanel(primaryCenter, panelWidth, panelLength, panelThickness, primaryRotation, { x: 0, y: 1, z: 0 }, spPanelSpecFromConfig(config)));
         
         if (secEnabled) {
             for (let j = 1; j < armCount; j++) {
@@ -12627,7 +14297,7 @@ function calculateSpiralLayout(canopy, config) {
                 const sz = pz + radialDir.z * rOffset + lateralDir.z * lOffset;
                 const secondaryCenter = { x: sx, y: panelY, z: sz };
                 const secondaryRotation = baseAngle + pinwheelRad + pinwheelJ + Math.PI / 2 + rotJ;
-                panels.push(new Panel3D(secondaryCenter, panelWidth, panelLength, panelThickness, secondaryRotation));
+                panels.push(makeSolarPanel(secondaryCenter, panelWidth, panelLength, panelThickness, secondaryRotation, { x: 0, y: 1, z: 0 }, spPanelSpecFromConfig(config)));
             }
         }
     }
@@ -12685,7 +14355,14 @@ function calculateArchLayout(canopy, config, data) {
         gridCols: config.gridCols,
         archPanelOffset: config.archPanelOffset,
         archPanelSlide: config.archPanelSlide,
-        archPanelSeparation: config.archPanelSeparation
+        archPanelSeparation: config.archPanelSeparation,
+        formFactor: config.formFactor,
+        foldCount: config.foldCount,
+        foldDeploy: config.foldDeploy,
+        foldedLength: config.foldedLength,
+        foldedWidth: config.foldedWidth,
+        foldedThickness: config.foldedThickness,
+        weight: config.weight
     });
     
     // Match enabled faces to actual faces found
@@ -14228,7 +15905,14 @@ function calculateSolarPanels(data) {
             archPanelOffset: config.archPanelOffset,
             archPanelSlide: config.archPanelSlide,
             archPanelSeparation: config.archPanelSeparation,
-            archWallFaces: config.archWallFaces
+            archWallFaces: config.archWallFaces,
+            formFactor: sideConfig.formFactor,
+            foldCount: sideConfig.foldCount,
+            foldDeploy: sideConfig.foldDeploy,
+            foldedLength: sideConfig.foldedLength,
+            foldedWidth: sideConfig.foldedWidth,
+            foldedThickness: sideConfig.foldedThickness,
+            weight: sideConfig.weight
         };
         
         panels = calculateArchLayout(canopy, archConfig, data);
@@ -14265,7 +15949,14 @@ function calculateSolarPanels(data) {
                 spiralArmPinwheelStep: config.spiralArmPinwheelStep,
                 spiralArmRotationStep: config.spiralArmRotationStep,
                 panelLift: topCfg.panelLift,
-                layoutMode: config.layoutMode
+                layoutMode: config.layoutMode,
+                formFactor: topCfg.formFactor,
+                foldCount: topCfg.foldCount,
+                foldDeploy: topCfg.foldDeploy,
+                foldedLength: topCfg.foldedLength,
+                foldedWidth: topCfg.foldedWidth,
+                foldedThickness: topCfg.foldedThickness,
+                weight: topCfg.weight
             };
             
             let topPanels = [];
@@ -14299,7 +15990,14 @@ function calculateSolarPanels(data) {
                 archPanelOffset: config.archPanelOffset,
                 archPanelSlide: config.archPanelSlide,
                 archPanelSeparation: config.archPanelSeparation,
-                archWallFaces: config.archWallFaces
+                archWallFaces: config.archWallFaces,
+                formFactor: sideCfg.formFactor,
+                foldCount: sideCfg.foldCount,
+                foldDeploy: sideCfg.foldDeploy,
+                foldedLength: sideCfg.foldedLength,
+                foldedWidth: sideCfg.foldedWidth,
+                foldedThickness: sideCfg.foldedThickness,
+                weight: sideCfg.weight
             };
             
             const sidePanels = calculateArchLayout(canopy, sideConfig, data);
@@ -14821,6 +16519,7 @@ function buildLinkageGeometry(options = {}) {
         brackets: base.brackets ? base.brackets.slice() : [],
         bolts: base.bolts ? base.bolts.slice() : [],
         washers: base.washers ? base.washers.slice() : [],
+        hardwareAssemblyPlacements: base.hardwareAssemblyPlacements ? base.hardwareAssemblyPlacements.slice() : [],
         panels: [],
         canopy: null,
         supportBeams: [],
@@ -14861,20 +16560,28 @@ function buildLinkageGeometry(options = {}) {
     }
     
     if (includePanels && state.solarPanels && state.solarPanels.enabled) {
-        // Solar panels are the last piece installed — only show them once the structure
-        // has reached the user-defined panels-visible angle (default: at/near full deploy).
-        const panelMinRad = (() => {
-            const userDeg = state.animation.panelsVisibleAngle;
-            if (userDeg !== null && userDeg !== undefined) return degToRad(userDeg);
-            return (typeof getOptimalClosedAngleForAnimation === 'function')
-                ? getOptimalClosedAngleForAnimation() - degToRad(2)
-                : foldAngle;
-        })();
-        const panelsVisible = foldAngle >= panelMinRad;
+        const foldingMode = hasFoldingSolarPanels();
+        const autoAnim = foldingMode && useFoldingPanelAutoAnim();
+        let panelsVisible;
+        if (autoAnim) {
+            panelsVisible = getFoldingPanelsVisibleAtAngle(foldAngle);
+        } else if (foldingMode) {
+            panelsVisible = true;
+        } else {
+            const panelMinRad = (() => {
+                const userDeg = state.animation.panelsVisibleAngle;
+                if (userDeg !== null && userDeg !== undefined) return degToRad(userDeg);
+                return (typeof getOptimalClosedAngleForAnimation === 'function')
+                    ? getOptimalClosedAngleForAnimation() - degToRad(2)
+                    : foldAngle;
+            })();
+            panelsVisible = foldAngle >= panelMinRad;
+        }
         if (panelsVisible) {
             try {
                 const solarData = calculateSolarPanels(data);
                 data.panels = solarData.panels || [];
+                applyFoldingPanelAnimationState(data.panels, foldAngle, autoAnim);
                 data.canopy = solarData.canopy || null;
             } catch (e) {
                 console.warn('[Geometry] Could not calculate solar panels:', e);
@@ -14923,28 +16630,29 @@ function buildLinkageGeometry(options = {}) {
 function updateSolarPanelStats(panels, canopy) {
     const countEl = document.getElementById('stat-panel-count');
     const areaEl = document.getElementById('stat-panel-area');
+    const weightEl = document.getElementById('stat-panel-weight');
     const canopyEl = document.getElementById('stat-canopy-area');
     const coverageEl = document.getElementById('stat-coverage');
     
     if (!countEl) return;
     
     const panelCount = panels.length;
-    const panelLength = state.solarPanels.panelLength;
-    const panelWidth = state.solarPanels.panelWidth;
-    
-    // Panel area in square inches, convert to square feet
-    const panelAreaSqIn = panelCount * panelLength * panelWidth;
+    let panelAreaSqIn = 0;
+    panels.forEach(p => {
+        if (p && p.width && p.length) panelAreaSqIn += p.width * p.length;
+    });
     const panelAreaSqFt = panelAreaSqIn / 144;
+    const arrayWeight = calculateSolarPanelArrayWeight(panels);
     
-    // Canopy area in square inches, convert to square feet
     const canopyAreaSqIn = canopy ? canopy.area : 0;
     const canopyAreaSqFt = canopyAreaSqIn / 144;
-    
-    // Coverage percentage
     const coverage = canopyAreaSqFt > 0 ? (panelAreaSqFt / canopyAreaSqFt * 100) : 0;
     
     countEl.textContent = panelCount;
     areaEl.textContent = panelAreaSqFt.toFixed(1) + ' sq ft';
+    if (weightEl) {
+        weightEl.textContent = unitConverter.formatWeightWithUnit(arrayWeight, 1);
+    }
     canopyEl.textContent = canopyAreaSqFt.toFixed(1) + ' sq ft';
     coverageEl.textContent = Math.min(coverage, 100).toFixed(1) + '%';
 }
@@ -15494,9 +17202,9 @@ function updateHUD(data) {
     // Calculate solar panel weight if panels are enabled
     let solarPanelWeight = 0;
     if (state.solarPanels.enabled && data.panels && data.panels.length > 0) {
-        const panelConfig = getActivePanelConfig();
-        const panelWeightPerUnit = panelConfig.weight || 0;
-        solarPanelWeight = solarPanelCount * panelWeightPerUnit;
+        const weightSummary = getSolarPanelWeightSummary(data);
+        solarPanelWeight = weightSummary.total;
+        const panelWeightPerUnit = weightSummary.perUnit;
         
         uiStats.weightSolar.innerText = solarPanelCount;
         uiStats.weightSolarUnit.innerText = unitConverter.formatWeightWithUnit(panelWeightPerUnit);
@@ -17760,7 +19468,8 @@ function showBuildGuide() {
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight;
     
     // Calculate solar panel weight
-    const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
+    const solarWeightSummary = getSolarPanelWeightSummary(data);
+    const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarWeightSummary.total : 0;
     const totalWeight = structureWeight + solarPanelWeight;
     
     // Calculate dimensions (used throughout build guide)
@@ -18218,6 +19927,14 @@ function showBuildGuide() {
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">Rated Power (Wmp)</span>
                         <span class="guide-spec-value">${panelConfig.ratedWatts || 0} W</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Weight (each)</span>
+                        <span class="guide-spec-value">${gW(solarWeightSummary.perUnit, 1)}</span>
+                    </div>
+                    <div class="guide-spec-row">
+                        <span class="guide-spec-label">Array Weight</span>
+                        <span class="guide-spec-value">${gW(solarPanelWeight, 1)}</span>
                     </div>
                     <div class="guide-spec-row">
                         <span class="guide-spec-label">VOC</span>
@@ -19170,7 +20887,8 @@ function gatherBOMData() {
     const bracketWeight = uBrackets * state.weightBracket;
     const boltWeight = nBolts * state.weightBolt;
     const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
-    const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarPanelCount * (panelConfig.weight || 0) : 0;
+    const solarWeightSummary = getSolarPanelWeightSummary(data);
+    const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarWeightSummary.total : 0;
     const totalWeight = structureWeight + solarPanelWeight;
 
     const heightFt = unitConverter.inchesToFeet(data.maxHeight);
@@ -19653,6 +21371,8 @@ function exportGuidePDF() {
             ['Panel Count', `${bom.solarPanelCount}`],
             ['Dimensions', `${unitConverter.formatDimensionWithUnit(pc.panelLength || 0, 1)} x ${unitConverter.formatDimensionWithUnit(pc.panelWidth || 0, 1)} x ${unitConverter.formatDimensionWithUnit(pc.panelThickness || 0, 2)}`],
             ['Rated Power (Wmp)', `${pc.ratedWatts || 0} W`],
+            ['Weight (each)', `${unitConverter.formatWeightWithUnit(bom.solarPanelCount > 0 ? bom.solarPanelWeight / bom.solarPanelCount : (pc.weight || 0), 1)}`],
+            ['Array Weight', `${unitConverter.formatWeightWithUnit(bom.solarPanelWeight, 1)}`],
             ['VOC', `${formatNumber(pc.voc || 0, 1)} V`],
             ['VMP', `${formatNumber(pc.vmp || 0, 1)} V`],
             ['ISC', `${formatNumber(pc.isc || 0, 2)} A`],
@@ -20140,6 +21860,7 @@ function applyV30Config(config) {
         const v = config.visibility;
         if (v.brackets !== undefined) state.showBrackets = v.brackets;
         if (v.bolts !== undefined) state.showBolts = v.bolts;
+        if (v.hardwareFullDetail !== undefined) state.showHardwareFullDetail = v.hardwareFullDetail;
         if (v.ibc !== undefined) state.ibc.enabled = v.ibc;
         // Solar panels visibility is handled in the panels section
     } else {
@@ -20169,6 +21890,7 @@ function applyV30Config(config) {
                 if (tp.electrical.vmp !== undefined) sp.topPanels.vmp = tp.electrical.vmp;
                 if (tp.electrical.isc !== undefined) sp.topPanels.isc = tp.electrical.isc;
                 if (tp.electrical.imp !== undefined) sp.topPanels.imp = tp.electrical.imp;
+                if (tp.electrical.weight !== undefined) sp.topPanels.weight = tp.electrical.weight;
             }
             if (tp.padding) {
                 if (tp.padding.x !== undefined) sp.topPanels.paddingX = tp.padding.x;
@@ -20179,6 +21901,15 @@ function applyV30Config(config) {
                 if (tp.grid.cols !== undefined) sp.topPanels.gridCols = tp.grid.cols;
             }
             if (tp.lift !== undefined) sp.topPanels.panelLift = tp.lift;
+            if (tp.presetId !== undefined) sp.topPanels.presetId = tp.presetId;
+            if (tp.formFactor !== undefined) sp.topPanels.formFactor = tp.formFactor;
+            if (tp.foldCount !== undefined) sp.topPanels.foldCount = tp.foldCount;
+            if (tp.foldDeploy !== undefined) sp.topPanels.foldDeploy = tp.foldDeploy;
+            if (tp.folded) {
+                if (tp.folded.length !== undefined) sp.topPanels.foldedLength = tp.folded.length;
+                if (tp.folded.width !== undefined) sp.topPanels.foldedWidth = tp.folded.width;
+                if (tp.folded.thickness !== undefined) sp.topPanels.foldedThickness = tp.folded.thickness;
+            }
         }
         
         // Load side panels configuration
@@ -20196,6 +21927,7 @@ function applyV30Config(config) {
                 if (sidep.electrical.vmp !== undefined) sp.sidePanels.vmp = sidep.electrical.vmp;
                 if (sidep.electrical.isc !== undefined) sp.sidePanels.isc = sidep.electrical.isc;
                 if (sidep.electrical.imp !== undefined) sp.sidePanels.imp = sidep.electrical.imp;
+                if (sidep.electrical.weight !== undefined) sp.sidePanels.weight = sidep.electrical.weight;
             }
             if (sidep.padding) {
                 if (sidep.padding.x !== undefined) sp.sidePanels.paddingX = sidep.padding.x;
@@ -20204,6 +21936,15 @@ function applyV30Config(config) {
             if (sidep.grid) {
                 if (sidep.grid.rows !== undefined) sp.sidePanels.gridRows = sidep.grid.rows;
                 if (sidep.grid.cols !== undefined) sp.sidePanels.gridCols = sidep.grid.cols;
+            }
+            if (sidep.presetId !== undefined) sp.sidePanels.presetId = sidep.presetId;
+            if (sidep.formFactor !== undefined) sp.sidePanels.formFactor = sidep.formFactor;
+            if (sidep.foldCount !== undefined) sp.sidePanels.foldCount = sidep.foldCount;
+            if (sidep.foldDeploy !== undefined) sp.sidePanels.foldDeploy = sidep.foldDeploy;
+            if (sidep.folded) {
+                if (sidep.folded.length !== undefined) sp.sidePanels.foldedLength = sidep.folded.length;
+                if (sidep.folded.width !== undefined) sp.sidePanels.foldedWidth = sidep.folded.width;
+                if (sidep.folded.thickness !== undefined) sp.sidePanels.foldedThickness = sidep.folded.thickness;
             }
         }
         
@@ -20447,7 +22188,8 @@ function getConfigSnapshot(includeMetadata = false) {
                     voc: state.solarPanels.topPanels.voc,
                     vmp: state.solarPanels.topPanels.vmp,
                     isc: state.solarPanels.topPanels.isc,
-                    imp: state.solarPanels.topPanels.imp
+                    imp: state.solarPanels.topPanels.imp,
+                    weight: state.solarPanels.topPanels.weight
                 },
                 padding: {
                     x: state.solarPanels.topPanels.paddingX,
@@ -20457,7 +22199,16 @@ function getConfigSnapshot(includeMetadata = false) {
                     rows: state.solarPanels.topPanels.gridRows,
                     cols: state.solarPanels.topPanels.gridCols
                 },
-                lift: state.solarPanels.topPanels.panelLift
+                lift: state.solarPanels.topPanels.panelLift,
+                presetId: state.solarPanels.topPanels.presetId || null,
+                formFactor: state.solarPanels.topPanels.formFactor || 'framed',
+                foldCount: state.solarPanels.topPanels.foldCount || 4,
+                foldDeploy: state.solarPanels.topPanels.foldDeploy != null ? state.solarPanels.topPanels.foldDeploy : 1,
+                folded: {
+                    length: state.solarPanels.topPanels.foldedLength,
+                    width: state.solarPanels.topPanels.foldedWidth,
+                    thickness: state.solarPanels.topPanels.foldedThickness
+                }
             },
             sidePanels: {
                 enabled: state.solarPanels.sidePanels.enabled,
@@ -20471,7 +22222,8 @@ function getConfigSnapshot(includeMetadata = false) {
                     voc: state.solarPanels.sidePanels.voc,
                     vmp: state.solarPanels.sidePanels.vmp,
                     isc: state.solarPanels.sidePanels.isc,
-                    imp: state.solarPanels.sidePanels.imp
+                    imp: state.solarPanels.sidePanels.imp,
+                    weight: state.solarPanels.sidePanels.weight
                 },
                 padding: {
                     x: state.solarPanels.sidePanels.paddingX,
@@ -20480,6 +22232,15 @@ function getConfigSnapshot(includeMetadata = false) {
                 grid: {
                     rows: state.solarPanels.sidePanels.gridRows,
                     cols: state.solarPanels.sidePanels.gridCols
+                },
+                presetId: state.solarPanels.sidePanels.presetId || null,
+                formFactor: state.solarPanels.sidePanels.formFactor || 'framed',
+                foldCount: state.solarPanels.sidePanels.foldCount || 4,
+                foldDeploy: state.solarPanels.sidePanels.foldDeploy != null ? state.solarPanels.sidePanels.foldDeploy : 1,
+                folded: {
+                    length: state.solarPanels.sidePanels.foldedLength,
+                    width: state.solarPanels.sidePanels.foldedWidth,
+                    thickness: state.solarPanels.sidePanels.foldedThickness
                 }
             },
             layoutMode: state.solarPanels.layoutMode,
@@ -20568,6 +22329,7 @@ function getConfigSnapshot(includeMetadata = false) {
         visibility: {
             brackets: state.showBrackets,
             bolts: state.showBolts,
+            hardwareFullDetail: state.showHardwareFullDetail,
             solarPanels: state.solarPanels.enabled,
             ibc: state.ibc.enabled
         },
@@ -20676,6 +22438,8 @@ function applyConfig(config, updateUI = true) {
         if (bracketsChk) bracketsChk.checked = state.showBrackets;
         const boltsChk = document.getElementById('chk-bolts');
         if (boltsChk) boltsChk.checked = state.showBolts;
+        const hwFullChk = document.getElementById('chk-hw-full-detail');
+        if (hwFullChk) hwFullChk.checked = state.showHardwareFullDetail;
         
         const ibc = state.ibc;
         const chkIbc = document.getElementById('chk-ibc-glb');
@@ -20791,6 +22555,10 @@ function applyConfig(config, updateUI = true) {
         if (nbVmpTop) nbVmpTop.value = topCfg.vmp || 41.5;
         if (nbIscTop) nbIscTop.value = topCfg.isc || 10.2;
         if (nbImpTop) nbImpTop.value = topCfg.imp || 9.65;
+        const slPanelWeightTop = document.getElementById('sl-panel-weight-top');
+        const nbPanelWeightTop = document.getElementById('nb-panel-weight-top');
+        if (slPanelWeightTop) slPanelWeightTop.value = Math.min(150, topCfg.weight != null ? topCfg.weight : 45);
+        if (nbPanelWeightTop) nbPanelWeightTop.value = topCfg.weight != null ? topCfg.weight : 45;
         
         // ===== SIDE PANEL CONTROLS =====
         const sideCfg = sp.sidePanels;
@@ -20824,6 +22592,10 @@ function applyConfig(config, updateUI = true) {
         if (nbVmpSide) nbVmpSide.value = sideCfg.vmp || 41.5;
         if (nbIscSide) nbIscSide.value = sideCfg.isc || 10.2;
         if (nbImpSide) nbImpSide.value = sideCfg.imp || 9.65;
+        const slPanelWeightSide = document.getElementById('sl-panel-weight-side');
+        const nbPanelWeightSide = document.getElementById('nb-panel-weight-side');
+        if (slPanelWeightSide) slPanelWeightSide.value = Math.min(150, sideCfg.weight != null ? sideCfg.weight : 45);
+        if (nbPanelWeightSide) nbPanelWeightSide.value = sideCfg.weight != null ? sideCfg.weight : 45;
         
         // Layout mode
         const selPanelLayout = document.getElementById('sel-panel-layout');
@@ -20959,6 +22731,11 @@ function applyConfig(config, updateUI = true) {
         
         // Update arch/side wall panel controls visibility
         updateArchWallFacesUI();
+        if (typeof spRefreshPresetDropdowns === 'function') spRefreshPresetDropdowns();
+        if (typeof spSyncFormFactorControlsFromState === 'function') {
+            spSyncFormFactorControlsFromState('top');
+            spSyncFormFactorControlsFromState('side');
+        }
         
         // Sync auto lumber pricing UI
         const autoLumberChk = document.getElementById('chk-auto-lumber-pricing');
@@ -21304,12 +23081,42 @@ function getOptimalClosedAngleForAnimation() {
 /**
  * Animates the fold/unfold sequence using requestAnimationFrame
  * Supports forward, reverse, loop, and ping-pong modes
- * Animation stops at fully open (min angle) and fully closed (optimal 360° angle)
+ * Animation stops at fully folded (min angle) and fully deployed (360° ring angle)
  * @param {number} timestamp - Current animation timestamp from requestAnimationFrame
  */
 function animateFold(timestamp) {
     if (!state.animation.playing) {
         updateAnimationStatus();
+        return;
+    }
+
+    const speed = state.animation.speed;
+
+    // Panel deploy phase — runs after structure is fully open, independent of fold angle
+    if (hasFoldingSolarPanels() && state.animation.foldingPanelPhase === 'panel_deploy') {
+        if (!state.animation.foldingPanelDeployStart) {
+            state.animation.foldingPanelDeployStart = timestamp;
+        }
+        const deployDuration = FOLDING_PANEL_DEPLOY_MS / speed;
+        const elapsed = timestamp - state.animation.foldingPanelDeployStart;
+        const t = Math.min(1, elapsed / deployDuration);
+        const eased = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        state.animation.foldingPanelDeploy = eased;
+        requestRender();
+        if (t >= 1) {
+            state.animation.foldingPanelDeploy = 1;
+            state.animation.foldingPanelPhase = 'idle';
+            state.animation.foldingPanelsUnfoldPhase = false;
+            state.animation.foldingPanelDeployStart = 0;
+            state.animation.foldingPanelDeploy = 0;
+            state.animation.direction = -1;
+            state.animation.lastTime = 0;
+            updateAnimationStatus();
+            requestRender();
+        }
+        if (state.animation.playing) {
+            state.animation.frameId = requestAnimationFrame(animateFold);
+        }
         return;
     }
     
@@ -21328,7 +23135,6 @@ function animateFold(timestamp) {
         ? degToRad(state.animation.stopAngle) 
         : closedAngle;
     const maxAngle = Math.min(stopAngleRad, closedAngle); // Don't exceed closed angle
-    const speed = state.animation.speed;
     const direction = state.animation.direction;
     
     // Calculate step based on delta time (target ~60fps equivalent)
@@ -21339,24 +23145,32 @@ function animateFold(timestamp) {
     
     // Check if we're in a pause state
     if (state.animation.pauseUntil && timestamp < state.animation.pauseUntil) {
-        // Still pausing, continue waiting
         state.animation.frameId = requestAnimationFrame(animateFold);
         return;
     }
-    state.animation.pauseUntil = null; // Clear pause flag
+    if (state.animation.pauseUntil) {
+        state.animation.pauseUntil = null;
+        state.animation.lastTime = 0;
+    }
+
+    if (hasFoldingSolarPanels() && state.animation.foldingPanelPhase === 'stowed' && direction > 0) {
+        state.animation.foldingPanelPhase = 'structure_deploy';
+    }
     
     let currentAngle = state.foldAngle + step;
     let reachedEnd = false;
-    let reachedClosed = false;
+    let reachedDeployed = false;
+    let reachedFolded = false;
     
-    // Check bounds - use stop angle as maximum
+    // Check bounds - max = deployed (360°), min = folded
     if (direction > 0 && currentAngle >= maxAngle) {
         currentAngle = maxAngle;
         reachedEnd = true;
-        reachedClosed = (maxAngle >= closedAngle - 0.01); // Reached fully closed if at closed angle
+        reachedDeployed = true;
     } else if (direction < 0 && currentAngle <= minAngle) {
         currentAngle = minAngle;
         reachedEnd = true;
+        reachedFolded = true;
     }
     
     // Handle end of animation
@@ -21367,20 +23181,40 @@ function animateFold(timestamp) {
         requestRender();
         
         if (state.animation.pingPong || state.animation.loop) {
-            // Pause for 1 second at fully closed position before continuing
-            if (reachedClosed) {
-                state.animation.pauseUntil = timestamp + 1000; // 1 second pause
-            }
-            
-            if (state.animation.pingPong) {
-                // Reverse direction for ping-pong mode
-                state.animation.direction *= -1;
-                updateAnimationStatus();
-            } else if (state.animation.loop) {
-                // Reset to beginning for loop mode
-                state.foldAngle = direction > 0 ? minAngle : maxAngle;
-                syncUI('foldAngle');
-                requestRender();
+            if (hasFoldingSolarPanels()) {
+                if (reachedFolded) {
+                    state.animation.pauseUntil = timestamp + 1000;
+                    state.animation.foldingPanelPhase = 'stowed';
+                    state.animation.foldingPanelDeploy = 0;
+                    state.animation.foldingPanelsUnfoldPhase = true;
+                    state.animation.direction = 1;
+                    updateAnimationStatus();
+                } else if (reachedDeployed) {
+                    state.animation.foldingPanelPhase = 'panel_deploy';
+                    state.animation.foldingPanelDeploy = 0;
+                    state.animation.foldingPanelDeployStart = 0;
+                    state.animation.foldingPanelsUnfoldPhase = true;
+                    state.animation.lastTime = 0;
+                } else if (state.animation.pingPong) {
+                    state.animation.direction *= -1;
+                    updateAnimationStatus();
+                } else if (state.animation.loop) {
+                    state.foldAngle = direction > 0 ? minAngle : maxAngle;
+                    syncUI('foldAngle');
+                    requestRender();
+                }
+            } else {
+                if (reachedDeployed) {
+                    state.animation.pauseUntil = timestamp + 1000;
+                }
+                if (state.animation.pingPong) {
+                    state.animation.direction *= -1;
+                    updateAnimationStatus();
+                } else if (state.animation.loop) {
+                    state.foldAngle = direction > 0 ? minAngle : maxAngle;
+                    syncUI('foldAngle');
+                    requestRender();
+                }
             }
             
             // Continue animation (will pause if pauseUntil is set)
@@ -22708,6 +24542,9 @@ function computeGeometryHash() {
         state.vBeamInnerT,
         state.vBeamOuterW,
         state.vBeamOuterT,
+        state.showBrackets,
+        state.showBolts,
+        state.showHardwareFullDetail,
         state.foldAngle.toFixed(6),
         state.orientation
     ];
@@ -23883,6 +25720,11 @@ document.getElementById('chk-bolts').onchange = e => {
     state.showBolts = e.target.checked;
     requestRender();
 };
+document.getElementById('chk-hw-full-detail').onchange = e => {
+    state.showHardwareFullDetail = e.target.checked;
+    invalidateGeometryCache();
+    requestRender();
+};
 
 // Sun position controls (topbar)
 // Time of day slider
@@ -23927,6 +25769,14 @@ document.getElementById('chk-shadows').onchange = e => {
     }
     if (threeRenderer.boltGroup) {
         threeRenderer.boltGroup.traverse((child) => {
+            if (child.isMesh) {
+                child.castShadow = state.shadowsEnabled;
+                child.receiveShadow = state.shadowsEnabled;
+            }
+        });
+    }
+    if (threeRenderer.hardwareAssemblyGroup) {
+        threeRenderer.hardwareAssemblyGroup.traverse((child) => {
             if (child.isMesh) {
                 child.castShadow = state.shadowsEnabled;
                 child.receiveShadow = state.shadowsEnabled;
@@ -24516,54 +26366,69 @@ function selectActuator(index) {
  * @param {number} targetAngle - Target fold angle in radians
  * @param {number} duration - Animation duration in milliseconds
  */
-function animateActuatorFold(targetAngle, duration = 3000) {
+function animateActuatorFold(targetAngle, duration = 3000, onComplete) {
     if (state.actuatorAnimation.isPlaying) {
         return; // Already animating
     }
-    
+
     state.actuatorAnimation.isPlaying = true;
     state.actuatorAnimation.currentAngle = state.foldAngle;
     state.actuatorAnimation.targetAngle = targetAngle;
     state.actuatorAnimation.direction = targetAngle > state.foldAngle ? 1 : -1;
-    
+
+    if (hasFoldingSolarPanels()) {
+        if (targetAngle > state.foldAngle + degToRad(0.5)) {
+            state.animation.foldingPanelPhase = 'structure_deploy';
+            state.animation.foldingPanelDeploy = 0;
+            state.animation.foldingPanelsUnfoldPhase = true;
+        } else if (targetAngle < state.foldAngle - degToRad(0.5)) {
+            state.animation.foldingPanelPhase = 'idle';
+            state.animation.foldingPanelsUnfoldPhase = false;
+            state.animation.foldingPanelDeploy = 0;
+        }
+    }
+
     const startAngle = state.foldAngle;
     const startTime = Date.now();
     const speed = state.actuatorAnimation.speed || 1.0;
     const adjustedDuration = duration / speed;
-    
+
     function animate() {
         if (!state.actuatorAnimation.isPlaying) {
             return;
         }
-        
+
         const elapsed = Date.now() - startTime;
         const progress = Math.min(elapsed / adjustedDuration, 1);
-        
-        // Ease in-out curve for smooth animation
-        const eased = progress < 0.5 
-            ? 2 * progress * progress 
+
+        const eased = progress < 0.5
+            ? 2 * progress * progress
             : 1 - Math.pow(-2 * progress + 2, 2) / 2;
-        
-        // Interpolate angle
+
         const currentAngle = startAngle + (targetAngle - startAngle) * eased;
         state.foldAngle = currentAngle;
-        
-        // Invalidate cache and render
+
         invalidateGeometryCache();
         requestRender();
-        
+
         if (progress < 1) {
             requestAnimationFrame(animate);
         } else {
             state.foldAngle = targetAngle;
             state.actuatorAnimation.isPlaying = false;
+            if (hasFoldingSolarPanels() && Math.abs(targetAngle - getStructureFoldedAngle()) < degToRad(1)) {
+                state.animation.foldingPanelPhase = 'stowed';
+                state.animation.foldingPanelDeploy = 0;
+                state.animation.foldingPanelsUnfoldPhase = true;
+            }
             invalidateGeometryCache();
             requestRender();
             const stopBtn = document.getElementById('btn-actuator-stop');
             if (stopBtn) stopBtn.style.display = 'none';
+            if (onComplete) onComplete();
         }
     }
-    
+
     animate();
 }
 
@@ -24910,6 +26775,20 @@ document.getElementById('nb-panel-imp-top').onchange = e => {
     e.target.value = val;
     debouncedPanelSync();
 };
+document.getElementById('sl-panel-weight-top').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.topPanels.weight = val;
+    document.getElementById('nb-panel-weight-top').value = val;
+    requestRender();
+};
+document.getElementById('nb-panel-weight-top').onchange = e => {
+    let val = parseFloat(e.target.value) || 45;
+    val = Math.max(1, Math.min(500, val));
+    state.solarPanels.topPanels.weight = val;
+    document.getElementById('sl-panel-weight-top').value = Math.min(150, val);
+    e.target.value = val;
+    requestRender();
+};
 
 // ========== SIDE PANEL ELECTRICAL CONTROLS ==========
 document.getElementById('sl-panel-watts-side').oninput = e => {
@@ -24952,6 +26831,20 @@ document.getElementById('nb-panel-imp-side').onchange = e => {
     state.solarPanels.sidePanels.imp = val;
     e.target.value = val;
     debouncedPanelSync();
+};
+document.getElementById('sl-panel-weight-side').oninput = e => {
+    const val = parseFloat(e.target.value);
+    state.solarPanels.sidePanels.weight = val;
+    document.getElementById('nb-panel-weight-side').value = val;
+    requestRender();
+};
+document.getElementById('nb-panel-weight-side').onchange = e => {
+    let val = parseFloat(e.target.value) || 45;
+    val = Math.max(1, Math.min(500, val));
+    state.solarPanels.sidePanels.weight = val;
+    document.getElementById('sl-panel-weight-side').value = Math.min(150, val);
+    e.target.value = val;
+    requestRender();
 };
 
 // Layout mode dropdown
@@ -25823,6 +27716,16 @@ document.getElementById('preset-select').onchange = e => {
 
 // Animation controls
 document.getElementById('btn-anim-play').onclick = () => {
+    if (hasFoldingSolarPanels()) {
+        state.animation.foldingPanelPhase = 'idle';
+        state.animation.foldingPanelDeploy = 0;
+        state.animation.foldingPanelDeployStart = 0;
+        state.animation.foldingPanelsUnfoldPhase = false;
+        if (state.foldAngle <= getStructureFoldedAngle() + degToRad(1.5)) {
+            state.animation.foldingPanelPhase = 'stowed';
+            state.animation.foldingPanelsUnfoldPhase = true;
+        }
+    }
     state.animation.playing = true;
     state.animation.lastTime = 0; // Reset delta time tracking
     updateAnimationStatus();
@@ -25844,13 +27747,19 @@ document.getElementById('btn-anim-reverse').onclick = () => {
 
 // Fold/Unfold buttons (similar to Actuator Open/Close)
 document.getElementById('btn-anim-fold').onclick = () => {
-    const closedAngle = MIN_FOLD_ANGLE;
-    animateActuatorFold(closedAngle, 3000);
+    if (hasFoldingSolarPanels()) {
+        runFoldingPanelFoldSequence(3000);
+    } else {
+        animateActuatorFold(getStructureFoldedAngle(), 3000);
+    }
     showToast('Folding to closed position...', 'info');
 };
 document.getElementById('btn-anim-unfold').onclick = () => {
-    const openAngle = getOptimalClosedAngleForAnimation();
-    animateActuatorFold(openAngle, 3000);
+    if (hasFoldingSolarPanels()) {
+        runFoldingPanelUnfoldSequence(3000);
+    } else {
+        animateActuatorFold(getStructureDeployedAngle(), 3000);
+    }
     showToast('Unfolding to open position...', 'info');
 };
 document.getElementById('sl-anim-speed').addEventListener('input', e => {
@@ -26086,9 +27995,11 @@ function syncPanelsFromLinkageMode(force = false) {
         // Get panel specs and grid layout from linkage mode
         const panelConfig = getActivePanelConfig();
         const isArchMode = state.orientation === 'vertical';
+        const panelPreset = panelConfig.presetId && typeof spFindPresetById === 'function'
+            ? spFindPresetById(panelConfig.presetId) : null;
         
         const panelSpecs = {
-            name: `LinkageLab ${panelConfig.ratedWatts}W`,
+            name: panelPreset ? panelPreset.name : ('LinkageLab ' + panelConfig.ratedWatts + 'W'),
             wmp: panelConfig.ratedWatts,
             vmp: panelConfig.vmp || 41.5,
             voc: panelConfig.voc || 49.5,
@@ -26388,6 +28299,13 @@ if (saved) {
         });
 }
 
+// Preload preset libraries (hardware + solar panels)
+hwLoadPresetCatalog().then(() => hwLinkPartsToKnownPresets());
+spLoadPresetCatalog().then(() => {
+    spLinkConfigsToKnownPresets();
+    spInitPanelPresetUI();
+});
+
 // Emergency localStorage clear: Press Ctrl+Shift+Delete while focused on page
 document.addEventListener('keydown', e => {
     if (e.ctrlKey && e.shiftKey && e.key === 'Delete') {
@@ -26614,6 +28532,7 @@ window.addEventListener('resize', debounce(() => {
                         <option value="washer">Washer</option>
                         <option value="lockWasher">Lock Washer</option>
                         <option value="nut">Nut</option>
+                        <option value="rivetNut">Rivet Nut</option>
                         <option value="beam">Beam</option>
                         <option value="bracket">Bracket</option>
                     </select>

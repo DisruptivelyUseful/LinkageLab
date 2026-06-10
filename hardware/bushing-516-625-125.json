@@ -1,0 +1,16 @@
+{
+  "id": "bushing-516-625-125",
+  "name": "Bushing 5/16\"ID 5/8\"OD 1.25\"",
+  "type": "bushing",
+  "label": "Bushing 5/16\"ID 5/8\"OD 1.25\"",
+  "cost": 0.85,
+  "link": "",
+  "params": {
+    "id": 0.3125,
+    "od": 0.625,
+    "length": 1.25,
+    "flangeOd": 0,
+    "flangeThickness": 0
+  },
+  "extras": {}
+}

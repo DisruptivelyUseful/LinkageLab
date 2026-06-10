@@ -1,0 +1,18 @@
+{
+  "id": "solaria-powerxt-400",
+  "name": "Solaria PowerXT 400",
+  "label": "Solaria PowerXT 400",
+  "wmp": 400,
+  "vmp": 40.5,
+  "voc": 48.2,
+  "isc": 10.42,
+  "imp": 9.88,
+  "widthMm": 1740,
+  "heightMm": 1038,
+  "panelLengthIn": 68.504,
+  "panelWidthIn": 40.866,
+  "panelThicknessIn": 1.5,
+  "cost": 350,
+  "weight": 72,
+  "link": ""
+}

@@ -1,0 +1,19 @@
+{
+  "id": "bolt-m8x60-button",
+  "name": "Outer V-Beam Bolt (8x60mm button)",
+  "type": "bolt",
+  "label": "Outer V-Beam Bolt (8x60mm button)",
+  "cost": 0.55,
+  "link": "",
+  "params": {
+    "diameter": 0.315,
+    "length": 2.3622,
+    "threadLength": 0.9449,
+    "headType": "button",
+    "headDia": 0.5118,
+    "headHeight": 0.1969,
+    "driveSize": 0.1575,
+    "metric": "M8x1.25"
+  },
+  "extras": {}
+}

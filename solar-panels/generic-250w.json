@@ -1,0 +1,18 @@
+{
+  "id": "generic-250w",
+  "name": "Generic 250W",
+  "label": "Generic 250W",
+  "wmp": 250,
+  "vmp": 30.5,
+  "voc": 37.5,
+  "isc": 8.8,
+  "imp": 8.2,
+  "widthMm": 1650,
+  "heightMm": 992,
+  "panelLengthIn": 64.961,
+  "panelWidthIn": 39.055,
+  "panelThicknessIn": 1.5,
+  "cost": 120,
+  "weight": 45,
+  "link": ""
+}

@@ -1,0 +1,116 @@
+﻿[
+    {
+        "id":  "rich-solar-200w-mono",
+        "name":  "Rich Solar 200W Mono",
+        "file":  "rich-solar-200w-mono.json",
+        "link":  ""
+    },
+    {
+        "id":  "hqst-100w-poly",
+        "name":  "HQST 100W Poly",
+        "file":  "hqst-100w-poly.json",
+        "link":  ""
+    },
+    {
+        "id":  "renogy-175w-mono",
+        "name":  "Renogy 175W Mono",
+        "file":  "renogy-175w-mono.json",
+        "link":  ""
+    },
+    {
+        "id":  "rich-solar-400w-bifacial",
+        "name":  "Rich Solar 400W Bifacial",
+        "file":  "rich-solar-400w-bifacial.json",
+        "link":  ""
+    },
+    {
+        "id":  "longi-550w-hi-mo-5",
+        "name":  "LONGi 550W Hi-Mo 5",
+        "file":  "longi-550w-hi-mo-5.json",
+        "link":  ""
+    },
+    {
+        "id":  "sunpower-m-series-420w",
+        "name":  "SunPower M Series 420W",
+        "file":  "sunpower-m-series-420w.json",
+        "link":  ""
+    },
+    {
+        "id":  "generic-250w",
+        "name":  "Generic 250W",
+        "file":  "generic-250w.json",
+        "link":  ""
+    },
+    {
+        "id":  "alrska-flexible-100w",
+        "name":  "Alrska Flexible 100W",
+        "file":  "alrska-flexible-100w.json",
+        "link":  ""
+    },
+    {
+        "id":  "ecoflow-400w-rigid",
+        "name":  "EcoFlow 400W Rigid",
+        "file":  "ecoflow-400w-rigid.json",
+        "link":  ""
+    },
+    {
+        "id":  "trina-vertex-260w",
+        "name":  "Trina Vertex 260W",
+        "file":  "trina-vertex-260w.json",
+        "link":  ""
+    },
+    {
+        "id":  "rec-alpha-pure-410w",
+        "name":  "REC Alpha Pure 410W",
+        "file":  "rec-alpha-pure-410w.json",
+        "link":  ""
+    },
+    {
+        "id":  "ecoflow-400w-portable",
+        "name":  "EcoFlow 400W Portable",
+        "file":  "ecoflow-400w-portable.json",
+        "link":  ""
+    },
+    {
+        "id":  "solaria-powerxt-400",
+        "name":  "Solaria PowerXT 400",
+        "file":  "solaria-powerxt-400.json",
+        "link":  ""
+    },
+    {
+        "id":  "sunpower-maxeon-430w",
+        "name":  "SunPower Maxeon 430W",
+        "file":  "sunpower-maxeon-430w.json",
+        "link":  ""
+    },
+    {
+        "id":  "alrska-120w-rigid",
+        "name":  "Alrska 120W Rigid",
+        "file":  "alrska-120w-rigid.json",
+        "link":  ""
+    },
+    {
+        "id":  "ecoflow-100w-portable",
+        "name":  "EcoFlow 100W Portable",
+        "file":  "ecoflow-100w-portable.json",
+        "link":  ""
+    },
+    {
+        "id":  "bougerv-cigs-200w",
+        "name":  "BougeRV CIGS 200W",
+        "file":  "bougerv-cigs-200w.json",
+        "link":  ""
+    },
+    {
+        "id":  "harbor-freight-predator-200w-folding",
+        "name":  "Harbor Freight Predator 200W (4-fold)",
+        "file":  "harbor-freight-predator-200w-folding.json",
+        "link":  "https://www.harborfreight.com/"
+    },
+    {
+        "id":  "harbor-freight-predator-200w-folding",
+        "name":  "Harbor Freight Predator 200W (4-fold)",
+        "file":  "harbor-freight-predator-200w-folding.json",
+        "link":  "https://www.harborfreight.com/"
+    }
+]

@@ -1,0 +1,15 @@
+{
+  "id": "lock-washer-516-split",
+  "name": "5/16\" Split Lock Washer",
+  "type": "lockWasher",
+  "label": "5/16\" Split Lock Washer",
+  "cost": 0.06,
+  "link": "",
+  "params": {
+    "id": 0.3125,
+    "od": 0.5,
+    "thickness": 0.078,
+    "style": "split"
+  },
+  "extras": {}
+}

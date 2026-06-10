@@ -1,0 +1,23 @@
+{
+  "id": "beam-outer-v-sync",
+  "name": "Outer V-Beam (sync structure)",
+  "type": "beam",
+  "label": "Outer V-Beam",
+  "cost": 0,
+  "link": "",
+  "params": {
+    "width": 3.5,
+    "thickness": 1.5,
+    "length": 96,
+    "holeOffset": 1.5,
+    "holeDiameter": 0.31496062992125984,
+    "holeAlign": "near",
+    "rotDeg": 90,
+    "syncStructure": true,
+    "color": 9136404
+  },
+  "extras": {
+    "holeAlign": "near",
+    "syncStructure": true
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "id": "washer-516-150-outer",
+  "name": "Outer Washer 5/16\"ID 1.5\"OD",
+  "type": "washer",
+  "label": "Outer Washer 5/16\"ID 1.5\"OD",
+  "cost": 0.08,
+  "link": "",
+  "params": {
+    "id": 0.3125,
+    "od": 1.5,
+    "thickness": 0.0625
+  },
+  "extras": {}
+}

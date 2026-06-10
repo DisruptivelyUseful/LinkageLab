@@ -1,0 +1,22 @@
+{
+  "id": "bolt-half-hex-3-hpivot",
+  "name": "H-Pivot Bolt 1/2\"x3\" Hex",
+  "type": "bolt",
+  "label": "H-Pivot Bolt 1/2\"x3\" Hex",
+  "cost": 0.75,
+  "link": "",
+  "params": {
+    "diameter": 0.5,
+    "length": 3.0,
+    "threadLength": 1.0,
+    "headType": "hex",
+    "headDia": 0.75,
+    "headHeight": 0.3125,
+    "driveSize": 0,
+    "metric": "",
+    "headAtInsert": true
+  },
+  "extras": {
+    "headAtInsert": true
+  }
+}
