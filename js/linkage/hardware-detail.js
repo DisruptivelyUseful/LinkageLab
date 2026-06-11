@@ -2175,6 +2175,7 @@ function getAssemblyHardwareItems(moduleCount) {
         });
     });
     return Object.values(agg).map(a => ({ qty: a.qty, item: a.label, unit: a.unit, total: a.qty * a.unit }));
+}
 
 const _moduleExports = {
     hwDetail,

@@ -35,7 +35,6 @@ Object.keys(idMap).forEach(k => {
         nb: document.getElementById('nb-'+k)
     };
 });
-initSliderBindings();
 
 const uiCol = document.getElementById('col-status');
 const uiStats = {
@@ -81,6 +80,7 @@ const uiStats = {
 
 const _moduleExports = { canvas, ctx, canvasWebGL, inputs, idMap, uiCol, uiStats };
 bridgeGlobals(_moduleExports);
+initSliderBindings();
 
 export { canvas, ctx, canvasWebGL, inputs, idMap, uiCol, uiStats };
 

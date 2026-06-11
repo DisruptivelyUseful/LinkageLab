@@ -1,21 +1,21 @@
 // ============================================================================
-// LINKAGE LAB - Async ES module bootstrap (Phase 3zc)
+// LINKAGE LAB - Async ES module bootstrap (Phase 3 complete)
 // Reads config/linkage-manifest.json, loads CDN + partials + modules in order.
-// Scripts may be classic (global) or ESM (import + global-bridge for compat).
+// All app scripts are ESM; CDN entries remain classic global scripts.
 // Requires HTTP server for fetch() — file:// blocks manifest/partials fetch.
 // ============================================================================
 
 const MANIFEST_PATH = 'config/linkage-manifest.json';
 
 async function fetchText(path) {
-    const res = await fetch(path);
+    const res = await fetch(path, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to load ${path} (HTTP ${res.status})`);
     return res.text();
 }
 
 function normalizeScriptEntry(entry) {
-    if (typeof entry === 'string') return { path: entry, format: 'classic' };
-    return { path: entry.path, format: entry.format || 'classic' };
+    if (typeof entry === 'string') return { path: entry, format: 'esm' };
+    return { path: entry.path, format: entry.format || 'esm' };
 }
 
 function loadScript(src) {
@@ -30,7 +30,7 @@ function loadScript(src) {
 }
 
 async function importModule(path) {
-    const url = new URL(path, `${location.origin}/`);
+    const url = new URL(path, location.href);
     await import(url.href);
 }
 
@@ -69,10 +69,14 @@ async function boot() {
 
     for (const entry of scripts) {
         const { path, format } = normalizeScriptEntry(entry);
-        if (format === 'esm') {
-            await importModule(path);
-        } else {
-            await loadScript(path);
+        try {
+            if (format === 'esm') {
+                await importModule(path);
+            } else {
+                await loadScript(path);
+            }
+        } catch (err) {
+            throw new Error(`Failed to load ${path}: ${err.message}`);
         }
     }
 }

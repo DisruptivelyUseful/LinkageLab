@@ -10,11 +10,20 @@ import { bridgeGlobals } from '../linkage/global-bridge.js';
 // Check if convert-units is available (loaded via CDN)
 let convertUnits = null;
 
-function initializeConvertUnits() {
+async function initializeConvertUnits() {
     if (typeof window !== 'undefined' && window.convertUnits) {
         convertUnits = window.convertUnits;
         console.log('[unit-converter] convert-units library initialized from window.convertUnits');
         return;
+    }
+    try {
+        const mod = await import('https://esm.sh/convert-units@2.3.4');
+        convertUnits = mod.default;
+        globalThis.convertUnits = convertUnits;
+        console.log('[unit-converter] convert-units library initialized from esm.sh');
+        return;
+    } catch (e) {
+        console.warn('[unit-converter] esm.sh convert-units unavailable, using fallback conversions');
     }
     if (typeof configureMeasurements !== 'undefined') {
         try {
@@ -40,12 +49,11 @@ function initializeConvertUnits() {
 }
 
 if (typeof window !== 'undefined') {
+    const scheduleInit = () => { setTimeout(() => { initializeConvertUnits(); }, 200); };
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            setTimeout(initializeConvertUnits, 200);
-        });
+        document.addEventListener('DOMContentLoaded', scheduleInit);
     } else {
-        setTimeout(initializeConvertUnits, 200);
+        scheduleInit();
     }
 }
 
