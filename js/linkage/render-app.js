@@ -1,6 +1,8 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { applyCollisionDetection } from './cache.js';
+import { buildLinkageGeometry, calculateBeamBounds } from './linkage-geometry.js';
 
     // ============================================================================
     // RENDERER - Performance Optimized
