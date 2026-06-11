@@ -1,0 +1,13 @@
+{
+  "name": "linkagelab",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "happy-dom": "^17.4.4",
+    "vitest": "^3.0.5"
+  }
+}
