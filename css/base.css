@@ -86,3 +86,34 @@ body {
     white-space: nowrap;
     border-width: 0;
 }
+
+.skip-link:focus {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: calc(var(--z-fixed) + 10);
+    width: auto;
+    height: auto;
+    padding: 10px 16px;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: nowrap;
+    background: var(--bg-panel);
+    color: var(--clr-primary);
+    border: 2px solid var(--clr-primary);
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

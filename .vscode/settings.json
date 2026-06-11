@@ -1,4 +1,7 @@
 {
+  "terminal.integrated.env.windows": {
+    "Path": "C:\\Program Files\\Git\\cmd;C:\\Program Files\\GitHub CLI\\;${env:Path}"
+  },
   "files.watcherExclude": {
     "**/*.min.js": true,
     "**/*.bundle.js": true

@@ -344,6 +344,129 @@
     transform: translateY(-1px);
 }
 
+/* LinkageLab topbar — class-based layout (replaces inline styles) */
+.topbar-app-title {
+    font-size: 1rem;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.topbar-fold-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.topbar-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+}
+
+.topbar-fold-input {
+    width: 75px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.topbar-deg {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.topbar-chk-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.topbar-chk-shadows {
+    margin-left: 6px;
+}
+
+.topbar-chk-label input[type="checkbox"] {
+    margin-right: 4px;
+}
+
+.topbar-stop-input {
+    width: 65px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 6px;
+}
+
+.topbar-time-display {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    min-width: 60px;
+    text-align: center;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+.topbar-sun-label {
+    margin-right: 4px;
+}
+
+.topbar-icon-btn {
+    padding: 4px 8px;
+    font-size: 0.75rem;
+}
+
+.btn-anim-fold {
+    padding: 6px 12px;
+    background: rgba(231, 76, 60, 0.8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+.btn-anim-unfold {
+    padding: 6px 12px;
+    background: rgba(46, 204, 113, 0.8);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Responsive: wrap center controls on medium screens */
+@media (max-width: 1200px) {
+    .topbar-center {
+        flex-wrap: wrap;
+        justify-content: center;
+        row-gap: 6px;
+    }
+
+    .topbar-fold-row input[type="range"],
+    .topbar-sun input[type="range"] {
+        max-width: 120px;
+    }
+}
+
+@media (max-width: 900px) {
+    .topbar {
+        height: auto;
+        min-height: 52px;
+        flex-wrap: wrap;
+        padding: 8px 12px;
+        gap: 8px;
+    }
+
+    .topbar-left,
+    .topbar-right {
+        flex: 1 1 auto;
+    }
+
+    .topbar-right {
+        justify-content: flex-end;
+        flex-wrap: wrap;
+    }
+}
+
 /* Time display - digital clock style */
 .toolbar .time-display,
 .topbar .time-display {

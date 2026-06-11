@@ -97,7 +97,25 @@
     color: var(--text-primary);
     font-size: 0.85rem;
     max-width: 400px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-med), transform var(--transition-med);
+}
+
+.toast.show {
+    opacity: 1;
+    pointer-events: auto;
     animation: slideInRight 0.3s ease;
+}
+
+.toast.loading::after {
+    content: ' …';
+    animation: toastPulse 1s ease-in-out infinite;
+}
+
+@keyframes toastPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
 }
 
 .toast.success {
