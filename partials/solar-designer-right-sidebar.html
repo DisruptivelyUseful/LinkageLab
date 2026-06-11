@@ -1,0 +1,159 @@
+<div id="solar-right-sidebar">
+    <button id="solar-right-sidebar-toggle" type="button" title="Toggle component library">▶</button>
+    <div class="right-panel-tabs">
+        <button type="button" class="panel-tab active" id="libraryTab" onclick="switchRightPanelTab('library')">
+            <span class="panel-tab-icon">📦</span>Library
+        </button>
+        <button type="button" class="panel-tab" id="inspectorTab" onclick="switchRightPanelTab('inspector')">
+            <span class="panel-tab-icon">🔧</span>Inspector
+        </button>
+    </div>
+
+    <div id="componentLibraryTab" class="tab-content active">
+        <div class="library-search">
+            <span class="library-search-icon">🔍</span>
+            <input type="text" id="librarySearchInput" placeholder="Search components..." oninput="filterLibraryComponents(this.value)">
+            <button type="button" class="library-search-clear" onclick="clearLibrarySearch()" title="Clear search">✕</button>
+        </div>
+
+        <div class="library-category" data-category="generation">
+            <div class="library-category-header expanded" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">☀️</span>
+                    <span>Solar Panels</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content expanded">
+                <div class="component-library" id="panelLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="storage">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">🔋</span>
+                    <span>Batteries</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="batteryLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="controllers">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">🎛️</span>
+                    <span>Controllers</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="controllerLibrary"></div>
+                <div class="library-subsection-label">EcoFlow All-in-One</div>
+                <div class="component-library" id="ecoflowLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="protection">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">⚡</span>
+                    <span>Protection & Combining</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="breakerLibrary"></div>
+                <div class="library-subsection-label">Combiners & Panels</div>
+                <div class="component-library" id="combinerLibrary"></div>
+                <div class="library-subsection-label">Solar String Combiners</div>
+                <div class="component-library" id="solarCombinerLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="distribution">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">🔌</span>
+                    <span>AC Distribution</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="acBreakerLibrary"></div>
+                <div class="component-library" id="acOutletLibrary" style="margin-top: 8px;"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="appliances">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">🏠</span>
+                    <span>Appliances & Loads</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="applianceLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="processing">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">🏭</span>
+                    <span>Processing Equipment</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="processingLibrary"></div>
+            </div>
+        </div>
+
+        <div class="library-category" data-category="resources">
+            <div class="library-category-header" onclick="toggleLibraryCategory(this)">
+                <div class="library-category-title">
+                    <span class="library-category-icon">📦</span>
+                    <span>Resource Containers</span>
+                </div>
+                <span class="library-category-toggle">▼</span>
+            </div>
+            <div class="library-category-content">
+                <div class="component-library" id="resourceContainerLibrary"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="inspectorTabContent" class="tab-content">
+        <div id="inspectorEmpty" class="inspector-empty-state">
+            <div class="inspector-empty-icon">🔧</div>
+            <div class="inspector-empty-title">No Selection</div>
+            <div class="inspector-empty-text">Click on a component to inspect and edit its properties</div>
+        </div>
+        <div id="inspectorQuickActions" class="inspector-quick-actions hidden">
+            <button type="button" class="quick-action-btn" id="quickActionDuplicate" title="Duplicate (Ctrl+D)">
+                <span class="quick-action-icon">📋</span>
+                <span>Duplicate</span>
+            </button>
+            <button type="button" class="quick-action-btn danger" id="quickActionDelete" title="Delete (Del)">
+                <span class="quick-action-icon">🗑️</span>
+                <span>Delete</span>
+            </button>
+        </div>
+        <div id="solar-properties-panel">
+            <div class="prop-title">
+                <span id="prop-icon">⚡</span>
+                <span id="prop-name">Selected Item</span>
+            </div>
+            <div id="prop-content"></div>
+            <div class="prop-actions">
+                <button id="btn-prop-duplicate" type="button" title="Duplicate">📋 Copy</button>
+                <button id="btn-prop-delete" type="button" style="border-color:#ff6b6b; color:#ff6b6b;" title="Delete">🗑️ Delete</button>
+            </div>
+        </div>
+    </div>
+</div>

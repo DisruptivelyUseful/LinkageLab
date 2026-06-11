@@ -1,0 +1,73 @@
+        <div class="sidebar-section automations-section">
+            <h3>⚡ Automations</h3>
+            <div id="automations-panel">
+                <div class="auto-section">
+                    <label class="auto-label">Quick Add</label>
+                    <select id="auto-preset-select" class="sidebar-select">
+                        <option value="">Select preset...</option>
+                        <option value="0">🌅 Night Lights (sunset)</option>
+                        <option value="1">🌄 Morning Off (sunrise)</option>
+                        <option value="2">🔋 Low Battery Saver (&lt;20%)</option>
+                        <option value="3">☀️ High Solar Boost (&gt;500W)</option>
+                        <option value="4">🕐 Evening Schedule (6-10 PM)</option>
+                    </select>
+                </div>
+
+                <div class="auto-section">
+                    <label class="auto-label">Create Custom Rule</label>
+                    <input type="text" id="auto-rule-name" class="sidebar-input" placeholder="Rule name">
+
+                    <div class="auto-row">
+                        <span class="auto-row-label">When:</span>
+                        <select id="auto-trigger-type" class="sidebar-select auto-select">
+                            <option value="time">At Time</option>
+                            <option value="time_range">Time Range</option>
+                            <option value="sunrise">Sunrise</option>
+                            <option value="sunset">Sunset</option>
+                            <option value="battery_below">Battery Below</option>
+                            <option value="battery_above">Battery Above</option>
+                            <option value="solar_above">Solar Above</option>
+                            <option value="solar_below">Solar Below</option>
+                        </select>
+                    </div>
+
+                    <div id="auto-trigger-value-row" class="auto-row">
+                        <span class="auto-row-label">Value:</span>
+                        <input type="time" id="auto-trigger-time" class="sidebar-input auto-input-time" value="18:00">
+                        <input type="number" id="auto-trigger-number" class="sidebar-input auto-input-num" value="20" min="0" max="100" style="display:none;">
+                        <span id="auto-trigger-unit" class="auto-unit">%</span>
+                    </div>
+
+                    <div id="auto-trigger-value2-row" class="auto-row" style="display:none;">
+                        <span class="auto-row-label">Until:</span>
+                        <input type="time" id="auto-trigger-time2" class="sidebar-input auto-input-time" value="22:00">
+                    </div>
+
+                    <div class="auto-row">
+                        <span class="auto-row-label">Then:</span>
+                        <select id="auto-action-type" class="sidebar-select auto-select">
+                            <option value="turn_on">Turn ON</option>
+                            <option value="turn_off">Turn OFF</option>
+                            <option value="toggle">Toggle</option>
+                        </select>
+                    </div>
+
+                    <div class="auto-row">
+                        <span class="auto-row-label">Target:</span>
+                        <select id="auto-action-target" class="sidebar-select auto-select">
+                            <option value="all_loads">All Loads</option>
+                            <option value="selected">Selected Item</option>
+                        </select>
+                    </div>
+
+                    <button id="btn-auto-create" type="button" class="sidebar-action-btn">+ Create Rule</button>
+                </div>
+
+                <div class="auto-section">
+                    <label class="auto-label">Active Rules <span id="auto-rule-count">(0)</span></label>
+                    <div id="auto-rules-list" class="auto-rules-list">
+                        <div class="auto-empty">No automations yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -121,6 +121,9 @@ export async function navigateTo(mode, options = {}) {
     }
 
     if (!loadedModes.has(mode)) {
+        // Show the target view before first boot so layout-dependent canvases get real dimensions.
+        setActiveView(mode);
+
         let loadPromise = modeLoadPromises.get(mode);
         if (!loadPromise) {
             const loader = modeLoaders.get(mode);

@@ -69,7 +69,8 @@ body:has(#left-sidebar:not(.collapsed)):has(#right-sidebar.closed) #canvas-conta
 }
 
 /* Vignette effect for depth */
-#canvas-container::after {
+#canvas-container::after,
+#view-solar-design #solar-canvas-container::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -82,8 +83,10 @@ body:has(#left-sidebar:not(.collapsed)):has(#right-sidebar.closed) #canvas-conta
     z-index: 2;
 }
 
-/* SVG layer */
-svg {
+/* SVG layer — scoped to solar designer only (avoid polluting linkage #canvas) */
+#canvas-container svg,
+#view-solar-design #solar-canvas-container svg,
+#view-solar-design svg {
     touch-action: none;
     width: 100% !important;
     height: 100% !important;
@@ -96,8 +99,8 @@ svg {
     opacity: 1 !important;
 }
 
-/* Ensure SVG canvas is visible */
-#canvas {
+/* Standalone / legacy solar SVG canvas inside #canvas-container */
+#canvas-container #canvas {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -215,7 +218,8 @@ path.wire.ac-240 {
 }
 
 /* Prevent buttons and text from appearing on canvas */
-#canvas-container > *:not(svg):not(#structure-background-canvas) {
+#canvas-container > *:not(svg):not(#structure-background-canvas),
+#view-solar-design #solar-canvas-container > *:not(svg):not(#structure-background-canvas) {
     position: absolute;
     z-index: 10;
     pointer-events: auto;
@@ -532,6 +536,19 @@ body:has(#right-sidebar.open) #right-sidebar-toggle {
     letter-spacing: 0.3px;
 }
 
+.library-subsection-label {
+    margin: 10px 4px 4px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted, #8899a6);
+}
+
+.library-subsection-label:first-of-type {
+    margin-top: 6px;
+}
+
 .library-item.hidden {
     display: none;
 }
@@ -696,7 +713,7 @@ body:has(#right-sidebar.open) #right-sidebar-toggle {
     opacity: 0.3;
 }
 
-/* Left sidebar specific styling - telemetry and controls */
+/* Left sidebar — System Stats, automations, actions (shared with simulator) */
 #left-sidebar {
     display: flex;
     flex-direction: column;
@@ -721,7 +738,7 @@ body:has(#right-sidebar.open) #right-sidebar-toggle {
     letter-spacing: 0.5px;
 }
 
-/* Score bar styling (telemetry) - Mission Control style */
+/* Score bar styling (System Stats) - Mission Control style */
 .score-bar {
     display: flex;
     flex-direction: column;
@@ -788,6 +805,16 @@ body:has(#right-sidebar.open) #right-sidebar-toggle {
     font-weight: 700;
     font-family: var(--font-mono);
     text-shadow: var(--glow-primary);
+}
+
+.score-value.danger {
+    color: var(--clr-danger, #ff6b6b);
+    text-shadow: 0 0 8px rgba(255, 107, 107, 0.35);
+}
+
+.score-value.success {
+    color: var(--clr-success, #5cb85c);
+    text-shadow: 0 0 8px rgba(92, 184, 92, 0.35);
 }
 
 /* Cost breakdown styling */
@@ -1817,4 +1844,392 @@ body.lite-live-visuals .wire.power-flowing,
 body.lite-live-visuals .wire.pv-flowing,
 body.lite-live-visuals .wire.battery-charging {
     opacity: 1;
+}
+
+/* ============================================
+   Unified app shell (#view-solar-design)
+   Layout + ID aliases for in-app solar designer.
+   Loaded after standalone rules; overrides fixed sidebars.
+   ============================================ */
+
+#view-solar-design .solar-designer-layout {
+    display: grid;
+    grid-template-columns: 260px minmax(0, 1fr);
+    flex: 1;
+    min-height: 0;
+    height: auto;
+    transition: grid-template-columns var(--transition-med);
+}
+
+#view-solar-design .solar-designer-layout:has(#left-sidebar.collapsed) {
+    grid-template-columns: 0 minmax(0, 1fr);
+}
+
+#view-solar-design .solar-designer-left-rail {
+    overflow: hidden;
+    background: var(--gradient-panel);
+    border-right: 2px solid var(--clr-primary);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.35);
+    min-width: 0;
+    transition: border-color var(--transition-med), box-shadow var(--transition-med);
+}
+
+#view-solar-design .solar-designer-layout:has(#left-sidebar.collapsed) .solar-designer-left-rail {
+    overflow: visible;
+    border-right: none;
+    box-shadow: none;
+}
+
+#view-solar-design #left-sidebar {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: flex;
+    flex-direction: column;
+    box-shadow: none;
+    border-right: none;
+    z-index: auto;
+    overflow: hidden;
+}
+
+#view-solar-design #left-sidebar > *:not(#left-sidebar-toggle) {
+    margin-bottom: 0;
+}
+
+#view-solar-design .solar-designer-left-mount {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+
+#view-solar-design #left-sidebar-toggle {
+    position: absolute !important;
+    top: 50% !important;
+    right: -12px !important;
+    left: auto !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 48px !important;
+    z-index: 5 !important;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+#view-solar-design #left-sidebar.collapsed {
+    width: 0 !important;
+    min-width: 0;
+    overflow: visible;
+}
+
+#view-solar-design #left-sidebar.collapsed .solar-designer-left-mount {
+    opacity: 0;
+    pointer-events: none;
+}
+
+#view-solar-design .solar-designer-stage {
+    position: relative;
+    height: 100%;
+    min-height: 0;
+    min-width: 0;
+    overflow: hidden;
+    margin-right: 340px;
+    transition: margin-right var(--transition-med);
+}
+
+#view-solar-design:has(#solar-right-sidebar.closed) .solar-designer-stage {
+    margin-right: 0;
+}
+
+#view-solar-design #solar-canvas-container {
+    position: absolute;
+    inset: 0;
+    background-color: #0a1525;
+    overflow: hidden;
+    touch-action: none;
+}
+
+#view-solar-design #solar-canvas-container.active {
+    display: block !important;
+}
+
+#view-solar-design #solar-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+}
+
+#view-solar-design #solar-canvas:active {
+    cursor: grabbing;
+}
+
+#view-solar-design .solar-view-label {
+    position: absolute;
+    bottom: 10px;
+    left: 10px;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 4px 8px;
+    border-radius: var(--radius-sm);
+    z-index: 5;
+}
+
+#view-solar-design #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+}
+
+/* Right component library — mirrors #right-sidebar */
+#view-solar-design #solar-right-sidebar {
+    display: flex !important;
+    flex-direction: column;
+    position: fixed;
+    top: 52px;
+    right: 0;
+    bottom: 0;
+    width: 340px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--gradient-panel);
+    color: var(--text-primary);
+    border-left: 2px solid var(--clr-primary);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4), inset 1px 0 0 rgba(var(--clr-primary-rgb), 0.1);
+    z-index: var(--z-sticky);
+    transition: transform var(--transition-med);
+    transform: translateX(0);
+}
+
+#view-solar-design #solar-right-sidebar.closed {
+    transform: translateX(100%);
+}
+
+#view-solar-design #solar-right-sidebar .right-panel-tabs {
+    flex-shrink: 0;
+    padding: 0;
+}
+
+#view-solar-design #solar-right-sidebar .tab-content {
+    display: none;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 15px;
+    padding-bottom: 80px;
+}
+
+#view-solar-design #solar-right-sidebar .tab-content.active {
+    display: block;
+}
+
+#view-solar-design #solar-right-sidebar .tab-content::-webkit-scrollbar {
+    width: 5px;
+}
+
+#view-solar-design #solar-right-sidebar .tab-content::-webkit-scrollbar-thumb {
+    background: var(--border-med);
+    border-radius: 2px;
+}
+
+#view-solar-design #solar-right-sidebar #solar-properties-panel {
+    display: none;
+    margin-top: 16px;
+}
+
+#view-solar-design #solar-right-sidebar #solar-properties-panel.visible {
+    display: block;
+}
+
+#view-solar-design #solar-right-sidebar-toggle {
+    position: fixed !important;
+    top: 50% !important;
+    right: 0 !important;
+    transform: translateY(-50%) !important;
+    width: 24px !important;
+    height: 64px !important;
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+    z-index: calc(var(--z-sticky) + 1) !important;
+}
+
+#view-solar-design #solar-right-sidebar:not(.closed) #solar-right-sidebar-toggle {
+    right: 340px !important;
+}
+
+#view-solar-design #solar-right-sidebar.closed #solar-right-sidebar-toggle {
+    right: 0 !important;
+}
+
+/* Left rail — System Stats sidebar (matches simulator iframe) */
+#view-solar-design #solar-sidebar {
+    display: flex;
+    flex-direction: column;
+}
+
+#view-solar-design #left-sidebar .sidebar-section {
+    margin-bottom: 12px;
+}
+
+#view-solar-design #left-sidebar .auto-section + .auto-section {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border-light);
+}
+
+#view-solar-design #left-sidebar .auto-label {
+    display: block;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+
+#view-solar-design #left-sidebar .auto-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+#view-solar-design #left-sidebar .auto-row-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    min-width: 42px;
+    flex-shrink: 0;
+}
+
+#view-solar-design #left-sidebar .auto-unit {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+#view-solar-design #left-sidebar .sidebar-input,
+#view-solar-design #left-sidebar .sidebar-select {
+    width: 100%;
+    box-sizing: border-box;
+    background: var(--space-600);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+#view-solar-design #left-sidebar .sidebar-select {
+    cursor: pointer;
+}
+
+#view-solar-design #left-sidebar .auto-row .sidebar-select,
+#view-solar-design #left-sidebar .auto-row .sidebar-input {
+    flex: 1;
+    width: auto;
+    min-width: 0;
+}
+
+#view-solar-design #left-sidebar .sidebar-input:focus,
+#view-solar-design #left-sidebar .sidebar-select:focus {
+    outline: none;
+    border-color: var(--clr-primary);
+    box-shadow: 0 0 0 2px rgba(var(--clr-primary-rgb), 0.15);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-btn {
+    width: 100%;
+    margin-top: 6px;
+    padding: 8px 10px;
+    background: var(--space-600);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-btn:hover {
+    background: var(--space-500);
+    border-color: var(--clr-primary);
+    color: var(--clr-primary);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-btn-primary {
+    background: linear-gradient(135deg, rgba(var(--clr-primary-rgb), 0.25) 0%, rgba(var(--clr-primary-rgb), 0.12) 100%);
+    border-color: var(--clr-primary);
+    color: var(--clr-primary);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-btn-danger {
+    border-color: rgba(255, 107, 107, 0.45);
+    color: var(--clr-danger, #ff6b6b);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-btn-danger:hover {
+    background: rgba(255, 107, 107, 0.12);
+    border-color: var(--clr-danger, #ff6b6b);
+}
+
+#view-solar-design #left-sidebar .sidebar-action-row {
+    display: flex;
+    gap: 6px;
+}
+
+#view-solar-design #left-sidebar .sidebar-action-row .sidebar-action-btn {
+    flex: 1;
+    margin-top: 0;
+}
+
+#view-solar-design #left-sidebar .sidebar-actions .sidebar-action-row + .sidebar-action-btn,
+#view-solar-design #left-sidebar .sidebar-actions > .sidebar-action-btn:first-child {
+    margin-top: 0;
+}
+
+#view-solar-design #left-sidebar .auto-rules-list {
+    max-height: 160px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+#view-solar-design #left-sidebar .auto-empty {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    text-align: center;
+    padding: 12px 8px;
+    font-style: italic;
+    background: var(--space-600);
+    border: 1px dashed var(--space-400);
+    border-radius: var(--radius-sm);
+}
+
+#view-solar-design #left-sidebar .auto-rule-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 8px;
+    background: var(--space-600);
+    border: 1px solid var(--space-400);
+    border-left: 3px solid var(--space-500);
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    transition: border-color var(--transition-fast);
+}
+
+#view-solar-design #left-sidebar .auto-rule-item:hover {
+    border-left-color: var(--clr-primary);
 }

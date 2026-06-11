@@ -1,5 +1,5 @@
 // ============================================================================
-// Solar simulator lazy module (Phase 5d) — iframe host until full extraction
+// Solar simulator lazy module (Phase 5d+) — iframe host until full extraction
 // ============================================================================
 
 import {
@@ -26,6 +26,7 @@ function renderSimulatorStage(circuitData) {
     const summary = componentCount > 0
         ? `${componentCount} components staged for 3D simulation.`
         : 'Design a circuit in Solar Design first, then click ▶ Simulate.';
+    const frameSrc = buildSimulatorFrameSrc();
 
     return `
         <div class="solar-simulator-stage" role="region" aria-label="Solar simulator">
@@ -33,16 +34,31 @@ function renderSimulatorStage(circuitData) {
             <iframe
                 class="solar-simulator-frame"
                 title="Solar 3D Simulator"
-                src="${buildSimulatorFrameSrc()}"
+                data-src="${frameSrc}"
                 loading="lazy"
             ></iframe>
         </div>
     `;
 }
 
+/** Load the simulator iframe once the simulate view has layout. */
+export function activateSimulatorFrame(root = simulatorMount) {
+    const mount = root || document.getElementById('view-solar-simulate');
+    if (!mount) return;
+
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const iframe = mount.querySelector('.solar-simulator-frame');
+            if (!iframe || iframe.src) return;
+            const src = iframe.dataset.src || buildSimulatorFrameSrc();
+            iframe.src = src;
+        });
+    });
+}
+
 /**
  * @param {HTMLElement} container - #view-solar-simulate
- * @param {{ circuitExport?: object | null, chromeHtml?: string }} [options]
+ * @param {{ circuitExport?: object | null, topbarHtml?: string }} [options]
  */
 export async function initSolarSimulatorApp(container, options = {}) {
     ensureStylesheet('css/simulator.css', 'solar-simulator-css');
@@ -53,7 +69,7 @@ export async function initSolarSimulatorApp(container, options = {}) {
     }
 
     container.innerHTML = `
-        ${options.chromeHtml || ''}
+        ${options.topbarHtml || ''}
         ${circuitData ? renderSimulatorStage(circuitData) : `
             <div class="app-view-placeholder" role="status">
                 <h1>Solar Simulate</h1>
@@ -63,6 +79,9 @@ export async function initSolarSimulatorApp(container, options = {}) {
     `;
 
     simulatorMount = container;
+    if (circuitData) {
+        activateSimulatorFrame(container);
+    }
     return { componentCount: circuitData?.schematic?.components?.length ?? 0 };
 }
 
@@ -80,15 +99,17 @@ export async function refreshSolarSimulatorFromCircuit(circuitExport) {
     const stage = mount.querySelector('.solar-simulator-stage');
     if (stage) {
         stage.outerHTML = renderSimulatorStage(circuitExport);
+        activateSimulatorFrame(mount);
         return {
             reloaded: true,
             componentCount: circuitExport.schematic?.components?.length ?? 0,
         };
     }
 
-    const chrome = mount.querySelector('.app-view-chrome');
-    mount.innerHTML = `${chrome ? chrome.outerHTML : ''}${renderSimulatorStage(circuitExport)}`;
+    const topbar = mount.querySelector('#topbar');
+    mount.innerHTML = `${topbar ? topbar.outerHTML : ''}${renderSimulatorStage(circuitExport)}`;
     simulatorMount = mount;
+    activateSimulatorFrame(mount);
     return {
         reloaded: true,
         componentCount: circuitExport.schematic?.components?.length ?? 0,

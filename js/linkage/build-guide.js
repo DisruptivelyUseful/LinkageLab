@@ -2,10 +2,10 @@
 
 import { bridgeGlobals } from './global-bridge.js';
 import { showToast } from '../core/feedback.js';
+import { exportProjectFile } from '../core/project-export.js';
 import { state } from './app-state.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
-import { exportToJSON } from './export-bridge.js';
 
     function computeReciprocalDrillData(data) {
         const result = {
@@ -115,6 +115,141 @@ import { exportToJSON } from './export-bridge.js';
         return result;
     }
     
+    /**
+     * Build HTML for electrical / wiring sections when Solar Designer is active.
+     */
+    function buildElectricalGuideSectionHtml() {
+        const designer = globalThis.SolarDesigner;
+        if (!designer?.isInitialized?.()) {
+            return `
+            <div class="guide-card guide-card-wide">
+                <div class="guide-card-header">Electrical System &amp; Wiring</div>
+                <div class="guide-card-content">
+                    <p style="color:#666;font-size:0.9rem;margin:0;">
+                        Switch to Solar Design mode and add components to include wiring schematics,
+                        electrical BOM, and system analysis in this guide.
+                    </p>
+                </div>
+            </div>`;
+        }
+
+        const items = designer.getItems();
+        const connections = designer.getConnections();
+        const bom = designer.generateBOM?.() ?? null;
+        let analysis = null;
+        try {
+            analysis = designer.getSystemAnalysis?.() ?? null;
+        } catch (err) {
+            console.warn('[build-guide] system analysis unavailable:', err);
+        }
+
+        const typeLabel = (type) => ({
+            panel: 'Solar Panel', battery: 'Battery', smartbattery: 'Smart Battery',
+            controller: 'Controller', acload: 'AC Load', acbreaker: 'AC Breaker',
+            dcbreaker: 'DC Breaker', breakerpanel: 'Breaker Panel', acoutlet: 'AC Outlet',
+            combiner: 'Combiner', solarcombiner: 'Solar Combiner', producer: 'Producer',
+        }[type] || type);
+
+        const componentRows = items.slice(0, 40).map((item) => `
+            <tr>
+                <td>${typeLabel(item.type)}</td>
+                <td>${item.specs?.name || item.id}</td>
+                <td>${item.specs?.wmp ? `${item.specs.wmp} W` : item.specs?.watts ? `${item.specs.watts} W` : item.specs?.kWh ? `${item.specs.kWh} kWh` : '—'}</td>
+            </tr>
+        `).join('');
+
+        const wiringRows = (bom?.wiring || []).map((wire) => `
+            <tr>
+                <td class="qty">${wire.quantity}${wire.specs?.unit === 'feet' ? ' ft' : '×'}</td>
+                <td class="item">${wire.name}</td>
+                <td class="price">$${formatNumber(wire.unitCost, 2)}</td>
+                <td class="total">$${formatNumber(wire.totalCost, 2)}</td>
+            </tr>
+        `).join('');
+
+        const connectionRows = connections.slice(0, 30).map((conn) => {
+            const src = items.find((i) => i.id === conn.sourceItemId);
+            const tgt = items.find((i) => i.id === conn.targetItemId);
+            return `
+            <tr>
+                <td>${src?.specs?.name || src?.type || conn.sourceItemId}</td>
+                <td style="text-align:center;color:#888;">${conn.sourceHandleKey || '—'}</td>
+                <td style="text-align:center;color:#f0ad4e;">→</td>
+                <td>${tgt?.specs?.name || tgt?.type || conn.targetItemId}</td>
+                <td style="text-align:center;color:#888;">${conn.targetHandleKey || '—'}</td>
+            </tr>`;
+        }).join('');
+
+        const bomSections = [];
+        const addBomSection = (title, list) => {
+            if (!list?.length) return;
+            bomSections.push(`<div class="guide-subsection-title">${title}</div>`);
+            bomSections.push('<table class="guide-table guide-hw-table"><tbody>');
+            list.forEach((entry) => {
+                bomSections.push(`<tr><td class="qty">${entry.quantity}×</td><td>${entry.name}</td><td colspan="2">${Object.entries(entry.specs || {}).map(([k, v]) => `${k}: ${v}`).join(', ')}</td></tr>`);
+            });
+            bomSections.push('</tbody></table>');
+        };
+        addBomSection('Controllers & Inverters', bom?.controllers);
+        addBomSection('Batteries & Storage', bom?.batteries);
+        addBomSection('Distribution & Protection', bom?.distribution);
+        addBomSection('Loads', bom?.loads);
+
+        const analysisHtml = analysis ? `
+            <div class="guide-subsection" style="margin-top:12px;">
+                <div class="guide-subsection-title">System Analysis</div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Optimization Grade</span><span class="guide-spec-value" style="color:#f0ad4e;font-weight:700;">${analysis.optimization?.grade || '—'} (${analysis.optimization?.score ?? '—'}/100)</span></div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Array Output</span><span class="guide-spec-value">${analysis.components?.totalPanelWatts || 0} W</span></div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Battery Storage</span><span class="guide-spec-value">${formatNumber(analysis.components?.totalBatteryKwh || 0, 1)} kWh</span></div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Connected Loads</span><span class="guide-spec-value">${analysis.components?.totalLoadWatts || 0} W</span></div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Daily Production (est.)</span><span class="guide-spec-value">${formatNumber(analysis.energy?.avgDailyProduction || 0, 2)} kWh</span></div>
+                <div class="guide-spec-row"><span class="guide-spec-label">Self-Sufficiency</span><span class="guide-spec-value">${formatNumber(analysis.energy?.selfSufficiencyPercent || 0, 0)}%</span></div>
+                ${analysis.financial ? `<div class="guide-spec-row"><span class="guide-spec-label">Est. System Cost</span><span class="guide-spec-value">$${formatNumber(analysis.financial.totalSystemCost || bom?.totalCost || 0, 0)}</span></div>` : ''}
+                ${analysis.financial?.paybackYears ? `<div class="guide-spec-row"><span class="guide-spec-label">Payback (est.)</span><span class="guide-spec-value">${formatNumber(analysis.financial.paybackYears, 1)} years</span></div>` : ''}
+            </div>
+            ${(analysis.warnings?.length || analysis.recommendations?.length) ? `
+            <div class="guide-subsection" style="margin-top:8px;">
+                ${(analysis.warnings || []).slice(0, 4).map((w) => `<div style="font-size:0.8rem;color:#e67e22;margin-bottom:4px;">⚠ ${w}</div>`).join('')}
+                ${(analysis.recommendations || []).slice(0, 4).map((r) => `<div style="font-size:0.8rem;color:#5bc0de;margin-bottom:4px;">💡 ${r}</div>`).join('')}
+            </div>` : ''}
+        ` : '';
+
+        const electricalBomTotal = bom?.totalCost || 0;
+
+        return `
+            <div class="guide-card guide-card-wide">
+                <div class="guide-card-header">Electrical System &amp; Wiring</div>
+                <div class="guide-card-content">
+                    <div class="guide-subsection">
+                        <div class="guide-subsection-title">Components (${items.length})</div>
+                        <table class="guide-table guide-hw-table">
+                            <thead><tr><th>Type</th><th>Name</th><th>Rating</th></tr></thead>
+                            <tbody>${componentRows || '<tr><td colspan="3">No components placed</td></tr>'}</tbody>
+                        </table>
+                    </div>
+                    ${connections.length ? `
+                    <div class="guide-subsection" style="margin-top:14px;">
+                        <div class="guide-subsection-title">Wiring Schematic (${connections.length} connections)</div>
+                        <table class="guide-table guide-hw-table">
+                            <thead><tr><th>From</th><th>Port</th><th></th><th>To</th><th>Port</th></tr></thead>
+                            <tbody>${connectionRows}</tbody>
+                        </table>
+                    </div>` : ''}
+                    ${wiringRows ? `
+                    <div class="guide-subsection" style="margin-top:14px;">
+                        <div class="guide-subsection-title">Wire BOM</div>
+                        <table class="guide-table">
+                            <thead><tr><th>Qty</th><th>Wire</th><th>Unit</th><th>Total</th></tr></thead>
+                            <tbody>${wiringRows}</tbody>
+                        </table>
+                    </div>` : ''}
+                    ${bomSections.join('')}
+                    ${electricalBomTotal ? `<div class="guide-spec-row" style="margin-top:12px;border-top:1px solid #ddd;padding-top:8px;"><span class="guide-spec-label">Electrical BOM Total</span><span class="guide-spec-value" style="font-weight:700;color:#f0ad4e;">$${formatNumber(electricalBomTotal, 2)}</span></div>` : ''}
+                    ${analysisHtml}
+                </div>
+            </div>`;
+    }
+
     /**
      * Shows the build guide as an HTML modal popup
      */
@@ -878,6 +1013,8 @@ import { exportToJSON } from './export-bridge.js';
                 </div>
             </div>
             
+            ${buildElectricalGuideSectionHtml()}
+            
             <div class="guide-notes">
                 <div class="guide-notes-title">📝 Notes</div>
                 <ul class="guide-notes-list">
@@ -1459,7 +1596,7 @@ import { exportToJSON } from './export-bridge.js';
      * Exports the current configuration as JSON from the guide modal
      */
     function exportGuideJSON() {
-        exportToJSON();
+        exportProjectFile();
     }
     
     function initBuildGuideHandlers() {

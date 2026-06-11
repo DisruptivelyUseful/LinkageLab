@@ -124,7 +124,7 @@ const SolarDesigner = (function() {
     let selectedPanels = []; // For multi-panel selection
     let itemIdCounter = 0;
     let connectionIdCounter = 0;
-    let currentSolarMode = 'build'; // 'build' or 'live'
+    let currentSolarMode = 'design'; // unified design mode (live circuit always on)
     let panelGridPadding = 10; // Pixels between panels when snapping to grid
     
     // Drag state
@@ -951,43 +951,10 @@ const SolarDesigner = (function() {
             return { elevation: Math.max(0, elevation), azimuth, hours };
         },
         
-        // Calculate solar irradiance based on time of day (or daylight slider)
+        // Designer uses static full-sun irradiance for live wire/power-flow checks
         calculateSolarIrradiance() {
-            // Check if daylight slider is being used
-            const daylightSlider = document.getElementById('sl-daylight');
-            let hours = this.time / 60;
-            
-            if (daylightSlider && daylightSlider.value !== undefined) {
-                // Use daylight slider value (0-100)
-                const daylightPercent = parseFloat(daylightSlider.value);
-                const sunPos = this.calculateSunPositionFromDaylight(daylightPercent);
-                hours = sunPos.hours;
-                
-                // Update simulation time to match slider
-                this.time = hours * 60;
-            }
-            
-            // Simple sinusoidal model for solar irradiance
-            // Peak at solar noon (12:00), zero before sunrise and after sunset
-            const sunrise = 5.5;  // 5:30 AM (for 35° latitude, summer solstice)
-            const sunset = 19.5;  // 7:30 PM
-            
-            if (hours < sunrise || hours > sunset) {
-                return 0;
-            }
-            
-            // Sinusoidal curve from sunrise to sunset
-            const dayLength = sunset - sunrise;
-            const hoursSinceSunrise = hours - sunrise;
-            const normalizedTime = hoursSinceSunrise / dayLength;
-            
-            // Sin curve peaks at 0.5 (solar noon)
-            const baseIrradiance = Math.sin(normalizedTime * Math.PI);
-            
-            // Apply atmospheric effects (clearer at noon, hazier at dawn/dusk)
-            const atmosphericFactor = 0.7 + 0.3 * baseIrradiance;
-            
-            return Math.max(0, baseIrradiance * atmosphericFactor);
+            this.solarIrradiance = 1.0;
+            return 1.0;
         },
         
         // Calculate actual solar power output
@@ -1503,206 +1470,10 @@ const SolarDesigner = (function() {
             render();
         },
         
-        // Update canvas background based on time of day
-        updateBackgroundColor() {
-            const container = document.getElementById('solar-canvas-container');
-            if (!container || !LiveView.state.active) return;
-            
-            const hours = this.time / 60;
-            
-            // Define sky colors throughout the day
-            let bgColor, gridColor;
-            
-            if (hours < 5 || hours > 21) {
-                // Night (dark blue)
-                bgColor = '#0a1520';
-                gridColor = 'rgba(100, 150, 200, 0.03)';
-            } else if (hours < 6) {
-                // Dawn (dark to twilight)
-                const t = (hours - 5);
-                bgColor = `rgb(${10 + t * 20}, ${21 + t * 20}, ${32 + t * 30})`;
-                gridColor = 'rgba(150, 180, 200, 0.04)';
-            } else if (hours < 7) {
-                // Sunrise (twilight to warm)
-                const t = hours - 6;
-                bgColor = `rgb(${30 + t * 30}, ${41 + t * 30}, ${62 + t * 20})`;
-                gridColor = 'rgba(200, 180, 150, 0.05)';
-            } else if (hours < 18) {
-                // Day (bright blue-gray)
-                const noon = Math.abs(hours - 12) / 5;
-                const brightness = 1 - noon * 0.2;
-                bgColor = `rgb(${Math.round(26 * brightness + 20)}, ${Math.round(43 * brightness + 20)}, ${Math.round(60 * brightness + 20)})`;
-                gridColor = 'rgba(240, 173, 78, 0.04)';
-            } else if (hours < 19) {
-                // Sunset (warm to twilight)
-                const t = hours - 18;
-                bgColor = `rgb(${60 - t * 30}, ${63 - t * 22}, ${80 - t * 18})`;
-                gridColor = 'rgba(240, 173, 78, 0.05)';
-            } else if (hours < 20) {
-                // Dusk (twilight to dark)
-                const t = hours - 19;
-                bgColor = `rgb(${30 - t * 15}, ${41 - t * 15}, ${62 - t * 25})`;
-                gridColor = 'rgba(150, 150, 200, 0.04)';
-            } else {
-                // Late evening
-                const t = hours - 20;
-                bgColor = `rgb(${15 - t * 5}, ${26 - t * 5}, ${37 - t * 17})`;
-                gridColor = 'rgba(100, 150, 200, 0.03)';
-            }
-            
-            container.style.backgroundColor = bgColor;
-            container.style.backgroundImage = `
-                linear-gradient(${gridColor} 1px, transparent 1px),
-                linear-gradient(90deg, ${gridColor} 1px, transparent 1px)
-            `;
-            
-            // Add/update celestial objects (sun, moon, stars)
-            this.updateCelestialObjects(hours);
-        },
+        // Static design canvas — day/night sky is in the 3D simulator
+        updateBackgroundColor() {},
         
-        // Add/update celestial objects overlay
-        updateCelestialObjects(hours) {
-            const container = document.getElementById('solar-canvas-container');
-            if (!container) return;
-            
-            // Only update when hour changes significantly (reduce DOM updates)
-            const hourKey = Math.floor(hours * 2); // Update every 30 minutes
-            if (this._lastCelestialUpdate === hourKey) return;
-            this._lastCelestialUpdate = hourKey;
-            
-            // Create or get celestial overlay
-            let overlay = document.getElementById('celestial-overlay');
-            if (!overlay) {
-                overlay = document.createElement('div');
-                overlay.id = 'celestial-overlay';
-                overlay.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    pointer-events: none;
-                    overflow: hidden;
-                    z-index: 1;
-                `;
-                container.appendChild(overlay);
-            }
-            
-            // Clear previous celestials (reuse container instead of innerHTML)
-            while (overlay.firstChild) {
-                overlay.removeChild(overlay.firstChild);
-            }
-            
-            const isNight = hours < 6 || hours > 19;
-            const isDawn = hours >= 5 && hours < 7;
-            const isDusk = hours >= 18 && hours < 20;
-            const isDay = hours >= 7 && hours < 18;
-            
-            // Calculate sun/moon position (arc across sky)
-            // Sun: 6am (left) -> 12pm (top) -> 6pm (right)
-            // Moon: 6pm (left) -> 12am (top) -> 6am (right)
-            
-            if (isDay || isDawn) {
-                // Show sun
-                const sunProgress = (hours - 6) / 12; // 0 at 6am, 1 at 6pm
-                const sunX = 10 + sunProgress * 80; // 10% to 90%
-                const sunY = 10 + Math.sin(sunProgress * Math.PI) * -40 + 40; // Arc from 50% to 10% back to 50%
-                
-                const sunSize = isDawn ? 40 + (hours - 5) * 10 : 60;
-                const sunOpacity = isDawn ? 0.3 + (hours - 5) * 0.4 : 1;
-                
-                const sun = document.createElement('div');
-                sun.style.cssText = `
-                    position: absolute;
-                    left: ${sunX}%;
-                    top: ${sunY}%;
-                    width: ${sunSize}px;
-                    height: ${sunSize}px;
-                    background: radial-gradient(circle, #FFD700 0%, #FFA500 40%, transparent 70%);
-                    border-radius: 50%;
-                    opacity: ${sunOpacity};
-                    box-shadow: 0 0 ${sunSize}px ${sunSize/2}px rgba(255, 215, 0, 0.3);
-                    transition: all 1s ease;
-                `;
-                overlay.appendChild(sun);
-            }
-            
-            if (isNight || isDusk) {
-                // Show moon
-                const moonProgress = hours < 12 ? (hours + 6) / 12 : (hours - 18) / 12;
-                const moonX = 10 + moonProgress * 80;
-                const moonY = 10 + Math.sin(moonProgress * Math.PI) * -30 + 30;
-                
-                const moonSize = isDusk ? 30 + (20 - hours) * 5 : 40;
-                const moonOpacity = isDusk ? 0.3 + (20 - hours) * 0.35 : 0.8;
-                
-                const moon = document.createElement('div');
-                moon.style.cssText = `
-                    position: absolute;
-                    left: ${moonX}%;
-                    top: ${moonY}%;
-                    width: ${moonSize}px;
-                    height: ${moonSize}px;
-                    background: radial-gradient(circle at 30% 30%, #FFF 0%, #E0E0E0 50%, #A0A0A0 100%);
-                    border-radius: 50%;
-                    opacity: ${moonOpacity};
-                    box-shadow: 0 0 ${moonSize}px ${moonSize/3}px rgba(255, 255, 255, 0.2);
-                    transition: all 1s ease;
-                `;
-                overlay.appendChild(moon);
-            }
-            
-            // Show stars at night
-            if (isNight) {
-                const starCount = 50;
-                const starsContainer = document.createElement('div');
-                starsContainer.style.cssText = `
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                `;
-                
-                for (let i = 0; i < starCount; i++) {
-                    const star = document.createElement('div');
-                    const x = Math.random() * 100;
-                    const y = Math.random() * 60; // Top 60% of screen
-                    const size = 1 + Math.random() * 2;
-                    const opacity = 0.3 + Math.random() * 0.7;
-                    const twinkleDelay = Math.random() * 3;
-                    
-                    star.style.cssText = `
-                        position: absolute;
-                        left: ${x}%;
-                        top: ${y}%;
-                        width: ${size}px;
-                        height: ${size}px;
-                        background: white;
-                        border-radius: 50%;
-                        opacity: ${opacity};
-                        box-shadow: 0 0 ${size * 2}px ${size}px rgba(255, 255, 255, 0.5);
-                        animation: twinkle ${2 + Math.random() * 2}s ease-in-out ${twinkleDelay}s infinite;
-                    `;
-                    starsContainer.appendChild(star);
-                }
-                
-                overlay.appendChild(starsContainer);
-                
-                // Add twinkle animation if not exists
-                if (!document.getElementById('star-twinkle-style')) {
-                    const style = document.createElement('style');
-                    style.id = 'star-twinkle-style';
-                    style.textContent = `
-                        @keyframes twinkle {
-                            0%, 100% { opacity: 0.3; }
-                            50% { opacity: 1; }
-                        }
-                    `;
-                    document.head.appendChild(style);
-                }
-            }
-        }
+        updateCelestialObjects() {},
     };
     
     // ============================================
@@ -2137,6 +1908,15 @@ const SolarDesigner = (function() {
             return text;
         }
     };
+
+    if (typeof createSystemReview === 'function') {
+        Object.assign(SystemReview, createSystemReview(
+            () => allItems,
+            () => connections,
+            () => BOMSystem,
+            () => Automations,
+        ));
+    }
     
     // ============================================
     // D3 SETUP
@@ -2313,13 +2093,34 @@ const SolarDesigner = (function() {
             }
         });
         
-        // Center view initially
+        refreshCanvasViewport({ force: true });
+    }
+
+    function refreshCanvasViewport(options = {}) {
+        if (!svg || !zoomBehavior) return false;
+
         const container = document.getElementById('solar-canvas-container');
-        if (container) {
-            const width = container.clientWidth;
-            const height = container.clientHeight;
+        const svgNode = svg.node();
+        if (!container || !svgNode) return false;
+
+        const width = container.clientWidth;
+        const height = container.clientHeight;
+        if (width <= 0 || height <= 0) return false;
+
+        svgNode.setAttribute('width', width);
+        svgNode.setAttribute('height', height);
+
+        const transform = d3.zoomTransform(svgNode);
+        const needsRecenter = options.force
+            || container.dataset.viewportReady !== 'true'
+            || (transform.k === 1 && transform.x <= 1 && transform.y <= 1);
+
+        if (needsRecenter) {
             svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(width / 2, height / 2));
+            container.dataset.viewportReady = 'true';
         }
+
+        return true;
     }
     
     // ============================================
@@ -3078,6 +2879,11 @@ const SolarDesigner = (function() {
     
     function render() {
         if (!isInitialized || !wiresGroup) return;
+        if (LiveView.state.active) {
+            Simulation.calculateSolarOutput();
+            Simulation.calculateLoadConsumption();
+            calculatePowerFlow();
+        }
         renderWires();
         renderItems();
         updateStats();
@@ -4082,7 +3888,7 @@ const SolarDesigner = (function() {
         g.style("cursor", "pointer")
             .on("dblclick", (event) => {
                 event.stopPropagation();
-                if (currentSolarMode === 'live' && LiveView.state.active) {
+                if (LiveView.state.active) {
                     LiveView.state.loadStates[d.id] = !LiveView.state.loadStates[d.id];
                     
                     // Check voltage mismatch when turning load on
@@ -5967,113 +5773,91 @@ const SolarDesigner = (function() {
     }
     
     // ============================================
-    // LIVE MODE
+    // DESIGNER CIRCUIT ANALYSIS (always-on live wire check)
     // ============================================
     
-    function startLiveMode() {
-        // Check for batteries or all-in-one units
-        const batteries = allItems.filter(i => i.type === 'battery');
-        const smartBatteries = allItems.filter(i => i.type === 'smartbattery');
-        const controllers = allItems.filter(i => i.type === 'controller');
-        const hasStorage = batteries.length > 0 || smartBatteries.length > 0 || controllers.some(c => c.specs.internalBatteryKWh > 0);
-        
-        if (!hasStorage) {
-            showToast('Add batteries or an all-in-one unit to use Live mode', 'error');
-            return false;
-        }
-        
-        LiveView.state.active = true;
+    function resetDesignerCircuitStates() {
         LiveView.state.loadStates = {};
         LiveView.state.breakerStates = {};
         LiveView.state.powerFlow = {};
-        
-        // Initialize loads to off
-        allItems.filter(i => i.type === 'acload').forEach(load => {
+        allItems.filter(i => i.type === 'acload' || i.type === 'producer').forEach((load) => {
             LiveView.state.loadStates[load.id] = false;
         });
-        
-        // Initialize breakers to closed
-        allItems.filter(i => i.type === 'acbreaker' || i.type === 'dcbreaker').forEach(breaker => {
+        allItems.filter(i => i.type === 'acbreaker' || i.type === 'dcbreaker').forEach((breaker) => {
             LiveView.state.breakerStates[breaker.id] = { isClosed: breaker.isClosed !== false };
         });
-        
-        currentSolarMode = 'live';
-        document.getElementById('btn-solar-build').classList.remove('active');
-        document.getElementById('btn-solar-live').classList.add('active');
-        const hintEl = document.getElementById('live-mode-hint');
-        if (hintEl) hintEl.style.display = 'block';
-        
-        // Show simulation controls (both sidebar and topbar)
-        const simControls = document.getElementById('sim-controls');
-        if (simControls) simControls.style.display = 'block';
-        const topbarControls = document.getElementById('topbar-sim-controls');
-        if (topbarControls) topbarControls.classList.add('active');
-        
-        // Show live power stats panel
-        const liveStatsPanel = document.getElementById('live-power-stats-panel');
-        if (liveStatsPanel) liveStatsPanel.classList.add('active');
-        
-        // Initialize simulation
+    }
+
+    function setDesignerCanvasBackground() {
+        const container = document.getElementById('solar-canvas-container');
+        if (!container) return;
+        container.style.backgroundColor = '#1a2b3c';
+        container.style.backgroundImage = `
+            linear-gradient(rgba(240, 173, 78, 0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(240, 173, 78, 0.03) 1px, transparent 1px)
+        `;
+        globalThis.CelestialSky?.clearOverlay?.(container);
+    }
+
+    /** Always-on live circuit analysis (wire glow, breakers, load toggles). */
+    function ensureDesignerCircuitAnalysis(options = {}) {
+        const reinit = options.reinit === true;
+        LiveView.state.active = true;
+        currentSolarMode = 'design';
+
+        if (reinit || !LiveView.state.loadStates || Object.keys(LiveView.state.loadStates).length === 0) {
+            resetDesignerCircuitStates();
+        }
+
+        setDesignerCanvasBackground();
         Simulation.initBatteries();
         Simulation.calculateSolarOutput();
-        Simulation.updateTimeDisplay();
-        Simulation.updateSimulationStats();
-        Simulation.updateBackgroundColor();
-        
-        // Sync time sliders (both sidebar and topbar)
-        const timeSliders = [document.getElementById('sim-time-slider'), document.getElementById('sim-time-slider-top')];
-        timeSliders.forEach(slider => {
-            if (slider) slider.value = Simulation.time;
-        });
-        
+        Simulation.calculateLoadConsumption();
         calculatePowerFlow();
-        render();
-        showToast('Live mode active - use time controls to simulate!', 'info');
+
+        if (options.render !== false) {
+            render();
+        }
         return true;
     }
-    
-    function stopLiveMode() {
-        LiveView.state.active = false;
-        currentSolarMode = 'build';
-        
-        // Stop simulation
-        Simulation.pause();
-        
-        document.getElementById('btn-solar-build').classList.add('active');
-        document.getElementById('btn-solar-live').classList.remove('active');
-        const hintEl = document.getElementById('live-mode-hint');
-        if (hintEl) hintEl.style.display = 'none';
-        
-        // Hide simulation controls (both sidebar and topbar)
-        const simControls = document.getElementById('sim-controls');
-        if (simControls) simControls.style.display = 'none';
-        const topbarControls = document.getElementById('topbar-sim-controls');
-        if (topbarControls) topbarControls.classList.remove('active');
-        
-        // Hide live power stats panel
-        const liveStatsPanel = document.getElementById('live-power-stats-panel');
-        if (liveStatsPanel) liveStatsPanel.classList.remove('active');
-        
-        // Reset background color to default and clean up celestial overlay
-        const container = document.getElementById('solar-canvas-container');
-        if (container) {
-            container.style.backgroundColor = '#1a2b3c';
-            container.style.backgroundImage = `
-                linear-gradient(rgba(240, 173, 78, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(240, 173, 78, 0.03) 1px, transparent 1px)
-            `;
-            
-            // Remove celestial overlay to prevent memory accumulation
-            const overlay = document.getElementById('celestial-overlay');
-            if (overlay) {
-                overlay.remove();
-            }
+
+    /**
+     * Save the current designer schematic to localStorage (solarDesignerExport).
+     * Called automatically when navigating to the simulator so it always sees the latest circuit.
+     */
+    function syncExportToStorage() {
+        try {
+            const config = getSolarConfig();
+            const exportData = ExportFormat.createDesignerExport({
+                components: config.items,
+                connections: config.connections,
+                canvasWidth: 2000, canvasHeight: 1500,
+                zoom: svg ? d3.zoomTransform(svg.node()).k : 1,
+                panX: svg ? d3.zoomTransform(svg.node()).x : 0,
+                panY: svg ? d3.zoomTransform(svg.node()).y : 0,
+                automationRules: Automations.exportRules(),
+                timeOfDay: Simulation.time,
+                isLiveMode: LiveView.state.active,
+                loadStates: LiveView.state.loadStates,
+                breakerStates: LiveView.state.breakerStates,
+                totalPanelWatts: allItems.filter(i => i.type === 'panel').reduce((s, p) => s + (p.specs.wmp || 0), 0),
+                totalBatteryKwh: allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery').reduce((s, b) => s + (b.specs.kWh || (b.specs.voltage * b.specs.ah / 1000) || 0), 0),
+                componentCount: allItems.length,
+            });
+            ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.DESIGNER_EXPORT, exportData);
+        } catch (e) {
+            console.warn('[designer] syncExportToStorage failed:', e);
         }
-        
-        // Reset celestial update tracker
-        Simulation._lastCelestialUpdate = null;
-        
-        render();
+    }
+
+    /** @deprecated Use ensureDesignerCircuitAnalysis — kept for legacy callers */
+    function startLiveMode() {
+        return ensureDesignerCircuitAnalysis();
+    }
+
+    function stopLiveMode() {
+        Simulation.pause();
+        ensureDesignerCircuitAnalysis({ reinit: true });
     }
     
     // Power flow cache for performance optimization
@@ -7171,6 +6955,7 @@ const SolarDesigner = (function() {
         selectedConnection = null;
         
         render();
+        ensureDesignerCircuitAnalysis({ reinit: true, render: false });
     }
     
     function clearAll() {
@@ -7193,10 +6978,7 @@ const SolarDesigner = (function() {
         
         // Reset simulation
         Simulation.reset();
-        
-        if (LiveView.state.active) {
-            stopLiveMode();
-        }
+        ensureDesignerCircuitAnalysis({ reinit: true });
         
         render();
     }
@@ -7214,7 +6996,6 @@ const SolarDesigner = (function() {
         }
         
         initSVG();
-        populatePresetSelects();
         setupEventListeners();
         setupTooltips();
         populateRightSidebarLibraries();
@@ -7235,6 +7016,7 @@ const SolarDesigner = (function() {
         render();
         updateAutomationsList();
         updateStats();
+        ensureDesignerCircuitAnalysis({ render: false });
     }
     
     // Update linkage config (can be called after init to refresh)
@@ -7247,208 +7029,7 @@ const SolarDesigner = (function() {
         return linkageConfig;
     }
     
-    function populatePresetSelects() {
-        // Panel presets
-        const panelSelect = document.getElementById('panel-preset-select');
-        PANEL_PRESETS.forEach((preset, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${preset.name} (${preset.wmp}W)`;
-            panelSelect.appendChild(opt);
-        });
-        
-        // Battery presets
-        const batterySelect = document.getElementById('battery-preset-select');
-        BATTERY_PRESETS.forEach((preset, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${preset.name}`;
-            batterySelect.appendChild(opt);
-        });
-        
-        // Controller presets
-        const controllerSelect = document.getElementById('controller-preset-select');
-        CONTROLLER_PRESETS.forEach((preset, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            const typeLabel = preset.type === 'hybrid_inverter' ? ' [Hybrid]' : 
-                             preset.type === 'all_in_one' ? ' [AIO]' : '';
-            opt.textContent = `${preset.name}${typeLabel}`;
-            controllerSelect.appendChild(opt);
-        });
-        
-        // Appliance presets
-        const applianceSelect = document.getElementById('appliance-preset-select');
-        APPLIANCE_PRESETS.forEach((preset, i) => {
-            if (preset.name === 'Custom Load') return; // Skip custom, it's in palette
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${preset.icon} ${preset.name}`;
-            applianceSelect.appendChild(opt);
-        });
-        
-        // Producer presets
-        const producerSelect = document.getElementById('producer-preset-select');
-        PRODUCER_PRESETS.forEach((preset, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${preset.icon} ${preset.name} (${preset.watts}W)`;
-            producerSelect.appendChild(opt);
-        });
-        
-        // Container presets
-        const containerSelect = document.getElementById('container-preset-select');
-        CONTAINER_PRESETS.forEach((preset, i) => {
-            const opt = document.createElement('option');
-            opt.value = i;
-            opt.textContent = `${preset.icon} ${preset.name}`;
-            containerSelect.appendChild(opt);
-        });
-    }
-    
     function setupEventListeners() {
-        // Preset selects
-        document.getElementById('panel-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = PANEL_PRESETS[parseInt(e.target.value)];
-            const item = createPanel(getRandomPosition().x, getRandomPosition().y, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        document.getElementById('battery-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = BATTERY_PRESETS[parseInt(e.target.value)];
-            const item = createBattery(getRandomPosition().x, getRandomPosition().y + 100, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        document.getElementById('controller-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = CONTROLLER_PRESETS[parseInt(e.target.value)];
-            const item = createController(getRandomPosition().x + 150, getRandomPosition().y, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        document.getElementById('appliance-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = APPLIANCE_PRESETS[parseInt(e.target.value)];
-            const item = createACLoad(getRandomPosition().x + 250, getRandomPosition().y + 150, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        // Producer preset select
-        document.getElementById('producer-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = PRODUCER_PRESETS[parseInt(e.target.value)];
-            const item = createProducer(getRandomPosition().x + 100, getRandomPosition().y + 200, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            updateStats();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        // Container preset select
-        document.getElementById('container-preset-select').onchange = (e) => {
-            if (e.target.value === '') return;
-            const preset = CONTAINER_PRESETS[parseInt(e.target.value)];
-            const item = createContainer(getRandomPosition().x + 200, getRandomPosition().y + 100, preset);
-            allItems.push(item);
-            e.target.value = '';
-            selectItem(item);
-            render();
-            showToast(`Added ${preset.name}`, 'info');
-        };
-        
-        // Palette items
-        document.querySelectorAll('.palette-item').forEach(el => {
-            el.onclick = () => {
-                const type = el.dataset.component;
-                let item;
-                const pos = getRandomPosition();
-                
-                switch (type) {
-                    case 'acbreaker':
-                        item = createACBreaker(pos.x, pos.y + 200);
-                        break;
-                    case 'acoutlet':
-                        item = createACOutlet(pos.x + 100, pos.y + 200);
-                        break;
-                    case 'acoutlet240':
-                        item = createACOutlet(pos.x + 100, pos.y + 200, 240);
-                        break;
-                    case 'customload':
-                        item = createACLoad(pos.x + 200, pos.y + 200, APPLIANCE_PRESETS[0]);
-                        break;
-                    case 'dcbreaker':
-                        item = createDCBreaker(pos.x, pos.y + 300);
-                        break;
-                    case 'combiner':
-                        item = createCombiner(pos.x + 100, pos.y + 300);
-                        break;
-                    case 'solarcombiner':
-                        item = createSolarCombinerBox(pos.x + 100, pos.y + 300);
-                        break;
-                    case 'breakerpanel':
-                        item = createBreakerPanel(pos.x + 200, pos.y);
-                        break;
-                    case 'spiderbox':
-                        item = createSpiderBox(pos.x + 200, pos.y + 150);
-                        break;
-                    case 'doublevoltagehub':
-                        item = createDoubleVoltageHub(pos.x + 300, pos.y + 100);
-                        break;
-                    case 'smartbattery':
-                        item = createSmartBattery(pos.x + 100, pos.y + 150);
-                        break;
-                }
-                
-                if (item) {
-                    allItems.push(item);
-                    selectItem(item);
-                    render();
-                    showToast(`Added ${type}`, 'info');
-                }
-            };
-        });
-        
-        // Mode buttons (both sidebar and topbar)
-        const buildBtns = [document.getElementById('btn-solar-build')];
-        const liveBtns = [document.getElementById('btn-solar-live')];
-        
-        buildBtns.forEach(btn => {
-            if (btn) btn.onclick = () => {
-                if (LiveView.state.active) {
-                    stopLiveMode();
-                }
-            };
-        });
-        
-        liveBtns.forEach(btn => {
-            if (btn) btn.onclick = () => {
-                if (!LiveView.state.active) {
-                    startLiveMode();
-                }
-            };
-        });
-        
         // Panel spacing slider (optional - may not exist in all HTML versions)
         const panelSpacingSlider = document.getElementById('panel-spacing-slider');
         if (panelSpacingSlider) {
@@ -7522,113 +7103,6 @@ const SolarDesigner = (function() {
                 }
             };
         }
-        
-        // Simulation controls (both sidebar and topbar versions)
-        const playBtns = [document.getElementById('btn-sim-play'), document.getElementById('btn-sim-play-top')];
-        const pauseBtns = [document.getElementById('btn-sim-pause'), document.getElementById('btn-sim-pause-top')];
-        const resetBtns = [document.getElementById('btn-sim-reset'), document.getElementById('btn-sim-reset-top')];
-        const timeSliders = [document.getElementById('sim-time-slider'), document.getElementById('sim-time-slider-top')];
-        
-        playBtns.forEach(btn => {
-            if (btn) btn.onclick = () => Simulation.play();
-        });
-        
-        pauseBtns.forEach(btn => {
-            if (btn) btn.onclick = () => Simulation.pause();
-        });
-        
-        resetBtns.forEach(btn => {
-            if (btn) btn.onclick = () => {
-                Simulation.reset();
-                render();
-            };
-        });
-        
-        timeSliders.forEach(slider => {
-            if (slider) slider.oninput = (e) => {
-                Simulation.setTime(parseInt(e.target.value));
-                Simulation.updateBackgroundColor();
-                render();
-            };
-        });
-        
-        // Daylight slider (topbar) - replaces azimuth/elevation in solar mode
-        const daylightSliders = [
-            document.getElementById('sl-daylight'),
-            document.getElementById('sl-daylight-top')
-        ];
-        
-        daylightSliders.forEach(slider => {
-            if (slider) {
-                slider.oninput = (e) => {
-                    const daylightPercent = parseFloat(e.target.value);
-                    const sunPos = Simulation.calculateSunPositionFromDaylight(daylightPercent);
-                    
-                    // Update simulation time to match daylight slider
-                    Simulation.setTime(Math.round(sunPos.hours * 60));
-                    
-                    // Update time display
-                    Simulation.updateTimeDisplay();
-                    
-                    // Update daylight time display
-                    const timeDisplays = [
-                        document.getElementById('daylight-time-display'),
-                        document.getElementById('daylight-time-display-top')
-                    ];
-                    const formattedTime = Simulation.formatTime();
-                    timeDisplays.forEach(display => {
-                        if (display) display.textContent = formattedTime;
-                    });
-                    
-                    // Update background and render
-                    Simulation.updateBackgroundColor();
-                    Simulation.calculateSolarOutput();
-                    Simulation.updateSimulationStats();
-                    render();
-                };
-            }
-        });
-        
-        // Speed controls
-        const speeds = [15, 30, 60, 120, 240, 480, 960]; // minutes per real second
-        let currentSpeedIndex = 2; // Start at 60 (1h/s)
-        
-        const slowerBtns = [document.getElementById('btn-sim-slower'), document.getElementById('btn-sim-slower-top')];
-        const fasterBtns = [document.getElementById('btn-sim-faster'), document.getElementById('btn-sim-faster-top')];
-        
-        slowerBtns.forEach(btn => {
-            if (btn) btn.onclick = () => {
-                if (currentSpeedIndex > 0) {
-                    currentSpeedIndex--;
-                    Simulation.setSpeed(speeds[currentSpeedIndex]);
-                }
-            };
-        });
-        
-        fasterBtns.forEach(btn => {
-            if (btn) btn.onclick = () => {
-                if (currentSpeedIndex < speeds.length - 1) {
-                    currentSpeedIndex++;
-                    Simulation.setSpeed(speeds[currentSpeedIndex]);
-                }
-            };
-        });
-        
-        // Speed select dropdowns (topbar)
-        const speedSelects = [
-            document.getElementById('sim-speed-select'),
-            document.getElementById('sim-speed-select-top')
-        ];
-        
-        speedSelects.forEach(select => {
-            if (select) {
-                select.onchange = (e) => {
-                    const multiplier = parseInt(e.target.value);
-                    // Speed is in minutes per real second: 60 = 1 hour per second
-                    Simulation.setSpeed(60 * multiplier);
-                };
-            }
-        });
         
         // ============================================
         // AUTOMATION EVENT HANDLERS
@@ -7784,30 +7258,16 @@ const SolarDesigner = (function() {
                 showHelpModal();
             }
             
-            // Space - toggle simulation play/pause in live mode
-            if (e.key === ' ' && !isTyping && LiveView.state.active) {
+            // Space - toggle selected load/producer on/off
+            if (e.key === ' ' && !isTyping && selectedItem
+                && (selectedItem.type === 'acload' || selectedItem.type === 'producer')
+                && LiveView.state.active) {
                 e.preventDefault();
-                if (Simulation.isPlaying) {
-                    Simulation.pause();
-                } else {
-                    Simulation.play();
-                }
-            }
-            
-            // R - reset simulation time
-            if (e.key === 'r' && !isTyping && LiveView.state.active) {
-                e.preventDefault();
-                Simulation.reset();
-            }
-            
-            // B - toggle between build/live mode
-            if (e.key === 'b' && !isTyping) {
-                e.preventDefault();
-                if (LiveView.state.active) {
-                    stopLiveMode();
-                } else {
-                    startLiveMode();
-                }
+                LiveView.state.loadStates[selectedItem.id] = !LiveView.state.loadStates[selectedItem.id];
+                Simulation.calculateLoadConsumption();
+                calculatePowerFlow();
+                render();
+                updatePropertiesPanel();
             }
             
             // H - toggle hints/tooltips
@@ -7823,10 +7283,11 @@ const SolarDesigner = (function() {
             }
         });
         
-        // Auto-save
+        // Auto-save (designer config + keep designer export in sync for simulator)
         setInterval(() => {
             if (allItems.length > 0 || connections.length > 0) {
                 localStorage.setItem('linkageLab_solarConfig', JSON.stringify(getSolarConfig()));
+                syncExportToStorage();
             }
         }, 5000);
     }
@@ -7895,8 +7356,8 @@ const SolarDesigner = (function() {
                         <div class="help-item-desc">Click and drag from a component's connection point (handle) to another compatible handle to create wires. Red = DC+, Dark = DC-, Orange = AC.</div>
                     </div>
                     <div class="help-item">
-                        <div class="help-item-title">4. Test Your System</div>
-                        <div class="help-item-desc">Click "▶ Live" to simulate your solar system over a 24-hour cycle. Use the time controls to scrub through the day and watch power flow.</div>
+                        <div class="help-item-title">4. Test Your Circuit</div>
+                        <div class="help-item-desc">Wire glow, breaker states, and load toggles are always active. Double-click loads or press Space to test power flow. Open the 3D Simulator (▶) for full day/night time simulation.</div>
                     </div>
                 </div>
                 
@@ -7908,7 +7369,7 @@ const SolarDesigner = (function() {
                     </div>
                     <div class="help-item">
                         <div class="help-item-title">Batteries</div>
-                        <div class="help-item-desc">Store energy for later use. Charge during sunny periods, discharge when needed. Monitor SOC (State of Charge) in live mode.</div>
+                        <div class="help-item-desc">Store energy for later use. Charge during sunny periods, discharge when needed. SOC (State of Charge) is shown on connected batteries.</div>
                     </div>
                     <div class="help-item">
                         <div class="help-item-title">Charge Controllers</div>
@@ -7920,7 +7381,7 @@ const SolarDesigner = (function() {
                     </div>
                     <div class="help-item">
                         <div class="help-item-title">Loads & Appliances</div>
-                        <div class="help-item-desc">AC devices that consume power. Toggle on/off in live mode. Production appliances can create resources (water, ice, etc.).</div>
+                        <div class="help-item-desc">AC devices that consume power. Double-click or press Space to toggle on/off. Wire glow shows live power flow.</div>
                     </div>
                 </div>
                 
@@ -7934,8 +7395,8 @@ const SolarDesigner = (function() {
                 <div class="help-section">
                     <div class="help-section-title">📊 Analysis Tools</div>
                     <div class="help-item">
-                        <div class="help-item-title">System Review</div>
-                        <div class="help-item-desc">Get a comprehensive analysis with optimization score, energy metrics, and financial projections. Adjust calculation settings for your location.</div>
+                        <div class="help-item-title">Build Guide</div>
+                        <div class="help-item-desc">Unified build guide with structure drill templates, wiring schematic, electrical BOM, and system analysis (optimization score, energy, and financial projections).</div>
                     </div>
                     <div class="help-item">
                         <div class="help-item-title">Bill of Materials (BOM)</div>
@@ -8033,18 +7494,10 @@ const SolarDesigner = (function() {
                 </div>
                 
                 <div class="shortcut-group">
-                    <div class="shortcut-group-title">🎮 Simulation</div>
+                    <div class="shortcut-group-title">⚡ Circuit Testing</div>
                     <div class="shortcut-row">
-                        <span class="shortcut-desc">Toggle Build/Live mode</span>
-                        <div class="shortcut-keys"><span class="shortcut-key">B</span></div>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="shortcut-desc">Play/Pause simulation</span>
+                        <span class="shortcut-desc">Toggle selected load on/off</span>
                         <div class="shortcut-keys"><span class="shortcut-key">Space</span></div>
-                    </div>
-                    <div class="shortcut-row">
-                        <span class="shortcut-desc">Reset time to noon</span>
-                        <div class="shortcut-keys"><span class="shortcut-key">R</span></div>
                     </div>
                 </div>
                 
@@ -8132,8 +7585,12 @@ const SolarDesigner = (function() {
                         <strong>Drag & Drop Components</strong> - Build your system visually
                     </div>
                     <div style="margin-bottom: 12px;">
+                        <span style="font-size: 1.2rem; margin-right: 8px;">⚡</span>
+                        <strong>Live Wire Check</strong> - Glow effects and breaker testing while you design
+                    </div>
+                    <div style="margin-bottom: 12px;">
                         <span style="font-size: 1.2rem; margin-right: 8px;">⏰</span>
-                        <strong>24-Hour Simulation</strong> - Watch power flow in real-time
+                        <strong>3D Simulator</strong> - Full day/night cycle with sun, stars, and weather
                     </div>
                     <div style="margin-bottom: 12px;">
                         <span style="font-size: 1.2rem; margin-right: 8px;">🤖</span>
@@ -8343,8 +7800,12 @@ const SolarDesigner = (function() {
         }
     }
     
-    // Export solar config to JSON file
+    // Export unified project (linkage + electrical + wiring) or legacy solar-only JSON
     function exportSolarConfig() {
+        if (typeof globalThis.exportProjectFile === 'function') {
+            globalThis.exportProjectFile();
+            return;
+        }
         const config = getSolarConfig();
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
@@ -8444,8 +7905,12 @@ const SolarDesigner = (function() {
         showToast(`Exported ${allItems.length} components to 3D Simulator`, 'info');
     }
     
-    // Import solar config from JSON file
+    // Import unified project or legacy solar JSON
     function importSolarConfig() {
+        if (typeof globalThis.importProjectFile === 'function') {
+            globalThis.importProjectFile();
+            return;
+        }
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = '.json';
@@ -8612,413 +8077,17 @@ const SolarDesigner = (function() {
         };
     }
     
-    function showSystemReview() {
-        const analysis = SystemReview.analyzeSystem();
-        
-        // Create modal overlay
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.85);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        `;
-        
-        const content = document.createElement('div');
-        content.style.cssText = `
-            background: var(--bg-darker);
-            border: 2px solid var(--clr-primary);
-            border-radius: 8px;
-            max-width: 800px;
-            width: 100%;
-            max-height: 90vh;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        `;
-        
-        const header = document.createElement('div');
-        header.style.cssText = `
-            padding: 16px 20px;
-            border-bottom: 2px solid var(--clr-primary);
-            background: linear-gradient(135deg, rgba(var(--clr-primary-rgb), 0.1) 0%, transparent 100%);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        `;
-        header.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-size: 1.5rem;">📊</span>
-                <span style="font-size: 1.1rem; font-weight: 600; color: var(--clr-primary);">System Review & Analysis</span>
-            </div>
-            <button id="review-close" style="background: none; border: none; color: var(--text-primary); font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 4px; transition: all 0.2s;" onmouseover="this.style.background='var(--bg-toolbar)'; this.style.color='var(--clr-danger)';" onmouseout="this.style.background='none'; this.style.color='var(--text-primary)';">×</button>
-        `;
-        
-        const body = document.createElement('div');
-        body.style.cssText = `
-            flex: 1;
-            overflow-y: auto;
-            overflow-x: hidden;
-            padding: 20px;
-        `;
-        
-        // Build HTML content
-        const opt = analysis.optimization;
-        const comp = analysis.components;
-        const energy = analysis.energy;
-        const financial = analysis.financial;
-        
-        let html = `
-            <style>
-                .review-section {
-                    margin-bottom: 24px;
-                    padding: 16px;
-                    background: var(--bg-input);
-                    border: 1px solid var(--border-light);
-                    border-radius: 6px;
-                }
-                .review-section-title {
-                    font-size: 1rem;
-                    font-weight: 600;
-                    margin-bottom: 12px;
-                    color: var(--clr-primary);
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                .review-row {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 6px 0;
-                    border-bottom: 1px solid var(--border-light);
-                }
-                .review-row:last-child {
-                    border-bottom: none;
-                }
-                .review-label {
-                    color: var(--text-muted);
-                    font-size: 0.9rem;
-                }
-                .review-value {
-                    color: var(--text-primary);
-                    font-weight: 500;
-                    font-size: 0.9rem;
-                }
-                .grade-display {
-                    text-align: center;
-                    padding: 20px;
-                    background: var(--bg-darker);
-                    border-radius: 8px;
-                    margin-bottom: 16px;
-                }
-                .grade-letter {
-                    font-size: 4rem;
-                    font-weight: 700;
-                    margin: 0;
-                    line-height: 1;
-                }
-                .grade-label {
-                    font-size: 1.2rem;
-                    margin-top: 8px;
-                    opacity: 0.9;
-                }
-                .grade-score {
-                    font-size: 0.9rem;
-                    color: var(--text-muted);
-                    margin-top: 4px;
-                }
-                .factor-bar {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 10px;
-                }
-                .factor-name {
-                    flex: 0 0 180px;
-                    font-size: 0.85rem;
-                    color: var(--text-muted);
-                }
-                .factor-track {
-                    flex: 1;
-                    height: 8px;
-                    background: var(--bg-darker);
-                    border-radius: 4px;
-                    overflow: hidden;
-                    position: relative;
-                }
-                .factor-fill {
-                    height: 100%;
-                    background: linear-gradient(90deg, var(--clr-success), var(--clr-primary));
-                    border-radius: 4px;
-                    transition: width 0.3s ease;
-                }
-                .factor-score {
-                    flex: 0 0 50px;
-                    text-align: right;
-                    font-size: 0.85rem;
-                    font-weight: 600;
-                    color: var(--text-primary);
-                }
-                .insight-item {
-                    padding: 8px 12px;
-                    margin-bottom: 8px;
-                    background: var(--bg-darker);
-                    border-left: 3px solid var(--clr-primary);
-                    border-radius: 4px;
-                    font-size: 0.85rem;
-                    line-height: 1.4;
-                }
-                .insight-warning {
-                    border-left-color: var(--clr-warning);
-                    color: var(--clr-warning);
-                }
-                .insight-recommendation {
-                    border-left-color: var(--clr-success);
-                }
-                .financial-highlight {
-                    text-align: center;
-                    padding: 12px;
-                    background: linear-gradient(135deg, rgba(var(--clr-success-rgb), 0.1) 0%, transparent 100%);
-                    border: 1px solid var(--clr-success);
-                    border-radius: 6px;
-                    margin-top: 12px;
-                }
-                .financial-big {
-                    font-size: 2rem;
-                    font-weight: 700;
-                    color: var(--clr-success);
-                    margin-bottom: 4px;
-                }
-                .financial-label {
-                    font-size: 0.9rem;
-                    color: var(--text-muted);
-                }
-                .settings-row {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 8px;
-                }
-                .settings-label {
-                    flex: 1;
-                    font-size: 0.85rem;
-                    color: var(--text-muted);
-                }
-                .settings-input {
-                    width: 100px;
-                    padding: 4px 8px;
-                    background: var(--bg-darker);
-                    border: 1px solid var(--border-light);
-                    border-radius: 4px;
-                    color: var(--text-primary);
-                    text-align: right;
-                }
-            </style>
-            
-            <!-- Optimization Score -->
-            <div class="grade-display" style="border: 2px solid ${opt.grade.color};">
-                <div class="grade-letter" style="color: ${opt.grade.color};">${opt.grade.letter}</div>
-                <div class="grade-label" style="color: ${opt.grade.color};">${opt.grade.label}</div>
-                <div class="grade-score">${opt.totalScore} / ${opt.maxScore} points</div>
-            </div>
-            
-            <!-- Score Breakdown -->
-            <div class="review-section">
-                <div class="review-section-title">📈 Score Breakdown</div>
-                ${opt.factors.map(f => `
-                    <div class="factor-bar">
-                        <div class="factor-name">${f.name}</div>
-                        <div class="factor-track">
-                            <div class="factor-fill" style="width: ${(f.score / f.max) * 100}%;"></div>
-                        </div>
-                        <div class="factor-score">${f.score}/${f.max}</div>
-                    </div>
-                `).join('')}
-            </div>
-            
-            <!-- Components Summary -->
-            <div class="review-section">
-                <div class="review-section-title">🔌 System Components</div>
-                <div class="review-row">
-                    <span class="review-label">Solar Panels</span>
-                    <span class="review-value">${comp.panelCount} panels (${comp.totalPanelWatts}W total)</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Battery Storage</span>
-                    <span class="review-value">${comp.batteryCount} batteries (${comp.totalBatteryKwh.toFixed(2)} kWh)</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Charge Controllers</span>
-                    <span class="review-value">${comp.controllerCount}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Inverters</span>
-                    <span class="review-value">${comp.inverterCount}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">AC Loads</span>
-                    <span class="review-value">${comp.loadCount} (${comp.totalLoadWatts}W)</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Production Appliances</span>
-                    <span class="review-value">${comp.producerCount} (${comp.totalProducerWatts}W)</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Total Consumption</span>
-                    <span class="review-value" style="color: var(--clr-warning); font-weight: 600;">${comp.totalConsumption}W</span>
-                </div>
-            </div>
-            
-            <!-- Energy Analysis -->
-            <div class="review-section">
-                <div class="review-section-title">⚡ Energy Performance</div>
-                <div class="review-row">
-                    <span class="review-label">Daily Solar Production</span>
-                    <span class="review-value">${energy.avgDailyProduction.toFixed(2)} kWh</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Daily Consumption (est.)</span>
-                    <span class="review-value">${energy.avgDailyConsumption.toFixed(2)} kWh</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Energy Balance</span>
-                    <span class="review-value" style="color: ${energy.energyBalance >= 0 ? 'var(--clr-success)' : 'var(--clr-danger)'};">
-                        ${energy.energyBalance >= 0 ? '+' : ''}${energy.energyBalance.toFixed(2)} kWh/day
-                    </span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Self-Sufficiency</span>
-                    <span class="review-value" style="color: ${energy.selfSufficiency >= 100 ? 'var(--clr-success)' : 'var(--clr-warning)'};">
-                        ${energy.selfSufficiency.toFixed(1)}%
-                    </span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Battery Autonomy</span>
-                    <span class="review-value">${energy.batteryAutonomy.toFixed(1)} hours</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Peak Solar Output</span>
-                    <span class="review-value">${energy.peakSolarOutput.toFixed(2)} kW</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Annual Production (est.)</span>
-                    <span class="review-value">${energy.avgYearlyProduction.toFixed(0)} kWh/year</span>
-                </div>
-            </div>
-            
-            <!-- Financial Analysis -->
-            <div class="review-section">
-                <div class="review-section-title">💰 Financial Analysis</div>
-                <div class="review-row">
-                    <span class="review-label">System Cost</span>
-                    <span class="review-value">$${financial.systemCost.toFixed(2)}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Tax Incentive (${(SystemReview.settings.solarIncentive * 100)}%)</span>
-                    <span class="review-value" style="color: var(--clr-success);">-$${financial.incentive.toFixed(2)}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Net Cost</span>
-                    <span class="review-value" style="font-weight: 600;">$${financial.netCost.toFixed(2)}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Annual Savings</span>
-                    <span class="review-value" style="color: var(--clr-success);">$${financial.annualSavings.toFixed(2)}/year</span>
-                </div>
-                
-                <div class="financial-highlight">
-                    <div class="financial-big">${financial.simplePayback > 0 ? financial.simplePayback.toFixed(1) : 'N/A'} years</div>
-                    <div class="financial-label">Simple Payback Period</div>
-                </div>
-                
-                <div class="review-row" style="margin-top: 12px;">
-                    <span class="review-label">${SystemReview.settings.systemLifeYears}-Year Lifetime Value</span>
-                    <span class="review-value" style="color: var(--clr-success);">$${financial.lifetimeValue.toFixed(2)}</span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Net Profit (${SystemReview.settings.systemLifeYears} years)</span>
-                    <span class="review-value" style="color: ${financial.netProfit >= 0 ? 'var(--clr-success)' : 'var(--clr-danger)'}; font-weight: 600;">
-                        $${financial.netProfit.toFixed(2)}
-                    </span>
-                </div>
-                <div class="review-row">
-                    <span class="review-label">Return on Investment</span>
-                    <span class="review-value" style="color: ${financial.roi >= 0 ? 'var(--clr-success)' : 'var(--clr-danger)'};">
-                        ${financial.roi.toFixed(1)}%
-                    </span>
-                </div>
-            </div>
-            
-            <!-- Warnings -->
-            ${analysis.warnings.length > 0 ? `
-            <div class="review-section">
-                <div class="review-section-title">⚠️ Warnings</div>
-                ${analysis.warnings.map(w => `<div class="insight-item insight-warning">${w}</div>`).join('')}
-            </div>
-            ` : ''}
-            
-            <!-- Recommendations -->
-            ${analysis.recommendations.length > 0 ? `
-            <div class="review-section">
-                <div class="review-section-title">💡 Recommendations</div>
-                ${analysis.recommendations.map(r => `<div class="insight-item insight-recommendation">${r}</div>`).join('')}
-            </div>
-            ` : ''}
-            
-            <!-- Settings -->
-            <div class="review-section">
-                <div class="review-section-title">⚙️ Calculation Settings</div>
-                <div class="settings-row">
-                    <span class="settings-label">Electricity Rate ($/kWh)</span>
-                    <input type="number" class="settings-input" id="review-rate" value="${SystemReview.settings.electricityRate}" step="0.01" min="0">
-                </div>
-                <div class="settings-row">
-                    <span class="settings-label">Avg Daily Sun Hours</span>
-                    <input type="number" class="settings-input" id="review-sun" value="${SystemReview.settings.avgDailySunHours}" step="0.5" min="0">
-                </div>
-                <div class="settings-row">
-                    <span class="settings-label">Tax Credit (%)</span>
-                    <input type="number" class="settings-input" id="review-incentive" value="${(SystemReview.settings.solarIncentive * 100).toFixed(0)}" step="1" min="0" max="100">
-                </div>
-                <button id="review-recalc" style="margin-top: 8px; padding: 8px 16px; background: var(--clr-primary); border: none; border-radius: 4px; color: white; cursor: pointer; width: 100%; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='var(--clr-primary-light)';" onmouseout="this.style.background='var(--clr-primary)';">
-                    🔄 Recalculate with New Settings
-                </button>
-            </div>
-        `;
-        
-        body.innerHTML = html;
-        
-        content.appendChild(header);
-        content.appendChild(body);
-        modal.appendChild(content);
-        document.body.appendChild(modal);
-        
-        // Event handlers
-        document.getElementById('review-close').onclick = () => {
-            document.body.removeChild(modal);
-        };
-        
-        modal.onclick = (e) => {
-            if (e.target === modal) {
-                document.body.removeChild(modal);
-            }
-        };
-        
-        document.getElementById('review-recalc').onclick = () => {
-            SystemReview.settings.electricityRate = parseFloat(document.getElementById('review-rate').value) || 0.12;
-            SystemReview.settings.avgDailySunHours = parseFloat(document.getElementById('review-sun').value) || 5.5;
-            SystemReview.settings.solarIncentive = (parseFloat(document.getElementById('review-incentive').value) || 26) / 100;
-            
-            document.body.removeChild(modal);
-            showSystemReview(); // Reopen with new calculations
-            showToast('Recalculated with new settings', 'info');
-        };
+    async function showSystemReview() {
+        if (typeof globalThis.openBuildGuide === 'function') {
+            await globalThis.openBuildGuide();
+            return;
+        }
+        if (typeof globalThis.showBuildGuide === 'function') {
+            globalThis.showBuildGuide();
+            return;
+        }
+        showToast('Build guide is not available yet — open Linkage mode first', 'warning');
     }
-    
     // Add panel from linkage mode specs
     function addPanelFromLinkage(x, y, specs) {
         const id = `panel-${++itemIdCounter}`;
@@ -10369,35 +9438,39 @@ const SolarDesigner = (function() {
             });
         }
         
-        // Controller library
-        const controllerLibrary = document.getElementById('controllerLibrary');
-        if (controllerLibrary) {
-            controllerLibrary.innerHTML = '';
-            CONTROLLER_PRESETS.forEach((preset, i) => {
-                const btn = document.createElement('button');
-                btn.className = 'library-item';
-                let icon = '⚡';
-                if (preset.type === 'all_in_one') icon = '📦';
-                else if (preset.type === 'hybrid_inverter') icon = '🔄';
-                btn.innerHTML = `<span class="library-item-icon">${icon}</span><span class="library-item-name">${preset.name}</span>`;
-                btn.setAttribute('data-preset-type', 'controller');
-                btn.setAttribute('data-preset-data', JSON.stringify(preset));
-                btn.onclick = () => {
-                    const item = createController(getRandomPosition().x, getRandomPosition().y, preset);
-                    allItems.push(item);
-                    selectItem(item);
-                    render();
-                    showToast(`Added ${preset.name}`, 'info');
-                };
-                // Make draggable for drag-to-replace
-                btn.draggable = true;
-                btn.ondragstart = (e) => {
-                    e.dataTransfer.setData('application/json', JSON.stringify({ type: 'controller', preset }));
-                    e.dataTransfer.effectAllowed = 'copy';
-                };
-                controllerLibrary.appendChild(btn);
-            });
+        function addControllerLibraryItem(preset, container) {
+            const btn = document.createElement('button');
+            btn.className = 'library-item';
+            let icon = '⚡';
+            if (preset.type === 'all_in_one') icon = '📦';
+            else if (preset.type === 'hybrid_inverter') icon = '🔄';
+            btn.innerHTML = `<span class="library-item-icon">${icon}</span><span class="library-item-name">${preset.name}</span>`;
+            btn.setAttribute('data-preset-type', 'controller');
+            btn.setAttribute('data-preset-data', JSON.stringify(preset));
+            btn.onclick = () => {
+                const item = createController(getRandomPosition().x, getRandomPosition().y, preset);
+                allItems.push(item);
+                selectItem(item);
+                render();
+                showToast(`Added ${preset.name}`, 'info');
+            };
+            btn.draggable = true;
+            btn.ondragstart = (e) => {
+                e.dataTransfer.setData('application/json', JSON.stringify({ type: 'controller', preset }));
+                e.dataTransfer.effectAllowed = 'copy';
+            };
+            container.appendChild(btn);
         }
+
+        // Controller library (non-EcoFlow)
+        const controllerLibrary = document.getElementById('controllerLibrary');
+        const ecoflowLibrary = document.getElementById('ecoflowLibrary');
+        if (controllerLibrary) controllerLibrary.innerHTML = '';
+        if (ecoflowLibrary) ecoflowLibrary.innerHTML = '';
+        CONTROLLER_PRESETS.forEach((preset) => {
+            const target = preset.ecosystemType === 'ecoflow' ? ecoflowLibrary : controllerLibrary;
+            if (target) addControllerLibraryItem(preset, target);
+        });
         
         // Breaker library (DC Breakers)
         const breakerLibrary = document.getElementById('breakerLibrary');
@@ -10516,41 +9589,55 @@ const SolarDesigner = (function() {
             });
         }
         
-        // Combiner library (add breaker panels, spider boxes, etc.)
-        const combinerLibrary = document.getElementById('combinerLibrary');
-        if (combinerLibrary) {
-            combinerLibrary.innerHTML = '';
-            const combiners = [
-                { name: 'Breaker Panel (8-circuit)', type: 'breakerpanel', icon: '📋' },
-                { name: 'Spider Box (6-circuit)', type: 'spiderbox', icon: '🕷️' },
-                { name: 'Solar Combiner (4-string)', type: 'solarcombiner', icon: '🔗' },
-                { name: 'DC Combiner Box', type: 'combiner', icon: '📥' }
-            ];
-            combiners.forEach(combo => {
-                const btn = document.createElement('button');
-                btn.className = 'library-item';
-                btn.innerHTML = `<span class="library-item-icon">${combo.icon}</span><span class="library-item-name">${combo.name}</span>`;
-                btn.onclick = () => {
-                    let item;
-                    if (combo.type === 'breakerpanel') {
-                        item = createBreakerPanel(getRandomPosition().x, getRandomPosition().y);
-                    } else if (combo.type === 'spiderbox') {
-                        item = createSpiderBox(getRandomPosition().x, getRandomPosition().y);
-                    } else if (combo.type === 'solarcombiner') {
-                        item = createSolarCombiner(getRandomPosition().x, getRandomPosition().y, { inputs: 4 });
-                    } else if (combo.type === 'combiner') {
-                        item = createCombiner(getRandomPosition().x, getRandomPosition().y, { inputs: 4 });
-                    }
-                    if (item) {
-                        allItems.push(item);
-                        selectItem(item);
-                        render();
-                        showToast(`Added ${combo.name}`, 'info');
-                    }
-                };
-                combinerLibrary.appendChild(btn);
-            });
+        function addDistributionLibraryItem(combo, container) {
+            const btn = document.createElement('button');
+            btn.className = 'library-item';
+            btn.innerHTML = `<span class="library-item-icon">${combo.icon}</span><span class="library-item-name">${combo.name}</span>`;
+            btn.onclick = () => {
+                let item;
+                if (combo.type === 'breakerpanel') {
+                    item = createBreakerPanel(getRandomPosition().x, getRandomPosition().y);
+                } else if (combo.type === 'spiderbox') {
+                    item = createSpiderBox(getRandomPosition().x, getRandomPosition().y);
+                } else if (combo.type === 'solarcombiner') {
+                    item = createSolarCombinerBox(getRandomPosition().x, getRandomPosition().y);
+                } else if (combo.type === 'combiner') {
+                    item = createCombiner(getRandomPosition().x, getRandomPosition().y, { inputs: 4 });
+                } else if (combo.type === 'doublevoltagehub') {
+                    item = createDoubleVoltageHub(getRandomPosition().x, getRandomPosition().y);
+                }
+                if (item) {
+                    allItems.push(item);
+                    selectItem(item);
+                    render();
+                    showToast(`Added ${combo.name}`, 'info');
+                }
+            };
+            container.appendChild(btn);
         }
+
+        // Combiner / distribution hardware
+        const combinerLibrary = document.getElementById('combinerLibrary');
+        const solarCombinerLibrary = document.getElementById('solarCombinerLibrary');
+        if (combinerLibrary) combinerLibrary.innerHTML = '';
+        if (solarCombinerLibrary) solarCombinerLibrary.innerHTML = '';
+
+        const combiners = [
+            { name: 'Breaker Panel (8-circuit)', type: 'breakerpanel', icon: '📋' },
+            { name: 'Spider Box (6-circuit)', type: 'spiderbox', icon: '🕷️' },
+            { name: 'DC Combiner Box', type: 'combiner', icon: '📥' },
+            { name: '240V Split-Phase Hub', type: 'doublevoltagehub', icon: '⚡' },
+        ];
+        const solarCombiners = [
+            { name: 'Solar Combiner (4-string)', type: 'solarcombiner', icon: '🔆' },
+        ];
+
+        combiners.forEach((combo) => {
+            if (combinerLibrary) addDistributionLibraryItem(combo, combinerLibrary);
+        });
+        solarCombiners.forEach((combo) => {
+            if (solarCombinerLibrary) addDistributionLibraryItem(combo, solarCombinerLibrary);
+        });
     }
     
     function setupRightSidebarListeners() {
@@ -10595,6 +9682,7 @@ const SolarDesigner = (function() {
     return {
         init,
         render,
+        refreshCanvasViewport,
         getSolarConfig,
         loadSolarConfig,
         clearAll,
@@ -10617,7 +9705,10 @@ const SolarDesigner = (function() {
         removeAllPanels,
         // Stats and modes
         updateStats,
-        stopLiveMode,  // Expose for cleanup on mode switch
+        ensureDesignerCircuitAnalysis,
+        syncExportToStorage,
+        stopLiveMode,
+        startLiveMode,
         showWelcome: showWelcomeDialog,
         showHelp: showHelpModal,
         showShortcuts: showKeyboardShortcuts,
@@ -10629,6 +9720,10 @@ const SolarDesigner = (function() {
         showInspectorTab,
         populateRightSidebarLibraries,
         setupRightSidebarListeners,
+        generateBOM: () => BOMSystem.generateBOM(),
+        getSystemAnalysis: () => (SystemReview.analyzeSystem ? SystemReview.analyzeSystem() : null),
+        showSystemReview,
+        showBuildGuide: () => globalThis.showBuildGuide?.(),
         // Debug helper
         debug: () => {
             console.log('=== SolarDesigner Debug ===');
@@ -10648,7 +9743,6 @@ const SolarDesigner = (function() {
             }
             return { active: LiveView.state.active, items: allItems.length, connections: connections.length, powerFlow: LiveView.state.powerFlow };
         },
-        startLiveMode  // Expose for manual testing
     };
 })();
 

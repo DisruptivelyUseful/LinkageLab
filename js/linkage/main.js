@@ -11,6 +11,8 @@ import { saveStateToHistory } from './history.js';
 import { syncUI } from './state-sync.js';
 import { requestRender } from './render-app.js';
 import { initThreeJS } from './renderer-3d.js';
+import { scheduleLinkageViewportRefresh } from './viewport-refresh.js';
+import { initViewportInput } from './viewport-input.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -132,6 +134,7 @@ import { initThreeJS } from './renderer-3d.js';
         
         // Initial render
         requestRender();
+        scheduleLinkageViewportRefresh();
         
         // View labels are now in the right panel HTML
         

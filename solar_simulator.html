@@ -59,6 +59,7 @@
     <link rel="stylesheet" href="css/utilities.css">
     <link rel="stylesheet" href="css/designer.css">
     <link rel="stylesheet" href="css/simulator.css?v=2">
+    <script src="js/solar/celestial-overlay.js"></script>
     <!-- Inline styles removed - now using external CSS files -->
     <style>
         @keyframes drag-dash-march {
@@ -99,103 +100,115 @@
     </script>
     <!-- TOOLBAR -->
     <div class="toolbar topbar sim-topbar">
+        <!-- Actions row: file ops, view controls. Hidden in embedded mode; outer shell topbar replaces it. -->
         <div class="sim-topbar-row sim-topbar-row-actions">
-        <div class="toolbar-left topbar-left">
-            <button id="undoButton" title="Undo (Ctrl+Z)" disabled>↶ Undo</button>
-            <button id="redoButton" title="Redo (Ctrl+Y)" disabled>↷ Redo</button>
-            <button id="resetCanvasBtn" title="Clear canvas and start fresh">🗑️ Reset</button>
-            <button id="systemReviewBtn" class="system-review-button">📊 <span>System Review</span></button>
-            <!-- Live View Power Summary (shown only in live mode) -->
-            <div id="liveViewPowerSummaryLeft" class="live-view-power-summary-left hidden">
-                <div class="live-view-power-item dc">
-                    <span class="live-view-power-label dc">DC:</span>
-                    <span id="liveViewDCWattsLeft" class="live-view-power-value">0</span>
-                    <span class="live-view-power-unit">W</span>
+            <div class="toolbar-left topbar-left">
+                <button id="undoButton" class="topbar-btn" title="Undo (Ctrl+Z)" disabled>↶</button>
+                <button id="redoButton" class="topbar-btn" title="Redo (Ctrl+Y)" disabled>↷</button>
+                <button id="resetCanvasBtn" class="topbar-btn" title="Clear canvas">🗑️</button>
+                <button id="systemReviewBtn" class="topbar-btn system-review-button">📊 Review</button>
+                <div id="liveViewPowerSummaryLeft" class="live-view-power-summary-left hidden">
+                    <div class="live-view-power-item dc">
+                        <span class="live-view-power-label dc">DC:</span>
+                        <span id="liveViewDCWattsLeft" class="live-view-power-value">0</span>
+                        <span class="live-view-power-unit">W</span>
+                    </div>
+                    <div class="live-view-power-item ac">
+                        <span class="live-view-power-label ac">AC:</span>
+                        <span id="liveViewACWattsLeft" class="live-view-power-value">0</span>
+                        <span class="live-view-power-unit">W</span>
+                    </div>
+                    <div class="live-view-power-item battery">
+                        <span class="live-view-power-label battery">🔋</span>
+                        <span id="liveViewBatteryLevelLeft" class="live-view-power-value">0</span>
+                        <span class="live-view-power-unit">kWh</span>
+                        <span class="live-view-power-unit">(</span>
+                        <span id="liveViewBatteryPercentLeft" class="live-view-power-label battery">0</span>
+                        <span class="live-view-power-unit">%)</span>
+                    </div>
                 </div>
-                <div class="live-view-power-item ac">
-                    <span class="live-view-power-label ac">AC:</span>
-                    <span id="liveViewACWattsLeft" class="live-view-power-value">0</span>
-                    <span class="live-view-power-unit">W</span>
+            </div>
+            <div class="toolbar-right topbar-right">
+                <div class="file-controls sim-file-controls">
+                    <button id="saveFullConfigBtn" class="topbar-btn topbar-file-btn topbar-file-save" title="Save (Ctrl+S)">💾</button>
+                    <button id="loadFullConfigBtn" class="topbar-btn topbar-file-btn topbar-file-load" title="Load (Ctrl+O)">📂</button>
+                    <button id="exportFullConfigBtn" class="topbar-btn topbar-file-btn topbar-file-export" title="Export JSON (Ctrl+E)">📤</button>
+                    <input type="file" id="importFullConfigInput" accept=".json" style="display:none">
                 </div>
-                <div class="live-view-power-item battery">
-                    <span class="live-view-power-label battery">🔋</span>
-                    <span id="liveViewBatteryLevelLeft" class="live-view-power-value">0</span>
-                    <span class="live-view-power-unit">kWh</span>
-                    <span class="live-view-power-unit">(</span>
-                    <span id="liveViewBatteryPercentLeft" class="live-view-power-label battery">0</span>
-                    <span class="live-view-power-unit">%)</span>
+                <div class="topbar-divider"></div>
+                <button id="btn-unit-system-sim" class="topbar-btn" title="Toggle Unit System">📏 <span id="unit-system-label-sim">Imperial</span></button>
+                <div id="sync2D3DToggleContainer" class="sim-inline-ctrl" style="display:none">
+                    <label class="sim-ctrl-label">Sync 2D/3D</label>
+                    <input type="checkbox" id="sync2D3DCheckbox">
                 </div>
+                <div class="sim-inline-ctrl">
+                    <label class="sim-ctrl-label" for="viewModeSelect">View:</label>
+                    <select id="viewModeSelect" class="sim-select">
+                        <option value="2d" selected>2D</option>
+                        <option value="3d">3D</option>
+                        <option value="split">Split</option>
+                    </select>
+                </div>
+                <label id="blueprintBackgroundLabel" class="sim-inline-ctrl" style="display:none" title="Blueprint grid background">
+                    <input type="checkbox" id="blueprintBackgroundToggle" checked>
+                    Blueprint BG
+                </label>
+                <div id="3dViewControlsContainer" class="sim-inline-ctrl" style="display:none">
+                    <button id="cameraResetBtn" class="topbar-btn" title="Reset Camera">📷</button>
+                    <label class="sim-inline-ctrl"><input type="checkbox" id="gridToggle" checked> Grid</label>
+                    <label class="sim-inline-ctrl"><input type="checkbox" id="shadowsToggle"> Shadows</label>
+                </div>
+                <label class="sim-inline-ctrl" title="Edit layout while simulating">
+                    <input type="checkbox" id="circuitEditToggle" checked> Edit
+                </label>
+                <label class="sim-inline-ctrl">
+                    <input type="checkbox" id="showHintsToggle" checked> Hints
+                </label>
+                <button id="editCircuitBtn" class="topbar-btn sim-designer-btn" title="Open in Solar Designer">✏️ Designer</button>
+                <button id="challengeModeBtn" class="topbar-btn">Challenge</button>
             </div>
         </div>
-        
-        <div class="toolbar-right topbar-right">
-            <!-- File Operations -->
-            <div class="file-controls" style="display: flex; align-items: center; gap: 5px; margin-right: 15px; border-right: 1px solid #444; padding-right: 15px;">
-                <button id="saveFullConfigBtn" title="Save full config (Ctrl+S)" style="padding: 5px 10px; background: #2a6a2a; color: #fff; border: 1px solid #3a8a3a; border-radius: 3px; cursor: pointer; font-size: 11px;">💾 Save</button>
-                <button id="loadFullConfigBtn" title="Load full config (Ctrl+O)" style="padding: 5px 10px; background: #2a4a6a; color: #fff; border: 1px solid #3a6a9a; border-radius: 3px; cursor: pointer; font-size: 11px;">📂 Load</button>
-                <button id="exportFullConfigBtn" title="Export to JSON file (Ctrl+E)" style="padding: 5px 10px; background: #4a4a2a; color: #fff; border: 1px solid #6a6a3a; border-radius: 3px; cursor: pointer; font-size: 11px;">📤 Export</button>
-                <input type="file" id="importFullConfigInput" accept=".json" style="display: none;">
+
+        <!-- Simulation controls row: always visible (also shown in embedded mode) -->
+        <div class="sim-topbar-row sim-topbar-row-controls">
+            <div class="sim-ctrl-playback">
+                <button id="playPauseButton" class="topbar-btn sim-play-btn" title="Play/Pause (Space)">▶</button>
+                <input type="range" id="speedSlider" class="topbar-sim-slider" min="1" max="100" value="10" title="Simulation speed">
+                <span class="topbar-sim-speed" id="speedLabel">1x</span>
+                <button id="resetSimulationBtn" class="topbar-btn sim-reset-btn" title="Reset simulation">↺</button>
             </div>
-            <!-- Unit System Toggle -->
-            <div class="unit-system-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px; border-right: 1px solid #444; padding-right: 15px;">
-                <button id="btn-unit-system-sim" title="Toggle Unit System (Metric/Imperial)" style="padding: 5px 10px; background: #3a3a5a; color: #fff; border: 1px solid #5a5a7a; border-radius: 3px; cursor: pointer; font-size: 11px;">📏 <span id="unit-system-label-sim">Imperial</span></button>
+            <div class="sim-celestial-bar sim-celestial-topbar">
+                <span class="sim-celestial-clock" id="simCelestialClock">12:00 PM</span>
+                <div class="sim-sun-track">
+                    <div class="sim-sun-track-bg">
+                        <div id="sim-sun-indicator" class="sim-sun">☀️</div>
+                    </div>
+                    <div class="sim-sun-labels">
+                        <span>Sunrise</span><span>Noon</span><span>Sunset</span>
+                    </div>
+                </div>
             </div>
-            <!-- Phase 6: 3D Sync Toggle -->
-            <div class="sync-2d-3d-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px; display: none;" id="sync2D3DToggleContainer">
-                <label style="font-size: 12px; color: #aaa;">Sync 2D/3D:</label>
-                <label style="display: flex; align-items: center; cursor: pointer;">
-                    <input type="checkbox" id="sync2D3DCheckbox" style="margin-right: 5px; cursor: pointer;">
-                    <span style="font-size: 12px; color: #aaa;">Enabled</span>
-                </label>
-            </div>
-            <!-- Phase 2: 3D View Mode Toggle -->
-            <div class="view-mode-toggle" style="display: flex; align-items: center; gap: 5px; margin-right: 10px;">
-                <label style="font-size: 12px; color: #aaa;">View:</label>
-                <select id="viewModeSelect" style="padding: 5px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer;">
-                    <option value="2d" selected>2D</option>
-                    <option value="3d">3D</option>
-                    <option value="split">Split</option>
+            <span class="time-display sim-time-inline" id="timeDisplay">0 hours (Day 1, 00:00)</span>
+            <div class="sim-ctrl-weather">
+                <select id="weatherDifficulty" class="sim-select" title="Weather condition">
+                    <option value="clear" selected>☀️ Clear</option>
+                    <option value="easy">🌤️ Easy</option>
+                    <option value="medium">⛅ Medium</option>
+                    <option value="hard">🌦️ Hard</option>
                 </select>
             </div>
-            <label id="blueprintBackgroundLabel" style="display: none; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer; margin-right: 10px;" title="Use blueprint grid instead of LinkageLab 3D structure background">
-                <input type="checkbox" id="blueprintBackgroundToggle" checked style="cursor: pointer;">
-                Blueprint BG
-            </label>
-            <!-- Phase 9: 3D View Controls (shown only in 3D/Split mode) -->
-            <div class="3d-view-controls" style="display: none; align-items: center; gap: 5px; margin-right: 10px;" id="3dViewControlsContainer">
-                <button id="cameraResetBtn" title="Reset Camera" style="padding: 5px 10px; background: #2a2a2a; color: #fff; border: 1px solid #444; border-radius: 3px; cursor: pointer; font-size: 11px;">📷 Reset</button>
-                <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
-                    <input type="checkbox" id="gridToggle" checked style="cursor: pointer;">
-                    <span>Grid</span>
-                </label>
-                <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
-                    <input type="checkbox" id="shadowsToggle" style="cursor: pointer;">
-                    <span>Shadows</span>
-                </label>
-            </div>
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;" title="Drag components, connect wires, and edit wire paths while simulating">
-                <input type="checkbox" id="circuitEditToggle" checked style="cursor: pointer;">
-                Edit Layout
-            </label>
-            <label style="display: flex; align-items: center; gap: 5px; font-size: 12px; color: #aaa; cursor: pointer;">
-                <input type="checkbox" id="showHintsToggle" checked style="cursor: pointer;">
-                Show Hints
-            </label>
-            <button id="editCircuitBtn" style="background: linear-gradient(135deg, #5bc0de 0%, #46b8da 100%);" title="Open this circuit in Solar Designer for advanced editing">✏️ Open in Designer</button>
-            <button id="challengeModeBtn">Challenge Mode</button>
-        </div>
         </div>
     </div>
     
     <!-- MAIN CONTENT -->
     <div id="main-content">
-        <!-- LEFT SIDEBAR - System Telemetry Only -->
+        <!-- LEFT SIDEBAR - System Stats -->
         <div id="left-sidebar">
-            <button id="left-sidebar-toggle" title="Toggle Telemetry Panel (S)">◀</button>
+            <button id="left-sidebar-toggle" title="Toggle System Stats Panel (S)">◀</button>
             
             <!-- Score Bar Section -->
             <div class="sidebar-section system-scores-section">
-                <h3>⚡ System Telemetry</h3>
+                <h3>⚡ System Stats</h3>
                 <div class="score-bar">
                     <div class="score-item" data-tooltip="Maximum power output of your solar array under ideal conditions (full sun, 25°C). Higher is better for energy production.">
                         <span class="score-label">Array Wmp</span>
@@ -550,7 +563,7 @@
                             <span class="keyboard-shortcut"><kbd>L</kbd></span>
                         </div>
                         <div class="shortcuts-help-item">
-                            <span>Toggle Telemetry</span>
+                            <span>Toggle System Stats</span>
                             <span class="keyboard-shortcut"><kbd>S</kbd></span>
                         </div>
                     </div>
@@ -2009,7 +2022,7 @@
                     const sidebar = document.getElementById('left-sidebar');
                     const wasCollapsed = sidebar.classList.contains('collapsed');
                     sidebar.classList.toggle('collapsed');
-                    showToast(wasCollapsed ? '⚡ Telemetry visible' : '⚡ Telemetry hidden', 'info', 1500);
+                    showToast(wasCollapsed ? '⚡ System Stats visible' : '⚡ System Stats hidden', 'info', 1500);
                     // Update 3D renderer after CSS transition
                     if (typeof updateBackgroundRendererSize === 'function') {
                         setTimeout(updateBackgroundRendererSize, 350);
@@ -22449,6 +22462,19 @@
                 if (!svg.empty() && !has3DBackground) {
                     svg.style('background-color', newColor);
                 }
+
+                if (typeof CelestialSky !== 'undefined') {
+                    if (!has3DBackground) {
+                        CelestialSky.updateContainer(canvasContainer, hourOfDay);
+                    } else {
+                        CelestialSky.clearOverlay(canvasContainer);
+                    }
+                    CelestialSky.updateSunTrackIndicator(hourOfDay, document.getElementById('sim-sun-indicator'));
+                    const clockEl = document.getElementById('simCelestialClock');
+                    if (clockEl) {
+                        clockEl.textContent = CelestialSky.formatClockFromHours(hourOfDay);
+                    }
+                }
             }
         }
         
@@ -26000,17 +26026,67 @@
             if (!skipDefaultSetup) {
                 let configLoaded = false;
                 let attemptingDefaultLoad = false;
-                
-                // Check for saved unified config in localStorage first
-                const savedUnifiedConfig = localStorage.getItem('solarUnifiedConfig');
-                if (savedUnifiedConfig) {
+
+                // Prefer the designer's latest export so both views always show the same circuit.
+                // Only fall back to solarUnifiedConfig if designer has never exported.
+                const designerExportRaw = localStorage.getItem('solarDesignerExport');
+                if (designerExportRaw) {
                     try {
-                        const config = JSON.parse(savedUnifiedConfig);
-                        applyUnifiedConfig(config);
-                        console.log('Loaded saved unified config from localStorage');
-                        configLoaded = true;
+                        const data = JSON.parse(designerExportRaw);
+                        let items, conns, idCounter, connIdCounter;
+                        if (data.schematic) {
+                            items = data.schematic.components || [];
+                            conns = data.schematic.connections || [];
+                            idCounter = items.length > 0 ? Math.max(...items.map(i => i.id || 0)) + 1 : 1;
+                            connIdCounter = conns.length > 0 ? Math.max(...conns.map(c => c.id || 0)) + 1 : 1;
+                        } else {
+                            items = data.items || [];
+                            conns = data.connections || [];
+                            idCounter = data.itemIdCounter || 0;
+                            connIdCounter = data.connectionIdCounter || 0;
+                        }
+                        if (items.length > 0) {
+                            allItems = items;
+                            connections = conns;
+                            invalidateSpecsCache();
+                            itemIdCounter = idCounter;
+                            connectionIdCounter = connIdCounter;
+                            cleanupPowerStation2D();
+                            allItems.forEach(item => { Object.values(item.handles).forEach(h => h.connectedTo = []); });
+                            connections.forEach(conn => {
+                                const si = allItems.find(i => i.id === conn.sourceItemId);
+                                const ti = allItems.find(i => i.id === conn.targetItemId);
+                                if (si && ti) {
+                                    const sh = Object.values(si.handles).find(h => h.id === conn.sourceHandleId);
+                                    const th = Object.values(ti.handles).find(h => h.id === conn.targetHandleId);
+                                    if (sh && th) {
+                                        sh.connectedTo.push({ itemId: ti.id, handleId: th.id, connectionId: conn.id });
+                                        th.connectedTo.push({ itemId: si.id, handleId: sh.id, connectionId: conn.id });
+                                    }
+                                }
+                            });
+                            tutorialCompleted = true;
+                            systemValidated = true;
+                            configLoaded = true;
+                            console.log(`Loaded designer export: ${allItems.length} components`);
+                        }
                     } catch (e) {
-                        console.error('Failed to load saved unified config:', e);
+                        console.warn('Failed to load designer export as default:', e);
+                    }
+                }
+
+                // Fall back to simulator's own saved config if designer export is absent/empty
+                if (!configLoaded) {
+                    const savedUnifiedConfig = localStorage.getItem('solarUnifiedConfig');
+                    if (savedUnifiedConfig) {
+                        try {
+                            const config = JSON.parse(savedUnifiedConfig);
+                            applyUnifiedConfig(config);
+                            console.log('Loaded saved unified config from localStorage');
+                            configLoaded = true;
+                        } catch (e) {
+                            console.error('Failed to load saved unified config:', e);
+                        }
                     }
                 }
                 
@@ -27346,66 +27422,17 @@
         });
     </script>
     
-    <!-- Bottom dock: simulation controls + integrated live stats -->
-    <footer id="sim-bottom-dock" class="sim-bottom-dock">
-        <div id="sim-bottom-bar" class="sim-bottom-bar">
-            <div class="sim-bottom-stats sim-bottom-stats-left">
-                <div class="stat-item">
-                    <div class="stat-label">Time</div>
-                    <div class="stat-value" id="liveTimeElapsed">0</div>
-                    <div class="stat-unit">hours</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Solar</div>
-                    <div class="stat-value large" id="liveSolarKwh">0.00</div>
-                    <div class="stat-unit">kWh</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Generated</div>
-                    <div class="stat-value large" id="liveKwhGenerated">0.00</div>
-                    <div class="stat-unit">kWh</div>
-                </div>
-            </div>
-            <div class="sim-bottom-center">
-                <span class="time-display" id="timeDisplay">0 hours (Day 1, 00:00)</span>
-                <div id="simulateControls">
-                    <div class="play-controls">
-                        <button id="playPauseButton">▶</button>
-                        <input type="range" id="speedSlider" min="1" max="100" value="10">
-                        <span class="speed-label" id="speedLabel">1x</span>
-                        <button id="resetSimulationBtn">Reset Simulation</button>
-                    </div>
-                </div>
-                <div class="weather-controls">
-                    <label for="weatherDifficulty">Weather:</label>
-                    <select id="weatherDifficulty">
-                        <option value="clear" selected>Clear Sky (100%)</option>
-                        <option value="easy">Easy (80-100%)</option>
-                        <option value="medium">Medium (50-80%)</option>
-                        <option value="hard">Hard (20-60%)</option>
-                    </select>
-                </div>
-            </div>
-            <div class="sim-bottom-stats sim-bottom-stats-right">
-                <div class="stat-item">
-                    <div class="stat-label">Consumed</div>
-                    <div class="stat-value large" id="liveKwhConsumed">0.00</div>
-                    <div class="stat-unit">kWh</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Net</div>
-                    <div class="stat-value large" id="liveNetKwh">0.00</div>
-                    <div class="stat-unit">kWh</div>
-                </div>
-                <div class="stat-item">
-                    <div class="stat-label">Solar</div>
-                    <div class="stat-value" id="liveEfficiency">0.00%</div>
-                    <div class="stat-unit">Utilization</div>
-                </div>
-            </div>
+    <!-- Hidden stat value holders: updated by JS, displayed in sidebar System Stats -->
+    <div id="sim-bottom-dock" aria-hidden="true" style="display:none">
+        <div id="sim-bottom-bar">
+            <span id="liveTimeElapsed">0</span>
+            <span id="liveSolarKwh">0.00</span>
+            <span id="liveKwhGenerated">0.00</span>
+            <span id="liveKwhConsumed">0.00</span>
+            <span id="liveNetKwh">0.00</span>
+            <span id="liveEfficiency">0.00%</span>
         </div>
-        <!-- Hidden stats: values kept for simulation logic, not shown in UI -->
-        <div id="statsBar" class="stats-bar-hidden" aria-hidden="true">
+        <div id="statsBar" aria-hidden="true">
             <div class="stat-item" title="Micro-Kardashev Scale: 0.1 = perfect capture, 0.02 = good, 0.015 = typical">
                 <div class="stat-label">K<sub>micro</sub></div>
                 <div class="stat-value" id="liveKMicro">0.00000</div>
@@ -27428,7 +27455,7 @@
             </div>
             <div id="resourceStatsContainer"></div>
         </div>
-    </footer>
+    </div>
 </body>
 </html>
 

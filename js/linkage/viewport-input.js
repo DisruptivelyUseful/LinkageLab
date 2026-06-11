@@ -1,7 +1,14 @@
 ﻿// ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { state } from './app-state.js';
+import { MAX_FOLD_ANGLE, MIN_CAM_DIST } from './constants.js';
+import { clamp } from './math.js';
 import { invalidateGeometryCache } from './cache.js';
+import { detectCollisions, findSafeFoldAngle } from './collision.js';
+import { requestRender } from './render-app.js';
+import { solveLinkage, getEffectiveMinFoldAngle } from './solver.js';
+import { syncUI } from './state-sync.js';
 
 const drag = { active: false, x: 0, y: 0, mode: 'orbit' };
 const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, lastCenterY: 0 };
@@ -229,11 +236,11 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
         });
 
         const viewportElement = document.getElementById('viewport');
+        const webglCanvas = document.getElementById('canvas-webgl');
         if (!viewportElement) return;
 
-        viewportElement.addEventListener('mousedown', e => {
+        const beginViewportDrag = (e) => {
             if (isFormElement(e.target)) return;
-            if (!viewportElement.contains(e.target)) return;
 
             e.preventDefault();
 
@@ -242,11 +249,13 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
             drag.y = e.clientY;
             drag.mode = (e.button === 2 || e.shiftKey) ? 'pan' : 'orbit';
             setViewportDragging(true);
-        });
+        };
+
+        viewportElement.addEventListener('mousedown', beginViewportDrag);
+        webglCanvas?.addEventListener('mousedown', beginViewportDrag);
 
         viewportElement.addEventListener('touchstart', e => {
             if (isFormElement(e.target)) return;
-            if (!viewportElement.contains(e.target)) return;
 
             if (e.touches.length === 1) {
                 e.preventDefault();
@@ -329,12 +338,15 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
 
         viewportElement.addEventListener('touchcancel', finishViewportDrag, { passive: true });
 
-        viewportElement.onwheel = e => {
+        const handleWheel = e => {
             e.preventDefault();
             state.cam.dist += e.deltaY * (state.cam.dist / 1000);
             clampCameraDistance();
             requestRender();
         };
+
+        viewportElement.addEventListener('wheel', handleWheel, { passive: false });
+        webglCanvas?.addEventListener('wheel', handleWheel, { passive: false });
 
         initSpaceMouse();
 

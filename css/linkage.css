@@ -8,6 +8,20 @@ body:not(.solar-mode) #right-sidebar {
     display: none !important;
 }
 
+/* Keep linkage 2D overlay hidden even when solar designer CSS is loaded globally */
+#view-linkage #canvas {
+    display: none !important;
+    pointer-events: none !important;
+}
+
+#view-linkage #viewport {
+    z-index: 1;
+}
+
+#view-linkage #viewport canvas#canvas-webgl {
+    pointer-events: auto;
+}
+
 /* Viewport - Main 3D canvas area */
 #viewport {
     position: fixed;
@@ -1160,7 +1174,8 @@ input.error {
 }
 
 /* BOM card spans full grid width so the table columns have room */
-.guide-grid > .guide-card:first-child {
+.guide-grid > .guide-card:first-child,
+.guide-card-wide {
     grid-column: 1 / -1;
 }
 

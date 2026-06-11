@@ -1,0 +1,26 @@
+<div id="topbar" class="topbar">
+    <div class="topbar-left">
+        <h1 class="topbar-app-title">StarShade Lab</h1>
+        <div class="topbar-divider"></div>
+        <div class="mode-toggle">
+            <button type="button" id="btn-mode-linkage" data-app-nav-mode="linkage" class="topbar-btn" title="Linkage Design Mode">⚙️</button>
+            <button type="button" id="btn-mode-solar" data-app-nav-mode="solar-design" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
+            <button type="button" id="btn-mode-simulate" data-app-nav-mode="solar-simulate" class="topbar-btn active" title="Solar 3D Simulation Mode">▶</button>
+        </div>
+    </div>
+    <div class="topbar-center topbar-simulate-center">
+        <span class="topbar-label">3D Simulation</span>
+        <span id="sim-topbar-summary" class="topbar-time-display">Design a circuit in Solar Design, then simulate here.</span>
+    </div>
+    <div class="topbar-right">
+        <div class="topbar-file-controls">
+            <button type="button" class="topbar-btn topbar-file-btn topbar-file-save" id="btn-sim-save-top" title="Save circuit (Ctrl+S)">💾 Save</button>
+            <button type="button" class="topbar-btn topbar-file-btn topbar-file-load" id="btn-sim-load-top" title="Load circuit">📂 Load</button>
+            <button type="button" class="topbar-btn topbar-file-btn topbar-file-export" id="btn-sim-export-top" title="Export JSON">📤 Export</button>
+            <button type="button" class="topbar-btn topbar-file-btn topbar-file-import" id="btn-sim-import-top" title="Import JSON">📥 Import</button>
+        </div>
+        <div class="topbar-divider"></div>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-sim-build-guide-top" title="Unified build guide (structure + electrical)">📋</button>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-sim-design-top" title="Edit in Solar Designer">✏️ Designer</button>
+    </div>
+</div>

@@ -1,9 +1,10 @@
 <div id="topbar" class="topbar">
     <div class="topbar-left">
-        <h1 style="font-size: 1rem; margin: 0; white-space: nowrap;">StarShade Lab</h1>
+        <h1 class="topbar-app-title">StarShade Lab</h1>
         <div class="topbar-divider"></div>
         <div class="mode-toggle">
-            <button id="btn-mode-linkage" class="topbar-btn active" title="Linkage Design Mode">⚙️</button>
-            <button id="btn-mode-solar" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
+            <button type="button" id="btn-mode-linkage" data-app-nav-mode="linkage" class="topbar-btn active" title="Linkage Design Mode">⚙️</button>
+            <button type="button" id="btn-mode-solar" data-app-nav-mode="solar-design" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
+            <button type="button" id="btn-mode-simulate" data-app-nav-mode="solar-simulate" class="topbar-btn" title="Solar 3D Simulation Mode">▶</button>
         </div>
     </div>

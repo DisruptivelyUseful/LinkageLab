@@ -9,7 +9,7 @@ export const REQUIRED_MODULES = [
     'validation',
 ];
 
-export const BUILD_ID_PATTERN = /phase-6/;
+export const BUILD_ID_PATTERN = /phase-6b/;
 
 async function waitForLinkageReady(page) {
     await page.waitForFunction((modules) => {

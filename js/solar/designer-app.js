@@ -7,6 +7,53 @@ import { linkageExportToSyncConfig } from './linkage-import.js';
 const MANIFEST_PATH = 'config/solar-designer-manifest.json';
 let designerBootPromise = null;
 let solarConstantsPromise = null;
+let layoutObserver = null;
+
+/** Re-measure and recenter the designer canvas after the view becomes visible. */
+export function scheduleSolarDesignerLayoutRefresh() {
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            const designer = globalThis.SolarDesigner;
+            if (!designer?.refreshCanvasViewport) return;
+            if (designer.refreshCanvasViewport()) {
+                designer.render?.();
+            }
+        });
+    });
+}
+
+function bindSolarDesignerChrome() {
+    const leftToggle = document.getElementById('left-sidebar-toggle');
+    const leftSidebar = document.getElementById('left-sidebar');
+    if (leftToggle && leftSidebar && !leftToggle.dataset.bound) {
+        leftToggle.dataset.bound = 'true';
+        leftToggle.addEventListener('click', () => {
+            leftSidebar.classList.toggle('collapsed');
+            scheduleSolarDesignerLayoutRefresh();
+        });
+    }
+
+    const designer = globalThis.SolarDesigner;
+    if (designer?.populateRightSidebarLibraries) {
+        designer.populateRightSidebarLibraries();
+    }
+    if (designer?.setupRightSidebarListeners) {
+        designer.setupRightSidebarListeners();
+    }
+}
+
+function bindSolarDesignerLayout() {
+    const container = document.getElementById('solar-canvas-container');
+    if (!container || layoutObserver) return;
+
+    layoutObserver = new ResizeObserver(() => {
+        if (globalThis.SolarDesigner?.refreshCanvasViewport?.()) {
+            globalThis.SolarDesigner.render?.();
+        }
+    });
+    layoutObserver.observe(container);
+    scheduleSolarDesignerLayoutRefresh();
+}
 
 async function ensureSolarConstants() {
     if (globalThis.PANEL_PRESETS) return;
@@ -105,7 +152,7 @@ function applyLinkageExport(SolarDesigner, exportData) {
 
 /**
  * @param {HTMLElement} container - #view-solar-design
- * @param {{ linkageExport?: object | null, chromeHtml?: string }} [options]
+ * @param {{ linkageExport?: object | null, topbarHtml?: string }} [options]
  */
 export async function initSolarDesignerApp(container, options = {}) {
     if (!designerBootPromise) {
@@ -114,10 +161,17 @@ export async function initSolarDesignerApp(container, options = {}) {
 
             const manifest = JSON.parse(await fetchText(MANIFEST_PATH));
             container.innerHTML = `
-                ${options.chromeHtml || ''}
+                ${options.topbarHtml || ''}
                 <div class="solar-designer-layout">
+                    <aside class="solar-designer-left-rail" aria-label="Simulation controls">
+                        <div id="left-sidebar">
+                            <button id="left-sidebar-toggle" type="button" title="Toggle System Stats panel">◀</button>
+                            <div class="solar-designer-left-mount">
+                                <div id="solar-sidebar"></div>
+                            </div>
+                        </div>
+                    </aside>
                     <div class="solar-designer-stage"></div>
-                    <aside class="solar-designer-rail" aria-label="Solar design controls"></aside>
                 </div>
                 <div id="toast" class="toast"></div>
             `;
@@ -133,6 +187,8 @@ export async function initSolarDesignerApp(container, options = {}) {
                 SolarDesigner.init(options.linkageExport || null);
             }
 
+            bindSolarDesignerLayout();
+            bindSolarDesignerChrome();
             return SolarDesigner;
         })().catch((err) => {
             designerBootPromise = null;
@@ -141,7 +197,9 @@ export async function initSolarDesignerApp(container, options = {}) {
     }
 
     const SolarDesigner = await designerBootPromise;
-    return applyLinkageExport(SolarDesigner, options.linkageExport ?? null);
+    const result = applyLinkageExport(SolarDesigner, options.linkageExport ?? null);
+    scheduleSolarDesignerLayoutRefresh();
+    return result;
 }
 
 /**
@@ -155,5 +213,7 @@ export async function refreshSolarDesignerFromExport(linkageExport) {
     if (!globalThis.SolarDesigner.isInitialized()) {
         return { synced: false, panelCount: 0 };
     }
-    return applyLinkageExport(globalThis.SolarDesigner, linkageExport);
+    const result = applyLinkageExport(globalThis.SolarDesigner, linkageExport);
+    scheduleSolarDesignerLayoutRefresh();
+    return result;
 }

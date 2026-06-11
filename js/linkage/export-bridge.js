@@ -50,7 +50,7 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
         config.appVersion = 'StarShade Linkage Lab v2.0';
         config.exportType = 'unified';
         
-        // Calculate summary stats from the same observed geometry used by export/render.
+        // Full circuit is added by buildProjectExport() in js/core/project-export.js
         const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
         let panelCount = 0;
         let totalWatts = 0;
@@ -185,7 +185,9 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
                 filename += '.json';
             }
             
-            const config = getUnifiedConfig();
+            const config = typeof globalThis.buildProjectExport === 'function'
+                ? globalThis.buildProjectExport()
+                : getUnifiedConfig();
         const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -246,8 +248,12 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
                         throw new Error('Invalid configuration format');
                     }
                     
-                    // Apply the configuration
-                    applyConfig(config);
+                    // Apply the configuration (supports legacy linkage-only and unified project files)
+                    if (typeof globalThis.applyUnifiedConfigToModes === 'function') {
+                        globalThis.applyUnifiedConfigToModes(config);
+                    } else {
+                        applyConfig(config);
+                    }
                     saveStateToHistory();
     
                     // Save merged config (includes hardware assemblies + migrations)

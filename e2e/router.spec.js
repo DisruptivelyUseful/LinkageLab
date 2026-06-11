@@ -19,6 +19,38 @@ test.describe('App router', () => {
         expect(mode).toBe('linkage');
     });
 
+    test('solar canvas is centered after the view becomes visible', async ({ page }) => {
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+
+        await page.locator('#btn-mode-solar').click();
+        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
+        await expect.poll(async () => page.evaluate(() => globalThis.SolarDesigner?.isInitialized?.())).toBe(true);
+
+        await page.waitForFunction(() => {
+            const container = document.getElementById('solar-canvas-container');
+            return container
+                && container.dataset.viewportReady === 'true'
+                && container.clientWidth > 100
+                && container.clientHeight > 100;
+        }, { timeout: 15_000 });
+
+        const center = await page.evaluate(() => {
+            const container = document.getElementById('solar-canvas-container');
+            const svg = document.getElementById('solar-canvas');
+            const transform = globalThis.d3.zoomTransform(svg);
+            return {
+                width: container.clientWidth,
+                height: container.clientHeight,
+                x: transform.x,
+                y: transform.y,
+            };
+        });
+
+        expect(center.x).toBeGreaterThan(center.width * 0.25);
+        expect(center.y).toBeGreaterThan(center.height * 0.25);
+    });
+
     test('topbar solar button navigates in-app and loads SolarDesigner', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

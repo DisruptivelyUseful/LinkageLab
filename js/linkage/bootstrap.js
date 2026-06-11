@@ -7,6 +7,9 @@
 
 const MANIFEST_PATH = 'config/linkage-manifest.json';
 
+/** @type {Promise<void> | null} */
+let linkageBootPromise = null;
+
 async function fetchText(path) {
     const res = await fetch(path, { cache: 'no-store' });
     if (!res.ok) throw new Error(`Failed to load ${path} (HTTP ${res.status})`);
@@ -62,6 +65,16 @@ async function injectPartials(partials) {
  * @param {{ errorMountSelector?: string }} [options]
  */
 export async function bootLinkageApp(options = {}) {
+    if (linkageBootPromise) return linkageBootPromise;
+
+    linkageBootPromise = bootLinkageAppOnce(options).catch((err) => {
+        linkageBootPromise = null;
+        throw err;
+    });
+    return linkageBootPromise;
+}
+
+async function bootLinkageAppOnce(options = {}) {
     const errorMountSelector = options.errorMountSelector || '#linkage-app-mount';
     const manifest = JSON.parse(await fetchText(MANIFEST_PATH));
     const cdn = manifest.cdn || [];
@@ -86,6 +99,9 @@ export async function bootLinkageApp(options = {}) {
             throw new Error(`Failed to load ${path}: ${err.message}`);
         }
     }
+
+    const { initViewportInput } = await import('./viewport-input.js');
+    initViewportInput();
 }
 
 function showBootstrapError(selector, message) {

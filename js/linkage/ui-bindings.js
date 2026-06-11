@@ -9,6 +9,13 @@ import { invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { syncUI } from './state-sync.js';
 import { requestRender } from './render-app.js';
 import { applyConfig } from './config-persistence.js';
+import {
+    applyProjectImport,
+    exportProjectFile,
+    importProjectFile,
+    loadProject,
+    saveProject,
+} from '../core/project-export.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -293,124 +300,19 @@ import { applyConfig } from './config-persistence.js';
         sel.value = String(active);
     }
     function saveUnifiedConfig() {
-        const config = getUnifiedConfig();
-        localStorage.setItem('unifiedSolarConfig', JSON.stringify(config));
-        showToast('Unified config saved', 'info');
+        saveProject();
     }
     function loadUnifiedConfig() {
-        const saved = localStorage.getItem('unifiedSolarConfig');
-        if (!saved) {
-            showToast('No saved unified config found', 'error');
-            return;
-        }
-        
-        try {
-            const config = JSON.parse(saved);
-            applyUnifiedConfigToModes(config);
-            showToast('Unified config loaded', 'info');
-        } catch (e) {
-            console.error('Failed to load unified config:', e);
-            showToast('Failed to load config', 'error');
-        }
+        loadProject();
     }
     function exportUnifiedConfig() {
-        const config = getUnifiedConfig();
-        
-        // Generate filename
-        let filename = `StarShade-${state.modules}m-${state.orientation}`;
-        const panelCount = config.summary?.panelCount || 0;
-        if (panelCount > 0) filename += `-${panelCount}p`;
-        filename += `-${new Date().toISOString().slice(0, 10)}.json`;
-        
-        const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-        
-        showToast(`Exported unified config: ${filename}`, 'info');
+        exportProjectFile();
     }
     function importUnifiedConfig() {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = '.json';
-        input.onchange = (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const config = JSON.parse(event.target.result);
-                    applyUnifiedConfigToModes(config);
-                    showToast(`Imported: ${file.name}`, 'info');
-                } catch (err) {
-                    console.error('Failed to import config:', err);
-                    showToast('Failed to import config', 'error');
-                }
-            };
-            reader.readAsText(file);
-        };
-        input.click();
+        importProjectFile();
     }
     function applyUnifiedConfigToModes(config) {
-        // Apply to linkage mode if structure data present
-        const linkageTrigger = config.structure || config.mode || config.foldAngle !== undefined
-            || ('supportBeams' in config)
-            || (config.panels && config.panels.support);
-        if (linkageTrigger) {
-            try {
-                applyConfig(config);
-            } catch (e) {
-                console.warn('Failed to apply linkage config:', e);
-            }
-        }
-        
-        // Apply to solar designer if circuit data present
-        if (typeof SolarDesigner !== 'undefined' && SolarDesigner.isInitialized()) {
-            try {
-                // Handle different config formats
-                let items = [], connections = [];
-                
-                if (config.circuit) {
-                    // New unified-v2 format
-                    items = config.circuit.items || [];
-                    connections = config.circuit.connections || [];
-                } else if (config.solarDesigner) {
-                    // Old format from getUnifiedConfig
-                    items = (config.solarDesigner.items || []).map(item => ({
-                        id: item.id,
-                        type: item.type,
-                        x: item.x,
-                        y: item.y,
-                        specs: item.specs || {},
-                        handles: {}
-                    }));
-                    connections = (config.solarDesigner.connections || []).map(conn => ({
-                        id: conn.id,
-                        sourceItemId: conn.src,
-                        sourceHandleKey: conn.srcH,
-                        targetItemId: conn.tgt,
-                        targetHandleKey: conn.tgtH
-                    }));
-                }
-                
-                if (items.length > 0) {
-                    SolarDesigner.loadSolarConfig({ items, connections });
-                }
-            } catch (e) {
-                console.warn('Failed to apply solar designer config:', e);
-            }
-        }
-        
-        // Store structure geometry for simulator
-        if (config.structureGeometry || config.geometrySnapshot) {
-            const geometry = config.structureGeometry || config.geometrySnapshot;
-            localStorage.setItem('linkageLabGeometry', JSON.stringify(geometry));
-            window.linkageLabGeometry = geometry;
-        }
+        applyProjectImport(config);
     }
     function loadScriptOnce(src) {
         return new Promise((resolve, reject) => {
@@ -1558,34 +1460,11 @@ import { applyConfig } from './config-persistence.js';
             if (sidebarNumber) sidebarNumber.value = val;
         };
         
-        // Topbar Save/Export buttons - mode-aware
-        document.getElementById('btn-save-top').onclick = () => {
-            if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
-                // Save unified config in solar mode
-                saveUnifiedConfig();
-            } else {
-                // Save linkage config
-                saveConfig();
-            }
-        };
-        document.getElementById('btn-load-top').onclick = () => {
-            if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
-                // Load unified config in solar mode
-                loadUnifiedConfig();
-            } else {
-                // Load linkage config
-                loadConfig();
-            }
-        };
-        document.getElementById('btn-export-json-top').onclick = () => {
-            if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
-                // Export unified config in solar mode
-                exportUnifiedConfig();
-            } else {
-                // Export linkage config
-                exportToJSON();
-            }
-        };
+        // Topbar Save/Export buttons — unified project (all modes)
+        document.getElementById('btn-save-top').onclick = () => saveProject();
+        document.getElementById('btn-load-top').onclick = () => loadProject();
+        document.getElementById('btn-export-json-top').onclick = () => exportProjectFile();
+        document.getElementById('btn-import-json-top').onclick = () => importProjectFile();
         // Unit system toggle button
         document.getElementById('btn-unit-system').onclick = () => {
             const current = unitConverter.getPreferredUnitSystem();
@@ -1629,16 +1508,6 @@ import { applyConfig } from './config-persistence.js';
                 label.textContent = system === 'metric' ? 'Metric' : 'Imperial';
             }
         })();
-        
-        document.getElementById('btn-import-json-top').onclick = () => {
-            if (currentAppMode === 'solar' && typeof SolarDesigner !== 'undefined') {
-                // Import unified config in solar mode
-                importUnifiedConfig();
-            } else {
-                // Import linkage config
-                importFromJSON();
-            }
-        };
         
         // GLTF/GLB 3D model export button
         document.getElementById('btn-export-gltf').onclick = () => {
@@ -1897,6 +1766,19 @@ import { applyConfig } from './config-persistence.js';
                 showToast('Failed to open solar design', 'error');
             });
         };
+        const simulateBtn = document.getElementById('btn-mode-simulate');
+        if (simulateBtn) {
+            simulateBtn.onclick = () => {
+                if (globalThis.AppRouter?.navigateTo) {
+                    globalThis.AppRouter.navigateTo('solar-simulate').catch((err) => {
+                        console.error('Navigate to simulate failed:', err);
+                        showToast('Failed to open simulator', 'error');
+                    });
+                    return;
+                }
+                showToast('Simulator is available in the unified app', 'warning');
+            };
+        }
 
         if (!globalThis.__linkageAppNavigateListener) {
             globalThis.__linkageAppNavigateListener = true;
@@ -1909,9 +1791,13 @@ import { applyConfig } from './config-persistence.js';
     function syncTopbarModeButtons(mode) {
         const linkageBtn = document.getElementById('btn-mode-linkage');
         const solarBtn = document.getElementById('btn-mode-solar');
-        if (!linkageBtn || !solarBtn) return;
-        linkageBtn.classList.toggle('active', mode === 'linkage');
-        solarBtn.classList.toggle('active', mode === 'solar-design');
+        const simulateBtn = document.getElementById('btn-mode-simulate');
+        document.querySelectorAll('[data-app-nav-mode]').forEach((btn) => {
+            btn.classList.toggle('active', btn.dataset.appNavMode === mode);
+        });
+        if (linkageBtn) linkageBtn.classList.toggle('active', mode === 'linkage');
+        if (solarBtn) solarBtn.classList.toggle('active', mode === 'solar-design');
+        if (simulateBtn) simulateBtn.classList.toggle('active', mode === 'solar-simulate');
     }
 
 

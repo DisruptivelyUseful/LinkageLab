@@ -5,17 +5,20 @@
 /* Simulator loads designer.css before this file; overrides only below */
 
 .simulator-page {
-    --sim-topbar-height: 52px;
-    --sim-controls-bar-height: 56px;
-    --sim-bottom-dock-height: var(--sim-controls-bar-height);
+    --sim-topbar-actions-height: 48px;
+    --sim-topbar-controls-height: 44px;
+    /* Total topbar = actions row + controls row (or just controls when embedded) */
+    --sim-topbar-height: calc(var(--sim-topbar-actions-height) + var(--sim-topbar-controls-height));
+    --sim-bottom-dock-height: 0px;
 }
 
-/* Embedded in unified app shell — hide duplicate action topbar */
+/* Embedded: only controls row visible */
 body.simulator-embedded {
-    --sim-topbar-height: 0px;
+    --sim-topbar-height: var(--sim-topbar-controls-height);
 }
 
-body.simulator-embedded .sim-topbar {
+/* Embedded in unified app shell — hide ONLY the actions row (outer shell handles nav) */
+body.simulator-embedded .sim-topbar-row-actions {
     display: none !important;
 }
 
@@ -60,6 +63,99 @@ body.simulator-embedded .sim-topbar {
 
 .sim-topbar-row .file-controls {
     flex-wrap: wrap;
+}
+
+/* Simulator controls row (play/pause, speed, celestial, weather) */
+.sim-topbar-row-controls {
+    justify-content: center;
+    gap: 14px;
+    padding: 5px 16px;
+    border-top: 1px solid rgba(var(--clr-primary-rgb, 0, 212, 255), 0.15);
+    background: rgba(15, 22, 32, 0.6);
+    flex-wrap: wrap;
+    min-height: 42px;
+}
+
+.sim-ctrl-playback {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    flex-shrink: 0;
+}
+
+.sim-play-btn {
+    min-width: 34px;
+    font-size: 1rem !important;
+    padding: 5px 10px !important;
+}
+
+.sim-reset-btn {
+    font-size: 1rem !important;
+    padding: 5px 9px !important;
+    min-width: 34px;
+}
+
+/* Celestial bar inside the topbar (wider + horizontal) */
+.sim-celestial-topbar {
+    width: clamp(200px, 30vw, 400px);
+    flex-shrink: 1;
+    min-width: 0;
+}
+
+.sim-time-inline {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-data, #5bc0de);
+    white-space: nowrap;
+    padding: 4px 10px;
+    background: var(--space-800);
+    border: 1px solid var(--space-400);
+    border-radius: var(--radius-md, 6px);
+    flex-shrink: 0;
+}
+
+.sim-ctrl-weather {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
+}
+
+.sim-select {
+    background: var(--space-800, #1a2130);
+    color: var(--text-primary, #e1e8ed);
+    border: 1px solid var(--space-400, #38444d);
+    border-radius: var(--radius-sm, 4px);
+    padding: 4px 7px;
+    font-size: 0.78rem;
+    cursor: pointer;
+}
+
+.sim-inline-ctrl {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: var(--text-muted, #8899a6);
+    white-space: nowrap;
+}
+
+.sim-ctrl-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.sim-file-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sim-designer-btn {
+    background: linear-gradient(135deg, rgba(91, 192, 222, 0.2), rgba(70, 184, 218, 0.1)) !important;
+    border-color: #5bc0de !important;
+    color: #5bc0de !important;
 }
 
 /* Fixed bottom dock: simulation controls + stats */
@@ -112,11 +208,58 @@ body.simulator-embedded .sim-topbar {
 
 .sim-bottom-center {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 10px 12px;
+    gap: 6px 12px;
     flex-shrink: 0;
-    white-space: nowrap;
+    min-width: 0;
+}
+
+.sim-celestial-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    width: min(420px, 100%);
+}
+
+.sim-celestial-clock {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--clr-primary);
+    min-width: 72px;
+    text-shadow: var(--glow-primary);
+}
+
+.sim-sun-track {
+    flex: 1;
+    min-width: 0;
+}
+
+.sim-sun-track-bg {
+    position: relative;
+    height: 22px;
+    background: linear-gradient(90deg, #1a2a3a 0%, #8ab4d0 50%, #1a2a3a 100%);
+    border-radius: 11px;
+    border: 1px solid var(--border-light);
+}
+
+.sim-sun {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1rem;
+    transition: left 0.4s ease, opacity 0.3s ease;
+}
+
+.sim-sun-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.55rem;
+    color: var(--text-muted);
+    margin-top: 2px;
 }
 
 .sim-bottom-bar .stat-item {
@@ -221,68 +364,48 @@ body.simulator-embedded .sim-topbar {
 }
 
 @media (pointer: coarse) {
-    .simulator-page {
-        --sim-topbar-height: 56px;
-        --sim-controls-bar-height: 56px;
-    }
-
     .sim-topbar-row {
-        min-height: 56px;
+        min-height: 50px;
         padding: 6px 10px;
     }
 
-    .sim-topbar-row-actions .toolbar-left button,
-    .sim-topbar-row-actions .toolbar-right button,
-    .sim-topbar-row-actions .toolbar-right select,
-    .sim-topbar-row-actions .toolbar-right label {
-        min-height: 40px;
+    .sim-topbar-row-controls {
+        gap: 10px;
+        padding: 6px 12px;
     }
 
-    .sim-bottom-bar .play-controls button,
-    .sim-bottom-bar .play-controls input[type="range"],
-    .sim-bottom-bar .weather-controls select {
-        min-height: 40px;
+    .sim-play-btn,
+    .sim-reset-btn {
+        min-height: 38px;
+        min-width: 38px;
+    }
+
+    .sim-select {
+        min-height: 34px;
     }
 }
 
 @media (max-width: 1024px) {
-    .simulator-page {
-        --sim-controls-bar-height: 88px;
-        --sim-bottom-dock-height: var(--sim-controls-bar-height);
+    .sim-topbar-row-controls {
+        gap: 10px;
     }
 
-    .sim-bottom-bar {
-        grid-template-columns: 1fr 1fr;
-        grid-template-rows: auto auto;
-        height: auto;
-        min-height: var(--sim-controls-bar-height);
-        max-height: none;
-        padding: 6px 10px;
+    .sim-celestial-topbar {
+        width: clamp(160px, 25vw, 320px);
     }
 
-    .sim-bottom-center {
-        grid-column: 1 / -1;
-        grid-row: 1;
-        flex-wrap: wrap;
-        white-space: normal;
-    }
-
-    .sim-bottom-stats-left {
-        grid-column: 1;
-        grid-row: 2;
-        justify-content: center;
-    }
-
-    .sim-bottom-stats-right {
-        grid-column: 2;
-        grid-row: 2;
-        justify-content: center;
-    }
 }
 
 @media (max-width: 900px) {
-    .simulator-page {
-        --sim-topbar-height: 88px;
+    .sim-topbar-row-controls {
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    /* Hide verbose time text on small screens; celestial clock is enough */
+    .sim-time-inline {
+        display: none;
     }
 
     .sim-topbar-row-actions {
@@ -294,6 +417,18 @@ body.simulator-embedded .sim-topbar {
     .sim-topbar-row-actions .toolbar-right {
         width: 100%;
         justify-content: flex-start;
+    }
+}
+
+@media (max-width: 600px) {
+    /* On very small screens, collapse the sun track and just show the clock */
+    .sim-celestial-topbar .sim-sun-track {
+        display: none;
+    }
+
+    .sim-ctrl-playback .topbar-sim-slider {
+        width: 80px;
+        min-width: 60px;
     }
 }
 
@@ -565,66 +700,10 @@ path.wire.ac-240 {
     opacity: 0.3;
 }
 
-/* Left sidebar specific styling - telemetry and controls (simulator) */
+/* Left sidebar — System Stats panel uses shared styles from designer.css */
 #left-sidebar {
     display: flex;
     flex-direction: column;
-}
-
-#left-sidebar .sidebar-section {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border-light);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    margin-bottom: 12px;
-}
-
-#left-sidebar .sidebar-section h3 {
-    font-size: 0.8rem;
-    font-weight: 600;
-    color: var(--clr-primary);
-    margin: 0 0 10px 0;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-light);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-/* Score bar styling (telemetry) */
-.score-bar {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-}
-
-.score-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 10px;
-    background: var(--space-600);
-    border: 1px solid var(--space-400);
-    border-radius: var(--radius-sm);
-    transition: all var(--transition-fast);
-}
-
-.score-item:hover {
-    background: var(--space-500);
-    border-color: var(--clr-primary);
-}
-
-.score-label {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
-    font-weight: 500;
-}
-
-.score-value {
-    font-size: 0.85rem;
-    color: var(--clr-primary);
-    font-weight: 700;
-    font-family: var(--font-mono);
-    text-shadow: var(--glow-primary);
 }
 
 /* Simulation location controls */
@@ -1262,17 +1341,17 @@ path.wire.ac-240 {
     flex-grow: 1;
     overflow: hidden;
     position: relative;
-    margin-top: var(--sim-topbar-height, 52px);
-    height: calc(100vh - var(--sim-topbar-height, 52px) - var(--sim-bottom-dock-height, 52px));
+    margin-top: var(--sim-topbar-height, 92px);
+    height: calc(100vh - var(--sim-topbar-height, 92px));
 }
 
 /* Canvas container - 3D viewport */
 #canvas-container {
     position: fixed;
-    top: var(--sim-topbar-height, 52px);
+    top: var(--sim-topbar-height, 92px);
     left: 260px; /* Account for left sidebar */
     right: 0;
-    bottom: var(--sim-bottom-dock-height, 52px);
+    bottom: 0;
     overflow: hidden;
     touch-action: none;
     -webkit-overflow-scrolling: touch;
@@ -1343,8 +1422,8 @@ body:has(#left-sidebar:not(.collapsed)) #canvas-container {
     overflow-x: hidden;
     color: var(--text-primary);
     position: fixed;
-    top: var(--sim-topbar-height, 52px); /* Below topbar */
-    bottom: var(--sim-bottom-dock-height, 52px); /* Above bottom dock */
+    top: var(--sim-topbar-height, 92px); /* Below topbar */
+    bottom: 0;
     z-index: var(--z-sticky);
     box-shadow:
         4px 0 20px rgba(0, 0, 0, 0.3),
