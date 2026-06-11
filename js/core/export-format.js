@@ -366,6 +366,27 @@ const ExportFormat = (function() {
         url.searchParams.set('import', source);
         return url.toString();
     }
+
+    const UNIFIED_APP_HASH = Object.freeze({
+        linkage: '#/linkage',
+        'solar-design': '#/solar/design',
+        'solar-simulate': '#/solar/simulate',
+    });
+
+    /**
+     * Build a unified app URL (index.html + hash route).
+     * @param {'linkage' | 'solar-design' | 'solar-simulate'} mode
+     * @param {{ importSource?: string }} [options]
+     * @returns {string}
+     */
+    function buildUnifiedAppURL(mode, options = {}) {
+        const url = new URL('index.html', window.location.href);
+        url.hash = UNIFIED_APP_HASH[mode] || UNIFIED_APP_HASH.linkage;
+        if (options.importSource) {
+            url.searchParams.set('import', options.importSource);
+        }
+        return url.toString();
+    }
     
     // ========================================
     // COMPONENT SERIALIZATION HELPERS
@@ -461,6 +482,8 @@ const ExportFormat = (function() {
         getImportSourceFromURL,
         resolveAppUrl,
         buildImportURL,
+        buildUnifiedAppURL,
+        UNIFIED_APP_HASH,
         
         // Serialization helpers
         serializeComponent,

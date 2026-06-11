@@ -8,12 +8,6 @@ body:not(.solar-mode) #right-sidebar {
     display: none !important;
 }
 
-/* Hide solar designer elements in linkage mode */
-body:not(.solar-mode) #solar-sidebar,
-body:not(.solar-mode) #solar-canvas-container {
-    display: none !important;
-}
-
 /* Viewport - Main 3D canvas area */
 #viewport {
     position: fixed;

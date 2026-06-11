@@ -10,7 +10,6 @@ import { syncUI } from './state-sync.js';
 import { requestRender } from './render-app.js';
 import { applyConfig } from './config-persistence.js';
 
-    let solarDesignerLoadPromise = null;
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
 
@@ -439,89 +438,28 @@ import { applyConfig } from './config-persistence.js';
         if (typeof SolarDesigner !== 'undefined') {
             return Promise.resolve(SolarDesigner);
         }
-        if (!solarDesignerLoadPromise) {
-            solarDesignerLoadPromise = (async () => {
-                await loadScriptOnce('https://d3js.org/d3.v7.min.js');
-                await loadScriptOnce('js/core/automation.js');
-                await loadScriptOnce('js/solar/wires.js');
-                await loadScriptOnce('js/solar/bom.js');
-                await loadScriptOnce('js/solar/review.js');
-                await loadScriptOnce('js/solar/resources.js');
-                await loadScriptOnce('solar-designer.js');
-                return SolarDesigner;
-            })().catch((err) => {
-                solarDesignerLoadPromise = null;
-                throw err;
-            });
-        }
-        return solarDesignerLoadPromise;
+        return Promise.reject(new Error('Solar Designer loads via the unified app (#/solar/design)'));
     }
     function switchToLinkageMode() {
-        if (currentAppMode === 'linkage') return;
-        
-        // CRITICAL: Stop simulation and clean up animation frames
-        if (typeof SolarDesigner !== 'undefined') {
-            SolarDesigner.stopLiveMode();
-            if (SolarDesigner.Simulation) {
-                SolarDesigner.Simulation.pause();
-            }
-        }
-        
-        currentAppMode = 'linkage';
-        document.body.classList.remove('solar-mode');
-        
-        document.getElementById('btn-mode-linkage').classList.add('active');
-        document.getElementById('btn-mode-solar').classList.remove('active');
-        
-        document.getElementById('viewport').style.display = '';
-        document.getElementById('solar-canvas-container').classList.remove('active');
-        
-        document.getElementById('controls').style.display = '';
-        document.getElementById('solar-sidebar').classList.remove('active');
-        
-        // Restore right panel for linkage mode
-        document.getElementById('right-panel').style.display = '';
-        
-        requestRender();
-    }
-    function switchToSolarMode() {
         if (globalThis.AppRouter?.navigateTo) {
-            openSolarDesign().catch((err) => {
-                console.error('Navigate to solar design failed:', err);
-                showToast('Failed to open solar design', 'error');
+            globalThis.AppRouter.navigateTo('linkage').catch((err) => {
+                console.error('Navigate to linkage failed:', err);
+                showToast('Failed to switch to linkage mode', 'error');
             });
             return;
         }
-        if (currentAppMode === 'solar') return;
-    
-        ensureSolarDesignerLoaded().then(() => {
-            currentAppMode = 'solar';
-            document.body.classList.add('solar-mode');
-    
-            document.getElementById('btn-mode-linkage').classList.remove('active');
-            document.getElementById('btn-mode-solar').classList.add('active');
-    
-            document.getElementById('viewport').style.display = 'none';
-            document.getElementById('solar-canvas-container').classList.add('active');
-    
-            document.getElementById('controls').style.display = 'none';
-            document.getElementById('solar-sidebar').classList.add('active');
-    
-            document.getElementById('right-panel').style.display = 'none';
-    
-            if (!SolarDesigner.isInitialized()) {
-                SolarDesigner.init();
-            }
-    
-            syncPanelsFromLinkageMode();
-            SolarDesigner.render();
-            setTimeout(SolarDesigner.showWelcome, 500);
-        }).catch((e) => {
-            console.error('Failed to load Solar Designer:', e);
-            showToast('Failed to load Solar Designer', 'error');
+        currentAppMode = 'linkage';
+        requestRender();
+    }
+    function switchToSolarMode() {
+        openSolarDesign().catch((err) => {
+            console.error('Navigate to solar design failed:', err);
+            showToast('Failed to open solar design', 'error');
         });
     }
     function syncPanelsFromLinkageMode(force = false) {
+        if (!SolarDesigner?.isInitialized?.()) return;
+
         if (!state.solarPanels.enabled) {
             // If solar panels are disabled, optionally remove panels from designer
             if (force && SolarDesigner.isInitialized()) {
@@ -599,16 +537,17 @@ import { applyConfig } from './config-persistence.js';
                firstPanel.specs.height !== newSpecs.height;
     }
     function debouncedPanelSync() {
-        // Only sync if solar designer is initialized
-        if (!SolarDesigner.isInitialized()) return;
-        
         if (panelSyncTimeout) {
             clearTimeout(panelSyncTimeout);
         }
-        
-        // Wait 500ms after last change before syncing
+
         panelSyncTimeout = setTimeout(() => {
-            syncPanelsFromLinkageMode(true); // Force sync
+            if (globalThis.AppRouter?.getAppStateBus && typeof buildLinkageExportData === 'function' && typeof publishLinkageExport === 'function') {
+                publishLinkageExport(buildLinkageExportData());
+                return;
+            }
+            if (!SolarDesigner?.isInitialized?.()) return;
+            syncPanelsFromLinkageMode(true);
         }, 500);
     }
 

@@ -10,7 +10,8 @@
         (function () {
             const params = new URLSearchParams(window.location.search);
             params.set('embed', '1');
-            const base = new URL('solar_designer.html', window.location.href);
+            const base = new URL('index.html', window.location.href);
+            base.hash = '#/solar/design';
             base.search = params.toString();
             window.location.replace(base.toString());
         })();

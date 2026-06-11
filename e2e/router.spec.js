@@ -64,6 +64,13 @@ test.describe('App router', () => {
         expect(busCircuit).toBeGreaterThan(0);
     });
 
+    test('legacy solar_designer.html redirects to unified app', async ({ page }) => {
+        await page.goto('/solar_designer.html?import=linkageLab');
+        await page.waitForURL(/index\.html#\/solar\/design/);
+        await waitForAppReady(page);
+        await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
+    });
+
     test('hash route loads solar designer and can return to linkage', async ({ page }) => {
         await page.goto('/index.html#/solar/design');
         await waitForAppReady(page);

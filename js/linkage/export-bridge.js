@@ -564,7 +564,7 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
             return;
         }
 
-        const designerUrl = ExportFormat.buildImportURL('solar_designer.html', 'linkageLab');
+        const designerUrl = ExportFormat.buildUnifiedAppURL('solar-design', { importSource: 'linkageLab' });
         const opened = window.open(designerUrl, '_blank');
         if (!opened) {
             showToast('Popup blocked — allow popups for this site to open Solar Designer', 'warning');

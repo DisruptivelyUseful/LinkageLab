@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ExportFormat } from '../js/core/export-format.js';
 
 describe('export-format', () => {
@@ -27,6 +27,14 @@ describe('export-format', () => {
 
     it('builds import URLs with source parameter', () => {
         const url = ExportFormat.buildImportURL('http://localhost:8000/solar_designer.html', 'linkageLab');
+        expect(url).toContain('import=linkageLab');
+    });
+
+    it('builds unified app URLs with hash routes', () => {
+        vi.stubGlobal('location', { href: 'http://localhost:8000/index.html' });
+        const url = ExportFormat.buildUnifiedAppURL('solar-design', { importSource: 'linkageLab' });
+        expect(url).toContain('index.html');
+        expect(url).toContain('#/solar/design');
         expect(url).toContain('import=linkageLab');
     });
 });
