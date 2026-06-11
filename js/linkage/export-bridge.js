@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - JSON export/import and Solar Simulator bridge
-// Depends on global: state, buildLinkageGeometry, getUnifiedConfig, applyConfig, showToast, attachGlbToLinkageExport, SolarDesigner
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     function generateDefaultFilename() {
         const modules = state.modules;
@@ -592,14 +589,16 @@
      * @returns {Object} drill data — see fields below
      */
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.exportBridge = { generateDefaultFilename, getUnifiedConfig, exportToJSON, importFromJSON, serializeGeometry, exportToSolarSimulator };
-    g.generateDefaultFilename = generateDefaultFilename;
-    g.getUnifiedConfig = getUnifiedConfig;
-    g.exportToJSON = exportToJSON;
-    g.importFromJSON = importFromJSON;
-    g.serializeGeometry = serializeGeometry;
-    g.exportToSolarSimulator = exportToSolarSimulator;
 
-})(window);
+const _moduleExports = {
+    generateDefaultFilename,
+    getUnifiedConfig,
+    exportToJSON,
+    importFromJSON,
+    serializeGeometry,
+    exportToSolarSimulator,
+};
 
+bridgeGlobals(_moduleExports, 'exportBridge');
+
+export { generateDefaultFilename, getUnifiedConfig, exportToJSON, importFromJSON, serializeGeometry, exportToSolarSimulator };

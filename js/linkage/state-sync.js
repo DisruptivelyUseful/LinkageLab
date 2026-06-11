@@ -1,15 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - State sync (updateState, syncUI, slider bindings)
-// Depends on global: state, idMap, inputs, unitConverter, validateInput, showToast,
-//   syncLinkedVBeamDimensions, isVBeamDimensionsLinked, updateVBeamDimensionUIVisibility,
-//   updateAutoBoltLengths, generateWallFaceButtons, invalidateRcpCrossings,
-//   invalidateGeometryCache, solveLinkage, detectCollisions, findSafeFoldAngle,
-//   getOptimalClosedAngleForAnimation, updateAutoBeamPricing, saveStateToHistory,
-//   requestRender, debounce, DEBOUNCE_DELAY, formatNumber, degToRad, radToDeg,
-//   getEffectiveMinFoldAngle, MAX_FOLD_ANGLE, clamp
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     /**
      * Updates state with validation and error handling
@@ -207,11 +198,13 @@
         });
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.stateSync = { updateState, syncUI, initSliderBindings };
-    g.updateState = updateState;
-    g.syncUI = syncUI;
-    g.initSliderBindings = initSliderBindings;
 
-})(window);
+const _moduleExports = {
+    updateState,
+    syncUI,
+    initSliderBindings,
+};
 
+bridgeGlobals(_moduleExports, 'stateSync');
+
+export { updateState, syncUI, initSliderBindings };

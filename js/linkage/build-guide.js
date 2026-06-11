@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Build guide modal (BOM, PDF/CSV export, drill templates)
-// Depends on global: state, buildLinkageGeometry, needsSplitVBolts, closestPointOnSegment3D, vMag, vSub, exportToJSON, showToast, unitConverter, formatNumber, jspdf
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     function computeReciprocalDrillData(data) {
         const result = {
@@ -2452,21 +2449,23 @@
     }
     
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.buildGuide = { computeReciprocalDrillData, showBuildGuide, renderGuideView, renderBracketDiagram, drawArrow, closeBuildGuide, exportGuideJSON, recalcGuideBOM, gatherBOMData, exportGuidePDF, exportBOMcsv, exportBuildGuide, initBuildGuideHandlers };
-    g.computeReciprocalDrillData = computeReciprocalDrillData;
-    g.showBuildGuide = showBuildGuide;
-    g.renderGuideView = renderGuideView;
-    g.renderBracketDiagram = renderBracketDiagram;
-    g.drawArrow = drawArrow;
-    g.closeBuildGuide = closeBuildGuide;
-    g.exportGuideJSON = exportGuideJSON;
-    g.recalcGuideBOM = recalcGuideBOM;
-    g.gatherBOMData = gatherBOMData;
-    g.exportGuidePDF = exportGuidePDF;
-    g.exportBOMcsv = exportBOMcsv;
-    g.exportBuildGuide = exportBuildGuide;
-    g.initBuildGuideHandlers = initBuildGuideHandlers;
 
-})(window);
+const _moduleExports = {
+    computeReciprocalDrillData,
+    showBuildGuide,
+    renderGuideView,
+    renderBracketDiagram,
+    drawArrow,
+    closeBuildGuide,
+    exportGuideJSON,
+    recalcGuideBOM,
+    gatherBOMData,
+    exportGuidePDF,
+    exportBOMcsv,
+    exportBuildGuide,
+    initBuildGuideHandlers,
+};
 
+bridgeGlobals(_moduleExports, 'buildGuide');
+
+export { computeReciprocalDrillData, showBuildGuide, renderGuideView, renderBracketDiagram, drawArrow, closeBuildGuide, exportGuideJSON, recalcGuideBOM, gatherBOMData, exportGuidePDF, exportBOMcsv, exportBuildGuide, initBuildGuideHandlers };

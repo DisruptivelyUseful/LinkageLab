@@ -1,6 +1,8 @@
 // ============================================================================
-// SOLAR DESIGNER - CONSTANTS AND PRESETS
+// SOLAR DESIGNER - CONSTANTS AND PRESETS (ES module)
 // ============================================================================
+
+import { bridgeGlobals } from '../linkage/global-bridge.js';
 
 // Panel presets - merged from reference simulator
 const PANEL_PRESETS = [
@@ -173,6 +175,31 @@ const SYSTEM_REVIEW_SETTINGS = {
     degradationRate: 0.005  // 0.5% per year
 };
 
+const _moduleExports = {
+    PANEL_PRESETS,
+    BATTERY_PRESETS,
+    CONTROLLER_PRESETS,
+    BREAKER_PRESETS,
+    APPLIANCE_PRESETS,
+    PRODUCER_PRESETS,
+    CONTAINER_PRESETS,
+    RESOURCE_TYPES,
+    AWG_RATINGS,
+    SYSTEM_REVIEW_SETTINGS,
+};
 
+bridgeGlobals(_moduleExports);
 
+export {
+    PANEL_PRESETS,
+    BATTERY_PRESETS,
+    CONTROLLER_PRESETS,
+    BREAKER_PRESETS,
+    APPLIANCE_PRESETS,
+    PRODUCER_PRESETS,
+    CONTAINER_PRESETS,
+    RESOURCE_TYPES,
+    AWG_RATINGS,
+    SYSTEM_REVIEW_SETTINGS,
+};
 

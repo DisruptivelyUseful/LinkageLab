@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Input validation rules and validateInput()
-// Depends on global: clamp
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     // ============================================================================
     // INPUT VALIDATION
@@ -81,10 +78,12 @@
     }
     
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.validation = { validateInput, VALIDATION_RULES };
-    g.validateInput = validateInput;
-    g.VALIDATION_RULES = VALIDATION_RULES;
 
-})(window);
+const _moduleExports = {
+    validateInput,
+    VALIDATION_RULES,
+};
 
+bridgeGlobals(_moduleExports, 'validation');
+
+export { validateInput, VALIDATION_RULES };

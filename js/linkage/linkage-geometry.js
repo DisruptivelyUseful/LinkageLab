@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Linkage geometry (solar panels, support beams, buildLinkageGeometry)
-// Depends on global: state, solveLinkage, getLinkageData, geometry-classes helpers, math, Panel3D
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     // ============================================================================
     // SOLAR PANEL SYSTEM
@@ -3755,92 +3752,93 @@
         return data;
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.linkageGeometry = { buildLinkageGeometry };
 
-    g.applyLegacyPanelsSupport = applyLegacyPanelsSupport;
-    g.applySupportBeamsConfig = applySupportBeamsConfig;
-    g.buildGeometrySnapshot = buildGeometrySnapshot;
-    g.buildLinkageGeometry = buildLinkageGeometry;
-    g.buildRcpAnchorFromFrame = buildRcpAnchorFromFrame;
-    g.buildRcpBeamCrossingTs = buildRcpBeamCrossingTs;
-    g.buildRcpCrossingRefs = buildRcpCrossingRefs;
-    g.buildRcpHoleTsByBeam = buildRcpHoleTsByBeam;
-    g.buildRcpHorizontalFrame = buildRcpHorizontalFrame;
-    g.buildReciprocalBeamKinematics = buildReciprocalBeamKinematics;
-    g.calculateArchCanopySections = calculateArchCanopySections;
-    g.calculateArchLayout = calculateArchLayout;
-    g.calculateArchWallFaces = calculateArchWallFaces;
-    g.calculateBeamBounds = calculateBeamBounds;
-    g.calculateCanopyArea = calculateCanopyArea;
-    g.calculateRadialLayout = calculateRadialLayout;
-    g.calculateRectangularLayout = calculateRectangularLayout;
-    g.calculateSolarPanels = calculateSolarPanels;
-    g.calculateSpiralLayout = calculateSpiralLayout;
-    g.closestPointOnSegment3D = closestPointOnSegment3D;
-    g.computeRcpAnchorPosition = computeRcpAnchorPosition;
-    g.computeRcpBeamUnitDir = computeRcpBeamUnitDir;
-    g.computeRcpCrossingRefsFromBeams = computeRcpCrossingRefsFromBeams;
-    g.computeRcpPoint = computeRcpPoint;
-    g.computeRcpStructureCenter = computeRcpStructureCenter;
-    g.computeSupportBomContribution = computeSupportBomContribution;
-    g.enrichCrossingsWithHoleIndex = enrichCrossingsWithHoleIndex;
-    g.extractModuleFrames = extractModuleFrames;
-    g.generateReciprocalSupportBolts = generateReciprocalSupportBolts;
-    g.generateSupportBeams = generateSupportBeams;
-    g.generateWallFaceButtons = generateWallFaceButtons;
-    g.getActivePanelConfig = getActivePanelConfig;
-    g.getModuleTopBeam = getModuleTopBeam;
-    g.getRcpPivotT = getRcpPivotT;
-    g.getSupportBeamPlaneY = getSupportBeamPlaneY;
-    g.holeMidpointForCrossing = holeMidpointForCrossing;
-    g.isMainStructureBeam = isMainStructureBeam;
-    g.isRcpAtDeployedAngle = isRcpAtDeployedAngle;
-    g.pickOuterVerticalBeam = pickOuterVerticalBeam;
-    g.pointOnBeamAtY = pointOnBeamAtY;
-    g.rcpCrossingWeight = rcpCrossingWeight;
-    g.resetSupportBeamsToDefaults = resetSupportBeamsToDefaults;
-    g.roundVec3ForExport = roundVec3ForExport;
-    g.seedFinalReciprocalTopology = seedFinalReciprocalTopology;
-    g.seedRcpCrossings = seedRcpCrossings;
-    g.segSegIntersectParamsXZ = segSegIntersectParamsXZ;
-    g.selectActiveRcpCrossing = selectActiveRcpCrossing;
-    g.selectActiveRcpRing = selectActiveRcpRing;
-    g.shiftGeometryXZ = shiftGeometryXZ;
-    g.solveRadialSupportBeamPlacement = solveRadialSupportBeamPlacement;
-    g.solveReciprocalActiveRing = solveReciprocalActiveRing;
-    g.solveReciprocalLinkage = solveReciprocalLinkage;
-    g.solveReciprocalPerBeamSwing = solveReciprocalPerBeamSwing;
-    g.solveReciprocalSwingAngle = solveReciprocalSwingAngle;
-    g.spApplyPresetToPanelConfig = spApplyPresetToPanelConfig;
-    g.spBindFormFactorUI = spBindFormFactorUI;
-    g.spFindPresetById = spFindPresetById;
-    g.spGetAllPresets = spGetAllPresets;
-    g.spGetPanelConfig = spGetPanelConfig;
-    g.spInitPanelPresetUI = spInitPanelPresetUI;
-    g.spLinkConfigsToKnownPresets = spLinkConfigsToKnownPresets;
-    g.spLoadPresetCatalog = spLoadPresetCatalog;
-    g.spLoadUserPresetsMap = spLoadUserPresetsMap;
-    g.spMarkPanelConfigManual = spMarkPanelConfigManual;
-    g.spOnPresetSelect = spOnPresetSelect;
-    g.spPanelConfigSignature = spPanelConfigSignature;
-    g.spPresetFromRaw = spPresetFromRaw;
-    g.spPresetSignature = spPresetSignature;
-    g.spRefreshPresetDropdown = spRefreshPresetDropdown;
-    g.spRefreshPresetDropdowns = spRefreshPresetDropdowns;
-    g.spRefreshSolarPanelScene = spRefreshSolarPanelScene;
-    g.spSavePanelConfigAsPreset = spSavePanelConfigAsPreset;
-    g.spSaveUserPreset = spSaveUserPreset;
-    g.spSeedPresetsFromConstants = spSeedPresetsFromConstants;
-    g.spSlugifyId = spSlugifyId;
-    g.spSuffix = spSuffix;
-    g.spSyncFormFactorControlsFromState = spSyncFormFactorControlsFromState;
-    g.spSyncPanelSectionUI = spSyncPanelSectionUI;
-    g.spUpdateFormFactorUI = spUpdateFormFactorUI;
-    g.spUpdatePresetLink = spUpdatePresetLink;
-    g.updateArchWallFacesUI = updateArchWallFacesUI;
-    g.updateRcpDiagnosticsUI = updateRcpDiagnosticsUI;
-    g.validateReciprocalKinematicsSweep = validateReciprocalKinematicsSweep;
+const _moduleExports = {
+    buildLinkageGeometry,
+    applyLegacyPanelsSupport,
+    applySupportBeamsConfig,
+    buildGeometrySnapshot,
+    buildRcpAnchorFromFrame,
+    buildRcpBeamCrossingTs,
+    buildRcpCrossingRefs,
+    buildRcpHoleTsByBeam,
+    buildRcpHorizontalFrame,
+    buildReciprocalBeamKinematics,
+    calculateArchCanopySections,
+    calculateArchLayout,
+    calculateArchWallFaces,
+    calculateBeamBounds,
+    calculateCanopyArea,
+    calculateRadialLayout,
+    calculateRectangularLayout,
+    calculateSolarPanels,
+    calculateSpiralLayout,
+    closestPointOnSegment3D,
+    computeRcpAnchorPosition,
+    computeRcpBeamUnitDir,
+    computeRcpCrossingRefsFromBeams,
+    computeRcpPoint,
+    computeRcpStructureCenter,
+    computeSupportBomContribution,
+    enrichCrossingsWithHoleIndex,
+    extractModuleFrames,
+    generateReciprocalSupportBolts,
+    generateSupportBeams,
+    generateWallFaceButtons,
+    getActivePanelConfig,
+    getModuleTopBeam,
+    getRcpPivotT,
+    getSupportBeamPlaneY,
+    holeMidpointForCrossing,
+    isMainStructureBeam,
+    isRcpAtDeployedAngle,
+    pickOuterVerticalBeam,
+    pointOnBeamAtY,
+    rcpCrossingWeight,
+    resetSupportBeamsToDefaults,
+    roundVec3ForExport,
+    seedFinalReciprocalTopology,
+    seedRcpCrossings,
+    segSegIntersectParamsXZ,
+    selectActiveRcpCrossing,
+    selectActiveRcpRing,
+    shiftGeometryXZ,
+    solveRadialSupportBeamPlacement,
+    solveReciprocalActiveRing,
+    solveReciprocalLinkage,
+    solveReciprocalPerBeamSwing,
+    solveReciprocalSwingAngle,
+    spApplyPresetToPanelConfig,
+    spBindFormFactorUI,
+    spFindPresetById,
+    spGetAllPresets,
+    spGetPanelConfig,
+    spInitPanelPresetUI,
+    spLinkConfigsToKnownPresets,
+    spLoadPresetCatalog,
+    spLoadUserPresetsMap,
+    spMarkPanelConfigManual,
+    spOnPresetSelect,
+    spPanelConfigSignature,
+    spPresetFromRaw,
+    spPresetSignature,
+    spRefreshPresetDropdown,
+    spRefreshPresetDropdowns,
+    spRefreshSolarPanelScene,
+    spSavePanelConfigAsPreset,
+    spSaveUserPreset,
+    spSeedPresetsFromConstants,
+    spSlugifyId,
+    spSuffix,
+    spSyncFormFactorControlsFromState,
+    spSyncPanelSectionUI,
+    spUpdateFormFactorUI,
+    spUpdatePresetLink,
+    updateArchWallFacesUI,
+    updateRcpDiagnosticsUI,
+    validateReciprocalKinematicsSweep,
+};
 
-})(window);
+bridgeGlobals(_moduleExports, 'linkageGeometry');
 
+export { buildLinkageGeometry, applyLegacyPanelsSupport, applySupportBeamsConfig, buildGeometrySnapshot, buildRcpAnchorFromFrame, buildRcpBeamCrossingTs, buildRcpCrossingRefs, buildRcpHoleTsByBeam, buildRcpHorizontalFrame, buildReciprocalBeamKinematics, calculateArchCanopySections, calculateArchLayout, calculateArchWallFaces, calculateBeamBounds, calculateCanopyArea, calculateRadialLayout, calculateRectangularLayout, calculateSolarPanels, calculateSpiralLayout, closestPointOnSegment3D, computeRcpAnchorPosition, computeRcpBeamUnitDir, computeRcpCrossingRefsFromBeams, computeRcpPoint, computeRcpStructureCenter, computeSupportBomContribution, enrichCrossingsWithHoleIndex, extractModuleFrames, generateReciprocalSupportBolts, generateSupportBeams, generateWallFaceButtons, getActivePanelConfig, getModuleTopBeam, getRcpPivotT, getSupportBeamPlaneY, holeMidpointForCrossing, isMainStructureBeam, isRcpAtDeployedAngle, pickOuterVerticalBeam, pointOnBeamAtY, rcpCrossingWeight, resetSupportBeamsToDefaults, roundVec3ForExport, seedFinalReciprocalTopology, seedRcpCrossings, segSegIntersectParamsXZ, selectActiveRcpCrossing, selectActiveRcpRing, shiftGeometryXZ, solveRadialSupportBeamPlacement, solveReciprocalActiveRing, solveReciprocalLinkage, solveReciprocalPerBeamSwing, solveReciprocalSwingAngle, spApplyPresetToPanelConfig, spBindFormFactorUI, spFindPresetById, spGetAllPresets, spGetPanelConfig, spInitPanelPresetUI, spLinkConfigsToKnownPresets, spLoadPresetCatalog, spLoadUserPresetsMap, spMarkPanelConfigManual, spOnPresetSelect, spPanelConfigSignature, spPresetFromRaw, spPresetSignature, spRefreshPresetDropdown, spRefreshPresetDropdowns, spRefreshSolarPanelScene, spSavePanelConfigAsPreset, spSaveUserPreset, spSeedPresetsFromConstants, spSlugifyId, spSuffix, spSyncFormFactorControlsFromState, spSyncPanelSectionUI, spUpdateFormFactorUI, spUpdatePresetLink, updateArchWallFacesUI, updateRcpDiagnosticsUI, validateReciprocalKinematicsSweep };

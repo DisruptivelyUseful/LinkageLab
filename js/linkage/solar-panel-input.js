@@ -1,12 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Solar panel sidebar event handlers
-// Depends on global: state, requestRender, invalidateGeometryCache, showToast,
-//   getOptimalClosedAngleForAnimation, radToDeg, updateArchWallFacesUI,
-//   generateWallFaceButtons, debouncedPanelSync
-// Call initSolarPanelHandlers() after DOM is ready (INITIALIZATION block).
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     function initSolarPanelHandlers() {
         // === SOLAR PANEL EVENT HANDLERS ===
@@ -667,9 +661,11 @@
         
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.solarPanelInput = { initSolarPanelHandlers };
-    g.initSolarPanelHandlers = initSolarPanelHandlers;
 
-})(window);
+const _moduleExports = {
+    initSolarPanelHandlers,
+};
 
+bridgeGlobals(_moduleExports, 'solarPanelInput');
+
+export { initSolarPanelHandlers };

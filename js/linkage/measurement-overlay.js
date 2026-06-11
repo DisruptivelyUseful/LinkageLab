@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Measurement tools, IBC reference stack, human scale figure
-// Depends on global: state, THREE, threeRenderer, ibcGlbState, ibcStackLayoutCacheKey, unitConverter, formatNumber, INCHES_PER_FOOT, cloneIbcTemplateForExport, isMainStructureBeam, render, renderPending, showToast
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     // MEASUREMENT TOOLS
     // ============================================================================
@@ -1299,21 +1296,23 @@
     }
     
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.measurementOverlay = { formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, preloadIbcGlb, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };
-    g.formatMeasurementSidebar = formatMeasurementSidebar;
-    g.calculateMeasurements = calculateMeasurements;
-    g.drawMeasurements = drawMeasurements;
-    g.drawMeasurementsOverlay = drawMeasurementsOverlay;
-    g.applyIbcInteriorGlow = applyIbcInteriorGlow;
-    g.rebuildIbcPivotStack = rebuildIbcPivotStack;
-    g.createIbcExportGroup = createIbcExportGroup;
-    g.syncIbcStackControlsVisibility = syncIbcStackControlsVisibility;
-    g.getStructurePlanFootprintForReference = getStructurePlanFootprintForReference;
-    g.preloadIbcGlb = preloadIbcGlb;
-    g.updateIbcGlbReference = updateIbcGlbReference;
-    g.updateHumanScaleFigure = updateHumanScaleFigure;
-    g.update3DMeasurementLines = update3DMeasurementLines;
 
-})(window);
+const _moduleExports = {
+    formatMeasurementSidebar,
+    calculateMeasurements,
+    drawMeasurements,
+    drawMeasurementsOverlay,
+    applyIbcInteriorGlow,
+    rebuildIbcPivotStack,
+    createIbcExportGroup,
+    syncIbcStackControlsVisibility,
+    getStructurePlanFootprintForReference,
+    preloadIbcGlb,
+    updateIbcGlbReference,
+    updateHumanScaleFigure,
+    update3DMeasurementLines,
+};
 
+bridgeGlobals(_moduleExports, 'measurementOverlay');
+
+export { formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, preloadIbcGlb, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };

@@ -1,9 +1,11 @@
 /**
- * Unit Conversion Utility
+ * Unit Conversion Utility (ES module)
  * Provides consistent unit conversion between metric and imperial systems
  * State always remains in imperial (inches/feet/lbs). The UI layer converts
  * to/from metric for display and input when metric mode is active.
  */
+
+import { bridgeGlobals } from '../linkage/global-bridge.js';
 
 // Check if convert-units is available (loaded via CDN)
 let convertUnits = null;
@@ -650,6 +652,6 @@ const unitConverter = {
     STATE_UNIT_MAP, INPUT_UNIT_MAP,
 };
 
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = unitConverter;
-}
+bridgeGlobals({ unitConverter });
+
+export { unitConverter };

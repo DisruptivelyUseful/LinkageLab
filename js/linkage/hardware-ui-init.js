@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Hardware sidebar UI initialization (lumber pricing, bracket, bolt, washer)
-// Depends on global: state, unitConverter, formatNumber, updateAutoBoltLengths, calculateTotalVBeamWidth
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     function initAutoLumberPricing() {
         const autoCheckbox = document.getElementById('chk-auto-lumber-pricing');
@@ -254,10 +251,12 @@
         initWasherConfig();
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.hardwareUiInit = { initHardwareUI, updateBracketHoleDistance };
-    g.initHardwareUI = initHardwareUI;
-    g.updateBracketHoleDistance = updateBracketHoleDistance;
 
-})(window);
+const _moduleExports = {
+    initHardwareUI,
+    updateBracketHoleDistance,
+};
 
+bridgeGlobals(_moduleExports, 'hardwareUiInit');
+
+export { initHardwareUI, updateBracketHoleDistance };

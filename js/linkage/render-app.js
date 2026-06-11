@@ -1,11 +1,7 @@
-// ============================================================================
-// LINKAGE LAB - App render loop (requestRender, render, HUD, 2D fallback)
-// Depends on global: state, canvas, ctx, uiStats, uiCol, buildLinkageGeometry, renderThreeJS
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
 
-    
+import { bridgeGlobals } from './global-bridge.js';
+
     // ============================================================================
     // RENDERER - Performance Optimized
     // ============================================================================
@@ -1768,16 +1764,17 @@
         c.stroke();
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.renderApp = { requestRender, render, updateHUD };
 
-    g.calculateViewCenterAndZoom = calculateViewCenterAndZoom;
-    g.drawGrid3D = drawGrid3D;
-    g.drawScene = drawScene;
-    g.render = render;
-    g.requestRender = requestRender;
-    g.updateHUD = updateHUD;
-    g.updateSolarPanelStats = updateSolarPanelStats;
+const _moduleExports = {
+    requestRender,
+    render,
+    updateHUD,
+    calculateViewCenterAndZoom,
+    drawGrid3D,
+    drawScene,
+    updateSolarPanelStats,
+};
 
-})(window);
+bridgeGlobals(_moduleExports, 'renderApp');
 
+export { requestRender, render, updateHUD, calculateViewCenterAndZoom, drawGrid3D, drawScene, updateSolarPanelStats };

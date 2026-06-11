@@ -5,7 +5,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 
 /** Build identifier — visible in console at startup */
-export const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3zc';
+export const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3-complete-esm';
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
 export const INCHES_PER_FOOT = 12;

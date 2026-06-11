@@ -1,16 +1,9 @@
-// ============================================================================
-// LINKAGE LAB - Viewport navigation (mouse/touch/wheel) and SpaceMouse
-// Depends on global: state, autoSave, requestRender, solveLinkage, detectCollisions,
-//   findSafeFoldAngle, invalidateGeometryCache, syncUI, getEffectiveMinFoldAngle,
-//   MAX_FOLD_ANGLE, MIN_CAM_DIST, clamp
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
 
-    g.drag = { active: false, x: 0, y: 0, mode: 'orbit' };
-    g.pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, lastCenterY: 0 };
-    const drag = g.drag;
-    const pinch = g.pinch;
+import { bridgeGlobals } from './global-bridge.js';
+
+const drag = { active: false, x: 0, y: 0, mode: 'orbit' };
+const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, lastCenterY: 0 };
 
     let autoSavePending = false;
 
@@ -350,8 +343,13 @@
         };
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.viewportInput = { initViewportInput };
-    g.initViewportInput = initViewportInput;
 
-})(window);
+const _moduleExports = {
+    drag,
+    pinch,
+    initViewportInput,
+};
+
+bridgeGlobals(_moduleExports, 'viewportInput');
+
+export { drag, pinch, initViewportInput };

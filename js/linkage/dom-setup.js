@@ -1,7 +1,9 @@
 // ============================================================================
-// LINKAGE LAB - Canvas, idMap, inputs, and HUD element references
+// LINKAGE LAB - Canvas, idMap, inputs, and HUD element references (ES module)
 // Load after state-sync.js; calls initSliderBindings()
 // ============================================================================
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // Canvas setup - get references to both 2D overlay and WebGL canvases
 const canvas = document.getElementById('canvas');
@@ -77,4 +79,8 @@ const uiStats = {
     weightTotalBom: document.getElementById('bom-weight-total')
 };
 
+const _moduleExports = { canvas, ctx, canvasWebGL, inputs, idMap, uiCol, uiStats };
+bridgeGlobals(_moduleExports);
+
+export { canvas, ctx, canvasWebGL, inputs, idMap, uiCol, uiStats };
 

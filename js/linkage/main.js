@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Application bootstrap (init orchestration, config load, autosave)
-// Depends on all linkage modules loaded before this script.
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -111,7 +108,7 @@
         saveStateToHistory();
         
         console.log('LinkageLab build:', typeof LINKAGE_BUILD_ID !== 'undefined' ? LINKAGE_BUILD_ID : 'inline');
-        console.log('LinkageModules:', Object.keys(g.LinkageModules || {}));
+        console.log('LinkageModules:', Object.keys(globalThis.LinkageModules || {}));
 
         // Log Three.js availability and do initial render
         if (typeof THREE !== 'undefined') {
@@ -277,10 +274,6 @@
         
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.main = { initLinkageLab };
-    g.initLinkageLab = initLinkageLab;
-
     function boot() {
         initLinkageLab().catch(err => console.error('LinkageLab init failed:', err));
     }
@@ -291,5 +284,11 @@
         boot();
     }
 
-})(window);
 
+const _moduleExports = {
+    initLinkageLab,
+};
+
+bridgeGlobals(_moduleExports, 'main');
+
+export { initLinkageLab };

@@ -1,11 +1,7 @@
-// ============================================================================
-// LINKAGE LAB - Scene render pipeline
-// Depends on global: THREE, threeRenderer, state, clearGroup, createBeamMesh, initThreeJS, updateHumanScaleFigure, updateIbcGlbReference
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
 
-    
+import { bridgeGlobals } from './global-bridge.js';
+
     /**
      * Updates all Three.js scenes with current geometry data
      */
@@ -437,13 +433,14 @@
         return true;
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.sceneRender = { };
 
-    g.updateThreeJSScenes = updateThreeJSScenes;
-    g.renderActuatorLine = renderActuatorLine;
-    g.updateOrthoScenes = updateOrthoScenes;
-    g.renderThreeJS = renderThreeJS;
+const _moduleExports = {
+    updateThreeJSScenes,
+    renderActuatorLine,
+    updateOrthoScenes,
+    renderThreeJS,
+};
 
-})(window);
+bridgeGlobals(_moduleExports, 'sceneRender');
 
+export { updateThreeJSScenes, renderActuatorLine, updateOrthoScenes, renderThreeJS };

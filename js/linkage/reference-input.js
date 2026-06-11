@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - Measurement / human scale / IBC sidebar handlers
-// Depends on global: state, render, renderPending, requestRender, syncIbcStackControlsVisibility, INCHES_PER_METER
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     function initReferenceInputHandlers() {
         document.getElementById('chk-measure').onchange = e => {
@@ -118,9 +115,11 @@
         syncIbcStackControlsVisibility();
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.referenceInput = { initReferenceInputHandlers };
-    g.initReferenceInputHandlers = initReferenceInputHandlers;
 
-})(window);
+const _moduleExports = {
+    initReferenceInputHandlers,
+};
 
+bridgeGlobals(_moduleExports, 'referenceInput');
+
+export { initReferenceInputHandlers };

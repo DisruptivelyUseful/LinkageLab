@@ -1,8 +1,10 @@
 // ============================================================================
-// SHARED EXPORT FORMAT
+// SHARED EXPORT FORMAT (ES module)
 // Standardized data exchange format between LinkageLab, Solar Designer, 
 // and Solar Simulator
 // ============================================================================
+
+import { bridgeGlobals } from '../linkage/global-bridge.js';
 
 /**
  * ExportFormat - Defines and handles data exchange between systems
@@ -467,7 +469,6 @@ const ExportFormat = (function() {
     };
 })();
 
-// Export for module systems (if used)
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = ExportFormat;
-}
+bridgeGlobals({ ExportFormat });
+
+export { ExportFormat };

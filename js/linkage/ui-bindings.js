@@ -1,10 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - UI event bindings (keyboard, sidebar, support beams, mode switch)
-// Depends on global: state, canvas, unitConverter, idMap, inputs, and most linkage modules
-// Call initUIBindings() from INITIALIZATION after state/canvas/idMap are defined.
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     let solarDesignerLoadPromise = null;
     let currentAppMode = 'linkage';
@@ -1936,33 +1932,35 @@
         
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.uiBindings = { findOptimalClosedAngle, selectActuator, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, currentAppMode };
-    g.findOptimalClosedAngle = findOptimalClosedAngle;
-    g.selectActuator = selectActuator;
-    g.bindSupportBeamControl = bindSupportBeamControl;
-    g.syncSupportBeamsUIFromState = syncSupportBeamsUIFromState;
-    g.applyRcpKinematicUI = applyRcpKinematicUI;
-    g.refreshRcpPivotHoleOptions = refreshRcpPivotHoleOptions;
-    g.saveUnifiedConfig = saveUnifiedConfig;
-    g.loadUnifiedConfig = loadUnifiedConfig;
-    g.exportUnifiedConfig = exportUnifiedConfig;
-    g.importUnifiedConfig = importUnifiedConfig;
-    g.applyUnifiedConfigToModes = applyUnifiedConfigToModes;
-    g.loadScriptOnce = loadScriptOnce;
-    g.ensureSolarDesignerLoaded = ensureSolarDesignerLoaded;
-    g.switchToLinkageMode = switchToLinkageMode;
-    g.switchToSolarMode = switchToSolarMode;
-    g.syncPanelsFromLinkageMode = syncPanelsFromLinkageMode;
-    g.panelConfigChanged = panelConfigChanged;
-    g.debouncedPanelSync = debouncedPanelSync;
-    g.initUIBindings = initUIBindings;
-    Object.defineProperty(g, 'currentAppMode', {
+
+const _moduleExports = {
+    findOptimalClosedAngle,
+    selectActuator,
+    bindSupportBeamControl,
+    syncSupportBeamsUIFromState,
+    applyRcpKinematicUI,
+    refreshRcpPivotHoleOptions,
+    saveUnifiedConfig,
+    loadUnifiedConfig,
+    exportUnifiedConfig,
+    importUnifiedConfig,
+    applyUnifiedConfigToModes,
+    loadScriptOnce,
+    ensureSolarDesignerLoaded,
+    switchToLinkageMode,
+    switchToSolarMode,
+    syncPanelsFromLinkageMode,
+    panelConfigChanged,
+    debouncedPanelSync,
+    initUIBindings,
+    currentAppMode,
+};
+
+    Object.defineProperty(globalThis, 'currentAppMode', {
         get() { return currentAppMode; },
         set(v) { currentAppMode = v; }
     });
-    g.debouncedPanelSync = debouncedPanelSync;
-    g.ensureSolarDesignerLoaded = ensureSolarDesignerLoaded;
 
-})(window);
+bridgeGlobals(_moduleExports, 'uiBindings');
 
+export { findOptimalClosedAngle, selectActuator, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, currentAppMode };

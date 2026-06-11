@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB — Three.js renderer (init, materials cache, mesh factories)
-// Depends on global: THREE, state, Beam3D, INCHES_PER_FOOT, WOOD_COLOR, etc.
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // ============================================================================
 // THREE.JS RENDERER SYSTEM
@@ -78,8 +75,8 @@ function getCachedGeometry(key, factory) {
 function invalidateMeshCaches() {
     geometryCache.forEach(geo => geo.dispose());
     geometryCache.clear();
-    if (typeof g.clearMeshStructureCache === 'function') {
-        g.clearMeshStructureCache();
+    if (typeof globalThis.clearMeshStructureCache === 'function') {
+        globalThis.clearMeshStructureCache();
     }
     // Materials are lightweight and reused; no need to dispose
 }
@@ -1901,40 +1898,43 @@ function clearGroup(group) {
     }
 }
 
-    g.threeRenderer = threeRenderer;
-    g.ibcGlbState = ibcGlbState;
-    g.getCachedMaterial = getCachedMaterial;
-    g.getCachedGeometry = getCachedGeometry;
-    g.invalidateMeshCaches = invalidateMeshCaches;
-    g.initThreeJS = initThreeJS;
-    g.createMainCamera = createMainCamera;
-    g.updateMainCamera = updateMainCamera;
-    g.createTopCamera = createTopCamera;
-    g.updateTopCamera = updateTopCamera;
-    g.createSideCamera = createSideCamera;
-    g.updateSideCamera = updateSideCamera;
-    g.setupThreeJSLighting = setupThreeJSLighting;
-    g.updateSunPosition = updateSunPosition;
-    g.updateGroundPlane = updateGroundPlane;
-    g.updateGridVisibility = updateGridVisibility;
-    g.updateGridPosition = updateGridPosition;
-    g.rgbToThreeColor = rgbToThreeColor;
-    g.getBeamBoltIntersections = getBeamBoltIntersections;
-    g.buildBeamMeshWithHoles = buildBeamMeshWithHoles;
-    g.createBeamMesh = createBeamMesh;
-    g.createPanelMesh = createPanelMesh;
-    g.createBracketMesh = createBracketMesh;
-    g.createBoltMesh = createBoltMesh;
-    g.createWasherMesh = createWasherMesh;
-    g.clearGroup = clearGroup;
-    Object.defineProperty(g, 'ibcStackLayoutCacheKey', {
+
+const _moduleExports = {
+    threeRenderer,
+    ibcGlbState,
+    getCachedMaterial,
+    getCachedGeometry,
+    invalidateMeshCaches,
+    initThreeJS,
+    createMainCamera,
+    updateMainCamera,
+    createTopCamera,
+    updateTopCamera,
+    createSideCamera,
+    updateSideCamera,
+    setupThreeJSLighting,
+    updateSunPosition,
+    updateGroundPlane,
+    updateGridVisibility,
+    updateGridPosition,
+    rgbToThreeColor,
+    getBeamBoltIntersections,
+    buildBeamMeshWithHoles,
+    createBeamMesh,
+    createPanelMesh,
+    createBracketMesh,
+    createBoltMesh,
+    createWasherMesh,
+    clearGroup,
+    ibcStackLayoutCacheKey,
+};
+
+    Object.defineProperty(globalThis, 'ibcStackLayoutCacheKey', {
         get() { return ibcStackLayoutCacheKey; },
         set(v) { ibcStackLayoutCacheKey = v; },
         configurable: true
     });
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.renderer3d = {
-        threeRenderer, ibcGlbState, initThreeJS, updateSunPosition, clearGroup, invalidateMeshCaches
-    };
-})(window);
 
+bridgeGlobals(_moduleExports, 'renderer3d');
+
+export { threeRenderer, ibcGlbState, getCachedMaterial, getCachedGeometry, invalidateMeshCaches, initThreeJS, createMainCamera, updateMainCamera, createTopCamera, updateTopCamera, createSideCamera, updateSideCamera, setupThreeJSLighting, updateSunPosition, updateGroundPlane, updateGridVisibility, updateGridPosition, rgbToThreeColor, getBeamBoltIntersections, buildBeamMeshWithHoles, createBeamMesh, createPanelMesh, createBracketMesh, createBoltMesh, createWasherMesh, clearGroup, ibcStackLayoutCacheKey };

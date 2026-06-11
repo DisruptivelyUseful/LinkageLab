@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB — Hardware Assembly Detail view
-// Depends on global: THREE, state, vNorm, vCross, vMag, vScale, showToast, getConfigSnapshot
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // HARDWARE ASSEMBLY DETAIL VIEW
 // Parametric, editable hardware stacks rendered as an interactive exploded
@@ -2178,179 +2175,94 @@ function getAssemblyHardwareItems(moduleCount) {
         });
     });
     return Object.values(agg).map(a => ({ qty: a.qty, item: a.label, unit: a.unit, total: a.qty * a.unit }));
-}
 
-    g.hwDetail = hwDetail;
-    g.hwDefaultPartPos = hwDefaultPartPos;
-    g.hwBindNumberScrub = hwBindNumberScrub;
-    g.hwGetPartAxialLength = hwGetPartAxialLength;
-    g.hwGetPartStackContext = hwGetPartStackContext;
-    g.hwAxisPosFromPart = hwAxisPosFromPart;
-    g.hwSetPartAxisPosFromWorld = hwSetPartAxisPosFromWorld;
-    g.hwProjectPointerToAxisPos = hwProjectPointerToAxisPos;
-    g.hwRaycastPartId = hwRaycastPartId;
-    g.hwGetBracketHoleY = hwGetBracketHoleY;
-    g.hwGetBracketStackOrigin = hwGetBracketStackOrigin;
-    g.getRivetNutDefaults = getRivetNutDefaults;
-    g.getHardwarePartDefaults = getHardwarePartDefaults;
-    g.getDefaultHardwareAssemblies = getDefaultHardwareAssemblies;
-    g.ensureHardwareAssemblies = ensureHardwareAssemblies;
-    g.hwMaterial = hwMaterial;
-    g.hwAddHead = hwAddHead;
-    g.createHWBoltMesh = createHWBoltMesh;
-    g.hwAnnulusGeometry = hwAnnulusGeometry;
-    g.createHWBushingMesh = createHWBushingMesh;
-    g.createHWWasherMesh = createHWWasherMesh;
-    g.createHWLockWasherMesh = createHWLockWasherMesh;
-    g.createHWNutMesh = createHWNutMesh;
-    g.createHWBeamMesh = createHWBeamMesh;
-    g.hwGetBeamAlignHoleX = hwGetBeamAlignHoleX;
-    g.hwSyncBeamPartFromState = hwSyncBeamPartFromState;
-    g.hwSyncHBeamPartFromState = hwSyncHBeamPartFromState;
-    g.hwTagPartMesh = hwTagPartMesh;
-    g.loadHwBracketGlb = loadHwBracketGlb;
-    g.buildGlbBracketMesh = buildGlbBracketMesh;
-    g.buildParametricBracketMesh = buildParametricBracketMesh;
-    g.createHWBracketMesh = createHWBracketMesh;
-    g.createHardwarePartMesh = createHardwarePartMesh;
-    g.hwCreatePartMeshForAxis = hwCreatePartMeshForAxis;
-    g.initHardwareDetailScene = initHardwareDetailScene;
-    g.resizeHardwareDetail = resizeHardwareDetail;
-    g.getActiveHardwareAssembly = getActiveHardwareAssembly;
-    g.hwUseFullDetailAssemblies = hwUseFullDetailAssemblies;
-    g.hwGetOuterVBeamAssembly = hwGetOuterVBeamAssembly;
-    g.hwAddOuterAssemblyPlacement = hwAddOuterAssemblyPlacement;
-    g.hwComputeAssemblyQuaternion = hwComputeAssemblyQuaternion;
-    g.hwComputeOuterAssemblyTransform = hwComputeOuterAssemblyTransform;
-    g.buildHardwareAssemblyGroup = buildHardwareAssemblyGroup;
-    g.buildHardwareAssemblyScene = buildHardwareAssemblyScene;
-    g.hwResolveAddPartType = hwResolveAddPartType;
-    g.hwEnsurePartBomKey = hwEnsurePartBomKey;
-    g.hwShortHash = hwShortHash;
-    g.hwSlugifyPresetId = hwSlugifyPresetId;
-    g.hwPresetSignature = hwPresetSignature;
-    g.hwExtractPartExtras = hwExtractPartExtras;
-    g.hwLoadUserPresetsMap = hwLoadUserPresetsMap;
-    g.hwSaveUserPreset = hwSaveUserPreset;
-    g.hwPartToPreset = hwPartToPreset;
-    g.hwCollectAssemblyPresetsMap = hwCollectAssemblyPresetsMap;
-    g.hwLoadPresetCatalog = hwLoadPresetCatalog;
-    g.hwFindPresetById = hwFindPresetById;
-    g.hwGetPresetsForType = hwGetPresetsForType;
-    g.hwApplyPresetToPart = hwApplyPresetToPart;
-    g.hwMaybeAutoApplyPreset = hwMaybeAutoApplyPreset;
-    g.hwLinkPartsToKnownPresets = hwLinkPartsToKnownPresets;
-    g.hwDownloadJsonFile = hwDownloadJsonFile;
-    g.hwSavePartAsPreset = hwSavePartAsPreset;
-    g.hwAppendPresetRow = hwAppendPresetRow;
-    g.hwPersistHardwareConfig = hwPersistHardwareConfig;
-    g.hwRefreshAll = hwRefreshAll;
-    g.renderHardwareEditPanel = renderHardwareEditPanel;
-    g.hwBindNumberInput = hwBindNumberInput;
-    g.buildHardwarePartCard = buildHardwarePartCard;
-    g.hwRemovePart = hwRemovePart;
-    g.hwDuplicatePart = hwDuplicatePart;
-    g.hwRenumberAxis = hwRenumberAxis;
-    g.hwHandleDrop = hwHandleDrop;
-    g.hwAddPart = hwAddPart;
-    g.hwExplodedAxisPos = hwExplodedAxisPos;
-    g.hwIsQtyStackPart = hwIsQtyStackPart;
-    g.hwGetQtyExplodeGap = hwGetQtyExplodeGap;
-    g.hwQtyAssembledSpan = hwQtyAssembledSpan;
-    g.hwQtyCopyAssembledPos = hwQtyCopyAssembledPos;
-    g.hwPartCopyExplodedPos = hwPartCopyExplodedPos;
-    g.hwExplodeFactor = hwExplodeFactor;
-    g.wireHardwareDetailControls = wireHardwareDetailControls;
-    g.openHardwareDetail = openHardwareDetail;
-    g.closeHardwareDetail = closeHardwareDetail;
-    g.getAssemblyHardwareItems = getAssemblyHardwareItems;
+const _moduleExports = {
+    hwDetail,
+    hwDefaultPartPos,
+    hwBindNumberScrub,
+    hwGetPartAxialLength,
+    hwGetPartStackContext,
+    hwAxisPosFromPart,
+    hwSetPartAxisPosFromWorld,
+    hwProjectPointerToAxisPos,
+    hwRaycastPartId,
+    hwGetBracketHoleY,
+    hwGetBracketStackOrigin,
+    getRivetNutDefaults,
+    getHardwarePartDefaults,
+    getDefaultHardwareAssemblies,
+    ensureHardwareAssemblies,
+    hwMaterial,
+    hwAddHead,
+    createHWBoltMesh,
+    hwAnnulusGeometry,
+    createHWBushingMesh,
+    createHWWasherMesh,
+    createHWLockWasherMesh,
+    createHWNutMesh,
+    createHWBeamMesh,
+    hwGetBeamAlignHoleX,
+    hwSyncBeamPartFromState,
+    hwSyncHBeamPartFromState,
+    hwTagPartMesh,
+    loadHwBracketGlb,
+    buildGlbBracketMesh,
+    buildParametricBracketMesh,
+    createHWBracketMesh,
+    createHardwarePartMesh,
+    hwCreatePartMeshForAxis,
+    initHardwareDetailScene,
+    resizeHardwareDetail,
+    getActiveHardwareAssembly,
+    hwUseFullDetailAssemblies,
+    hwGetOuterVBeamAssembly,
+    hwAddOuterAssemblyPlacement,
+    hwComputeAssemblyQuaternion,
+    hwComputeOuterAssemblyTransform,
+    buildHardwareAssemblyGroup,
+    buildHardwareAssemblyScene,
+    hwResolveAddPartType,
+    hwEnsurePartBomKey,
+    hwShortHash,
+    hwSlugifyPresetId,
+    hwPresetSignature,
+    hwExtractPartExtras,
+    hwLoadUserPresetsMap,
+    hwSaveUserPreset,
+    hwPartToPreset,
+    hwCollectAssemblyPresetsMap,
+    hwLoadPresetCatalog,
+    hwFindPresetById,
+    hwGetPresetsForType,
+    hwApplyPresetToPart,
+    hwMaybeAutoApplyPreset,
+    hwLinkPartsToKnownPresets,
+    hwDownloadJsonFile,
+    hwSavePartAsPreset,
+    hwAppendPresetRow,
+    hwPersistHardwareConfig,
+    hwRefreshAll,
+    renderHardwareEditPanel,
+    hwBindNumberInput,
+    buildHardwarePartCard,
+    hwRemovePart,
+    hwDuplicatePart,
+    hwRenumberAxis,
+    hwHandleDrop,
+    hwAddPart,
+    hwExplodedAxisPos,
+    hwIsQtyStackPart,
+    hwGetQtyExplodeGap,
+    hwQtyAssembledSpan,
+    hwQtyCopyAssembledPos,
+    hwPartCopyExplodedPos,
+    hwExplodeFactor,
+    wireHardwareDetailControls,
+    openHardwareDetail,
+    closeHardwareDetail,
+    getAssemblyHardwareItems,
+};
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.hardwareDetail = {
-        hwDefaultPartPos,
-        hwBindNumberScrub,
-        hwGetPartAxialLength,
-        hwGetPartStackContext,
-        hwAxisPosFromPart,
-        hwSetPartAxisPosFromWorld,
-        hwProjectPointerToAxisPos,
-        hwRaycastPartId,
-        hwGetBracketHoleY,
-        hwGetBracketStackOrigin,
-        getRivetNutDefaults,
-        getHardwarePartDefaults,
-        getDefaultHardwareAssemblies,
-        ensureHardwareAssemblies,
-        hwMaterial,
-        hwAddHead,
-        createHWBoltMesh,
-        hwAnnulusGeometry,
-        createHWBushingMesh,
-        createHWWasherMesh,
-        createHWLockWasherMesh,
-        createHWNutMesh,
-        createHWBeamMesh,
-        hwGetBeamAlignHoleX,
-        hwSyncBeamPartFromState,
-        hwSyncHBeamPartFromState,
-        hwTagPartMesh,
-        loadHwBracketGlb,
-        buildGlbBracketMesh,
-        buildParametricBracketMesh,
-        createHWBracketMesh,
-        createHardwarePartMesh,
-        hwCreatePartMeshForAxis,
-        initHardwareDetailScene,
-        resizeHardwareDetail,
-        getActiveHardwareAssembly,
-        hwUseFullDetailAssemblies,
-        hwGetOuterVBeamAssembly,
-        hwAddOuterAssemblyPlacement,
-        hwComputeAssemblyQuaternion,
-        hwComputeOuterAssemblyTransform,
-        buildHardwareAssemblyGroup,
-        buildHardwareAssemblyScene,
-        hwResolveAddPartType,
-        hwEnsurePartBomKey,
-        hwShortHash,
-        hwSlugifyPresetId,
-        hwPresetSignature,
-        hwExtractPartExtras,
-        hwLoadUserPresetsMap,
-        hwSaveUserPreset,
-        hwPartToPreset,
-        hwCollectAssemblyPresetsMap,
-        hwLoadPresetCatalog,
-        hwFindPresetById,
-        hwGetPresetsForType,
-        hwApplyPresetToPart,
-        hwMaybeAutoApplyPreset,
-        hwLinkPartsToKnownPresets,
-        hwDownloadJsonFile,
-        hwSavePartAsPreset,
-        hwAppendPresetRow,
-        hwPersistHardwareConfig,
-        hwRefreshAll,
-        renderHardwareEditPanel,
-        hwBindNumberInput,
-        buildHardwarePartCard,
-        hwRemovePart,
-        hwDuplicatePart,
-        hwRenumberAxis,
-        hwHandleDrop,
-        hwAddPart,
-        hwExplodedAxisPos,
-        hwIsQtyStackPart,
-        hwGetQtyExplodeGap,
-        hwQtyAssembledSpan,
-        hwQtyCopyAssembledPos,
-        hwPartCopyExplodedPos,
-        hwExplodeFactor,
-        wireHardwareDetailControls,
-        openHardwareDetail,
-        closeHardwareDetail,
-        getAssemblyHardwareItems,
-        hwDetail
-    };
-})(window);
+bridgeGlobals(_moduleExports, 'hardwareDetail');
 
+export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwGetOuterVBeamAssembly, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems };

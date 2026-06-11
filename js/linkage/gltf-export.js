@@ -1,9 +1,6 @@
-// ============================================================================
-// LINKAGE LAB - GLTF export
-// Depends on global: THREE, state, showToast, ibcGlbState, buildLinkageGeometry, getLinkageData
-// ============================================================================
-(function (g) {
-    'use strict';
+// ============================================================================ (ES module)
+
+import { bridgeGlobals } from './global-bridge.js';
 
     // ============================================================================
     // GLTF EXPORT SYSTEM
@@ -1320,14 +1317,15 @@
         exportToGLTF(format, units, coordSys, { target: profile });
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.gltfExport = { exportToGLTF, cloneIbcTemplateForExport };
 
-    g.exportToGLTF = exportToGLTF;
-    g.showGLTFExportDialog = showGLTFExportDialog;
-    g.closeGLTFExportModal = closeGLTFExportModal;
-    g.executeGLTFExport = executeGLTFExport;
-    g.cloneIbcTemplateForExport = cloneIbcTemplateForExport;
+const _moduleExports = {
+    exportToGLTF,
+    cloneIbcTemplateForExport,
+    showGLTFExportDialog,
+    closeGLTFExportModal,
+    executeGLTFExport,
+};
 
-})(window);
+bridgeGlobals(_moduleExports, 'gltfExport');
 
+export { exportToGLTF, cloneIbcTemplateForExport, showGLTFExportDialog, closeGLTFExportModal, executeGLTFExport };
