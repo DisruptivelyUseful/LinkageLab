@@ -1,0 +1,13 @@
+{
+  "modules": 8,
+  "arrayCount": 1,
+  "orientation": "horizontal",
+  "beamCount": 59,
+  "bracketCount": 36,
+  "boltCount": 93,
+  "washerCount": 128,
+  "faceCount": 16,
+  "maxRad": 221.9558,
+  "maxHeight": 96.7472,
+  "foldAngleDeg": 134.9
+}

@@ -1,11 +1,11 @@
-// ============================================================================
-// LINKAGE LAB — Constants & configuration (ES module)
+﻿// ============================================================================
+// LINKAGE LAB â€” Constants & configuration (ES module)
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
 
-/** Build identifier — visible in console at startup */
-export const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-4d';
+/** Build identifier â€” visible in console at startup */
+export const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-4e';
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
 export const INCHES_PER_FOOT = 12;

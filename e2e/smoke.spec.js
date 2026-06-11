@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+﻿import { test, expect } from '@playwright/test';
 
 const REQUIRED_MODULES = [
     'main',
@@ -38,7 +38,7 @@ test.describe('LinkageLab smoke', () => {
 
         const buildLog = consoleLogs.find((line) => line.includes('LinkageLab build:'));
         expect(buildLog).toBeTruthy();
-        expect(buildLog).toMatch(/phase-4d/);
+        expect(buildLog).toMatch(/phase-4e/);
 
         const threeLog = consoleLogs.find((line) => line.includes('Three.js loaded successfully'));
         expect(threeLog).toBeTruthy();
@@ -60,7 +60,7 @@ test.describe('LinkageLab smoke', () => {
         expect(globals.hasState).toBe(true);
         expect(globals.hasSolver).toBe(true);
         expect(globals.hasUnitConverter).toBe(true);
-        expect(globals.buildId).toMatch(/phase-4d/);
+        expect(globals.buildId).toMatch(/phase-4e/);
     });
 
     test('sidebar toggle and module input respond', async ({ page }) => {

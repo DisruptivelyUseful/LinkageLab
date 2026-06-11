@@ -1,18 +1,19 @@
-{
-  "name": "linkagelab",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "serve": "node scripts/static-server.mjs --port 8000",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:all": "npm test && npm run test:e2e"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.52.0",
-    "happy-dom": "^17.4.4",
-    "vitest": "^3.0.5"
-  }
+﻿{
+    "name":  "linkagelab",
+    "private":  true,
+    "type":  "module",
+    "scripts":  {
+                    "test":  "vitest run",
+                    "test:watch":  "vitest",
+                    "serve":  "node scripts/static-server.mjs --port 8000",
+                    "test:e2e":  "playwright test",
+                    "test:e2e:ui":  "playwright test --ui",
+                    "test:all":  "npm test \u0026\u0026 npm run test:e2e",
+                    "test:golden:update":  "node scripts/generate-golden-fixtures.mjs"
+                },
+    "devDependencies":  {
+                            "@playwright/test":  "^1.52.0",
+                            "happy-dom":  "^17.4.4",
+                            "vitest":  "^3.0.5"
+                        }
 }
