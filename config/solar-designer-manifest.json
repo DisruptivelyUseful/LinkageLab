@@ -1,0 +1,9 @@
+{
+  "partials": [
+    { "path": "partials/linkage-workspace-solar.html", "mount": "#view-solar-design .solar-designer-stage" },
+    { "path": "partials/linkage-solar-sidebar-palette.html", "mount": "#view-solar-design .solar-designer-rail" },
+    { "path": "partials/linkage-solar-sidebar-simulation.html", "mount": "#view-solar-design .solar-designer-rail" },
+    { "path": "partials/linkage-solar-sidebar-actions.html", "mount": "#view-solar-design .solar-designer-rail" },
+    { "path": "partials/linkage-solar-sidebar-properties.html", "mount": "#view-solar-design .solar-designer-rail" }
+  ]
+}

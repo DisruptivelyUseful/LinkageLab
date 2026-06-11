@@ -485,6 +485,13 @@ import { applyConfig } from './config-persistence.js';
         requestRender();
     }
     function switchToSolarMode() {
+        if (globalThis.AppRouter?.navigateTo) {
+            openSolarDesign().catch((err) => {
+                console.error('Navigate to solar design failed:', err);
+                showToast('Failed to open solar design', 'error');
+            });
+            return;
+        }
         if (currentAppMode === 'solar') return;
     
         ensureSolarDesignerLoaded().then(() => {

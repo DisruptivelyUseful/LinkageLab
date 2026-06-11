@@ -12,6 +12,9 @@ import {
     registerModeLoader,
 } from '../core/app-router.js';
 import { bootLinkageApp } from '../linkage/bootstrap.js';
+import { initSolarDesignerApp, refreshSolarDesignerFromExport } from '../solar/designer-app.js';
+import { resolveCircuitExport } from '../solar/circuit-export.js';
+import { initSolarSimulatorApp, refreshSolarSimulatorFromCircuit } from '../solar/simulator-app.js';
 
 function syncDocumentModeButtons(mode) {
     document.querySelectorAll('[data-app-nav-mode]').forEach((btn) => {
@@ -35,49 +38,39 @@ function wireShellModeButtons(root) {
     });
 }
 
-function renderModeChrome() {
+function renderModeChrome(activeMode = 'linkage') {
+    const modes = [
+        { id: 'linkage', icon: '⚙️', title: 'Linkage Design Mode' },
+        { id: 'solar-design', icon: '⚡', title: 'Solar/Electrical Design Mode' },
+        { id: 'solar-simulate', icon: '▶', title: 'Solar 3D Simulation Mode' },
+    ];
+    const buttons = modes.map((mode) => `
+        <button
+            type="button"
+            data-app-nav-mode="${mode.id}"
+            class="topbar-btn${activeMode === mode.id ? ' active' : ''}"
+            title="${mode.title}"
+        >${mode.icon}</button>
+    `).join('');
+
     return `
         <div class="app-view-chrome">
             <h1 class="app-view-chrome-title">StarShade Lab</h1>
-            <div class="mode-toggle">
-                <button type="button" data-app-nav-mode="linkage" class="topbar-btn" title="Linkage Design Mode">⚙️</button>
-                <button type="button" data-app-nav-mode="solar-design" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
-            </div>
+            <div class="mode-toggle">${buttons}</div>
         </div>
     `;
 }
 
-function mountSolarDesignShell(container) {
-    const exportData = getAppStateBus().linkageExport;
-    const panelCount = exportData?.solarPanels?.count ?? 0;
-    const panelWatts = exportData?.solarPanels?.specs?.wmp ?? 0;
-    const totalWatts = panelCount * panelWatts;
-    const summary = panelCount > 0
-        ? `${panelCount} panels staged (${totalWatts} W total). Full designer loads in Phase 5c.`
-        : 'No linkage export staged yet. Return to Linkage and click ⚡ to send your structure here.';
-
-    container.innerHTML = `
-        ${renderModeChrome()}
-        <div class="app-view-placeholder" role="status">
-            <h1>Solar Design</h1>
-            <p>${summary}</p>
-            <p>Circuit designer will load in this view — no new browser tab.</p>
-        </div>
-    `;
-    wireShellModeButtons(container);
-    syncDocumentModeButtons(APP_MODES.SOLAR_DESIGN);
-}
-
-function mountSolarSimulateShell(container) {
-    container.innerHTML = `
-        ${renderModeChrome()}
-        <div class="app-view-placeholder" role="status">
-            <h1>Solar Simulate</h1>
-            <p>Time-based simulator will load here in Phase 5c.</p>
-        </div>
-    `;
-    wireShellModeButtons(container);
-    syncDocumentModeButtons(APP_MODES.SOLAR_SIMULATE);
+function resolveLinkageExport() {
+    const bus = getAppStateBus();
+    if (bus.linkageExport) return bus.linkageExport;
+    try {
+        const saved = localStorage.getItem('linkageLabExport');
+        if (saved) return JSON.parse(saved);
+    } catch (err) {
+        console.warn('[app] Failed to parse linkageLabExport from localStorage:', err);
+    }
+    return null;
 }
 
 registerModeLoader(APP_MODES.LINKAGE, async () => {
@@ -85,11 +78,22 @@ registerModeLoader(APP_MODES.LINKAGE, async () => {
 });
 
 registerModeLoader(APP_MODES.SOLAR_DESIGN, async (container) => {
-    mountSolarDesignShell(container);
+    const linkageExport = resolveLinkageExport();
+    await initSolarDesignerApp(container, {
+        linkageExport,
+        chromeHtml: renderModeChrome(APP_MODES.SOLAR_DESIGN),
+    });
+    wireShellModeButtons(container);
+    syncDocumentModeButtons(APP_MODES.SOLAR_DESIGN);
 });
 
 registerModeLoader(APP_MODES.SOLAR_SIMULATE, async (container) => {
-    mountSolarSimulateShell(container);
+    await initSolarSimulatorApp(container, {
+        circuitExport: resolveCircuitExport(),
+        chromeHtml: renderModeChrome(APP_MODES.SOLAR_SIMULATE),
+    });
+    wireShellModeButtons(container);
+    syncDocumentModeButtons(APP_MODES.SOLAR_SIMULATE);
 });
 
 function showBootError(message) {
@@ -108,13 +112,21 @@ async function main() {
         navigateTo,
         getAppStateBus,
         getCurrentMode,
+        refreshSolarDesignerFromExport,
+        refreshSolarSimulatorFromCircuit,
     };
 
     window.addEventListener('app:navigate', (event) => {
         const mode = event.detail?.mode;
         if (mode === APP_MODES.SOLAR_DESIGN) {
-            const container = document.getElementById('view-solar-design');
-            if (container) mountSolarDesignShell(container);
+            refreshSolarDesignerFromExport(resolveLinkageExport()).catch((err) => {
+                console.error('[app] solar designer refresh failed:', err);
+            });
+        }
+        if (mode === APP_MODES.SOLAR_SIMULATE) {
+            refreshSolarSimulatorFromCircuit(resolveCircuitExport()).catch((err) => {
+                console.error('[app] solar simulator refresh failed:', err);
+            });
         }
         syncDocumentModeButtons(mode);
     });

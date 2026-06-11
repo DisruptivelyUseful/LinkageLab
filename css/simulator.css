@@ -10,6 +10,15 @@
     --sim-bottom-dock-height: var(--sim-controls-bar-height);
 }
 
+/* Embedded in unified app shell — hide duplicate action topbar */
+body.simulator-embedded {
+    --sim-topbar-height: 0px;
+}
+
+body.simulator-embedded .sim-topbar {
+    display: none !important;
+}
+
 /* Single-row simulator topbar (actions only) */
 .sim-topbar {
     height: auto;

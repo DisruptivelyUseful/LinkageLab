@@ -88,6 +88,7 @@ function setActiveView(mode) {
         el.hidden = !active;
     });
     document.body.dataset.appMode = mode;
+    document.body.classList.toggle('solar-mode', mode === APP_MODES.SOLAR_DESIGN);
 }
 
 /**

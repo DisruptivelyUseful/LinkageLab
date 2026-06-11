@@ -17,12 +17,7 @@
     { "path": "partials/linkage-controls-reference.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-solar-panels.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-support.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-solar-sidebar-palette.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-solar-sidebar-properties.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-solar-sidebar-simulation.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-solar-sidebar-actions.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-workspace-viewport.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-workspace-solar.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-workspace-hud.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-modal-hardware.html", "mount": "body", "method": "beforeend" },
     { "path": "partials/linkage-modal-build-guide.html", "mount": "body", "method": "beforeend" }

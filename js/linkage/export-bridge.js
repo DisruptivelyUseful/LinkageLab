@@ -556,6 +556,9 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
 
         if (globalThis.AppRouter?.navigateTo) {
             await globalThis.AppRouter.navigateTo('solar-design');
+            if (globalThis.AppRouter.refreshSolarDesignerFromExport) {
+                await globalThis.AppRouter.refreshSolarDesignerFromExport(exportData);
+            }
             showToast(`Opened solar design with ${panelCount} panels`, 'info');
             attachGlbToLinkageExport(exportData);
             return;

@@ -74,3 +74,109 @@
     display: flex;
     gap: 4px;
 }
+
+/* Solar design view (Phase 5c) */
+body[data-app-mode="solar-design"] {
+    --clr-solar: #f0ad4e;
+    --clr-solar-light: #ffc107;
+    --clr-solar-dark: #e6971f;
+    --clr-solar-rgb: 240, 173, 78;
+}
+
+#view-solar-design {
+    position: relative;
+}
+
+#view-solar-design .solar-designer-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 300px;
+    min-height: calc(100vh - 52px);
+}
+
+#view-solar-design .solar-designer-stage {
+    position: relative;
+    min-height: 0;
+    min-width: 0;
+}
+
+#view-solar-design .solar-designer-rail {
+    overflow-y: auto;
+    background: var(--bg-sidebar, #192734);
+    border-left: 1px solid var(--border-subtle, #38444d);
+    padding: 8px;
+}
+
+#view-solar-design .solar-designer-rail .solar-group {
+    margin-bottom: 8px;
+}
+
+#view-solar-design #solar-sidebar {
+    display: block !important;
+}
+
+#view-solar-design #solar-canvas-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #1a2b3c;
+    background-image:
+        linear-gradient(rgba(240, 173, 78, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(240, 173, 78, 0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    overflow: hidden;
+    display: none;
+    touch-action: none;
+}
+
+#view-solar-design #solar-canvas-container.active {
+    display: block !important;
+}
+
+#view-solar-design #solar-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    cursor: grab;
+}
+
+#view-solar-design #solar-canvas:active {
+    cursor: grabbing;
+}
+
+#view-solar-design #solar-properties-panel.visible {
+    display: block;
+}
+
+#view-solar-design #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+}
+
+/* Solar simulate view (Phase 5d) */
+#view-solar-simulate .solar-simulator-stage {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 52px);
+}
+
+#view-solar-simulate .solar-simulator-summary {
+    margin: 0;
+    padding: 8px 16px;
+    font-size: 0.8rem;
+    color: var(--text-muted, #8899a6);
+    background: var(--bg-topbar, #15202b);
+    border-bottom: 1px solid var(--border-subtle, #38444d);
+}
+
+#view-solar-simulate .solar-simulator-frame {
+    flex: 1;
+    width: 100%;
+    min-height: 480px;
+    border: 0;
+    background: #0f1419;
+}

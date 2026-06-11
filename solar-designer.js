@@ -7482,6 +7482,9 @@ const SolarDesigner = (function() {
         // BOM button (with null check)
         const btnSolarBom = document.getElementById('btn-solar-bom');
         if (btnSolarBom) btnSolarBom.onclick = showBillOfMaterials;
+
+        const btnSolarSimulate = document.getElementById('btn-solar-simulate');
+        if (btnSolarSimulate) btnSolarSimulate.onclick = exportToSimulator;
         
         // Clear button (with null check)
         const btnSolarClear = document.getElementById('btn-solar-clear');
@@ -7491,7 +7494,13 @@ const SolarDesigner = (function() {
         const linkageBtn = document.getElementById('btn-solar-to-linkage');
         if (linkageBtn) {
             linkageBtn.onclick = () => {
-                // Call the global switchToLinkageMode function from index.html
+                if (globalThis.AppRouter?.navigateTo) {
+                    globalThis.AppRouter.navigateTo('linkage').catch((err) => {
+                        console.error('Navigate to linkage failed:', err);
+                        showToast('Failed to return to linkage mode', 'error');
+                    });
+                    return;
+                }
                 if (typeof switchToLinkageMode === 'function') {
                     switchToLinkageMode();
                 }
@@ -8408,6 +8417,23 @@ const SolarDesigner = (function() {
         
         // Also save automation rules separately for potential sync
         ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.AUTOMATION_RULES, Automations.exportRules());
+
+        if (globalThis.AppRouter?.navigateTo) {
+            const bus = globalThis.AppRouter.getAppStateBus?.();
+            if (bus) {
+                bus.circuitData = exportData;
+            }
+            globalThis.AppRouter.navigateTo('solar-simulate').then(() => {
+                if (globalThis.AppRouter.refreshSolarSimulatorFromCircuit) {
+                    return globalThis.AppRouter.refreshSolarSimulatorFromCircuit(exportData);
+                }
+            }).catch((err) => {
+                console.error('Navigate to solar simulate failed:', err);
+                showToast('Failed to open simulator', 'error');
+            });
+            showToast(`Opened simulator with ${allItems.length} components`, 'info');
+            return;
+        }
         
         // Open Solar Simulator with import flag
         const simulatorUrl = typeof ExportFormat !== 'undefined'

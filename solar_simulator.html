@@ -90,6 +90,13 @@
     </style>
 </head>
 <body class="simulator-page">
+    <script>
+        (function () {
+            if (new URLSearchParams(location.search).get('embedded') === '1') {
+                document.body.classList.add('simulator-embedded');
+            }
+        }());
+    </script>
     <!-- TOOLBAR -->
     <div class="toolbar topbar sim-topbar">
         <div class="sim-topbar-row sim-topbar-row-actions">
