@@ -1,6 +1,8 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { showToast } from '../core/feedback.js';
+import { getConfigSnapshot } from './config-persistence.js';
 
 // HARDWARE ASSEMBLY DETAIL VIEW
 // Parametric, editable hardware stacks rendered as an interactive exploded

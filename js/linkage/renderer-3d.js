@@ -1,6 +1,7 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { clearMeshStructureCache } from './cache.js';
 
 // ============================================================================
 // THREE.JS RENDERER SYSTEM
@@ -75,9 +76,7 @@ function getCachedGeometry(key, factory) {
 function invalidateMeshCaches() {
     geometryCache.forEach(geo => geo.dispose());
     geometryCache.clear();
-    if (typeof globalThis.clearMeshStructureCache === 'function') {
-        globalThis.clearMeshStructureCache();
-    }
+    clearMeshStructureCache();
     // Materials are lightweight and reused; no need to dispose
 }
 

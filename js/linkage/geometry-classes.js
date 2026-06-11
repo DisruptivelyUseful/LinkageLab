@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { degToRad, vAdd, vCross, vDot, vNorm, vScale, vSub } from './math.js';
 
 // ============================================================================
 // GEOMETRY CLASSES

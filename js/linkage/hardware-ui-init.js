@@ -1,6 +1,9 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { state } from './app-state.js';
+import { updateState } from './state-sync.js';
+import { updateAutoBeamPricing } from './solver.js';
 
     function initAutoLumberPricing() {
         const autoCheckbox = document.getElementById('chk-auto-lumber-pricing');

@@ -1,6 +1,9 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { showToast } from '../core/feedback.js';
+import { state } from './app-state.js';
+import { buildLinkageGeometry } from './linkage-geometry.js';
 
     // ============================================================================
     // GLTF EXPORT SYSTEM

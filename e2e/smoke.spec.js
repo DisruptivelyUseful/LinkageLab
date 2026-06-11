@@ -1,26 +1,5 @@
 ﻿import { test, expect } from '@playwright/test';
-
-const REQUIRED_MODULES = [
-    'main',
-    'solver',
-    'renderer3d',
-    'uiBindings',
-    'configPersistence',
-    'validation',
-];
-
-async function waitForAppReady(page) {
-    await expect(page.locator('text=LinkageLab failed to start')).toHaveCount(0);
-
-    await page.waitForFunction((modules) => {
-        const linkageModules = globalThis.LinkageModules;
-        if (!linkageModules) return false;
-        return modules.every((name) => linkageModules[name]);
-    }, REQUIRED_MODULES, { timeout: 60_000 });
-
-    await expect(page.locator('#canvas-webgl')).toBeAttached();
-    await expect(page.locator('#sidebar')).toBeVisible();
-}
+import { BUILD_ID_PATTERN, waitForAppReady } from './helpers/app-ready.js';
 
 test.describe('LinkageLab smoke', () => {
     test('bootstraps modules and renders the workspace', async ({ page }) => {
@@ -38,7 +17,7 @@ test.describe('LinkageLab smoke', () => {
 
         const buildLog = consoleLogs.find((line) => line.includes('LinkageLab build:'));
         expect(buildLog).toBeTruthy();
-        expect(buildLog).toMatch(/phase-4m/);
+        expect(buildLog).toMatch(BUILD_ID_PATTERN);
 
         const threeLog = consoleLogs.find((line) => line.includes('Three.js loaded successfully'));
         expect(threeLog).toBeTruthy();
@@ -60,7 +39,7 @@ test.describe('LinkageLab smoke', () => {
         expect(globals.hasState).toBe(true);
         expect(globals.hasSolver).toBe(true);
         expect(globals.hasUnitConverter).toBe(true);
-        expect(globals.buildId).toMatch(/phase-4m/);
+        expect(globals.buildId).toMatch(BUILD_ID_PATTERN);
     });
 
     test('sidebar toggle and module input respond', async ({ page }) => {

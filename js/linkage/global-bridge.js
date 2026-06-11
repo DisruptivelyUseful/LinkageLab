@@ -1,6 +1,7 @@
 ﻿// ============================================================================
-// Temporary bridge â€” publishes ESM exports to globalThis for classic scripts,
-// HTML onclick handlers, and modules not yet migrated to explicit imports.
+// Bridge — publishes ESM exports to globalThis for HTML onclick handlers and
+// embed integrations. Phase 4: linkage modules use explicit imports; bridge
+// remains for partials and external callers until Phase 5 shell migration.
 // ============================================================================
 
 /**

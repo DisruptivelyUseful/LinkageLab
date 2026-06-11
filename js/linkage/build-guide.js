@@ -1,6 +1,11 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { showToast } from '../core/feedback.js';
+import { state } from './app-state.js';
+import { INCHES_PER_FOOT } from './constants.js';
+import { buildLinkageGeometry } from './linkage-geometry.js';
+import { exportToJSON } from './export-bridge.js';
 
     function computeReciprocalDrillData(data) {
         const result = {

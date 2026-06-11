@@ -1,6 +1,9 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { unitConverter } from '../core/unit-converter.js';
+import { INCHES_PER_FOOT } from './constants.js';
+import { formatNumber } from './math.js';
 
     // MEASUREMENT TOOLS
     // ============================================================================
