@@ -41,3 +41,8 @@ foreach ($chunk in $ordered) {
 }
 Remove-Item $solarPath -Force
 Write-Host "Removed linkage-solar-sidebar.html"
+
+$splitTopbar = Join-Path $PSScriptRoot 'extract-phase-3x.ps1'
+if (Test-Path $splitTopbar) {
+    & $splitTopbar
+}

@@ -9,7 +9,9 @@
     "https://cdn.jsdelivr.net/npm/convert-units@2.3.4/lib/index.js"
   ],
   "partials": [
-    { "path": "partials/linkage-topbar.html", "mount": "#linkage-app-mount" },
+    { "path": "partials/linkage-topbar-left.html", "mount": "#linkage-app-mount" },
+    { "path": "partials/linkage-topbar-center.html", "mount": "#linkage-app-mount" },
+    { "path": "partials/linkage-topbar-right.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-head.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-structure.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-costs.html", "mount": "#linkage-app-mount" },

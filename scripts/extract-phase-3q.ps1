@@ -32,7 +32,7 @@ $tail = @(
     '',
     '<div id="linkage-app-mount"></div>',
     '',
-    '<script src="js/linkage/module-loader.js"></script>',
+    '<script type="module" src="js/linkage/bootstrap.js"></script>',
     '',
     '</body>',
     '</html>',

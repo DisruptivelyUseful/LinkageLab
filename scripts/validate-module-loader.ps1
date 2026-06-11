@@ -20,8 +20,8 @@ if ($manifest.cdn) {
         if (-not (Test-Path $full)) { [void]$missing.Add($c) }
     }
 }
-if (-not (Test-Path (Join-Path $root 'js\linkage\module-loader.js'))) {
-    [void]$missing.Add('js/linkage/module-loader.js')
+if (-not (Test-Path (Join-Path $root 'js\linkage\bootstrap.js'))) {
+    [void]$missing.Add('js/linkage/bootstrap.js')
 }
 
 if ($missing.Count) {
