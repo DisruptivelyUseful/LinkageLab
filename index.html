@@ -14,13 +14,20 @@
     <link rel="stylesheet" href="css/modals.css">
     <link rel="stylesheet" href="css/utilities.css">
     <link rel="stylesheet" href="css/linkage.css">
-    <!-- CDN + app modules: config/linkage-manifest.json via bootstrap.js -->
+    <link rel="stylesheet" href="css/app-shell.css">
+    <!-- Unified app shell: js/app/main.js → app-router + linkage bootstrap -->
 </head>
 <body>
 
-<div id="linkage-app-mount"></div>
+<div id="app-root">
+    <div id="view-linkage" class="app-view active" data-app-mode="linkage">
+        <div id="linkage-app-mount"></div>
+    </div>
+    <div id="view-solar-design" class="app-view" data-app-mode="solar-design" hidden></div>
+    <div id="view-solar-simulate" class="app-view" data-app-mode="solar-simulate" hidden></div>
+</div>
 
-<script type="module" src="js/linkage/bootstrap.js"></script>
+<script type="module" src="js/app/main.js"></script>
 
 </body>
 </html>

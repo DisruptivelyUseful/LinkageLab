@@ -1,0 +1,53 @@
+/* ============================================
+   Unified app shell (Phase 5)
+   ============================================ */
+
+#app-root {
+    min-height: 100vh;
+}
+
+.app-view {
+    display: none;
+    min-height: 100vh;
+}
+
+.app-view.active {
+    display: block;
+}
+
+.app-view[hidden] {
+    display: none !important;
+}
+
+.app-view-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 52px);
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-primary, #e1e8ed);
+    font-family: system-ui, sans-serif;
+}
+
+.app-view-placeholder h1 {
+    margin: 0 0 0.75rem;
+    font-size: 1.5rem;
+}
+
+.app-view-placeholder p {
+    margin: 0.25rem 0;
+    color: var(--text-muted, #8899a6);
+    max-width: 36rem;
+}
+
+.app-view-placeholder a {
+    color: var(--clr-primary, #1da1f2);
+}
+
+.app-boot-error {
+    padding: 2rem;
+    color: #c0392b;
+    font-family: sans-serif;
+}

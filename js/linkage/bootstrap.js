@@ -55,7 +55,14 @@ async function injectPartials(partials) {
     }
 }
 
-async function boot() {
+/**
+ * Boots the linkage designer (CDN, partials, ESM modules).
+ * Called by js/app/main.js via the app router linkage mode loader.
+ *
+ * @param {{ errorMountSelector?: string }} [options]
+ */
+export async function bootLinkageApp(options = {}) {
+    const errorMountSelector = options.errorMountSelector || '#linkage-app-mount';
     const manifest = JSON.parse(await fetchText(MANIFEST_PATH));
     const cdn = manifest.cdn || [];
     const partials = manifest.partials || [];
@@ -81,10 +88,22 @@ async function boot() {
     }
 }
 
-boot().catch((err) => {
-    console.error('LinkageLab bootstrap failed:', err);
-    const mount = document.getElementById('linkage-app-mount') || document.body;
-    mount.insertAdjacentHTML('beforeend',
+function showBootstrapError(selector, message) {
+    const mount = document.querySelector(selector) || document.body;
+    mount.insertAdjacentHTML(
+        'beforeend',
         `<div style="padding:2rem;color:#c0392b;font-family:sans-serif">`
-        + `LinkageLab failed to start: ${err.message}</div>`);
-});
+        + `LinkageLab failed to start: ${message}</div>`,
+    );
+}
+
+/** @deprecated Use js/app/main.js — kept for direct bootstrap imports in dev tools */
+export async function boot() {
+    try {
+        await bootLinkageApp();
+    } catch (err) {
+        console.error('LinkageLab bootstrap failed:', err);
+        showBootstrapError('#linkage-app-mount', err.message);
+        throw err;
+    }
+}

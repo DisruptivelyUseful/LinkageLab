@@ -9,7 +9,7 @@ export const REQUIRED_MODULES = [
     'validation',
 ];
 
-export const BUILD_ID_PATTERN = /phase-4-complete/;
+export const BUILD_ID_PATTERN = /phase-5a/;
 
 /** Wait until LinkageLab bootstrap finishes and the workspace is interactive. */
 export async function waitForAppReady(page) {
@@ -21,6 +21,6 @@ export async function waitForAppReady(page) {
         return modules.every((name) => linkageModules[name]);
     }, REQUIRED_MODULES, { timeout: 60_000 });
 
-    await expect(page.locator('#canvas-webgl')).toBeAttached();
-    await expect(page.locator('#sidebar')).toBeVisible();
+    await expect(page.locator('#view-linkage #canvas-webgl')).toBeAttached();
+    await expect(page.locator('#view-linkage #sidebar')).toBeVisible();
 }
