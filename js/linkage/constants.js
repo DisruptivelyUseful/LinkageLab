@@ -4,7 +4,7 @@
 // ============================================================================
 
 /** Build identifier — visible in console at startup */
-const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3s';
+const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3u';
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
 const INCHES_PER_FOOT = 12;

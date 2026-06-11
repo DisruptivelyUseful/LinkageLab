@@ -1,0 +1,194 @@
+        <!-- Support Beams - Independent section -->
+        <div class="ctrl-group collapsed">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Support Beams</div>
+            <div class="group-content">
+                <label class="chk-label">
+                    <input type="checkbox" id="chk-support-beams" checked> Enable Support Beams
+                </label>
+                <div id="support-beam-controls" style="display:block; margin-top:12px;">
+                    <label class="chk-label">
+                        <input type="checkbox" id="chk-support-radial" checked> Show Radial Support Beams
+                    </label>
+                    <div id="support-radial-controls" style="display:block; margin-top:10px;">
+                    <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Beam Dimensions</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Length</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-length" min="24" max="240" step="1" value="120">
+                            <input type="number" id="nb-support-length" min="12" max="360" step="1" value="120">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Width</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-width" min="0.75" max="5.5" step="0.25" value="1.5">
+                            <input type="number" id="nb-support-width" min="0.5" max="12" step="0.25" value="1.5">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Thickness</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-thickness" min="0.75" max="5.5" step="0.25" value="3.5">
+                            <input type="number" id="nb-support-thickness" min="0.5" max="12" step="0.25" value="3.5">
+                        </div>
+                    </div>
+                    <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px;">Position &amp; Orientation</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-rotation" min="-180" max="180" step="1" value="0">
+                            <input type="number" id="nb-support-rotation" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Radial Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-offset-h" min="-240" max="240" step="0.5" value="-46.5">
+                            <input type="number" id="nb-support-offset-h" min="-240" max="240" step="0.5" value="-46.5">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-support-offset-v" min="-240" max="240" step="0.5" value="-6.8">
+                            <input type="number" id="nb-support-offset-v" min="-240" max="240" step="0.5" value="-6.8">
+                        </div>
+                    </div>
+                    </div>
+                    <div style="border-top:1px solid #38444d; margin:12px 0 8px;"></div>
+                    <label class="chk-label">
+                        <input type="checkbox" id="chk-support-parallel" checked> Show Reciprocal Beams
+                    </label>
+                    <div id="support-parallel-controls" style="display:block; margin-top:10px;">
+                        <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">Reciprocal Beam Dimensions</div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Length</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-length" min="24" max="240" step="1" value="96">
+                                <input type="number" id="nb-rcp-length" min="12" max="360" step="1" value="96">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Width</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-width" min="0.75" max="5.5" step="0.25" value="2.5">
+                                <input type="number" id="nb-rcp-width" min="0.5" max="12" step="0.25" value="2.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-thickness" min="0.75" max="5.5" step="0.25" value="1.5">
+                                <input type="number" id="nb-rcp-thickness" min="0.5" max="12" step="0.25" value="1.5">
+                            </div>
+                        </div>
+                        <div style="font-size:0.7rem; color:#8899a6; text-transform:uppercase; letter-spacing:0.5px; margin:10px 0 6px;">Position &amp; Angle</div>
+                        <div class="ctrl-row" style="margin-bottom:2px;">
+                            <label class="chk-label" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                                <input type="checkbox" id="chk-rcp-kinematic" checked>
+                                <span>Solve folding kinematics</span>
+                            </label>
+                        </div>
+                        <div class="ctrl-row" id="rcp-pivot-row">
+                            <div class="ctrl-head"><span>Folding Pivot</span><span style="font-size:0.75rem; color:#8899a6;">bolt hole</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-rcp-pivot-hole" style="width:100%; padding:4px 6px; background:#1b2733; color:#dfe7ee; border:1px solid #33424f; border-radius:4px; font-size:0.8rem;">
+                                    <option value="1">Hole 1 (nearest anchor)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            Crossing bolt holes are baked from the fully deployed layout. Pick which one is the bolted pivot that drives folding. Beams turn red when the fold stresses that pivot and disappear when the linkage becomes physically impossible.
+                        </div>
+                        <div id="rcp-diagnostics-panel" style="display:none; font-size:0.68rem; color:#a8b8c6; margin:4px 0 8px; padding:6px 8px; background:rgba(0,0,0,0.25); border-radius:4px; line-height:1.4;">
+                            <div style="font-size:0.65rem; text-transform:uppercase; letter-spacing:0.4px; color:#8899a6; margin-bottom:4px;">Kinematics</div>
+                            <div id="rcp-diag-status">—</div>
+                            <div id="rcp-diag-active">Active pivot error: —</div>
+                            <div id="rcp-diag-inactive">Inactive hole gaps: —</div>
+                            <div id="rcp-diag-final">Final bolt-up: —</div>
+                            <div id="rcp-diag-worst">Worst gap: —</div>
+                        </div>
+                        <div class="ctrl-row" id="rcp-swing-row">
+                            <div class="ctrl-head"><span>Swing Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-swing" min="-180" max="180" step="0.5" value="0">
+                                <input type="number" id="nb-rcp-swing" min="-180" max="180" step="0.5" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>V Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-voffset" min="-120" max="120" step="0.5" value="4.5">
+                                <input type="number" id="nb-rcp-voffset" min="-120" max="120" step="0.5" value="4.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Anchor Distance</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-anchor-dist" min="0" max="120" step="0.5" value="20">
+                                <input type="number" id="nb-rcp-anchor-dist" min="0" max="240" step="0.5" value="20">
+                            </div>
+                        </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            Distance of each anchor from the H-center pivot, measured along the top scissor beam toward its inner end.
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>A/B Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-support-ab-offset" min="-24" max="24" step="0.25" value="-1.66">
+                                <input type="number" id="nb-support-ab-offset" min="-24" max="24" step="0.25" value="-1.66">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>End Offset</span><span class="sb-unit-len" style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-rcp-end-offset" min="-12" max="24" step="0.25" value="0">
+                                <input type="number" id="nb-rcp-end-offset" min="-12" max="24" step="0.25" value="0">
+                            </div>
+                        </div>
+                        <div style="font-size:0.68rem; color:#8899a6; margin:-2px 0 6px; line-height:1.3;">
+                            How far the beam extends past the anchor bolt hole at its tail end. Positive values add overhang; negative values trim the beam short of the hole.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:6px;">
+            <button id="btn-undo">↶ Undo</button>
+            <button id="btn-redo">↷ Redo</button>
+        </div>
+        <div class="btn-group">
+            <button id="btn-fit">⌖ Center</button>
+            <button id="btn-reset" style="border-color:#ff6b6b; color:#ff6b6b;">↺ Reset</button>
+        </div>
+        <label class="chk-label" style="margin-top:6px;">
+            <input type="checkbox" id="chk-high-contrast"> High Contrast
+        </label>
+        
+        <!-- Actuator Analysis Group -->
+        <div class="group" style="margin-top: 12px;">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Actuator Analysis</div>
+            <div class="group-content">
+                <div id="actuator-recommendations-content" style="font-size: 0.8rem; max-height: 300px; overflow-y: auto; margin-bottom: 8px;">
+                    <div style="color: var(--text-muted); padding: 8px; text-align: center;">
+                        Click "Analyze" to calculate optimal actuator placement
+                    </div>
+                </div>
+                <button id="btn-analyze-actuators" style="width: 100%; margin-top: 8px; padding: 6px; background: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem;">
+                    Analyze Actuators
+                </button>
+                <div style="margin-top: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 6px;">
+                    <button id="btn-actuator-open" style="padding: 6px; background: rgba(46,204,113,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                        Open
+                    </button>
+                    <button id="btn-actuator-close" style="padding: 6px; background: rgba(231,76,60,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
+                        Close
+                    </button>
+                </div>
+                <button id="btn-actuator-stop" style="width: 100%; margin-top: 6px; padding: 4px; background: rgba(149,165,166,0.8); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem; display: none;">
+                    Stop Animation
+                </button>
+            </div>
+        </div>
+    </div>

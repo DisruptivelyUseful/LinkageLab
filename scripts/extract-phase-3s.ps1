@@ -27,3 +27,8 @@ Remove-Item $sidebarPath -Force
 
 Write-Host "Wrote controls: $($controls.Count), solar-sidebar: $($solar.Count) lines"
 Write-Host "Removed linkage-sidebar.html"
+
+$splitControls = Join-Path $PSScriptRoot 'extract-phase-3t.ps1'
+if (Test-Path $splitControls) {
+    & $splitControls
+}

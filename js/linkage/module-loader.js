@@ -1,6 +1,6 @@
 // ============================================================================
-// LINKAGE LAB - Shell partials + synchronous module loader (Phase 3s)
-// Reads config/linkage-manifest.json, injects partials, loads scripts in order.
+// LINKAGE LAB - Shell partials + synchronous module loader (Phase 3u)
+// Reads config/linkage-manifest.json, loads CDN + partials + scripts in order.
 // Requires HTTP server (localhost) — sync XHR does not work on file://
 // ============================================================================
 (function () {
@@ -22,30 +22,46 @@
         return xhr.responseText;
     }
 
-    const manifest = JSON.parse(fetchTextSync(MANIFEST_PATH));
-    const partials = manifest.partials || [];
-    const scripts = manifest.scripts || [];
-
-    function injectPartials() {
-        for (const spec of partials) {
-            const html = fetchTextSync(spec.path);
-            if (spec.mount === 'body') {
-                document.body.insertAdjacentHTML(spec.method || 'beforeend', html);
-                continue;
-            }
-            const mount = document.querySelector(spec.mount);
-            if (!mount) {
-                throw new Error('Partial mount not found: ' + spec.mount + ' for ' + spec.path);
-            }
-            mount.insertAdjacentHTML('beforeend', html);
-        }
-    }
-
     function loadScriptSync(src) {
         const el = document.createElement('script');
         el.textContent = fetchTextSync(src);
         el.setAttribute('data-src', src);
         document.head.appendChild(el);
+    }
+
+    const manifest = JSON.parse(fetchTextSync(MANIFEST_PATH));
+    const cdn = manifest.cdn || [];
+    const partials = manifest.partials || [];
+    const scripts = manifest.scripts || [];
+
+    function injectPartials() {
+        // Concatenate consecutive partials that share a mount before inserting.
+        // insertAdjacentHTML auto-closes open tags at fragment boundaries, which
+        // breaks split controls sections (e.g. head ends with <div class="group">).
+        let i = 0;
+        while (i < partials.length) {
+            const spec = partials[i];
+            if (spec.mount === 'body') {
+                document.body.insertAdjacentHTML(spec.method || 'beforeend', fetchTextSync(spec.path));
+                i++;
+                continue;
+            }
+            const mountSelector = spec.mount;
+            const chunks = [];
+            while (i < partials.length && partials[i].mount === mountSelector) {
+                chunks.push(fetchTextSync(partials[i].path));
+                i++;
+            }
+            const mount = document.querySelector(mountSelector);
+            if (!mount) {
+                throw new Error('Partial mount not found: ' + mountSelector);
+            }
+            mount.insertAdjacentHTML('beforeend', chunks.join(''));
+        }
+    }
+
+    for (const src of cdn) {
+        loadScriptSync(src);
     }
 
     injectPartials();

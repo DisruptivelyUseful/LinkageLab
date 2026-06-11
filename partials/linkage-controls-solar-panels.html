@@ -1,0 +1,456 @@
+        <div class="group" id="solar-panel-group">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Solar Panels</div>
+            <div class="group-content">
+                <label class="chk-label">
+                    <input type="checkbox" id="chk-solar-panels"> Enable Solar Panels
+                </label>
+                
+                <div id="solar-panel-controls" style="margin-top:12px;">
+                    <!-- Panel Location Options (Cylinder mode only) -->
+                    <div id="cylinder-panel-options" style="display:none; margin-bottom:12px; padding:10px; background:var(--bg-elevated); border-radius:6px;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); margin-bottom:8px;">Panel Locations</div>
+                        <div style="display:flex; gap:16px;">
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-top-panels" checked> Top Surface
+                            </label>
+                            <label class="chk-label" style="margin:0;">
+                                <input type="checkbox" id="chk-side-wall-panels"> Side Walls
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- ========== TOP PANELS ACCORDION ========== -->
+                    <div class="panel-accordion" id="top-panels-accordion">
+                        <div class="panel-accordion-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            Top Panels
+                        </div>
+                        <div class="panel-accordion-body">
+                            <!-- Panel preset catalog -->
+                            <div class="sp-preset-row hw-preset-row" id="sp-preset-row-top">
+                                <span class="hw-preset-label">Panel</span>
+                                <select id="sel-panel-preset-top" class="hw-preset-select" title="Select a solar panel from the catalog"></select>
+                                <button type="button" id="btn-save-panel-preset-top" class="hw-mini-btn hw-preset-save" title="Save current specs as a reusable preset">Save</button>
+                                <a id="link-panel-preset-top" class="hw-preset-link" style="display:none" target="_blank" rel="noopener noreferrer">Link</a>
+                            </div>
+                            <div class="ctrl-row sp-form-factor-row">
+                                <div class="ctrl-head"><span>Type</span></div>
+                                <select id="sel-panel-form-top" class="hw-preset-select" title="Panel form factor">
+                                    <option value="framed">Framed (rigid aluminum)</option>
+                                    <option value="flexible">Flexible (thin film)</option>
+                                    <option value="folding">Folding (multi-segment)</option>
+                                </select>
+                            </div>
+                            <div id="sp-folding-controls-top" class="sp-folding-controls" style="display:none;">
+                                <div class="section-label">Folding</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Deploy</span><span style="font-size:0.75rem; color:#8899a6;">%</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-fold-deploy-top" min="0" max="100" step="1" value="100">
+                                        <input type="number" id="nb-fold-deploy-top" min="0" max="100" step="1" value="100">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Folds</span></div>
+                                    <select id="sel-fold-count-top" class="hw-preset-select" style="max-width:120px;">
+                                        <option value="2">2-fold</option>
+                                        <option value="4" selected>4-fold</option>
+                                    </select>
+                                </div>
+                                <div class="section-label">Folded Size (stowed)</div>
+                                <div class="mini-input-grid">
+                                    <div class="mini-input"><span>L</span><input type="number" id="nb-folded-length-top" step="0.01" value="25.25"><span>in</span></div>
+                                    <div class="mini-input"><span>W</span><input type="number" id="nb-folded-width-top" step="0.01" value="21.25"><span>in</span></div>
+                                    <div class="mini-input"><span>H</span><input type="number" id="nb-folded-thick-top" step="0.01" value="2.5"><span>in</span></div>
+                                </div>
+                            </div>
+                            <!-- Dimensions -->
+                            <div class="section-label" id="sp-dim-label-top">Dimensions</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-length-top" min="12" max="120" step="0.1" value="65">
+                                    <input type="number" id="nb-panel-length-top" min="12" max="120" step="0.1" value="65">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-width-top" min="12" max="80" step="0.1" value="39">
+                                    <input type="number" id="nb-panel-width-top" min="12" max="80" step="0.1" value="39">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-thick-top" min="0.5" max="4" step="0.1" value="1.5">
+                                    <input type="number" id="nb-panel-thick-top" min="0.5" max="4" step="0.1" value="1.5">
+                                </div>
+                            </div>
+                            
+                            <!-- Electrical -->
+                            <div class="section-label">Electrical</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Power</span><span style="font-size:0.75rem; color:#8899a6;">W</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-watts-top" min="100" max="800" step="10" value="400">
+                                    <input type="number" id="nb-panel-watts-top" min="50" max="1000" step="10" value="400">
+                                </div>
+                            </div>
+                            <div class="mini-input-grid">
+                                <div class="mini-input"><span>VOC</span><input type="number" id="nb-panel-voc-top" min="0" max="100" step="0.1" value="49.5"><span>V</span></div>
+                                <div class="mini-input"><span>VMP</span><input type="number" id="nb-panel-vmp-top" min="0" max="100" step="0.1" value="41.5"><span>V</span></div>
+                                <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-top" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
+                                <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-top" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Weight</span><span style="font-size:0.75rem; color:#8899a6;">lbs</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-weight-top" min="5" max="150" step="1" value="45">
+                                    <input type="number" id="nb-panel-weight-top" min="1" max="500" step="0.1" value="45">
+                                </div>
+                            </div>
+                            <div class="section-label">Layout</div>
+                            <div class="ctrl-row" style="position:relative; z-index:1000; isolation:isolate;">
+                                <select id="sel-panel-layout" style="flex:1; padding:6px 10px; background:var(--bg-input); color:var(--text); border:1px solid var(--border); border-radius:4px; cursor:pointer; -webkit-appearance:menulist; appearance:menulist;">
+                                    <option value="rectangular">Rectangular Grid</option>
+                                    <option value="radial">Radial / Pinwheel</option>
+                                    <option value="spiral">Spiral</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Rectangular Mode Controls -->
+                            <div id="rect-mode-controls">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-grid-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-grid-rotation" min="-180" max="180" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Radial/Pinwheel Mode Controls -->
+                            <div id="radial-mode-controls" style="display:none;">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Count</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-count" min="3" max="24" step="1" value="8">
+                                        <input type="number" id="nb-radial-count" min="3" max="24" step="1" value="8">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-offset" min="0" max="200" step="1" value="0">
+                                        <input type="number" id="nb-radial-offset" min="0" max="200" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-radial-rotation" min="-180" max="180" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-radial-lateral" min="-100" max="100" step="1" value="0">
+                                        <input type="number" id="nb-radial-lateral" min="-100" max="100" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-pinwheel-angle" min="-45" max="45" step="1" value="0">
+                                        <input type="number" id="nb-pinwheel-angle" min="-45" max="45" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Spiral Mode Controls (Multi-Panel Arms) -->
+                            <div id="spiral-mode-controls" style="display:none;">
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Panels / Arm</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-count" min="2" max="8" step="1" value="2">
+                                        <input type="number" id="nb-spiral-arm-count" min="2" max="8" step="1" value="2">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row" style="justify-content:space-between; align-items:center;">
+                                    <label class="chk-label" style="margin:0;">
+                                        <input type="checkbox" id="chk-spiral-secondary" checked> Enable extra panels
+                                    </label>
+                                </div>
+                                <div class="section-label">Secondary Panel Offsets</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Radial Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-radial" min="-200" max="200" step="0.5" value="24">
+                                        <input type="number" id="nb-spiral-secondary-radial" step="0.5" value="24">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-lateral" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-secondary-lateral" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="section-label">Secondary Panel Angles</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel Δ</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-pinwheel" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-secondary-pinwheel" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation Δ</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-secondary-rotation" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-secondary-rotation" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="section-label">Extra Panels (3+)</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Radial Step</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-radial-step" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-arm-radial-step" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Lateral Step</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-lateral-step" min="-200" max="200" step="0.5" value="0">
+                                        <input type="number" id="nb-spiral-arm-lateral-step" step="0.5" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Pinwheel Step</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-pinwheel-step" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-arm-pinwheel-step" step="1" value="0">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Rotation Step</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-spiral-arm-rotation-step" min="-180" max="180" step="1" value="0">
+                                        <input type="number" id="nb-spiral-arm-rotation-step" step="1" value="0">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Grid & Spacing -->
+                            <div class="section-label">Grid</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Rows</span>
+                                    <input type="number" id="nb-top-panel-rows" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Columns</span>
+                                    <input type="number" id="nb-top-panel-cols" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <div class="section-label">Spacing</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">X Pad (in)</span>
+                                    <input type="number" id="nb-padding-x-top" step="0.5" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Y Pad (in)</span>
+                                    <input type="number" id="nb-padding-y-top" step="0.5" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Lift -->
+                            <div class="section-label">Position</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-lift" min="0" max="48" step="0.5" value="0">
+                                    <input type="number" id="nb-panel-lift" min="0" max="96" step="0.5" value="0">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ========== SIDE/ARCH PANELS ACCORDION ========== -->
+                    <div class="panel-accordion" id="side-panels-accordion">
+                        <div class="panel-accordion-header" onclick="this.parentElement.classList.toggle('collapsed')">
+                            Side / Arch Panels
+                        </div>
+                        <div class="panel-accordion-body">
+                            <!-- Panel preset catalog -->
+                            <div class="sp-preset-row hw-preset-row" id="sp-preset-row-side">
+                                <span class="hw-preset-label">Panel</span>
+                                <select id="sel-panel-preset-side" class="hw-preset-select" title="Select a solar panel from the catalog"></select>
+                                <button type="button" id="btn-save-panel-preset-side" class="hw-mini-btn hw-preset-save" title="Save current specs as a reusable preset">Save</button>
+                                <a id="link-panel-preset-side" class="hw-preset-link" style="display:none" target="_blank" rel="noopener noreferrer">Link</a>
+                            </div>
+                            <div class="ctrl-row sp-form-factor-row">
+                                <div class="ctrl-head"><span>Type</span></div>
+                                <select id="sel-panel-form-side" class="hw-preset-select" title="Panel form factor">
+                                    <option value="framed">Framed (rigid aluminum)</option>
+                                    <option value="flexible">Flexible (thin film)</option>
+                                    <option value="folding">Folding (multi-segment)</option>
+                                </select>
+                            </div>
+                            <div id="sp-folding-controls-side" class="sp-folding-controls" style="display:none;">
+                                <div class="section-label">Folding</div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Deploy</span><span style="font-size:0.75rem; color:#8899a6;">%</span></div>
+                                    <div class="input-wrap">
+                                        <input type="range" id="sl-fold-deploy-side" min="0" max="100" step="1" value="100">
+                                        <input type="number" id="nb-fold-deploy-side" min="0" max="100" step="1" value="100">
+                                    </div>
+                                </div>
+                                <div class="ctrl-row">
+                                    <div class="ctrl-head"><span>Folds</span></div>
+                                    <select id="sel-fold-count-side" class="hw-preset-select" style="max-width:120px;">
+                                        <option value="2">2-fold</option>
+                                        <option value="4" selected>4-fold</option>
+                                    </select>
+                                </div>
+                                <div class="section-label">Folded Size (stowed)</div>
+                                <div class="mini-input-grid">
+                                    <div class="mini-input"><span>L</span><input type="number" id="nb-folded-length-side" step="0.01" value="25.25"><span>in</span></div>
+                                    <div class="mini-input"><span>W</span><input type="number" id="nb-folded-width-side" step="0.01" value="21.25"><span>in</span></div>
+                                    <div class="mini-input"><span>H</span><input type="number" id="nb-folded-thick-side" step="0.01" value="2.5"><span>in</span></div>
+                                </div>
+                            </div>
+                            <!-- Dimensions -->
+                            <div class="section-label" id="sp-dim-label-side">Dimensions</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-length-side" min="12" max="120" step="0.1" value="65">
+                                    <input type="number" id="nb-panel-length-side" min="12" max="120" step="0.1" value="65">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-width-side" min="12" max="80" step="0.1" value="39">
+                                    <input type="number" id="nb-panel-width-side" min="12" max="80" step="0.1" value="39">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-thick-side" min="0.5" max="4" step="0.1" value="1.5">
+                                    <input type="number" id="nb-panel-thick-side" min="0.5" max="4" step="0.1" value="1.5">
+                                </div>
+                            </div>
+                            
+                            <!-- Electrical -->
+                            <div class="section-label">Electrical</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Power</span><span style="font-size:0.75rem; color:#8899a6;">W</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-watts-side" min="100" max="800" step="10" value="400">
+                                    <input type="number" id="nb-panel-watts-side" min="50" max="1000" step="10" value="400">
+                                </div>
+                            </div>
+                            <div class="mini-input-grid">
+                                <div class="mini-input"><span>VOC</span><input type="number" id="nb-panel-voc-side" min="0" max="100" step="0.1" value="49.5"><span>V</span></div>
+                                <div class="mini-input"><span>VMP</span><input type="number" id="nb-panel-vmp-side" min="0" max="100" step="0.1" value="41.5"><span>V</span></div>
+                                <div class="mini-input"><span>ISC</span><input type="number" id="nb-panel-isc-side" min="0" max="30" step="0.01" value="10.2"><span>A</span></div>
+                                <div class="mini-input"><span>IMP</span><input type="number" id="nb-panel-imp-side" min="0" max="30" step="0.01" value="9.65"><span>A</span></div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Weight</span><span style="font-size:0.75rem; color:#8899a6;">lbs</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-panel-weight-side" min="5" max="150" step="1" value="45">
+                                    <input type="number" id="nb-panel-weight-side" min="1" max="500" step="0.1" value="45">
+                                </div>
+                            </div>
+                            
+                            <!-- Grid -->
+                            <div class="section-label">Grid</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Rows</span>
+                                    <input type="number" id="nb-grid-rows" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Columns</span>
+                                    <input type="number" id="nb-grid-cols" min="1" max="10" step="1" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Spacing -->
+                            <div class="section-label">Spacing</div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">X Pad (in)</span>
+                                    <input type="number" id="nb-padding-x-side" step="0.5" value="2" style="width:100%;">
+                                </div>
+                                <div class="ctrl-row" style="flex-direction:column; align-items:stretch;">
+                                    <span style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Y Pad (in)</span>
+                                    <input type="number" id="nb-padding-y-side" step="0.5" value="2" style="width:100%;">
+                                </div>
+                            </div>
+                            
+                            <!-- Position Controls -->
+                            <div class="section-label">Position</div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Lift</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-offset" min="0" max="12" step="0.25" value="2">
+                                    <input type="number" id="nb-arch-panel-offset" min="0" max="24" step="0.25" value="2">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>Slide</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-offset-y" min="-48" max="48" step="0.5" value="0.5">
+                                    <input type="number" id="nb-arch-panel-offset-y" min="-96" max="96" step="0.5" value="0.5">
+                                </div>
+                            </div>
+                            <div class="ctrl-row">
+                                <div class="ctrl-head"><span>A/B Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                                <div class="input-wrap">
+                                    <input type="range" id="sl-arch-panel-sep" min="-48" max="48" step="0.1" value="0">
+                                    <input type="number" id="nb-arch-panel-sep" min="-96" max="96" step="0.1" value="0">
+                                </div>
+                            </div>
+                            
+                            <!-- Roof Sections (Arch mode only) -->
+                            <div id="arch-wall-controls">
+                                <div class="section-label" style="display:flex; justify-content:space-between; align-items:center;">
+                                    <span>Roof Sections</span>
+                                    <div style="display:flex; gap:3px;">
+                                        <button id="btn-wall-all" class="face-quick-btn" title="Select All">✓</button>
+                                        <button id="btn-wall-none" class="face-quick-btn" title="Select None">✗</button>
+                                        <button id="btn-wall-outer" class="face-quick-btn" title="Odd faces (A)">A</button>
+                                        <button id="btn-wall-inner" class="face-quick-btn" title="Even faces (B)">B</button>
+                                    </div>
+                                </div>
+                                <div id="wall-face-buttons" class="face-toggle-grid">
+                                    <!-- Wall face toggle buttons will be dynamically generated -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Statistics Display (always visible) -->
+                    <div id="solar-stats" style="margin-top:12px; padding:10px; background:rgba(0,210,211,0.1); border-radius:4px; font-size:0.85rem;">
+                        <div style="font-size:0.7rem; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:6px;">Statistics</div>
+                        <div style="display:grid; grid-template-columns: auto 1fr; gap: 4px 12px;">
+                            <span style="color:#8899a6;">Panels:</span><span id="stat-panel-count">0</span>
+                            <span style="color:#8899a6;">Panel Area:</span><span id="stat-panel-area">0 sq ft</span>
+                            <span style="color:#8899a6;">Array Weight:</span><span id="stat-panel-weight">0 lbs</span>
+                            <span style="color:#8899a6;">Canopy Area:</span><span id="stat-canopy-area">0 sq ft</span>
+                            <span style="color:#8899a6;">Coverage:</span><span id="stat-coverage">0%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+

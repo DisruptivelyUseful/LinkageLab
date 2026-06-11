@@ -1,0 +1,426 @@
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Structure Rotation</div>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-structure-rotation" min="-180" max="180" step="0.25" value="0">
+                        <input type="number" id="nb-structure-rotation" min="-180" max="180" step="0.25" value="0">
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
+                    Rotate entire structure around vertical axis
+                </div>
+            </div>  
+        </div>
+        
+        <div id="arch-orientation-group" class="group" style="display:none;">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Arch Orientation</div>
+            <div class="group-content">
+                <div class="ctrl-row" style="padding: 6px 0;">
+                    <label class="chk-label"><input type="checkbox" id="chk-arch-flip"> Flip Upside Down</label>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-arch-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-arch-rotation" min="-180" max="180" step="1" value="0">
+                    </div>
+                </div>
+                <div class="ctrl-row" style="padding: 6px 0;">
+                    <button id="btn-arch-reset" style="flex:1; padding:6px; font-size:0.8rem;">Reset Orientation</button>
+                </div>
+                <div class="ctrl-row" style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div class="ctrl-head"><span>Array Count</span><span style="font-size:0.75rem; color:#8899a6;">modules</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-array-count" min="1" max="10" step="1" value="1">
+                        <input type="number" id="nb-array-count" min="1" max="10" step="1" value="1">
+                    </div>
+                </div>
+                <div style="font-size:0.75rem; color:#8899a6; margin-top:4px; padding:0 4px;">
+                    Create multiple copies in a linear array (tunnel/tube mode)
+                </div>
+            </div>
+        </div>
+
+        <div id="col-status" style="display:none; color:#ff6b6b; border:1px solid #ff6b6b; padding:10px; margin-bottom:10px; border-radius:4px; background:rgba(255,107,107,0.1);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+                <span style="font-weight:bold;">⚠ COLLISION DETECTED</span>
+                <span id="col-count" style="font-size:0.85rem; opacity:0.8;">0 overlaps</span>
+            </div>
+            <button id="btn-auto-resolve" style="width:100%; padding:6px; font-size:0.8rem; margin:0; border-color:#ff6b6b; color:#ff6b6b;">
+                Auto-Resolve (Find Safe Angle)
+            </button>
+        </div>
+
+
+        <div class="group">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Lumber Dimensions</div>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horizontal Beam Length</span><span style="font-size:0.75rem; color:#8899a6;">ft</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-len" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-len" min="2" max="24" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Vertical Beam Length</span><span style="font-size:0.75rem; color:#8899a6;">ft</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vlen" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-vlen" min="2" max="24" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horiz Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-hbeam-w" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Width">
+                        <span style="color:#666">x</span>
+                        <input type="number" id="nb-hbeam-t" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Thick">
+                    </div>
+                </div>
+                <div class="ctrl-row" id="vbeam-linked-row">
+                    <div class="ctrl-head">
+                        <span style="display:flex; align-items:center; gap:4px;">
+                            Vert Beam (W x T)
+                            <button type="button" id="btn-vbeam-dim-link" class="dim-link-btn linked" title="Beam dimensions linked — click to set inner/outer sizes independently" aria-label="Toggle inner/outer beam dimension link" style="display:none;">
+                                <svg class="dim-link-icon dim-link-icon--linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                </svg>
+                                <svg class="dim-link-icon dim-link-icon--unlinked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l1.37-1.37"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-1.37 1.37"/>
+                                    <path d="M8 8l8 8"/>
+                                </svg>
+                            </button>
+                        </span>
+                        <span style="font-size:0.75rem; color:#8899a6;">in</span>
+                    </div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-vbeam-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Width">
+                        <span style="color:#666">x</span>
+                        <input type="number" id="nb-vbeam-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Thick">
+                    </div>
+                </div>
+                <div id="vbeam-split-section" style="display:none;">
+                    <div style="font-size:0.65rem; color:#8899a6; margin:4px 0 2px; border-left:2px solid var(--accent); padding-left:6px;">
+                        V-Stack inner/outer beam sizes (unlinked)
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Inner Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbeam-inner-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Inner beam width">
+                            <span style="color:#666">x</span>
+                            <input type="number" id="nb-vbeam-inner-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Inner beam thickness">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Outer Beam (W x T)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbeam-outer-w" value="1.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Outer beam width">
+                            <span style="color:#666">x</span>
+                            <input type="number" id="nb-vbeam-outer-t" value="3.50" step="0.01" min="0.5" max="12" style="width:90px;" title="Outer beam thickness">
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Pivot Extensions</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Beam Top Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-off-top" min="0" max="48" step="0.01">
+                            <input type="number" id="nb-off-top" min="0" max="48" step="0.01">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Beam Bot Ext</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-off-bot" min="0" max="48" step="0.01">
+                            <input type="number" id="nb-off-bot" min="0" max="48" step="0.01">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Beam End Offset</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-vert-end" min="0.5" max="12" step="0.01" value="1.5">
+                            <input type="number" id="nb-vert-end" min="0.5" max="24" step="0.01" value="1.5">
+                        </div>
+                    </div>
+                    <div style="font-size:0.65rem; color:#8899a6; margin-top:4px;">
+                        V-Beam End Offset: Distance from beam ends to bolt hole centers
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Stack Configuration</div>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horizontal Stack Count</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-hstack" min="2" max="6" step="1" value="2">
+                        <input type="number" id="nb-hstack" min="2" max="6" value="2">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Vertical Stack Count</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vstack" min="2" max="6" step="1" value="3">
+                        <input type="number" id="nb-vstack" min="2" max="6" value="3">
+                    </div>
+                </div>
+                <div class="ctrl-row" style="padding: 4px 0;">
+                    <label class="chk-label" style="margin-left: 5px;">
+                        <input type="checkbox" id="chk-vstack-reverse"> Reverse Vertical Stack Order
+                    </label>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horizontal Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-hgap" min="-2" max="1" step="0.05">
+                        <input type="number" id="nb-hgap" value="0.0" step="0.05">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Vertical Stack Gap</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vgap" min="-2" max="1" step="0.05">
+                        <input type="number" id="nb-vgap" value="0.0" step="0.05">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Module Count</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-mod" min="3" max="40" step="1" value="8">
+                        <input type="number" id="nb-mod" min="3" max="40" value="8">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group collapsed">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Hardware Settings</div>
+            <div class="group-content">
+                <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bracket Dimensions</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-width" min="0.5" max="6" step="0.01" value="2.0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Depth</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-depth" min="0.5" max="6" step="0.01" value="3.0" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Height</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-height" min="0.5" max="12" step="0.1" value="3.0" style="width:72px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px; margin-bottom:4px;">Bracket sits flat on pivot; height = leg length</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Wall Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-wall" min="0.05" max="1" step="0.01" value="0.25" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Inner Width</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-inner" min="0.25" max="5" step="0.01" value="1.5" style="width:72px;">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hole Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <select id="sel-bracket-hole-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                            <option value="0.25">1/4"</option>
+                            <option value="0.3125">5/16"</option>
+                            <option value="0.375" selected>3/8"</option>
+                            <option value="0.5">1/2"</option>
+                            <option value="0.625">5/8"</option>
+                            <option value="0.75">3/4"</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hole Position</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-bracket-hole-distance" min="0.5" max="12" step="0.05" value="1.50" style="width:72px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Distance from bracket base (closed end) to hole center. Affects pivot height &amp; structure size.</div>
+                <div class="ctrl-row" style="margin-top:8px;">
+                    <div class="ctrl-head"><span>Y-Axis Rotation</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-bracket-z-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-bracket-z-rotation" min="-180" max="180" step="1" value="0" style="width:72px;">
+                    </div>
+                </div>
+                <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Rotates bracket around vertical axis</div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Bolt Configuration</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Bolt Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-bolt-diameter" style="flex:1; padding:4px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                                <option value="0.25">1/4"</option>
+                                <option value="0.3125">5/16"</option>
+                                <option value="0.375" selected>3/8"</option>
+                                <option value="0.5">1/2"</option>
+                                <option value="0.625">5/8"</option>
+                                <option value="0.75">3/4"</option>
+                            </select>
+                        </div>
+                    </div>
+                    <!-- Single V-Stack bolt length (shown when stack is even or <=2) -->
+                    <div id="vbolt-single-row" class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Stack Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbolt-length" min="1" max="12" step="0.25" value="3" style="width:72px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-vbolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <!-- Split V-Stack bolt lengths (shown when stack > 2 and odd) -->
+                    <div id="vbolt-split-section" style="display:none;">
+                        <div style="font-size:0.65rem; color:#8899a6; margin:4px 0 2px; border-left:2px solid var(--accent); padding-left:6px;">
+                            V-Stack has inner/outer bolt sizes (odd stack > 2)
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Inner Bolt (Long)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-vbolt-inner-length" min="1" max="12" step="0.25" value="3" style="width:72px;">
+                                <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                    <input type="checkbox" id="chk-vbolt-inner-auto" checked> Auto
+                                </label>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Outer Bolt (Short)</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-vbolt-outer-length" min="1" max="12" step="0.25" value="2" style="width:72px;">
+                                <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                    <input type="checkbox" id="chk-vbolt-outer-auto" checked> Auto
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Center Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-hbolt-length" min="1" max="12" step="0.25" value="3" style="width:72px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-hbolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>H-Pivot Bolt Length</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-hpivot-bolt-length" min="1" max="12" step="0.25" value="4" style="width:72px;">
+                            <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                <input type="checkbox" id="chk-hpivot-bolt-auto" checked> Auto
+                            </label>
+                        </div>
+                    </div>
+                    <div style="font-size:0.6rem; color:#8899a6; margin-top:2px;">H-Pivot: Bolts at inner/outer horizontal pivots (through beams into brackets)</div>
+                    <div id="bolt-auto-info" style="font-size:0.65rem; color:#8899a6; margin-top:4px;"></div>
+                </div>
+                <div style="margin-top:8px; padding-top:8px; border-top:1px solid var(--border-light);">
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:4px;">Washer Configuration</div>
+                    <div class="ctrl-row" style="margin-bottom:4px;">
+                        <label class="chk-label" style="font-size:0.7rem;">
+                            <input type="checkbox" id="chk-vwasher-enabled"> Enable V-Stack Washers
+                        </label>
+                    </div>
+                    <div id="vwasher-config" style="display:none; margin-left:12px; margin-bottom:8px; padding:8px; background:var(--bg-input); border-radius:4px;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Inner Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-vwasher-id" min="0.25" max="2" step="0.0625" value="0.4375" style="width:72px;">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Outer Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-vwasher-od" min="0.5" max="3" step="0.0625" value="1.0" style="width:72px;">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-vwasher-thickness" min="0" max="1" step="0.01" value="0.0" style="width:72px;">
+                                <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                    <input type="checkbox" id="chk-vwasher-auto" checked> Auto
+                                </label>
+                            </div>
+                        </div>
+                        <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Thickness auto-syncs with V-Stack Gap</div>
+                    </div>
+                    <div class="ctrl-row" style="margin-bottom:4px; margin-top:8px;">
+                        <label class="chk-label" style="font-size:0.7rem;">
+                            <input type="checkbox" id="chk-hwasher-enabled"> Enable H-Stack Washers
+                        </label>
+                    </div>
+                    <div id="hwasher-config" style="display:none; margin-left:12px; padding:8px; background:var(--bg-input); border-radius:4px;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Inner Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-hwasher-id" min="0.25" max="2" step="0.0625" value="0.4375" style="width:72px;">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Outer Diameter</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-hwasher-od" min="0.5" max="3" step="0.0625" value="1.0" style="width:72px;">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span style="font-size:0.75rem; color:#8899a6;">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-hwasher-thickness" min="0" max="1" step="0.01" value="0.0" style="width:72px;">
+                                <label class="chk-label" style="margin-left:8px; font-size:0.7rem;">
+                                    <input type="checkbox" id="chk-hwasher-auto" checked> Auto
+                                </label>
+                            </div>
+                        </div>
+                        <div style="font-size:0.65rem; color:#8899a6; margin-top:2px;">Thickness auto-syncs with H-Stack Gap</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group collapsed">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Linkage Geometry</div>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Pivot Position</span><span style="font-size:0.75rem; color:#8899a6;">%</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-piv" min="20" max="80" step="0.1">
+                        <input type="number" id="nb-piv" title="Pivot %">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Pivot Angle Offset</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-ang" min="-30" max="30" step="0.1">
+                        <input type="number" id="nb-ang" title="Pivot Offset">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hoberman Bend Angle</span><span style="font-size:0.75rem; color:#8899a6;">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-hob" min="-20" max="20" step="0.1">
+                        <input type="number" id="nb-hob" title="Hoberman">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="group collapsed">

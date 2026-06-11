@@ -1,0 +1,29 @@
+<div id="sidebar">
+    <div id="controls">
+        
+        <div class="chk-row">
+            <label class="chk-label"><input type="checkbox" id="chk-collide"> Physics Check</label>
+            <label class="chk-label"><input type="checkbox" id="chk-brack" checked> Brackets</label>
+            <label class="chk-label"><input type="checkbox" id="chk-bolts"> Bolts</label>
+            <label class="chk-label"><input type="checkbox" id="chk-hw-full-detail"> Full Detail</label>
+        </div>
+        
+        <div class="ctrl-row" style="padding: 6px 0;">
+            <div class="ctrl-head"><span>Orientation</span></div>
+            <div class="input-wrap">
+                <select id="sel-orientation" style="flex:1; padding:6px; background:var(--bg-input); color:var(--text-primary); border:1px solid var(--border-light); border-radius:var(--radius-sm);">
+                    <option value="horizontal">Horizontal (Cylinder)</option>
+                    <option value="vertical">Vertical (Arch/Bridge)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="cap-upright-row" class="ctrl-row" style="display:none; padding: 6px 0;">
+            <label class="chk-label"><input type="checkbox" id="chk-cap-uprights"> Cap Uprights (End Supports)</label>
+        </div>
+        
+        <div class="ctrl-row" style="padding: 6px 0;">
+            <label class="chk-label"><input type="checkbox" id="chk-fixed-beams"> Fixed Straight Beams (Constant Spacing)</label>
+        </div>
+        
+        <div class="group">
