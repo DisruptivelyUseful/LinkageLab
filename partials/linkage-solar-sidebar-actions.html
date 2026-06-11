@@ -1,0 +1,62 @@
+        <!-- System Stats Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">System Stats</div>
+            <div class="solar-group-content">
+                <div id="solar-stats-panel">
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Solar Array</span>
+                            <span class="solar-stat-value" id="stat-array-watts">0 W</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Battery Bank</span>
+                            <span class="solar-stat-value" id="stat-battery-kwh">0 kWh</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">AC Capacity</span>
+                            <span class="solar-stat-value" id="stat-ac-output">0 W</span>
+                        </div>
+                    </div>
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Total Load</span>
+                            <span class="solar-stat-value" id="stat-total-load">0 W</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Load vs Capacity</span>
+                            <span class="solar-stat-value" id="stat-load-ratio">—</span>
+                        </div>
+                    </div>
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Components</span>
+                            <span class="solar-stat-value" id="stat-component-count">0</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Connections</span>
+                            <span class="solar-stat-value" id="stat-connection-count">0</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">System Cost</span>
+                            <span class="solar-stat-value" id="stat-total-cost" style="color:var(--clr-warning);">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Actions</div>
+            <div class="solar-group-content">
+                <div class="btn-group" style="margin:0;">
+                    <button id="btn-solar-export" style="flex:1; padding:5px 8px; font-size:0.65rem;">💾 Export</button>
+                    <button id="btn-solar-import" style="flex:1; padding:5px 8px; font-size:0.65rem;">📂 Import</button>
+                </div>
+                <button id="btn-solar-review" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; background:rgba(var(--clr-primary-rgb),0.1); border-color:var(--clr-primary); color:var(--clr-primary);">📊 System Review</button>
+                <button id="btn-solar-bom" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; background:rgba(92,184,92,0.1); border-color:#5cb85c; color:#5cb85c;">📋 Generate BOM</button>
+                <button id="btn-solar-clear" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; border-color:var(--clr-danger); color:var(--clr-danger);">🗑️ Clear All</button>
+            </div>
+        </div>
+    </div>
+</div>

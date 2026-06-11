@@ -1,0 +1,22 @@
+<div id="build-guide-modal">
+    <div class="guide-container">
+        <div class="guide-header">
+            <h1>BUILD GUIDE</h1>
+            <div class="guide-header-actions">
+                <button class="guide-header-btn" onclick="exportGuidePDF()">📄 Export PDF</button>
+                <button class="guide-header-btn" onclick="exportBOMcsv()">📊 Export CSV</button>
+                <button class="guide-header-btn" onclick="window.print()">🖨️ Print</button>
+                <button class="guide-header-btn" onclick="exportGuideJSON()">💾 Export JSON</button>
+                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Simulator</button>
+            </div>
+            <button class="guide-close" onclick="closeBuildGuide()">&times;</button>
+        </div>
+        <div class="guide-content" id="guide-content">
+            <!-- Content populated by JavaScript -->
+        </div>
+        <div class="guide-footer">
+            <span id="guide-date"></span>
+            <span>StarShade Linkage Lab</span>
+        </div>
+    </div>
+</div>

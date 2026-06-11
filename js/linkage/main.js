@@ -118,6 +118,7 @@
             console.log('Three.js loaded successfully:', THREE.REVISION);
             // Initialize Three.js immediately
             initThreeJS();
+            if (typeof preloadIbcGlb === 'function') preloadIbcGlb();
         } else {
             console.error('Three.js failed to load - using 2D fallback');
         }

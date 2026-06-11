@@ -1,5 +1,5 @@
 // ============================================================================
-// LINKAGE LAB - Shell partials + synchronous module loader (Phase 3u)
+// LINKAGE LAB - Shell partials + synchronous module loader (Phase 3w)
 // Reads config/linkage-manifest.json, loads CDN + partials + scripts in order.
 // Requires HTTP server (localhost) — sync XHR does not work on file://
 // ============================================================================

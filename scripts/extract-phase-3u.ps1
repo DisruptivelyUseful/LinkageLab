@@ -36,3 +36,8 @@ foreach ($chunk in $ordered) {
 }
 Remove-Item $workspacePath -Force
 Write-Host "Removed linkage-workspace.html"
+
+$splitModals = Join-Path $PSScriptRoot 'extract-phase-3v.ps1'
+if (Test-Path $splitModals) {
+    & $splitModals
+}

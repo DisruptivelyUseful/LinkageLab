@@ -881,6 +881,50 @@
         };
     }
     
+    function startIbcGlbLoad(onLoaded, onError) {
+        if (ibcGlbState.gltf) {
+            if (onLoaded) onLoaded();
+            return true;
+        }
+        if (ibcGlbState.loading) return false;
+
+        if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
+            if (onError) onError(new Error('GLTFLoader unavailable'));
+            return false;
+        }
+
+        ibcGlbState.loading = true;
+        const glbUrl = new URL('Just IBC.glb', window.location.href).href;
+        const loader = new THREE.GLTFLoader();
+        loader.load(
+            glbUrl,
+            (gltf) => {
+                ibcGlbState.loading = false;
+                ibcGlbState.gltf = gltf;
+                if (onLoaded) onLoaded(gltf);
+            },
+            undefined,
+            (err) => {
+                ibcGlbState.loading = false;
+                if (onError) onError(err);
+            }
+        );
+        return true;
+    }
+
+    /** Begin loading Just IBC.glb during app init so IBC tanks appear sooner on first paint. */
+    function preloadIbcGlb() {
+        startIbcGlbLoad(
+            () => {
+                if (state.ibc.enabled && (state.ibc.count | 0) >= 1 && threeRenderer.ibcReferenceGroup) {
+                    rebuildIbcPivotStack();
+                    requestRender();
+                }
+            },
+            (err) => console.warn('[IBC GLB] preload failed:', err)
+        );
+    }
+
     /**
      * Loads Just IBC.glb once, then each frame rebuilds stacked clones in structure-local space
      * (column center on beam footprint XY, base on lowest beam Y relative to structure center).
@@ -923,26 +967,10 @@
             return;
         }
         if (ibcGlbState.loading) return;
-    
-        if (typeof THREE === 'undefined' || typeof THREE.GLTFLoader === 'undefined') {
-            showToast('GLTFLoader failed to load (check network). IBC model disabled.', 'error');
-            state.ibc.enabled = false;
-            const chk = document.getElementById('chk-ibc-glb');
-            if (chk) chk.checked = false;
-            threeRenderer.ibcReferenceGroup.visible = false;
-            return;
-        }
-    
-        ibcGlbState.loading = true;
-        const glbUrl = new URL('Just IBC.glb', window.location.href).href;
-        const loader = new THREE.GLTFLoader();
-        loader.load(
-            glbUrl,
-            (gltf) => {
-                ibcGlbState.loading = false;
+
+        if (!startIbcGlbLoad(
+            () => {
                 if (!threeRenderer.ibcReferenceGroup) return;
-                ibcGlbState.gltf = gltf;
-    
                 if (!state.ibc.enabled || (state.ibc.count | 0) < 1) {
                     threeRenderer.ibcReferenceGroup.visible = false;
                     return;
@@ -950,9 +978,7 @@
                 finishStack();
                 requestRender();
             },
-            undefined,
             (err) => {
-                ibcGlbState.loading = false;
                 console.warn('[IBC GLB] load failed:', err);
                 showToast('Could not load Just IBC.glb — add it next to index.html.', 'error');
                 state.ibc.enabled = false;
@@ -960,7 +986,13 @@
                 if (chk) chk.checked = false;
                 if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = false;
             }
-        );
+        )) {
+            showToast('GLTFLoader failed to load (check network). IBC model disabled.', 'error');
+            state.ibc.enabled = false;
+            const chk = document.getElementById('chk-ibc-glb');
+            if (chk) chk.checked = false;
+            threeRenderer.ibcReferenceGroup.visible = false;
+        }
     }
     
     /**
@@ -1268,7 +1300,7 @@
     
 
     g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.measurementOverlay = { formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };
+    g.LinkageModules.measurementOverlay = { formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, preloadIbcGlb, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };
     g.formatMeasurementSidebar = formatMeasurementSidebar;
     g.calculateMeasurements = calculateMeasurements;
     g.drawMeasurements = drawMeasurements;
@@ -1278,6 +1310,7 @@
     g.createIbcExportGroup = createIbcExportGroup;
     g.syncIbcStackControlsVisibility = syncIbcStackControlsVisibility;
     g.getStructurePlanFootprintForReference = getStructurePlanFootprintForReference;
+    g.preloadIbcGlb = preloadIbcGlb;
     g.updateIbcGlbReference = updateIbcGlbReference;
     g.updateHumanScaleFigure = updateHumanScaleFigure;
     g.update3DMeasurementLines = update3DMeasurementLines;
