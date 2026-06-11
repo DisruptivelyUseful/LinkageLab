@@ -1,12 +1,21 @@
-// ============================================================================ (ES module)
+﻿// ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { DEBOUNCE_DELAY } from './constants.js';
+import { degToRad, radToDeg, formatNumber, debounce } from './math.js';
+import { getOptimalClosedAngleForAnimation } from './animation.js';
+import {
+    isVBeamDimensionsLinked,
+    syncLinkedVBeamDimensions,
+    updateVBeamDimensionUIVisibility,
+    updateAutoBoltLengths,
+} from './beam-bolt-helpers.js';
+import { solveLinkage, getEffectiveMinFoldAngle, updateAutoBeamPricing } from './solver.js';
+import { detectCollisions, findSafeFoldAngle } from './collision.js';
+import { invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
+import { validateInput } from './validation.js';
+import { saveStateToHistory } from './history.js';
 
-    /**
-     * Updates state with validation and error handling
-     * @param {string} key - State key to update
-     * @param {number|string} val - New value
-     */
     function updateState(key, val) {
         try {
             // Convert display value back to imperial before validation/storage
@@ -68,7 +77,7 @@ import { bridgeGlobals } from './global-bridge.js';
                                   'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 
                                   'bracketHoleDiameter', 'bracketHoleDistance'];
             // Any structural parameter change (module count, beam lengths, etc.) moves
-            // the top ring — the reciprocal crossing references must be re-seeded.
+            // the top ring â€” the reciprocal crossing references must be re-seeded.
             // foldAngle is explicitly excluded: crossing refs are fold-angle-independent.
             const rcpInvalidKeys = ['modules', 'hLengthFt', 'vLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng',
                                     'hStackCount', 'vStackCount', 'orientation', 'archFlipVertical', 'archRotation',

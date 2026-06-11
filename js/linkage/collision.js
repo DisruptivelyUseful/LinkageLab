@@ -3,6 +3,9 @@
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { MIN_FOLD_ANGLE, MAX_FOLD_ANGLE, INCHES_PER_FOOT } from './constants.js';
+import { degToRad, radToDeg, formatNumber } from './math.js';
+import { solveLinkage, calculateJointPositions } from './solver.js';
 
 // ============================================================================
 // COLLISION DETECTION

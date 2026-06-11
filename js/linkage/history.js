@@ -1,9 +1,11 @@
-// ============================================================================
-// LINKAGE LAB — Undo / redo history (ES module)
+﻿// ============================================================================
+// LINKAGE LAB â€” Undo / redo history (ES module)
 // Depends on global: state, idMap, syncUI, requestRender, showToast, drag, debounce, MAX_HISTORY_SIZE
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { MAX_HISTORY_SIZE } from './constants.js';
+import { debounce } from './math.js';
 
 const debouncedSaveHistory = debounce(() => {
     if (drag.active) {

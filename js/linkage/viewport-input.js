@@ -1,6 +1,7 @@
-// ============================================================================ (ES module)
+﻿// ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { invalidateGeometryCache } from './cache.js';
 
 const drag = { active: false, x: 0, y: 0, mode: 'orbit' };
 const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, lastCenterY: 0 };

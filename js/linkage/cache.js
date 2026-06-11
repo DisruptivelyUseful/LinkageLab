@@ -1,9 +1,11 @@
-// ============================================================================
-// LINKAGE LAB — Geometry & collision caches (ES module)
+﻿// ============================================================================
+// LINKAGE LAB â€” Geometry & collision caches (ES module)
 // Depends on global: state, solveLinkage, detectCollisions
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { solveLinkage } from './solver.js';
+import { detectCollisions } from './collision.js';
 
 let cachedLinkageData = null;
 let cachedFoldAngle = null;
