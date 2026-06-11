@@ -1,6 +1,11 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { radToDeg } from './math.js';
+import { showToast } from '../core/feedback.js';
+import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { invalidateGeometryCache } from './cache.js';
+import { requestRender } from './render-app.js';
 
     function initSolarPanelHandlers() {
         // === SOLAR PANEL EVENT HANDLERS ===

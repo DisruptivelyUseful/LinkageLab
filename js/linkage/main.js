@@ -1,6 +1,16 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { LINKAGE_BUILD_ID } from './constants.js';
+import { debounce, radToDeg } from './math.js';
+import { showToast } from '../core/feedback.js';
+import { VALIDATION_RULES } from './validation.js';
+import { applyConfig, getConfigSnapshot, updatePresetSelect } from './config-persistence.js';
+import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { saveStateToHistory } from './history.js';
+import { syncUI } from './state-sync.js';
+import { requestRender } from './render-app.js';
+import { initThreeJS } from './renderer-3d.js';
 
     async function initLinkageLab() {
         initViewportInput();

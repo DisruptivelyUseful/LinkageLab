@@ -1,6 +1,9 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { getConfigSnapshot } from './config-persistence.js';
+import { saveStateToHistory } from './history.js';
+import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.js';
 
     function generateDefaultFilename() {
         const modules = state.modules;
