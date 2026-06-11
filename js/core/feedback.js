@@ -1,8 +1,8 @@
 // ============================================================================
-// FEEDBACK - Toast notifications and loading states
+// FEEDBACK - Toast notifications and loading states (ES module)
 // ============================================================================
 
-const Feedback = (function() {
+const Feedback = (function () {
     'use strict';
 
     let hideTimer = null;
@@ -66,6 +66,11 @@ const Feedback = (function() {
 })();
 
 /** Global shim — existing code calls showToast() directly */
-function showToast(message, type = 'info', duration = 3000) {
+export function showToast(message, type = 'info', duration = 3000) {
     return Feedback.showToast(message, type, duration);
 }
+
+export { Feedback };
+
+globalThis.Feedback = Feedback;
+globalThis.showToast = showToast;

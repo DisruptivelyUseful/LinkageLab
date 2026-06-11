@@ -1,13 +1,13 @@
 // ============================================================================
-// LINKAGE LAB - Animation (fold/unfold, actuator, closed-angle cache)
+// LINKAGE LAB - Animation (fold/unfold, actuator, closed-angle cache) (ES module)
 // Depends on global: state, solveLinkage helpers, requestRender, syncUI, geometry-classes folding helpers
 // ============================================================================
-(function (g) {
-    'use strict';
 
-    // ============================================================================
-    // ANIMATION SYSTEM
-    // ============================================================================
+import { bridgeGlobals } from './global-bridge.js';
+
+// ============================================================================
+// ANIMATION SYSTEM
+// ============================================================================
     
     /**
      * Animates the fold/unfold sequence
@@ -346,17 +346,21 @@
         if (stopBtn) stopBtn.style.display = 'none';
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.animation = {
-        updateAnimationStatus, getOptimalClosedAngleForAnimation, animateFold,
-        animateActuatorFold, stopActuatorAnimation
-    };
+const animationExports = {
+    updateAnimationStatus,
+    getOptimalClosedAngleForAnimation,
+    animateFold,
+    animateActuatorFold,
+    stopActuatorAnimation
+};
 
-    g.animateActuatorFold = animateActuatorFold;
-    g.animateFold = animateFold;
-    g.getOptimalClosedAngleForAnimation = getOptimalClosedAngleForAnimation;
-    g.stopActuatorAnimation = stopActuatorAnimation;
-    g.updateAnimationStatus = updateAnimationStatus;
+bridgeGlobals(animationExports, 'animation');
 
-})(window);
+export {
+    updateAnimationStatus,
+    getOptimalClosedAngleForAnimation,
+    animateFold,
+    animateActuatorFold,
+    stopActuatorAnimation
+};
 

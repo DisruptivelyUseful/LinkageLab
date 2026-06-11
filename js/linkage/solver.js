@@ -1,8 +1,8 @@
 ﻿// ============================================================================
-// LINKAGE LAB — Linkage solver
+// LINKAGE LAB — Linkage solver (ES module)
 // ============================================================================
-(function (g) {
-    'use strict';
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // ============================================================================
 // LINKAGE SOLVER
@@ -2652,34 +2652,37 @@ function buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight) {
     return geometry;
 }
 
-    g.calculateJointPositions = calculateJointPositions;
-    g.createBeamStack = createBeamStack;
-    g.solveLinkage = solveLinkage;
-    g.buildStructureGeometry = buildStructureGeometry;
-    g.computeMinFoldAngleVBeamOverlap = computeMinFoldAngleVBeamOverlap;
-    g.getEffectiveMinFoldAngle = getEffectiveMinFoldAngle;
-    g.getRefPricePerCubicInch = getRefPricePerCubicInch;
-    g.calculateBeamCostByVolume = calculateBeamCostByVolume;
-    g.updateAutoBeamPricing = updateAutoBeamPricing;
-    g.calculateActuatorStroke = calculateActuatorStroke;
-    g.calculateCenterOfMass = calculateCenterOfMass;
-    g.calculateRequiredActuatorForce = calculateRequiredActuatorForce;
-    g.findOptimalActuatorPlacements = findOptimalActuatorPlacements;
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.solver = {
-        calculateJointPositions,
-        createBeamStack,
-        solveLinkage,
-        buildStructureGeometry,
-        computeMinFoldAngleVBeamOverlap,
-        getEffectiveMinFoldAngle,
-        getRefPricePerCubicInch,
-        calculateBeamCostByVolume,
-        updateAutoBeamPricing,
-        calculateActuatorStroke,
-        calculateCenterOfMass,
-        calculateRequiredActuatorForce,
-        findOptimalActuatorPlacements
-    };
-})(window);
+const solverExports = {
+    calculateJointPositions,
+    createBeamStack,
+    solveLinkage,
+    buildStructureGeometry,
+    computeMinFoldAngleVBeamOverlap,
+    getEffectiveMinFoldAngle,
+    getRefPricePerCubicInch,
+    calculateBeamCostByVolume,
+    updateAutoBeamPricing,
+    calculateActuatorStroke,
+    calculateCenterOfMass,
+    calculateRequiredActuatorForce,
+    findOptimalActuatorPlacements
+};
+
+bridgeGlobals(solverExports, 'solver');
+
+export {
+    calculateJointPositions,
+    createBeamStack,
+    solveLinkage,
+    buildStructureGeometry,
+    computeMinFoldAngleVBeamOverlap,
+    getEffectiveMinFoldAngle,
+    getRefPricePerCubicInch,
+    calculateBeamCostByVolume,
+    updateAutoBeamPricing,
+    calculateActuatorStroke,
+    calculateCenterOfMass,
+    calculateRequiredActuatorForce,
+    findOptimalActuatorPlacements
+};
 

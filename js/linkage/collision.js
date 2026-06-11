@@ -1,8 +1,8 @@
 ﻿// ============================================================================
-// LINKAGE LAB — Collision detection
+// LINKAGE LAB — Collision detection (ES module)
 // ============================================================================
-(function (g) {
-    'use strict';
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // ============================================================================
 // COLLISION DETECTION
@@ -319,9 +319,7 @@ function detectCollisions(data) {
     return collisions;
 }
 
-    g.findSafeFoldAngle = findSafeFoldAngle;
-    g.detectCollisions = detectCollisions;
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.collision = { findSafeFoldAngle, detectCollisions };
-})(window);
+bridgeGlobals({ findSafeFoldAngle, detectCollisions }, 'collision');
+
+export { findSafeFoldAngle, detectCollisions };
 

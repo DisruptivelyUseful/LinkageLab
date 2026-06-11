@@ -1,11 +1,11 @@
 // ============================================================================
-// LINKAGE LAB - Beam, bolt, and V-stack dimension helpers
+// LINKAGE LAB - Beam, bolt, and V-stack dimension helpers (ES module)
 // Depends on global: state, unitConverter, formatNumber, setInputDisplay, requestRender, invalidateGeometryCache
 // ============================================================================
-(function (g) {
-    'use strict';
 
-    function getBoltRadius() {
+import { bridgeGlobals } from './global-bridge.js';
+
+function getBoltRadius() {
         return (state.boltDiameter || 0.375) / 2;
     }
     
@@ -392,34 +392,63 @@
     }
     
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.beamBoltHelpers = { getBoltRadius, formatBoltDiameter, needsSplitVBolts, needsSplitVBeamDimensions, isVBeamDimensionsLinked, isVStackInnerBeamIndex, getVBeamDimsForStackIndex, getVBeamDimsForPivot, getVStackBeamWidths, calculateVStackTotalThickness, getVStackBeamCenterOffset, calculateTotalVBeamWidth, getVBeamCountsByType, calculateVBoltStackBeamWidth, calculateVBeamTotalWeight, getVBeamWeightPerBeam, calculateVBeamsCost, syncLinkedVBeamDimensions, updateVBeamDimensionUIVisibility, calculateVStackBoltLength, calculateVStackInnerBoltLength, calculateVStackOuterBoltLength, calculateHStackBoltLength, calculateHPivotBoltLength, updateBoltUIVisibility, updateAutoBoltLengths };
-    g.getBoltRadius = getBoltRadius;
-    g.formatBoltDiameter = formatBoltDiameter;
-    g.needsSplitVBolts = needsSplitVBolts;
-    g.needsSplitVBeamDimensions = needsSplitVBeamDimensions;
-    g.isVBeamDimensionsLinked = isVBeamDimensionsLinked;
-    g.isVStackInnerBeamIndex = isVStackInnerBeamIndex;
-    g.getVBeamDimsForStackIndex = getVBeamDimsForStackIndex;
-    g.getVBeamDimsForPivot = getVBeamDimsForPivot;
-    g.getVStackBeamWidths = getVStackBeamWidths;
-    g.calculateVStackTotalThickness = calculateVStackTotalThickness;
-    g.getVStackBeamCenterOffset = getVStackBeamCenterOffset;
-    g.calculateTotalVBeamWidth = calculateTotalVBeamWidth;
-    g.getVBeamCountsByType = getVBeamCountsByType;
-    g.calculateVBoltStackBeamWidth = calculateVBoltStackBeamWidth;
-    g.calculateVBeamTotalWeight = calculateVBeamTotalWeight;
-    g.getVBeamWeightPerBeam = getVBeamWeightPerBeam;
-    g.calculateVBeamsCost = calculateVBeamsCost;
-    g.syncLinkedVBeamDimensions = syncLinkedVBeamDimensions;
-    g.updateVBeamDimensionUIVisibility = updateVBeamDimensionUIVisibility;
-    g.calculateVStackBoltLength = calculateVStackBoltLength;
-    g.calculateVStackInnerBoltLength = calculateVStackInnerBoltLength;
-    g.calculateVStackOuterBoltLength = calculateVStackOuterBoltLength;
-    g.calculateHStackBoltLength = calculateHStackBoltLength;
-    g.calculateHPivotBoltLength = calculateHPivotBoltLength;
-    g.updateBoltUIVisibility = updateBoltUIVisibility;
-    g.updateAutoBoltLengths = updateAutoBoltLengths;
+const beamBoltExports = {
+    getBoltRadius,
+    formatBoltDiameter,
+    needsSplitVBolts,
+    needsSplitVBeamDimensions,
+    isVBeamDimensionsLinked,
+    isVStackInnerBeamIndex,
+    getVBeamDimsForStackIndex,
+    getVBeamDimsForPivot,
+    getVStackBeamWidths,
+    calculateVStackTotalThickness,
+    getVStackBeamCenterOffset,
+    calculateTotalVBeamWidth,
+    getVBeamCountsByType,
+    calculateVBoltStackBeamWidth,
+    calculateVBeamTotalWeight,
+    getVBeamWeightPerBeam,
+    calculateVBeamsCost,
+    syncLinkedVBeamDimensions,
+    updateVBeamDimensionUIVisibility,
+    calculateVStackBoltLength,
+    calculateVStackInnerBoltLength,
+    calculateVStackOuterBoltLength,
+    calculateHStackBoltLength,
+    calculateHPivotBoltLength,
+    updateBoltUIVisibility,
+    updateAutoBoltLengths
+};
 
-})(window);
+bridgeGlobals(beamBoltExports, 'beamBoltHelpers');
+
+export {
+    getBoltRadius,
+    formatBoltDiameter,
+    needsSplitVBolts,
+    needsSplitVBeamDimensions,
+    isVBeamDimensionsLinked,
+    isVStackInnerBeamIndex,
+    getVBeamDimsForStackIndex,
+    getVBeamDimsForPivot,
+    getVStackBeamWidths,
+    calculateVStackTotalThickness,
+    getVStackBeamCenterOffset,
+    calculateTotalVBeamWidth,
+    getVBeamCountsByType,
+    calculateVBoltStackBeamWidth,
+    calculateVBeamTotalWeight,
+    getVBeamWeightPerBeam,
+    calculateVBeamsCost,
+    syncLinkedVBeamDimensions,
+    updateVBeamDimensionUIVisibility,
+    calculateVStackBoltLength,
+    calculateVStackInnerBoltLength,
+    calculateVStackOuterBoltLength,
+    calculateHStackBoltLength,
+    calculateHPivotBoltLength,
+    updateBoltUIVisibility,
+    updateAutoBoltLengths
+};
 

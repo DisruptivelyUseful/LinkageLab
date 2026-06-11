@@ -1,42 +1,42 @@
 // ============================================================================
-// LINKAGE LAB — Constants & configuration
-// Loaded via js/linkage/bootstrap.js (global scope).
+// LINKAGE LAB — Constants & configuration (ES module)
 // ============================================================================
 
+import { bridgeGlobals } from './global-bridge.js';
+
 /** Build identifier — visible in console at startup */
-const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3y';
+export const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3zc';
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
-const INCHES_PER_FOOT = 12;
-const INCHES_PER_METER = 39.37007874015748;
+export const INCHES_PER_FOOT = 12;
+export const INCHES_PER_METER = 39.37007874015748;
 
-const MIN_FOLD_ANGLE = 5 * Math.PI / 180;
-const MAX_FOLD_ANGLE = 175 * Math.PI / 180;
-const FOLDING_PANEL_DEPLOY_MS = 1500;
+export const MIN_FOLD_ANGLE = 5 * Math.PI / 180;
+export const MAX_FOLD_ANGLE = 175 * Math.PI / 180;
+export const FOLDING_PANEL_DEPLOY_MS = 1500;
 
-const DEFAULT_CAM_DIST = 450;
-const MIN_CAM_DIST = 5;
+export const DEFAULT_CAM_DIST = 450;
+export const MIN_CAM_DIST = 5;
 
-const GRID_SPACING = 200;
-const GRID_RANGE = 2000;
-const PERSPECTIVE_SCALE = 1000;
+export const GRID_SPACING = 200;
+export const GRID_RANGE = 2000;
+export const PERSPECTIVE_SCALE = 1000;
 
-const WOOD_COLOR = { r: 238, g: 191, b: 161 };
+export const WOOD_COLOR = { r: 238, g: 191, b: 161 };
 
-const BRACKET_SIZE_MULT = 1.2;
-const BRACKET_DEPTH = 2.5;
+export const BRACKET_SIZE_MULT = 1.2;
+export const BRACKET_DEPTH = 2.5;
 
-const BOLT_RADIUS = 0.25;
-const BOLT_HEAD_RADIUS = 0.4;
-const BOLT_HEAD_HEIGHT = 0.15;
+export const BOLT_RADIUS = 0.25;
+export const BOLT_HEAD_RADIUS = 0.4;
+export const BOLT_HEAD_HEIGHT = 0.15;
 
-const MIN_SAFE_DIMENSION = 1;
-const DEBOUNCE_DELAY = 16;
-const MAX_HISTORY_SIZE = 50;
-const ANIM_FRAME_RATE = 16.67;
+export const MIN_SAFE_DIMENSION = 1;
+export const DEBOUNCE_DELAY = 16;
+export const MAX_HISTORY_SIZE = 50;
+export const ANIM_FRAME_RATE = 16.67;
 
-window.LinkageModules = window.LinkageModules || {};
-window.LinkageModules.constants = {
+bridgeGlobals({
     LINKAGE_BUILD_ID,
     INCHES_PER_FOOT,
     INCHES_PER_METER,
@@ -58,4 +58,4 @@ window.LinkageModules.constants = {
     DEBOUNCE_DELAY,
     MAX_HISTORY_SIZE,
     ANIM_FRAME_RATE
-};
+}, 'constants');

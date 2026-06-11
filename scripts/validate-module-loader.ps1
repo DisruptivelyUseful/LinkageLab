@@ -10,8 +10,12 @@ foreach ($p in $manifest.partials) {
     if (-not (Test-Path $full)) { [void]$missing.Add($p.path) }
 }
 foreach ($s in $manifest.scripts) {
-    $full = Join-Path $root ($s -replace '/', '\')
-    if (-not (Test-Path $full)) { [void]$missing.Add($s) }
+    $path = if ($s -is [string]) { $s } else { $s.path }
+    $full = Join-Path $root ($path -replace '/', '\')
+    if (-not (Test-Path $full)) { [void]$missing.Add($path) }
+}
+if (-not (Test-Path (Join-Path $root 'js\linkage\global-bridge.js'))) {
+    [void]$missing.Add('js/linkage/global-bridge.js')
 }
 if ($manifest.cdn) {
     foreach ($c in $manifest.cdn) {
@@ -28,4 +32,5 @@ if ($missing.Count) {
     Write-Error "Missing paths:`n$($missing | Select-Object -Unique | ForEach-Object { $_ } | Out-String)"
 }
 $cdnCount = if ($manifest.cdn) { $manifest.cdn.Count } else { 0 }
-Write-Host "linkage-manifest.json: $cdnCount CDN, $($manifest.partials.Count) partials, $($manifest.scripts.Count) scripts - all present"
+$esmCount = @($manifest.scripts | Where-Object { $_ -isnot [string] -and $_.format -eq 'esm' }).Count
+Write-Host "linkage-manifest.json: $cdnCount CDN, $($manifest.partials.Count) partials, $($manifest.scripts.Count) scripts ($esmCount ESM) - all present"

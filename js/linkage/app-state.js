@@ -1,10 +1,12 @@
 // ============================================================================
-// LINKAGE LAB - Application state object and light vector
+// LINKAGE LAB - Application state object and light vector (ES module)
 // Load after hardware-detail.js (getDefaultHardwareAssemblies)
 // ============================================================================
 
+import { bridgeGlobals } from './global-bridge.js';
+
 /** Application state object containing all configuration parameters */
-const state = {
+export const state = {
     modules: 8,
     hLengthFt: 8.0, 
     vLengthFt: 8.0, 
@@ -315,4 +317,6 @@ const state = {
 // Normalize light vector
 const lLen = Math.sqrt(state.light.x**2 + state.light.y**2 + state.light.z**2);
 state.light.x /= lLen; state.light.y /= lLen; state.light.z /= lLen;
+
+bridgeGlobals({ state }, 'appState');
 

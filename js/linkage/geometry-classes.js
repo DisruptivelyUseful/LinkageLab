@@ -1,8 +1,8 @@
 ﻿// ============================================================================
-// LINKAGE LAB — Geometry classes (Beam3D, Bracket3D, RoofFace, etc.)
+// LINKAGE LAB — Geometry classes (Beam3D, Bracket3D, RoofFace, etc.) (ES module)
 // ============================================================================
-(function (g) {
-    'use strict';
+
+import { bridgeGlobals } from './global-bridge.js';
 
 // ============================================================================
 // GEOMETRY CLASSES
@@ -1156,46 +1156,65 @@ class PanelPlacer {
     }
 }
 
-    g.Beam3D = Beam3D;
-    g.Bracket3D = Bracket3D;
-    g.RoofFace = RoofFace;
-    g.ModuleGeometry = ModuleGeometry;
-    g.StructureGeometry = StructureGeometry;
+const geometryClassesExports = {
+    Beam3D,
+    Bracket3D,
+    RoofFace,
+    ModuleGeometry,
+    StructureGeometry,
+    makeSolarPanel,
+    spPanelSpecFromConfig,
+    spPanelSpecForGridCell,
+    spFoldDirectionForGridRow,
+    getPanelWeightLbs,
+    calculateSolarPanelArrayWeight,
+    getSolarPanelWeightSummary,
+    hasFoldingSolarPanels,
+    getStructureFoldedAngle,
+    getStructureDeployedAngle,
+    getFoldingPanelDeployForAnimation,
+    useFoldingPanelAutoAnim,
+    useFoldingPanelStructureDeploy,
+    getFoldingPanelsVisibleAtAngle,
+    applyFoldingPanelAnimationState,
+    animateFoldingPanelDeploy,
+    runFoldingPanelUnfoldSequence,
+    runFoldingPanelFoldSequence,
+    applyPanelAxesToThreeGroup,
+    getPanelSurfaceMaterials,
+    createFoldingPanelMesh,
+    createFlexiblePanelMesh
+};
 
-    // Solar panel helpers
-    g.makeSolarPanel = makeSolarPanel;
-    g.spPanelSpecFromConfig = spPanelSpecFromConfig;
-    g.spPanelSpecForGridCell = spPanelSpecForGridCell;
-    g.spFoldDirectionForGridRow = spFoldDirectionForGridRow;
-    g.getPanelWeightLbs = getPanelWeightLbs;
-    g.calculateSolarPanelArrayWeight = calculateSolarPanelArrayWeight;
-    g.getSolarPanelWeightSummary = getSolarPanelWeightSummary;
+bridgeGlobals(geometryClassesExports, 'geometryClasses');
 
-    // Fold / unfold / animation helpers
-    g.hasFoldingSolarPanels = hasFoldingSolarPanels;
-    g.getStructureFoldedAngle = getStructureFoldedAngle;
-    g.getStructureDeployedAngle = getStructureDeployedAngle;
-    g.getFoldingPanelDeployForAnimation = getFoldingPanelDeployForAnimation;
-    g.useFoldingPanelAutoAnim = useFoldingPanelAutoAnim;
-    g.useFoldingPanelStructureDeploy = useFoldingPanelStructureDeploy;
-    g.getFoldingPanelsVisibleAtAngle = getFoldingPanelsVisibleAtAngle;
-    g.applyFoldingPanelAnimationState = applyFoldingPanelAnimationState;
-    g.animateFoldingPanelDeploy = animateFoldingPanelDeploy;
-    g.runFoldingPanelUnfoldSequence = runFoldingPanelUnfoldSequence;
-    g.runFoldingPanelFoldSequence = runFoldingPanelFoldSequence;
-
-    // Panel mesh factories (used by renderer-3d.js)
-    g.applyPanelAxesToThreeGroup = applyPanelAxesToThreeGroup;
-    g.getPanelSurfaceMaterials = getPanelSurfaceMaterials;
-    g.createFoldingPanelMesh = createFoldingPanelMesh;
-    g.createFlexiblePanelMesh = createFlexiblePanelMesh;
-
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.geometryClasses = {
-        Beam3D, Bracket3D, RoofFace, ModuleGeometry, StructureGeometry,
-        makeSolarPanel, hasFoldingSolarPanels, getStructureFoldedAngle, getStructureDeployedAngle,
-        runFoldingPanelFoldSequence, runFoldingPanelUnfoldSequence,
-        createFoldingPanelMesh, createFlexiblePanelMesh
-    };
-})(window);
+export {
+    Beam3D,
+    Bracket3D,
+    RoofFace,
+    ModuleGeometry,
+    StructureGeometry,
+    makeSolarPanel,
+    spPanelSpecFromConfig,
+    spPanelSpecForGridCell,
+    spFoldDirectionForGridRow,
+    getPanelWeightLbs,
+    calculateSolarPanelArrayWeight,
+    getSolarPanelWeightSummary,
+    hasFoldingSolarPanels,
+    getStructureFoldedAngle,
+    getStructureDeployedAngle,
+    getFoldingPanelDeployForAnimation,
+    useFoldingPanelAutoAnim,
+    useFoldingPanelStructureDeploy,
+    getFoldingPanelsVisibleAtAngle,
+    applyFoldingPanelAnimationState,
+    animateFoldingPanelDeploy,
+    runFoldingPanelUnfoldSequence,
+    runFoldingPanelFoldSequence,
+    applyPanelAxesToThreeGroup,
+    getPanelSurfaceMaterials,
+    createFoldingPanelMesh,
+    createFlexiblePanelMesh
+};
 

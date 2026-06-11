@@ -1,13 +1,13 @@
 // ============================================================================
-// LINKAGE LAB - Config persistence (save/load, presets, applyConfig)
+// LINKAGE LAB - Config persistence (save/load, presets, applyConfig) (ES module)
 // Depends on global: state, showToast, syncUI, linkage-geometry sp* helpers, unitConverter
 // ============================================================================
-(function (g) {
-    'use strict';
 
-    // ============================================================================
-    // SAVE/LOAD & PRESETS
-    // ============================================================================
+import { bridgeGlobals } from './global-bridge.js';
+
+// ============================================================================
+// SAVE/LOAD & PRESETS
+// ============================================================================
     
     /** List of configuration keys that are saved/loaded */
     const CONFIG_KEYS = [
@@ -1265,22 +1265,33 @@
         }
     }
 
-    g.LinkageModules = g.LinkageModules || {};
-    g.LinkageModules.configPersistence = {
-        getConfigSnapshot, applyConfig, saveConfig, loadConfig, updatePresetSelect
-    };
+const configPersistenceExports = {
+    getConfigSnapshot,
+    applyConfig,
+    applyLegacyConfig,
+    applyV30Config,
+    deletePreset,
+    getPresets,
+    loadConfig,
+    loadPreset,
+    saveConfig,
+    savePreset,
+    updatePresetSelect
+};
 
-    g.applyConfig = applyConfig;
-    g.applyLegacyConfig = applyLegacyConfig;
-    g.applyV30Config = applyV30Config;
-    g.deletePreset = deletePreset;
-    g.getConfigSnapshot = getConfigSnapshot;
-    g.getPresets = getPresets;
-    g.loadConfig = loadConfig;
-    g.loadPreset = loadPreset;
-    g.saveConfig = saveConfig;
-    g.savePreset = savePreset;
-    g.updatePresetSelect = updatePresetSelect;
+bridgeGlobals(configPersistenceExports, 'configPersistence');
 
-})(window);
+export {
+    getConfigSnapshot,
+    applyConfig,
+    applyLegacyConfig,
+    applyV30Config,
+    deletePreset,
+    getPresets,
+    loadConfig,
+    loadPreset,
+    saveConfig,
+    savePreset,
+    updatePresetSelect
+};
 

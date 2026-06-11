@@ -1,6 +1,7 @@
 // ============================================================================
-// LINKAGE LAB - Async ES module bootstrap (Phase 3y)
-// Reads config/linkage-manifest.json, loads CDN + partials + classic scripts.
+// LINKAGE LAB - Async ES module bootstrap (Phase 3zc)
+// Reads config/linkage-manifest.json, loads CDN + partials + modules in order.
+// Scripts may be classic (global) or ESM (import + global-bridge for compat).
 // Requires HTTP server for fetch() — file:// blocks manifest/partials fetch.
 // ============================================================================
 
@@ -12,6 +13,11 @@ async function fetchText(path) {
     return res.text();
 }
 
+function normalizeScriptEntry(entry) {
+    if (typeof entry === 'string') return { path: entry, format: 'classic' };
+    return { path: entry.path, format: entry.format || 'classic' };
+}
+
 function loadScript(src) {
     return new Promise((resolve, reject) => {
         const el = document.createElement('script');
@@ -21,6 +27,11 @@ function loadScript(src) {
         el.onerror = () => reject(new Error(`Failed to load script: ${src}`));
         document.head.appendChild(el);
     });
+}
+
+async function importModule(path) {
+    const url = new URL(path, `${location.origin}/`);
+    await import(url.href);
 }
 
 async function injectPartials(partials) {
@@ -56,8 +67,13 @@ async function boot() {
 
     await injectPartials(partials);
 
-    for (const src of scripts) {
-        await loadScript(src);
+    for (const entry of scripts) {
+        const { path, format } = normalizeScriptEntry(entry);
+        if (format === 'esm') {
+            await importModule(path);
+        } else {
+            await loadScript(path);
+        }
     }
 }
 
