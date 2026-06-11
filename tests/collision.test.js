@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { WOOD_COLOR } from '../js/linkage/constants.js';
 import { degToRad } from '../js/linkage/math.js';
+import { Beam3D } from '../js/linkage/geometry-classes.js';
 import { detectCollisions } from '../js/linkage/collision.js';
 
 describe('collision', () => {
@@ -26,5 +28,30 @@ describe('collision', () => {
 
         expect(collisions.length).toBeGreaterThan(0);
         expect(collisions[0].type).toBe('geometric-overfold');
+    });
+
+    it('detects vertical-horizontal beam overlap with real Beam3D geometry', () => {
+        globalThis.state.modules = 12;
+        globalThis.state.foldAngle = degToRad(45);
+
+        const vertical = new Beam3D(
+            { x: 0, y: 0, z: 0 },
+            { x: 0, y: 48, z: 0 },
+            3.5,
+            1.5,
+            WOOD_COLOR,
+            { moduleIndex: 0, stackType: 'vertical' },
+        );
+        const horizontal = new Beam3D(
+            { x: -24, y: 22, z: -8 },
+            { x: 24, y: 26, z: 8 },
+            3.5,
+            1.5,
+            WOOD_COLOR,
+            { moduleIndex: 5, stackType: 'horizontal-top' },
+        );
+
+        const collisions = detectCollisions({ beams: [vertical, horizontal], brackets: [] });
+        expect(collisions.some(c => c.type === 'vertical-horizontal')).toBe(true);
     });
 });
