@@ -1,65 +1,56 @@
 // ============================================================================
-// LINKAGE LAB - Synchronous module loader (Phase 3p thin shell)
-// Loads core + linkage scripts in dependency order. Run once at end of <body>.
+// LINKAGE LAB - Shell partials + synchronous module loader (Phase 3s)
+// Reads config/linkage-manifest.json, injects partials, loads scripts in order.
+// Requires HTTP server (localhost) — sync XHR does not work on file://
 // ============================================================================
 (function () {
     'use strict';
 
-    /** @type {string[]} Ordered script URLs relative to index.html */
-    const SCRIPTS = [
-        'js/core/unit-converter.js',
-        'js/core/constants.js',
-        'js/core/export-format.js',
-        'js/core/feedback.js',
-        'js/linkage/constants.js',
-        'js/linkage/math.js',
-        'js/linkage/beam-bolt-helpers.js',
-        'js/linkage/animation.js',
-        'js/linkage/geometry-classes.js',
-        'js/linkage/config-persistence.js',
-        'js/linkage/hardware-detail.js',
-        'js/linkage/app-state.js',
-        'js/linkage/solver.js',
-        'js/linkage/collision.js',
-        'js/linkage/renderer-3d.js',
-        'js/linkage/measurement-overlay.js',
-        'js/linkage/gltf-export.js',
-        'js/linkage/scene-render.js',
-        'js/linkage/cache.js',
-        'js/linkage/linkage-geometry.js',
-        'js/linkage/export-bridge.js',
-        'js/linkage/build-guide.js',
-        'js/linkage/solar-panel-input.js',
-        'js/linkage/render-app.js',
-        'js/linkage/viewport-input.js',
-        'js/linkage/validation.js',
-        'js/linkage/history.js',
-        'js/linkage/state-sync.js',
-        'js/linkage/reference-input.js',
-        'js/linkage/ui-bindings.js',
-        'js/linkage/dom-setup.js',
-        'js/linkage/hardware-ui-init.js',
-        'js/linkage/main.js'
-    ];
+    const MANIFEST_PATH = 'config/linkage-manifest.json';
 
-    function loadScriptSync(src) {
+    function fetchTextSync(path) {
         const xhr = new XMLHttpRequest();
-        xhr.open('GET', src, false);
+        xhr.open('GET', path, false);
         try {
             xhr.send(null);
         } catch (err) {
-            throw new Error('Sync load blocked for ' + src + ': ' + err.message);
+            throw new Error('Sync fetch blocked for ' + path + ': ' + err.message);
         }
         if (xhr.status !== 200 && xhr.status !== 0) {
-            throw new Error('Failed to load ' + src + ' (HTTP ' + xhr.status + ')');
+            throw new Error('Failed to load ' + path + ' (HTTP ' + xhr.status + ')');
         }
+        return xhr.responseText;
+    }
+
+    const manifest = JSON.parse(fetchTextSync(MANIFEST_PATH));
+    const partials = manifest.partials || [];
+    const scripts = manifest.scripts || [];
+
+    function injectPartials() {
+        for (const spec of partials) {
+            const html = fetchTextSync(spec.path);
+            if (spec.mount === 'body') {
+                document.body.insertAdjacentHTML(spec.method || 'beforeend', html);
+                continue;
+            }
+            const mount = document.querySelector(spec.mount);
+            if (!mount) {
+                throw new Error('Partial mount not found: ' + spec.mount + ' for ' + spec.path);
+            }
+            mount.insertAdjacentHTML('beforeend', html);
+        }
+    }
+
+    function loadScriptSync(src) {
         const el = document.createElement('script');
-        el.textContent = xhr.responseText;
+        el.textContent = fetchTextSync(src);
         el.setAttribute('data-src', src);
         document.head.appendChild(el);
     }
 
-    for (const src of SCRIPTS) {
+    injectPartials();
+
+    for (const src of scripts) {
         loadScriptSync(src);
     }
 })();

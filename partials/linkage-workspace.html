@@ -1,0 +1,214 @@
+<button id="sidebar-toggle">◀</button>
+<div id="viewport">
+    <canvas id="canvas-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+    <canvas id="canvas" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
+    <div id="toast"></div>
+    <div id="perf-stats" style="position:absolute; bottom:6px; left:6px; font:10px/1.3 monospace; color:rgba(255,255,255,0.45); pointer-events:none; z-index:5; text-shadow:0 1px 2px rgba(0,0,0,0.5);"></div>
+</div>
+
+<!-- Solar Design Canvas (hidden by default) -->
+<div id="solar-canvas-container">
+    <svg id="solar-canvas"></svg>
+    <div class="solar-view-label">Solar Design Mode</div>
+</div>
+
+<div id="right-panel">
+    <div class="view-section" id="top-view-section">
+        <canvas id="canvas-top-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+        <canvas id="canvas-top" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
+        <div class="view-label">Top View</div>
+    </div>
+    <div class="view-section" id="side-view-section">
+        <canvas id="canvas-side-webgl" style="position:absolute; top:0; left:0; width:100%; height:100%;"></canvas>
+        <canvas id="canvas-side" style="position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; display:none;"></canvas>
+        <div class="view-label">Side View</div>
+    </div>
+    <div id="stats-panel">
+        <div id="hud-panel">
+            <div class="hud-sec">
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 6px;">Dimensions & Weight</div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; font-size: 0.8rem;">
+                    <div class="hud-row"><span>Height</span> <span class="hud-val" id="stat-h" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>Diameter</span> <span class="hud-val" id="stat-d" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>Structure</span> <span class="hud-val" id="stat-weight-structure" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row"><span>System</span> <span class="hud-val" id="stat-weight-system" style="font-size: 0.9rem; font-weight: 600;"></span></div>
+                    <div class="hud-row" style="grid-column: span 2; border-top: 1px solid var(--border-light); padding-top: 4px; margin-top: 2px;"><span>Total Weight</span> <span class="hud-val" id="stat-weight-total" style="font-size: 0.95rem; font-weight: 600; color: var(--accent);"></span></div>
+                </div>
+            </div>
+            <div class="hud-sec">
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 6px;">Bill of Materials</div>
+                <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 8px; font-size: 0.75rem;">
+                    <span style="color: var(--text-muted);">Qty</span>
+                    <span style="color: var(--text-muted);">Item</span>
+                    <span style="color: var(--text-muted); text-align: right;">Unit</span>
+                    <span style="color: var(--text-muted); text-align: right;">Total</span>
+                    
+                    <span class="hud-val" id="bom-h">0</span>
+                    <span>Horizontal Beams</span>
+                    <span id="bom-h-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-h-cost" style="text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-v">0</span>
+                    <span>Vertical Beams</span>
+                    <span id="bom-v-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-v-cost" style="text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-u">0</span>
+                    <span>Brackets</span>
+                    <span id="bom-u-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-u-cost" style="text-align: right;">$0</span>
+                    
+                    <!-- Single bolt row (shown when stack is even or <=2) -->
+                    <span class="hud-val" id="bom-b-v">0</span>
+                    <span id="bom-b-v-label">V-Stack Bolts <span id="bom-b-v-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-v-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-v-cost" style="text-align: right;">$0</span>
+                    
+                    <!-- Split bolt rows (shown when V-stack > 2 and odd) -->
+                    <span class="hud-val" id="bom-b-vinner" style="display:none;">0</span>
+                    <span id="bom-b-vinner-label" style="display:none;">Inner Bolts (Long) <span id="bom-b-vinner-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-vinner-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-vinner-cost" style="display:none; text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-b-vouter" style="display:none;">0</span>
+                    <span id="bom-b-vouter-label" style="display:none;">Outer Bolts (Short) <span id="bom-b-vouter-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-vouter-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-vouter-cost" style="display:none; text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-b-vcenter" style="display:none;">0</span>
+                    <span id="bom-b-vcenter-label" style="display:none;">Center Bolts (Full) <span id="bom-b-vcenter-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-vcenter-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-vcenter-cost" style="display:none; text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-b-h">0</span>
+                    <span>H-Center Bolts <span id="bom-b-h-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-h-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-h-cost" style="text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-b-hpivot">0</span>
+                    <span>H-Pivot Bolts <span id="bom-b-hpivot-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-b-hpivot-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-b-hpivot-cost" style="text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-w-v" style="display:none;">0</span>
+                    <span id="bom-w-v-label" style="display:none;">V-Stack Washers <span id="bom-w-v-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-w-v-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-w-v-cost" style="display:none; text-align: right;">$0</span>
+                    
+                    <span class="hud-val" id="bom-w-h" style="display:none;">0</span>
+                    <span id="bom-w-h-label" style="display:none;">H-Stack Washers <span id="bom-w-h-spec" style="font-size:0.65rem; color:var(--text-muted);"></span></span>
+                    <span id="bom-w-h-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                    <span id="bom-w-h-cost" style="display:none; text-align: right;">$0</span>
+                </div>
+                <div id="bom-support-wrap" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 4px 8px; font-size: 0.75rem;">
+                        <span class="hud-val" id="bom-sb-radial-qty">0</span>
+                        <span id="bom-sb-radial-label">Radial support beams</span>
+                        <span id="bom-sb-radial-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-radial-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-rcp-qty" style="display:none;">0</span>
+                        <span id="bom-sb-rcp-label" style="display:none;">Reciprocal support beams</span>
+                        <span id="bom-sb-rcp-cost-unit" style="display:none; text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-rcp-cost" style="display:none; text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-bolt-qty">0</span>
+                        <span>Radial support bolts</span>
+                        <span id="bom-sb-bolt-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-bolt-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-thru-qty">0</span>
+                        <span>Radial through-bolts</span>
+                        <span id="bom-sb-thru-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-thru-cost" style="text-align: right;">$0</span>
+                        <span class="hud-val" id="bom-sb-wash-qty">0</span>
+                        <span>Radial support washers</span>
+                        <span id="bom-sb-wash-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-sb-wash-cost" style="text-align: right;">$0</span>
+                    </div>
+                </div>
+                <div id="bom-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-solar">0</span>
+                        <span>Solar Panels</span>
+                        <span id="bom-solar-cost-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">$0</span>
+                        <span id="bom-solar-cost" style="text-align: right;">$0</span>
+                    </div>
+                </div>
+            </div>
+            <div class="hud-sec" style="border: none; margin: 0; padding: 0;">
+                <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--border-light); font-size: 0.8rem;">
+                    <span style="color: var(--text-muted);">Structure</span>
+                    <span class="hud-val" id="bom-structure-subtotal">$0</span>
+                </div>
+                <div id="bom-solar-subtotal-row" style="display:none; padding-bottom: 8px; font-size: 0.8rem;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Solar</span>
+                        <span class="hud-val" id="bom-solar-subtotal">$0</span>
+                    </div>
+                </div>
+                <div style="padding: 8px 0; border-top: 2px solid var(--accent); margin-top: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Cost</span>
+                        <span style="font-size: 1.2rem; font-weight: 700; color: var(--accent);">$<span id="bom-total">0.00</span></span>
+                    </div>
+                </div>
+            </div>
+            <div class="hud-sec" style="margin-top: 12px;">
+                <div class="hud-title" style="font-size: 0.7rem; margin-bottom: 8px;">Weight</div>
+                <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                    <span style="color: var(--text-muted);">Qty</span>
+                    <span style="color: var(--text-muted);">Item</span>
+                    <span style="color: var(--text-muted); text-align: right;">Unit</span>
+                    <span style="color: var(--text-muted); text-align: right;">Total</span>
+                    
+                    <span class="hud-val" id="bom-weight-h">0</span>
+                    <span>Horizontal Beams</span>
+                    <span id="bom-weight-h-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-h-val" style="text-align: right;">0 lbs</span>
+                    
+                    <span class="hud-val" id="bom-weight-v">0</span>
+                    <span>Vertical Beams</span>
+                    <span id="bom-weight-v-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-v-val" style="text-align: right;">0 lbs</span>
+                    
+                    <span class="hud-val" id="bom-weight-u">0</span>
+                    <span>Brackets</span>
+                    <span id="bom-weight-u-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                    <span id="bom-weight-u-val" style="text-align: right;">0 lbs</span>
+                </div>
+                <div id="bom-weight-support-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-weight-support">0</span>
+                        <span>Support beams &amp; hardware</span>
+                        <span id="bom-weight-support-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                        <span id="bom-weight-support-val" style="text-align: right;">0 lbs</span>
+                    </div>
+                </div>
+                <div id="bom-weight-solar-row" style="display:none; margin-top: 6px; padding-top: 6px; border-top: 1px dashed var(--border-light);">
+                    <div style="display: grid; grid-template-columns: auto 1fr auto auto; gap: 6px 12px; font-size: 0.8rem;">
+                        <span class="hud-val" id="bom-weight-solar">0</span>
+                        <span>Solar Panels</span>
+                        <span id="bom-weight-solar-unit" style="text-align: right; color: var(--text-muted); font-size: 0.75rem;">0 lbs</span>
+                        <span id="bom-weight-solar-val" style="text-align: right;">0 lbs</span>
+                    </div>
+                </div>
+                <div style="border: none; margin: 0; padding: 0;">
+                    <div style="display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid var(--border-light); font-size: 0.8rem;">
+                        <span style="color: var(--text-muted);">Structure</span>
+                        <span class="hud-val" id="bom-weight-structure-subtotal">0 lbs</span>
+                    </div>
+                    <div id="bom-weight-system-row" style="display:none; padding-bottom: 8px; font-size: 0.8rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-muted);">System</span>
+                            <span class="hud-val" id="bom-weight-system-subtotal">0 lbs</span>
+                        </div>
+                    </div>
+                    <div style="padding: 8px 0; border-top: 2px solid var(--accent); margin-top: 4px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;">Total Weight</span>
+                            <span style="font-size: 1.1rem; font-weight: 700; color: var(--accent);"><span id="bom-weight-total">0</span> lbs</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

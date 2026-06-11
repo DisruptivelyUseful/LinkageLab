@@ -5,19 +5,7 @@
 (function (g) {
     'use strict';
 
-    async function injectLinkageModals() {
-        if (document.getElementById('hardware-detail-modal')) return;
-        const response = await fetch('partials/linkage-modals.html');
-        if (!response.ok) {
-            console.error('Failed to load partials/linkage-modals.html:', response.status);
-            return;
-        }
-        document.body.insertAdjacentHTML('beforeend', await response.text());
-    }
-
     async function initLinkageLab() {
-        await injectLinkageModals();
-
         initViewportInput();
         initSolarPanelHandlers();
         initBuildGuideHandlers();

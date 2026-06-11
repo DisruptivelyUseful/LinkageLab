@@ -1,0 +1,350 @@
+    <div id="solar-sidebar">
+        <!-- Power Sources Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Power Sources</div>
+            <div class="solar-group-content">
+                <select id="panel-preset-select" class="preset-select-solar">
+                    <option value="">☀️ Add Solar Panel...</option>
+                </select>
+                <select id="controller-preset-select" class="preset-select-solar">
+                    <option value="">⚡ Add Controller/Inverter...</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Energy Storage Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Energy Storage</div>
+            <div class="solar-group-content">
+                <select id="battery-preset-select" class="preset-select-solar">
+                    <option value="">🔋 Add Battery...</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Distribution Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Distribution</div>
+            <div class="solar-group-content">
+                <div class="palette-grid">
+                    <div class="palette-item" data-component="acbreaker" title="AC Circuit Breaker">
+                        <span class="icon">🔌</span>
+                        <span>AC Breaker</span>
+                    </div>
+                    <div class="palette-item" data-component="dcbreaker" title="DC Breaker">
+                        <span class="icon">⚡</span>
+                        <span>DC Breaker</span>
+                    </div>
+                    <div class="palette-item" data-component="acoutlet" title="AC Outlet 120V">
+                        <span class="icon">🔲</span>
+                        <span>Outlet 120V</span>
+                    </div>
+                    <div class="palette-item" data-component="acoutlet240" title="AC Outlet 240V">
+                        <span class="icon">🔳</span>
+                        <span>Outlet 240V</span>
+                    </div>
+                    <div class="palette-item" data-component="combiner" title="String Combiner Box">
+                        <span class="icon">📦</span>
+                        <span>Combiner</span>
+                    </div>
+                    <div class="palette-item" data-component="solarcombiner" title="Solar Combiner with Breakers">
+                        <span class="icon">🔆</span>
+                        <span>Solar Combiner</span>
+                    </div>
+                    <div class="palette-item" data-component="breakerpanel" title="8-Circuit Breaker Panel">
+                        <span class="icon">🏠</span>
+                        <span>Breaker Panel</span>
+                    </div>
+                    <div class="palette-item" data-component="spiderbox" title="CEP Portable Spider Box">
+                        <span class="icon">🕷️</span>
+                        <span>Spider Box</span>
+                    </div>
+                    <div class="palette-item" data-component="doublevoltagehub" title="240V Split-Phase Hub">
+                        <span class="icon">⚡</span>
+                        <span>Voltage Hub</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- EcoFlow Ecosystem Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">EcoFlow Ecosystem</div>
+            <div class="solar-group-content">
+                <div class="palette-grid">
+                    <div class="palette-item" data-component="smartbattery" title="Smart Battery (3.6 kWh)">
+                        <span class="icon">🔋</span>
+                        <span>Smart Battery</span>
+                    </div>
+                </div>
+                <p class="solar-hint">Connect Smart Batteries to Delta Pro units for expanded capacity.</p>
+            </div>
+        </div>
+        
+        <!-- Loads/Appliances Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Loads & Appliances</div>
+            <div class="solar-group-content">
+                <select id="appliance-preset-select" class="preset-select-solar">
+                    <option value="">💡 Add Appliance...</option>
+                </select>
+                <div class="palette-grid" style="margin-top:6px;">
+                    <div class="palette-item" data-component="customload" title="Custom Wattage Load">
+                        <span class="icon">⚙️</span>
+                        <span>Custom</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Production & Resources Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">🏭 Production</div>
+            <div class="solar-group-content">
+                <label style="font-size:0.6rem; color:var(--text-muted); margin-bottom:4px; display:block;">Producers</label>
+                <select id="producer-preset-select" class="preset-select-solar">
+                    <option value="">🏭 Add Producer...</option>
+                </select>
+                
+                <label style="font-size:0.6rem; color:var(--text-muted); margin:8px 0 4px 0; display:block;">Resource Containers</label>
+                <select id="container-preset-select" class="preset-select-solar">
+                    <option value="">🛢️ Add Container...</option>
+                </select>
+                
+                <p class="solar-hint" style="margin-top:8px;">
+                    Producers consume power to create resources. Connect containers to store output.
+                </p>
+            </div>
+        </div>
+        
+        <!-- Selected Item Properties -->
+        <div id="solar-properties-panel">
+            <div class="prop-title">
+                <span id="prop-icon">⚡</span>
+                <span id="prop-name">Selected Item</span>
+            </div>
+            <div id="prop-content">
+                <!-- Dynamic content -->
+            </div>
+            <div class="prop-actions">
+                <button id="btn-prop-duplicate" title="Duplicate">📋 Copy</button>
+                <button id="btn-prop-delete" style="border-color:#ff6b6b; color:#ff6b6b;" title="Delete">🗑️ Delete</button>
+            </div>
+        </div>
+        
+        <!-- Simulation Mode Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Simulation</div>
+            <div class="solar-group-content">
+                <div class="btn-group" style="margin:0;">
+                    <button id="btn-solar-build" class="active" style="flex:1; padding:5px 8px; font-size:0.65rem;">🔧 Build</button>
+                    <button id="btn-solar-live" style="flex:1; padding:5px 8px; font-size:0.65rem;">⚡ Live</button>
+                </div>
+                <div id="live-mode-hint" style="font-size:0.6rem; color:var(--text-muted); margin-top:6px; display:none;">
+                    Double-click loads to toggle ON/OFF
+                </div>
+                
+                <!-- Time-Based Simulation Controls (shown in Live mode) -->
+                <div id="sim-controls" style="display:none; margin-top:10px;">
+                    <!-- Time Display and Sun Track -->
+                    <div class="sim-time-row">
+                        <span class="sim-label">🕐</span>
+                        <span id="sim-time-display" class="sim-time">12:00 PM</span>
+                    </div>
+                    <div class="sim-sun-track">
+                        <div class="sim-sun-track-bg">
+                            <div id="sim-sun-indicator" class="sim-sun">☀️</div>
+                        </div>
+                        <div class="sim-sun-labels">
+                            <span>6 AM</span>
+                            <span>12 PM</span>
+                            <span>6 PM</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Time Slider -->
+                    <div class="sim-slider-row">
+                        <input type="range" id="sim-time-slider" min="0" max="1439" value="720" class="sim-slider">
+                    </div>
+                    
+                    <!-- Playback Controls -->
+                    <div class="sim-playback-row">
+                        <button id="btn-sim-play" class="sim-btn" title="Play">▶️</button>
+                        <button id="btn-sim-pause" class="sim-btn active" title="Pause">⏸️</button>
+                        <button id="btn-sim-reset" class="sim-btn" title="Reset to Noon">🔄</button>
+                        <div class="sim-speed-controls">
+                            <button id="btn-sim-slower" class="sim-btn-sm" title="Slower">−</button>
+                            <span id="sim-speed-display" class="sim-speed">1h/s</span>
+                            <button id="btn-sim-faster" class="sim-btn-sm" title="Faster">+</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Live Stats -->
+                    <div class="sim-stats">
+                        <div class="sim-stat-row">
+                            <span class="sim-stat-label">☀️ Solar Output</span>
+                            <span id="sim-solar-output" class="sim-stat-value">0 W</span>
+                        </div>
+                        <div class="sim-stat-row">
+                            <span class="sim-stat-label">📊 Irradiance</span>
+                            <span id="sim-irradiance" class="sim-stat-value">0%</span>
+                        </div>
+                        <div class="sim-stat-row">
+                            <span class="sim-stat-label">💡 Load Draw</span>
+                            <span id="sim-load-draw" class="sim-stat-value">0 W</span>
+                        </div>
+                        <div class="sim-stat-row">
+                            <span class="sim-stat-label">🔋 Battery Flow</span>
+                            <span id="sim-battery-flow" class="sim-stat-value">0 W</span>
+                        </div>
+                        <div class="sim-stat-row">
+                            <span class="sim-stat-label">⚡ Battery SOC</span>
+                            <span id="sim-battery-soc" class="sim-stat-value">80%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Automations Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">⚡ Automations</div>
+            <div class="solar-group-content">
+                <div id="automations-panel">
+                    <!-- Preset Templates -->
+                    <div class="auto-section">
+                        <label class="auto-label">Quick Add</label>
+                        <select id="auto-preset-select" class="preset-select-solar">
+                            <option value="">Select preset...</option>
+                            <option value="0">🌅 Night Lights (sunset)</option>
+                            <option value="1">🌄 Morning Off (sunrise)</option>
+                            <option value="2">🔋 Low Battery Saver (&lt;20%)</option>
+                            <option value="3">☀️ High Solar Boost (&gt;500W)</option>
+                            <option value="4">🕐 Evening Schedule (6-10 PM)</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Custom Rule Builder -->
+                    <div class="auto-section" style="margin-top:8px;">
+                        <label class="auto-label">Create Custom Rule</label>
+                        <input type="text" id="auto-rule-name" class="prop-input" placeholder="Rule name" style="width:100%; margin-bottom:4px;">
+                        
+                        <div class="auto-row">
+                            <span class="auto-row-label">When:</span>
+                            <select id="auto-trigger-type" class="auto-select">
+                                <option value="time">At Time</option>
+                                <option value="time_range">Time Range</option>
+                                <option value="sunrise">Sunrise</option>
+                                <option value="sunset">Sunset</option>
+                                <option value="battery_below">Battery Below</option>
+                                <option value="battery_above">Battery Above</option>
+                                <option value="solar_above">Solar Above</option>
+                                <option value="solar_below">Solar Below</option>
+                            </select>
+                        </div>
+                        
+                        <div id="auto-trigger-value-row" class="auto-row">
+                            <span class="auto-row-label">Value:</span>
+                            <input type="time" id="auto-trigger-time" class="auto-input-time" value="18:00">
+                            <input type="number" id="auto-trigger-number" class="auto-input-num" value="20" min="0" max="100" style="display:none;">
+                            <span id="auto-trigger-unit" class="auto-unit">%</span>
+                        </div>
+                        
+                        <div id="auto-trigger-value2-row" class="auto-row" style="display:none;">
+                            <span class="auto-row-label">Until:</span>
+                            <input type="time" id="auto-trigger-time2" class="auto-input-time" value="22:00">
+                        </div>
+                        
+                        <div class="auto-row">
+                            <span class="auto-row-label">Then:</span>
+                            <select id="auto-action-type" class="auto-select">
+                                <option value="turn_on">Turn ON</option>
+                                <option value="turn_off">Turn OFF</option>
+                                <option value="toggle">Toggle</option>
+                            </select>
+                        </div>
+                        
+                        <div class="auto-row">
+                            <span class="auto-row-label">Target:</span>
+                            <select id="auto-action-target" class="auto-select">
+                                <option value="all_loads">All Loads</option>
+                                <option value="selected">Selected Item</option>
+                            </select>
+                        </div>
+                        
+                        <button id="btn-auto-create" class="btn-auto-create">+ Create Rule</button>
+                    </div>
+                    
+                    <!-- Active Rules List -->
+                    <div class="auto-section" style="margin-top:10px;">
+                        <label class="auto-label">Active Rules <span id="auto-rule-count">(0)</span></label>
+                        <div id="auto-rules-list" class="auto-rules-list">
+                            <div class="auto-empty">No automations yet</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- System Stats Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">System Stats</div>
+            <div class="solar-group-content">
+                <div id="solar-stats-panel">
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Solar Array</span>
+                            <span class="solar-stat-value" id="stat-array-watts">0 W</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Battery Bank</span>
+                            <span class="solar-stat-value" id="stat-battery-kwh">0 kWh</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">AC Capacity</span>
+                            <span class="solar-stat-value" id="stat-ac-output">0 W</span>
+                        </div>
+                    </div>
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Total Load</span>
+                            <span class="solar-stat-value" id="stat-total-load">0 W</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Load vs Capacity</span>
+                            <span class="solar-stat-value" id="stat-load-ratio">—</span>
+                        </div>
+                    </div>
+                    <div class="solar-stat-section">
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Components</span>
+                            <span class="solar-stat-value" id="stat-component-count">0</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">Connections</span>
+                            <span class="solar-stat-value" id="stat-connection-count">0</span>
+                        </div>
+                        <div class="solar-stat-row">
+                            <span class="solar-stat-label">System Cost</span>
+                            <span class="solar-stat-value" id="stat-total-cost" style="color:var(--clr-warning);">$0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Actions Group -->
+        <div class="solar-group">
+            <div class="solar-group-title" onclick="this.parentElement.classList.toggle('collapsed')">Actions</div>
+            <div class="solar-group-content">
+                <div class="btn-group" style="margin:0;">
+                    <button id="btn-solar-export" style="flex:1; padding:5px 8px; font-size:0.65rem;">💾 Export</button>
+                    <button id="btn-solar-import" style="flex:1; padding:5px 8px; font-size:0.65rem;">📂 Import</button>
+                </div>
+                <button id="btn-solar-review" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; background:rgba(var(--clr-primary-rgb),0.1); border-color:var(--clr-primary); color:var(--clr-primary);">📊 System Review</button>
+                <button id="btn-solar-bom" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; background:rgba(92,184,92,0.1); border-color:#5cb85c; color:#5cb85c;">📋 Generate BOM</button>
+                <button id="btn-solar-clear" style="width:100%; padding:5px 8px; font-size:0.65rem; margin-top:4px; border-color:var(--clr-danger); color:var(--clr-danger);">🗑️ Clear All</button>
+            </div>
+        </div>
+    </div>
+</div>

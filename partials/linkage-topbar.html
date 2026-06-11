@@ -1,0 +1,51 @@
+<div id="topbar" class="topbar">
+    <div class="topbar-left">
+        <h1 style="font-size: 1rem; margin: 0; white-space: nowrap;">StarShade Lab</h1>
+        <div class="topbar-divider"></div>
+        <div class="mode-toggle">
+            <button id="btn-mode-linkage" class="topbar-btn active" title="Linkage Design Mode">⚙️</button>
+            <button id="btn-mode-solar" class="topbar-btn" title="Solar/Electrical Design Mode">⚡</button>
+        </div>
+    </div>
+    <div class="topbar-center">
+        <div style="display:flex; align-items:center; gap:6px;">
+            <span style="color:var(--text-secondary); font-weight:600; font-size:0.85rem; letter-spacing:0.5px;">FOLD:</span>
+            <input type="range" id="sl-fold" min="5" max="175" step="0.1" title="Fold Angle">
+            <input type="number" id="nb-fold" min="5" max="175" step="0.1" style="width:75px; font-size:0.85rem; font-weight:600;" title="Fold Angle (degrees)">
+            <span style="color:var(--text-muted); font-size:0.85rem; font-weight:600;">°</span>
+        </div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-anim">
+            <button id="btn-anim-fold" title="Fold to Closed Position" style="padding:6px 12px; background:rgba(231,76,60,0.8); color:white; border:none; border-radius:4px; font-weight:600;">FOLD</button>
+            <button id="btn-anim-unfold" title="Unfold to Open Position" style="padding:6px 12px; background:rgba(46,204,113,0.8); color:white; border:none; border-radius:4px; font-weight:600;">UNFOLD</button>
+            <button id="btn-anim-play" title="Play Animation">▶</button>
+            <button id="btn-anim-pause" title="Pause Animation">⏸</button>
+            <button id="btn-anim-reverse" title="Reverse Direction">⟲</button>
+            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed">
+            <label class="topbar-chk" title="Ping-pong animation" style="font-size:0.8rem; font-weight:600;"><input type="checkbox" id="chk-anim-pingpong-top" style="margin-right:4px;"> Loop</label>
+            <input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:65px; font-size:0.8rem; font-weight:600; padding:4px 6px;" title="Close limit">
+        </div>
+        <div class="topbar-divider"></div>
+        <div class="topbar-sun" title="Time of Day">
+            <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); letter-spacing:0.5px; margin-right:4px;">SUN:</span>
+            <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of Day (Sunrise to Sunset)">
+            <span id="sun-time-display" style="font-size:0.85rem; color:var(--text-primary); min-width:60px; text-align:center; font-weight:600; font-family:var(--font-mono);">12:00</span>
+            <label class="topbar-chk" title="Enable Shadows" style="font-size:0.8rem; font-weight:600; margin-left:6px;">
+                <input type="checkbox" id="chk-shadows" style="margin-right:4px;"> Shadows
+            </label>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button class="topbar-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)" style="padding:4px 8px; font-size:0.75rem;">💾</button>
+        <button class="topbar-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)" style="padding:4px 8px; font-size:0.75rem;">📂</button>
+        <div class="topbar-divider"></div>
+        <button class="topbar-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)" style="padding:4px 8px; font-size:0.75rem;">⬇️</button>
+        <button class="topbar-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)" style="padding:4px 8px; font-size:0.75rem;">⬆️</button>
+        <button class="topbar-btn" id="btn-export-gltf" title="Export 3D Model (glTF/GLB)" style="padding:4px 8px; font-size:0.75rem;">🧊</button>
+        <div class="topbar-divider"></div>
+        <button class="topbar-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)" style="padding:4px 8px; font-size:0.75rem;">📏</button>
+        <div class="topbar-divider"></div>
+        <button class="topbar-btn" id="btn-hardware-detail-top" title="Hardware Assembly Detail" style="padding:4px 8px; font-size:0.75rem;">🔩</button>
+        <button class="topbar-btn" id="btn-build-guide-top" title="Open Build Guide" style="padding:4px 8px; font-size:0.75rem;">📋</button>
+    </div>
+</div>

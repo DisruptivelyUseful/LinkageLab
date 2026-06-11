@@ -947,8 +947,8 @@
                     threeRenderer.ibcReferenceGroup.visible = false;
                     return;
                 }
-                renderPending = false;
-                render();
+                finishStack();
+                requestRender();
             },
             undefined,
             (err) => {
