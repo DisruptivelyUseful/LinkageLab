@@ -33,38 +33,7 @@
     <!-- convert-units library for unit conversions -->
     <script src="https://cdn.jsdelivr.net/npm/convert-units@2.3.4/dist/index.js"></script>
 
-    <!-- Core modules (linkage mode). Solar Designer loads on demand via ensureSolarDesignerLoaded(). -->
-    <script src="js/core/unit-converter.js"></script>
-    <script src="js/core/constants.js"></script>
-    <script src="js/core/export-format.js"></script>
-    <script src="js/core/feedback.js"></script>
-    <!-- Linkage modules (Phase 3 extraction — load before inline app script) -->
-    <script src="js/linkage/constants.js"></script>
-    <script src="js/linkage/math.js"></script>
-    <script src="js/linkage/beam-bolt-helpers.js"></script>
-    <script src="js/linkage/animation.js"></script>
-    <script src="js/linkage/geometry-classes.js"></script>
-    <script src="js/linkage/config-persistence.js"></script>
-    <script src="js/linkage/hardware-detail.js"></script>
-    <script src="js/linkage/app-state.js"></script>
-    <script src="js/linkage/solver.js"></script>
-    <script src="js/linkage/collision.js"></script>
-    <script src="js/linkage/renderer-3d.js"></script>
-    <script src="js/linkage/measurement-overlay.js"></script>
-    <script src="js/linkage/gltf-export.js"></script>
-    <script src="js/linkage/scene-render.js"></script>
-    <script src="js/linkage/cache.js"></script>
-    <script src="js/linkage/linkage-geometry.js"></script>
-    <script src="js/linkage/export-bridge.js"></script>
-    <script src="js/linkage/build-guide.js"></script>
-    <script src="js/linkage/solar-panel-input.js"></script>
-    <script src="js/linkage/render-app.js"></script>
-    <script src="js/linkage/viewport-input.js"></script>
-    <script src="js/linkage/validation.js"></script>
-    <script src="js/linkage/history.js"></script>
-    <script src="js/linkage/state-sync.js"></script>
-    <script src="js/linkage/reference-input.js"></script>
-    <script src="js/linkage/ui-bindings.js"></script>
+    <!-- App modules: loaded in order by module-loader.js at end of body -->
 </head>
 <body>
 
@@ -2031,83 +2000,8 @@
     </div>
 </div>
 
-<!-- DOM setup + bootstrap (after body markup; was inline script) -->
-<script src="js/linkage/dom-setup.js"></script>
-<script src="js/linkage/hardware-ui-init.js"></script>
-<script src="js/linkage/main.js"></script>
-
-<!-- Hardware Assembly Detail Modal -->
-<div id="hardware-detail-modal">
-    <div class="hw-container">
-        <div class="hw-header">
-            <h1>HARDWARE ASSEMBLY DETAIL</h1>
-            <div class="hw-header-controls">
-                <label class="hw-header-field">Assembly
-                    <select id="hw-assembly-select">
-                        <option value="outerVBeam">Outer V-Beam</option>
-                        <option value="innerVBeam">Inner V-Beam</option>
-                        <option value="hCenter">H-Beam Center</option>
-                        <option value="vCenter">V-Beam Center</option>
-                    </select>
-                </label>
-                <label class="hw-header-field hw-explode-field">Explode
-                    <input type="range" id="hw-explode-slider" min="0" max="100" step="1" value="0">
-                    <span id="hw-explode-value">0%</span>
-                </label>
-            </div>
-            <button class="hw-close" onclick="closeHardwareDetail()">&times;</button>
-        </div>
-        <div class="hw-body">
-            <div class="hw-viewport"><canvas id="hw-detail-canvas"></canvas></div>
-            <div class="hw-editor">
-                <div class="hw-editor-toolbar">
-                    <select id="hw-add-type">
-                        <option value="bolt">Bolt</option>
-                        <option value="bushing">Bushing</option>
-                        <option value="washer">Washer</option>
-                        <option value="lockWasher">Lock Washer</option>
-                        <option value="nut">Nut</option>
-                        <option value="rivetNut">Rivet Nut</option>
-                        <option value="beam">Beam</option>
-                        <option value="bracket">Bracket</option>
-                    </select>
-                    <select id="hw-add-axis">
-                        <option value="right">Right</option>
-                        <option value="left">Left</option>
-                        <option value="down">Down (Center)</option>
-                        <option value="up">Up</option>
-                    </select>
-                    <button class="hw-add-btn" onclick="hwAddPart()">+ Add Part</button>
-                </div>
-                <div id="hw-detail-parts" class="hw-parts-list"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Build Guide Modal -->
-<div id="build-guide-modal">
-    <div class="guide-container">
-        <div class="guide-header">
-            <h1>BUILD GUIDE</h1>
-            <div class="guide-header-actions">
-                <button class="guide-header-btn" onclick="exportGuidePDF()">📄 Export PDF</button>
-                <button class="guide-header-btn" onclick="exportBOMcsv()">📊 Export CSV</button>
-                <button class="guide-header-btn" onclick="window.print()">🖨️ Print</button>
-                <button class="guide-header-btn" onclick="exportGuideJSON()">💾 Export JSON</button>
-                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Simulator</button>
-            </div>
-            <button class="guide-close" onclick="closeBuildGuide()">&times;</button>
-        </div>
-        <div class="guide-content" id="guide-content">
-            <!-- Content populated by JavaScript -->
-        </div>
-        <div class="guide-footer">
-            <span id="guide-date"></span>
-            <span>StarShade Linkage Lab</span>
-        </div>
-    </div>
-</div>
+<!-- Modals: partials/linkage-modals.html (injected by main.js) -->
+<script src="js/linkage/module-loader.js"></script>
 
 </body>
 </html>

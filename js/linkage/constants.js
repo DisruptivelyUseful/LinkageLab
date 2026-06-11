@@ -1,10 +1,10 @@
 // ============================================================================
 // LINKAGE LAB — Constants & configuration
-// Loaded before index.html inline script (global scope).
+// Loaded via js/linkage/module-loader.js (global scope).
 // ============================================================================
 
 /** Build identifier — visible in console at startup */
-const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3o';
+const LINKAGE_BUILD_ID = 'refactor/optimization-unified-app phase-3p';
 
 /** Inches per foot conversion constant (deprecated - use unitConverter.feetToInches(1) instead) */
 const INCHES_PER_FOOT = 12;

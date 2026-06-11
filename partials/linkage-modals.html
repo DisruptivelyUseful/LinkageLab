@@ -1,0 +1,72 @@
+<!-- Hardware Assembly Detail Modal -->
+<div id="hardware-detail-modal">
+    <div class="hw-container">
+        <div class="hw-header">
+            <h1>HARDWARE ASSEMBLY DETAIL</h1>
+            <div class="hw-header-controls">
+                <label class="hw-header-field">Assembly
+                    <select id="hw-assembly-select">
+                        <option value="outerVBeam">Outer V-Beam</option>
+                        <option value="innerVBeam">Inner V-Beam</option>
+                        <option value="hCenter">H-Beam Center</option>
+                        <option value="vCenter">V-Beam Center</option>
+                    </select>
+                </label>
+                <label class="hw-header-field hw-explode-field">Explode
+                    <input type="range" id="hw-explode-slider" min="0" max="100" step="1" value="0">
+                    <span id="hw-explode-value">0%</span>
+                </label>
+            </div>
+            <button class="hw-close" onclick="closeHardwareDetail()">&times;</button>
+        </div>
+        <div class="hw-body">
+            <div class="hw-viewport"><canvas id="hw-detail-canvas"></canvas></div>
+            <div class="hw-editor">
+                <div class="hw-editor-toolbar">
+                    <select id="hw-add-type">
+                        <option value="bolt">Bolt</option>
+                        <option value="bushing">Bushing</option>
+                        <option value="washer">Washer</option>
+                        <option value="lockWasher">Lock Washer</option>
+                        <option value="nut">Nut</option>
+                        <option value="rivetNut">Rivet Nut</option>
+                        <option value="beam">Beam</option>
+                        <option value="bracket">Bracket</option>
+                    </select>
+                    <select id="hw-add-axis">
+                        <option value="right">Right</option>
+                        <option value="left">Left</option>
+                        <option value="down">Down (Center)</option>
+                        <option value="up">Up</option>
+                    </select>
+                    <button class="hw-add-btn" onclick="hwAddPart()">+ Add Part</button>
+                </div>
+                <div id="hw-detail-parts" class="hw-parts-list"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Build Guide Modal -->
+<div id="build-guide-modal">
+    <div class="guide-container">
+        <div class="guide-header">
+            <h1>BUILD GUIDE</h1>
+            <div class="guide-header-actions">
+                <button class="guide-header-btn" onclick="exportGuidePDF()">📄 Export PDF</button>
+                <button class="guide-header-btn" onclick="exportBOMcsv()">📊 Export CSV</button>
+                <button class="guide-header-btn" onclick="window.print()">🖨️ Print</button>
+                <button class="guide-header-btn" onclick="exportGuideJSON()">💾 Export JSON</button>
+                <button class="guide-header-btn" onclick="exportToSolarSimulator()" style="background: linear-gradient(135deg, #f0ad4e 0%, #ec971f 100%);">⚡ Open Simulator</button>
+            </div>
+            <button class="guide-close" onclick="closeBuildGuide()">&times;</button>
+        </div>
+        <div class="guide-content" id="guide-content">
+            <!-- Content populated by JavaScript -->
+        </div>
+        <div class="guide-footer">
+            <span id="guide-date"></span>
+            <span>StarShade Linkage Lab</span>
+        </div>
+    </div>
+</div>

@@ -5,10 +5,19 @@
 (function (g) {
     'use strict';
 
-    function initLinkageLab() {
+    async function injectLinkageModals() {
+        if (document.getElementById('hardware-detail-modal')) return;
+        const response = await fetch('partials/linkage-modals.html');
+        if (!response.ok) {
+            console.error('Failed to load partials/linkage-modals.html:', response.status);
+            return;
+        }
+        document.body.insertAdjacentHTML('beforeend', await response.text());
+    }
 
-        // ============================================================================
-        
+    async function initLinkageLab() {
+        await injectLinkageModals();
+
         initViewportInput();
         initSolarPanelHandlers();
         initBuildGuideHandlers();
@@ -113,6 +122,9 @@
         // Save initial state to history
         saveStateToHistory();
         
+        console.log('LinkageLab build:', typeof LINKAGE_BUILD_ID !== 'undefined' ? LINKAGE_BUILD_ID : 'inline');
+        console.log('LinkageModules:', Object.keys(g.LinkageModules || {}));
+
         // Log Three.js availability and do initial render
         if (typeof THREE !== 'undefined') {
             console.log('Three.js loaded successfully:', THREE.REVISION);
@@ -280,10 +292,14 @@
     g.LinkageModules.main = { initLinkageLab };
     g.initLinkageLab = initLinkageLab;
 
+    function boot() {
+        initLinkageLab().catch(err => console.error('LinkageLab init failed:', err));
+    }
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initLinkageLab);
+        document.addEventListener('DOMContentLoaded', boot);
     } else {
-        initLinkageLab();
+        boot();
     }
 
 })(window);
