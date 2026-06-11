@@ -94,6 +94,60 @@ $rules = @(
         End     = '// Solar panel event handlers - js/linkage/solar-panel-input.js'
         Replace = @('// Measurement / IBC reference handlers - js/linkage/reference-input.js', '')
         IncludeEnd = $false
+    },
+    @{
+        Start   = '/** Get current bolt radius from state */'
+        End     = '// Canvas setup - get references to both 2D overlay and WebGL canvases'
+        Replace = @('// Beam/bolt/V-stack helpers - js/linkage/beam-bolt-helpers.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// INPUT VALIDATION'
+        End     = '// showToast() — provided by js/core/feedback.js'
+        Replace = @('// Input validation - js/linkage/validation.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = 'function generateDefaultFilename()'
+        End     = '// Build guide (BOM, PDF/CSV, drill templates) - js/linkage/build-guide.js'
+        Replace = @('// Export/import bridge - js/linkage/export-bridge.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// Keyboard shortcuts'
+        End     = "document.getElementById('btn-mode-solar').onclick = exportToSolarSimulator;"
+        Replace = @('// UI event bindings - js/linkage/ui-bindings.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '/** Application state object containing all configuration parameters */'
+        End     = '// INPUT VALIDATION'
+        Replace = @('// Application state - js/linkage/app-state.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// Canvas setup - get references to both 2D overlay and WebGL canvases'
+        End     = '// Geometry classes - js/linkage/geometry-classes.js'
+        Replace = @('// Canvas + DOM setup - js/linkage/dom-setup.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '(function initAutoLumberPricing()'
+        End     = '// Viewport navigation & SpaceMouse - js/linkage/viewport-input.js'
+        Replace = @('// Hardware UI init - js/linkage/hardware-ui-init.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// Update bracket hole position display'
+        End     = '// Initialize solar panel arch mode UI'
+        Replace = @()
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// INITIALIZATION'
+        End     = '})();'
+        Replace = @('// App bootstrap - js/linkage/main.js', '')
+        IncludeEnd = $false
     }
 )
 
