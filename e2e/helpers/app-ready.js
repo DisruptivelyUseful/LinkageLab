@@ -9,7 +9,7 @@ export const REQUIRED_MODULES = [
     'validation',
 ];
 
-export const BUILD_ID_PATTERN = /phase-5a/;
+export const BUILD_ID_PATTERN = /phase-5b/;
 
 /** Wait until LinkageLab bootstrap finishes and the workspace is interactive. */
 export async function waitForAppReady(page) {

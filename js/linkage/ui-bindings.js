@@ -1934,10 +1934,38 @@ import { applyConfig } from './config-persistence.js';
         
         // Register this function so it can be called from panel config event handlers
         
-        // Mode toggle button handlers
-        document.getElementById('btn-mode-linkage').onclick = switchToLinkageMode;
-        document.getElementById('btn-mode-solar').onclick = exportToSolarSimulator;
-        
+        // Mode toggle — unified app router (Phase 5b), with embedded-mode fallback
+        document.getElementById('btn-mode-linkage').onclick = () => {
+            if (globalThis.AppRouter?.navigateTo) {
+                globalThis.AppRouter.navigateTo('linkage').catch((err) => {
+                    console.error('Navigate to linkage failed:', err);
+                    showToast('Failed to switch to linkage mode', 'error');
+                });
+                return;
+            }
+            switchToLinkageMode();
+        };
+        document.getElementById('btn-mode-solar').onclick = () => {
+            openSolarDesign().catch((err) => {
+                console.error('Navigate to solar design failed:', err);
+                showToast('Failed to open solar design', 'error');
+            });
+        };
+
+        if (!globalThis.__linkageAppNavigateListener) {
+            globalThis.__linkageAppNavigateListener = true;
+            window.addEventListener('app:navigate', (event) => {
+                syncTopbarModeButtons(event.detail?.mode);
+            });
+        }
+    }
+
+    function syncTopbarModeButtons(mode) {
+        const linkageBtn = document.getElementById('btn-mode-linkage');
+        const solarBtn = document.getElementById('btn-mode-solar');
+        if (!linkageBtn || !solarBtn) return;
+        linkageBtn.classList.toggle('active', mode === 'linkage');
+        solarBtn.classList.toggle('active', mode === 'solar-design');
     }
 
 
@@ -1961,6 +1989,7 @@ const _moduleExports = {
     panelConfigChanged,
     debouncedPanelSync,
     initUIBindings,
+    syncTopbarModeButtons,
     currentAppMode,
 };
 
@@ -1971,4 +2000,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'uiBindings');
 
-export { findOptimalClosedAngle, selectActuator, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, currentAppMode };
+export { findOptimalClosedAngle, selectActuator, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, syncTopbarModeButtons, currentAppMode };

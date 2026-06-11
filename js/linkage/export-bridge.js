@@ -442,7 +442,7 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
                 units: 'meters',
                 coordSys: 'yup'
             };
-            localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
+            publishLinkageExport(exportData);
             try {
                 localStorage.setItem('linkageLabGLB', glbBase64);
             } catch (e) {
@@ -454,27 +454,15 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
     }
     
     /**
-     * Exports current design to Solar Designer for circuit design and simulation
-     * Passes panel configuration, BOM costs, and 3D geometry
+     * Builds linkage → solar designer export payload from current viewport state.
      */
-    function exportToSolarSimulator() {
-        const designerUrl = ExportFormat.buildImportURL('solar_designer.html', 'linkageLab');
-    
-        try {
-        // Get current linkage data with the same generated components shown in the viewport.
+    function buildLinkageExportData() {
         const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
-        
-        // Get active panel configuration
         const panelConfig = getActivePanelConfig();
         const panelCount = data.panels ? data.panels.length : 0;
-        
-        // Calculate BOM costs
         const moduleCount = state.modules;
         const hBeams = moduleCount * 2 * state.hStackCount;
-        const vBeams = moduleCount * state.vStackCount;
         const uBrackets = moduleCount * 4;
-        
-        // Calculate bolt counts by type
         const splitBolts = needsSplitVBolts();
         const vBoltsInner = moduleCount * 2;
         const vBoltsOuter = moduleCount * 2;
@@ -483,36 +471,27 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
         const hPivotBolts = moduleCount * 4;
         const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
         const totalHBolts = hCenterBolts + hPivotBolts;
-        
-        // Get bolt costs
         const costVInner = splitBolts ? (state.costBoltVInner || 0.75) : (state.costBoltVInner || 0.75);
         const costVOuter = splitBolts ? (state.costBoltVOuter || 0.50) : costVInner;
         const costH = state.costBoltH || 0.75;
         const costHPivot = state.costBoltHPivot || 0.75;
-        
         const hBeamsCost = hBeams * state.costHBeam;
         const vBeamsCost = calculateVBeamsCost();
         const bracketCost = uBrackets * state.costBracket;
-        const boltCost = vBoltsInner * costVInner + vBoltsOuter * costVOuter + vBoltsCenter * costVInner + hCenterBolts * costH + hPivotBolts * costHPivot;
-        
-        // Calculate washer costs
+        const boltCost = vBoltsInner * costVInner + vBoltsOuter * costVOuter + vBoltsCenter * costVInner
+            + hCenterBolts * costH + hPivotBolts * costHPivot;
         const vWashersPerBolt = state.vStackCount > 1 ? (state.vStackCount - 1) : 0;
         const vWasherCount = state.vWasherEnabled ? (totalVBolts * vWashersPerBolt) : 0;
         const hWashersPerBolt = state.hStackCount > 1 ? (state.hStackCount - 1) : 0;
         const hWasherCount = state.hWasherEnabled ? (totalHBolts * hWashersPerBolt) : 0;
         const costWasherV = state.costWasherV || 0.10;
         const costWasherH = state.costWasherH || 0.10;
-        const vWasherCost = vWasherCount * costWasherV;
-        const hWasherCost = hWasherCount * costWasherH;
-        const washerCost = vWasherCost + hWasherCost;
-        
+        const washerCost = (vWasherCount * costWasherV) + (hWasherCount * costWasherH);
         const structureSubtotal = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost;
         const solarCost = panelCount * state.costSolarPanel;
-        const totalCost = structureSubtotal + solarCost;
-        
-        // Build export data
         const isArchMode = state.orientation === 'vertical';
-        const exportData = {
+
+        return {
             version: 2,
             source: 'linkageLab',
             timestamp: Date.now(),
@@ -526,50 +505,79 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
                     isc: panelConfig.isc,
                     imp: panelConfig.imp,
                     cost: state.costSolarPanel,
-                    width: Math.round(panelConfig.panelWidth * 25.4), // inches to mm
-                    height: Math.round(panelConfig.panelLength * 25.4) // inches to mm
+                    width: Math.round(panelConfig.panelWidth * 25.4),
+                    height: Math.round(panelConfig.panelLength * 25.4),
                 },
                 configuration: {
                     layoutMode: isArchMode ? 'arch' : state.solarPanels.layoutMode,
-                    isArchMode: isArchMode,
+                    isArchMode,
                     gridRows: panelConfig.gridRows,
                     gridCols: panelConfig.gridCols,
                     paddingX: panelConfig.paddingX,
                     paddingY: panelConfig.paddingY,
                     panelsPerSide: panelConfig.gridRows * panelConfig.gridCols,
-                    numSides: isArchMode ? Math.ceil(panelCount / (panelConfig.gridRows * panelConfig.gridCols)) : 1
-                }
+                    numSides: isArchMode
+                        ? Math.ceil(panelCount / (panelConfig.gridRows * panelConfig.gridCols))
+                        : 1,
+                },
             },
             structureCost: {
                 beams: hBeamsCost + vBeamsCost,
                 brackets: bracketCost,
                 bolts: boltCost,
-                subtotal: structureSubtotal
+                subtotal: structureSubtotal,
             },
-            totalBomCost: totalCost,
+            totalBomCost: structureSubtotal + solarCost,
             structureGeometry: serializeGeometry(data),
             cameraState: {
                 yaw: state.cam.yaw,
                 pitch: state.cam.pitch,
                 dist: state.cam.dist,
-                structureRotation: state.structureRotation || 0
-            }
+                structureRotation: state.structureRotation || 0,
+            },
         };
-        
-        // Store in localStorage for the designer to read (must happen before window.open)
+    }
+
+    function publishLinkageExport(exportData) {
         localStorage.setItem('linkageLabExport', JSON.stringify(exportData));
-        
-        // Open Solar Designer synchronously while the click gesture is still active
+        const bus = globalThis.AppRouter?.getAppStateBus?.();
+        if (bus) {
+            bus.linkageExport = exportData;
+        }
+    }
+
+    /**
+     * Opens solar design in-app via AppRouter, or falls back to a new tab.
+     */
+    async function openSolarDesign() {
+        const exportData = buildLinkageExportData();
+        publishLinkageExport(exportData);
+        const panelCount = exportData.solarPanels?.count ?? 0;
+
+        if (globalThis.AppRouter?.navigateTo) {
+            await globalThis.AppRouter.navigateTo('solar-design');
+            showToast(`Opened solar design with ${panelCount} panels`, 'info');
+            attachGlbToLinkageExport(exportData);
+            return;
+        }
+
+        const designerUrl = ExportFormat.buildImportURL('solar_designer.html', 'linkageLab');
         const opened = window.open(designerUrl, '_blank');
         if (!opened) {
             showToast('Popup blocked — allow popups for this site to open Solar Designer', 'warning');
             return;
         }
-        
         showToast(`Exported ${panelCount} panels to Solar Designer`, 'info');
-        
-        // GLB export is optional and can finish after the designer tab opens
         attachGlbToLinkageExport(exportData);
+    }
+
+    /**
+     * Exports current design to Solar Designer for circuit design and simulation
+     * Passes panel configuration, BOM costs, and 3D geometry
+     */
+    async function exportToSolarSimulator() {
+        try {
+            await openSolarDesign();
         } catch (e) {
             console.error('exportToSolarSimulator failed:', e);
             showToast('Failed to open Solar Designer', 'error');
@@ -599,9 +607,22 @@ const _moduleExports = {
     exportToJSON,
     importFromJSON,
     serializeGeometry,
+    buildLinkageExportData,
+    publishLinkageExport,
+    openSolarDesign,
     exportToSolarSimulator,
 };
 
 bridgeGlobals(_moduleExports, 'exportBridge');
 
-export { generateDefaultFilename, getUnifiedConfig, exportToJSON, importFromJSON, serializeGeometry, exportToSolarSimulator };
+export {
+    generateDefaultFilename,
+    getUnifiedConfig,
+    exportToJSON,
+    importFromJSON,
+    serializeGeometry,
+    buildLinkageExportData,
+    publishLinkageExport,
+    openSolarDesign,
+    exportToSolarSimulator,
+};

@@ -51,3 +51,26 @@
     color: #c0392b;
     font-family: sans-serif;
 }
+
+.app-view-chrome {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    min-height: 52px;
+    background: var(--bg-topbar, #15202b);
+    border-bottom: 1px solid var(--border-subtle, #38444d);
+}
+
+.app-view-chrome-title {
+    margin: 0;
+    font-size: 1rem;
+    white-space: nowrap;
+    color: var(--text-primary, #e1e8ed);
+    font-family: system-ui, sans-serif;
+}
+
+.app-view-chrome .mode-toggle {
+    display: flex;
+    gap: 4px;
+}
