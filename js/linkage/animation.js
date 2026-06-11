@@ -1,11 +1,13 @@
 // ============================================================================
 // LINKAGE LAB - Animation (fold/unfold, actuator, closed-angle cache) (ES module)
-// Depends on global: state, solveLinkage helpers, requestRender, syncUI, geometry-classes folding helpers
+// Depends on global: state, requestRender, syncUI, geometry-classes folding helpers
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
 import { MIN_FOLD_ANGLE, MAX_FOLD_ANGLE, INCHES_PER_FOOT } from './constants.js';
 import { degToRad, radToDeg, formatNumber } from './math.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { getEffectiveMinFoldAngle } from './solver.js';
 
 // ============================================================================
 // ANIMATION SYSTEM
@@ -37,73 +39,6 @@ import { degToRad, radToDeg, formatNumber } from './math.js';
         if (directionEl) {
             directionEl.textContent = state.animation.direction > 0 ? 'Expanding' : 'Collapsing';
         }
-    }
-    
-    /**
-     * Calculates the optimal closed angle (where ring completes 360°)
-     * Cached for performance during animation
-     * @returns {number} The optimal closed angle in radians
-     */
-    function getOptimalClosedAngleForAnimation() {
-        // Cache the calculation as it's expensive
-        if (state.animation.cachedClosedAngle !== undefined && 
-            state.animation.cachedModules === state.modules &&
-            state.animation.cachedPivotPct === state.pivotPct) {
-            return state.animation.cachedClosedAngle;
-        }
-        
-        const targetRotation = Math.PI * 2; // 360 degrees
-        const totalModules = state.modules;
-        
-        // Helper to calculate total rotation for a given fold angle
-        const getTotalRotation = (foldAngle) => {
-            const jointResult = calculateJointPositions(foldAngle, {
-                hActiveIn: state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn,
-                pivotPct: state.pivotPct,
-                hobermanAng: state.hobermanAng,
-                pivotAng: state.pivotAng
-            });
-            return Math.abs(jointResult.relativeRotation * totalModules);
-        };
-        
-        // Search for the angle where rotation = 360°
-        const stepSize = degToRad(1);
-        let bestAngle = MAX_FOLD_ANGLE;
-        let bestDiff = Infinity;
-        
-        for (let angle = MIN_FOLD_ANGLE; angle <= MAX_FOLD_ANGLE; angle += stepSize) {
-            const rotation = getTotalRotation(angle);
-            const diff = Math.abs(rotation - targetRotation);
-            
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                bestAngle = angle;
-            }
-            
-            // If we've passed 360° and are getting worse, stop
-            if (rotation > targetRotation && diff > bestDiff) {
-                break;
-            }
-        }
-        
-        // Fine-tune with smaller steps around the best angle
-        const fineStep = degToRad(0.1);
-        for (let angle = bestAngle - degToRad(2); angle <= bestAngle + degToRad(2); angle += fineStep) {
-            if (angle < MIN_FOLD_ANGLE || angle > MAX_FOLD_ANGLE) continue;
-            const rotation = getTotalRotation(angle);
-            const diff = Math.abs(rotation - targetRotation);
-            if (diff < bestDiff) {
-                bestDiff = diff;
-                bestAngle = angle;
-            }
-        }
-        
-        // Cache the result
-        state.animation.cachedClosedAngle = bestAngle;
-        state.animation.cachedModules = state.modules;
-        state.animation.cachedPivotPct = state.pivotPct;
-        
-        return bestAngle;
     }
     
     /**

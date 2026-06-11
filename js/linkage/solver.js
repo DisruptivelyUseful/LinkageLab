@@ -1,56 +1,13 @@
-﻿// ============================================================================
+// ============================================================================
 // LINKAGE LAB — Linkage solver (ES module)
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { calculateJointPositions, getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 
 // ============================================================================
 // LINKAGE SOLVER
 // ============================================================================
-
-/**
- * Calculates the joint positions for a scissor linkage at a given fold angle
- * @param {number} foldAngle - Fold angle in radians
- * @param {Object} params - Linkage parameters
- * @returns {Object} Joint positions and derived values
- */
-function calculateJointPositions(foldAngle, params) {
-    const { hActiveIn, pivotPct, hobermanAng, pivotAng } = params;
-    
-    const safeH = Math.max(MIN_SAFE_DIMENSION, hActiveIn);
-    const pivotRatio = pivotPct / 100;
-    const activeLength = safeH * pivotRatio;
-    const passiveLength = safeH * (1 - pivotRatio);
-    const halfAngle = foldAngle / 2;
-    const hobermanRad = degToRad(hobermanAng);
-    const pivotOffsetRad = degToRad(pivotAng);
-    
-    // Calculate angles for linkage joint positions
-    const angle1Bottom = Math.PI - halfAngle;
-    const angle1Top = -halfAngle + hobermanRad;
-    const angle2Bottom = Math.PI + halfAngle + pivotOffsetRad;
-    const angle2Top = halfAngle - hobermanRad + pivotOffsetRad;
-
-    // Calculate joint locations in 2D plane
-    const joints = {
-        bl: {x: activeLength * Math.cos(angle1Bottom), y: activeLength * Math.sin(angle1Bottom)},
-        tr: {x: passiveLength * Math.cos(angle1Top), y: passiveLength * Math.sin(angle1Top)},
-        br: {x: activeLength * Math.cos(angle2Bottom), y: activeLength * Math.sin(angle2Bottom)},
-        tl: {x: passiveLength * Math.cos(angle2Top), y: passiveLength * Math.sin(angle2Top)},
-    };
-
-    // Calculate relative rotation between modules
-    const sourceAngle = Math.atan2(joints.tl.y - joints.bl.y, joints.tl.x - joints.bl.x);
-    const targetAngle = Math.atan2(joints.tr.y - joints.br.y, joints.tr.x - joints.br.x);
-    const relativeRotation = targetAngle - sourceAngle;
-
-    return {
-        joints,
-        relativeRotation,
-        activeLength,
-        passiveLength
-    };
-}
 
 /**
  * Calculates the distance between inner and outer horizontal pivots at a given fold angle

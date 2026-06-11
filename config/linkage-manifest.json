@@ -1,4 +1,4 @@
-{
+﻿{
   "cdn": [
     "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
     "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js",
@@ -34,6 +34,7 @@
     { "path": "js/core/feedback.js", "format": "esm" },
     { "path": "js/linkage/constants.js", "format": "esm" },
     { "path": "js/linkage/math.js", "format": "esm" },
+    { "path": "js/linkage/joint-kinematics.js", "format": "esm" },
     { "path": "js/linkage/beam-bolt-helpers.js", "format": "esm" },
     { "path": "js/linkage/animation.js", "format": "esm" },
     { "path": "js/linkage/geometry-classes.js", "format": "esm" },
