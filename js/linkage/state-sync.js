@@ -1,9 +1,9 @@
-﻿// ============================================================================ (ES module)
+// ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
 import { DEBOUNCE_DELAY } from './constants.js';
 import { degToRad, radToDeg, formatNumber, debounce } from './math.js';
-import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import {
     isVBeamDimensionsLinked,
     syncLinkedVBeamDimensions,

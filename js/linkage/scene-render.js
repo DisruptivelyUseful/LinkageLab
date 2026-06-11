@@ -1,6 +1,7 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { calculateJointPositions } from './joint-kinematics.js';
 
     /**
      * Updates all Three.js scenes with current geometry data

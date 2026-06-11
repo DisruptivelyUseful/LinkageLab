@@ -6,7 +6,7 @@ import { debounce, radToDeg } from './math.js';
 import { showToast } from '../core/feedback.js';
 import { VALIDATION_RULES } from './validation.js';
 import { applyConfig, getConfigSnapshot, updatePresetSelect } from './config-persistence.js';
-import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { saveStateToHistory } from './history.js';
 import { syncUI } from './state-sync.js';
 import { requestRender } from './render-app.js';

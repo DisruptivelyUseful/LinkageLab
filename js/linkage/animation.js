@@ -295,9 +295,8 @@ bridgeGlobals(animationExports, 'animation');
 
 export {
     updateAnimationStatus,
-    getOptimalClosedAngleForAnimation,
     animateFold,
     animateActuatorFold,
-    stopActuatorAnimation
+    stopActuatorAnimation,
+    getOptimalClosedAngleForAnimation,
 };
-

@@ -19,6 +19,7 @@ import {
     calculateRequiredActuatorForce,
     getRefPricePerCubicInch,
 } from './solver.js';
+import { calculateJointPositions } from './joint-kinematics.js';
 import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
 
     // ============================================================================

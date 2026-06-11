@@ -7,7 +7,7 @@ import { bridgeGlobals } from './global-bridge.js';
 import { INCHES_PER_METER } from './constants.js';
 import { degToRad, radToDeg } from './math.js';
 import { showToast } from '../core/feedback.js';
-import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeMinFoldAngleVBeamOverlap } from './solver.js';
 import { updateVBeamDimensionUIVisibility } from './beam-bolt-helpers.js';
 import { invalidateGeometryCache } from './cache.js';

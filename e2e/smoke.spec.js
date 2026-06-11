@@ -38,7 +38,7 @@ test.describe('LinkageLab smoke', () => {
 
         const buildLog = consoleLogs.find((line) => line.includes('LinkageLab build:'));
         expect(buildLog).toBeTruthy();
-        expect(buildLog).toMatch(/phase-4l/);
+        expect(buildLog).toMatch(/phase-4m/);
 
         const threeLog = consoleLogs.find((line) => line.includes('Three.js loaded successfully'));
         expect(threeLog).toBeTruthy();
@@ -60,7 +60,7 @@ test.describe('LinkageLab smoke', () => {
         expect(globals.hasState).toBe(true);
         expect(globals.hasSolver).toBe(true);
         expect(globals.hasUnitConverter).toBe(true);
-        expect(globals.buildId).toMatch(/phase-4l/);
+        expect(globals.buildId).toMatch(/phase-4m/);
     });
 
     test('sidebar toggle and module input respond', async ({ page }) => {

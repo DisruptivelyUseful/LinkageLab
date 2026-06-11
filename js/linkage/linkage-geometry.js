@@ -17,7 +17,7 @@ import {
 import { Beam3D } from './geometry-classes.js';
 import { solveLinkage } from './solver.js';
 import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
-import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { requestRender } from './render-app.js';
 import { showToast } from '../core/feedback.js';
 
@@ -1742,9 +1742,7 @@ import { showToast } from '../core/feedback.js';
     
     /** True when fold angle is at (or within tolerance of) the fully deployed closed angle. */
     function isRcpAtDeployedAngle(foldAngleRad) {
-        const closedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
-            ? getOptimalClosedAngleForAnimation()
-            : foldAngleRad;
+        const closedAngle = getOptimalClosedAngleForAnimation();
         return Math.abs(foldAngleRad - closedAngle) < degToRad(RCP_DEPLOY_ANGLE_TOL_DEG);
     }
     
@@ -2107,9 +2105,7 @@ import { showToast } from '../core/feedback.js';
         const cfg = state.supportBeams;
         if (!cfg || !cfg.enabled || !cfg.parallelEnabled || state.orientation === 'vertical') return null;
     
-        const closedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
-            ? getOptimalClosedAngleForAnimation()
-            : state.foldAngle;
+        const closedAngle = getOptimalClosedAngleForAnimation();
     
         const savedSwing = cfg.parallelSwingAngle;
         const savedFold = state.foldAngle;
@@ -3720,9 +3716,7 @@ import { showToast } from '../core/feedback.js';
                 const panelMinRad = (() => {
                     const userDeg = state.animation.panelsVisibleAngle;
                     if (userDeg !== null && userDeg !== undefined) return degToRad(userDeg);
-                    return (typeof getOptimalClosedAngleForAnimation === 'function')
-                        ? getOptimalClosedAngleForAnimation() - degToRad(2)
-                        : foldAngle;
+                    return getOptimalClosedAngleForAnimation() - degToRad(2);
                 })();
                 panelsVisible = foldAngle >= panelMinRad;
             }
@@ -3751,9 +3745,7 @@ import { showToast } from '../core/feedback.js';
         if (!state._deployedRingCenter) {
             // Compute the bbox center of the ring at the fully-closed (deployed) fold angle.
             // getOptimalClosedAngleForAnimation uses only calculateJointPositions, no recursion risk.
-            const deployedAngle = (typeof getOptimalClosedAngleForAnimation === 'function')
-                ? getOptimalClosedAngleForAnimation()
-                : foldAngle;
+            const deployedAngle = getOptimalClosedAngleForAnimation();
             const deployedBase = solveLinkage(deployedAngle);
             const deployedBounds = calculateBeamBounds(deployedBase.beams, { mainStructureOnly: true });
             state._deployedRingCenter = deployedBounds.center;

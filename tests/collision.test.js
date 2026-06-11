@@ -3,7 +3,7 @@ import { WOOD_COLOR } from '../js/linkage/constants.js';
 import { degToRad } from '../js/linkage/math.js';
 import { Beam3D } from '../js/linkage/geometry-classes.js';
 import { detectCollisions } from '../js/linkage/collision.js';
-import * as solver from '../js/linkage/solver.js';
+import * as jointKinematics from '../js/linkage/joint-kinematics.js';
 
 describe('collision', () => {
     it('returns no collisions for an empty geometry payload', () => {
@@ -15,7 +15,7 @@ describe('collision', () => {
     });
 
     it('flags geometric over-fold when the ring exceeds 360 degrees', () => {
-        const spy = vi.spyOn(solver, 'calculateJointPositions').mockReturnValue({
+        const spy = vi.spyOn(jointKinematics, 'calculateJointPositions').mockReturnValue({
             relativeRotation: degToRad(30),
             joints: {},
         });
