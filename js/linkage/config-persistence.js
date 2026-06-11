@@ -1,6 +1,6 @@
 // ============================================================================
 // LINKAGE LAB - Config persistence (save/load, presets, applyConfig) (ES module)
-// Depends on global: state, syncUI, unitConverter, ensureHardwareAssemblies, threeRenderer
+// Depends on global: state, unitConverter, ensureHardwareAssemblies, idMap, inputs
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
@@ -19,6 +19,8 @@ import {
     buildLinkageGeometry,
     resetSupportBeamsToDefaults,
 } from './linkage-geometry.js';
+import { threeRenderer, updateMainCamera } from './renderer-3d.js';
+import { syncUI } from './state-sync.js';
 
 // ============================================================================
 // SAVE/LOAD & PRESETS

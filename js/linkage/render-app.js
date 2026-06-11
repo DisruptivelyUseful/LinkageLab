@@ -2,7 +2,24 @@
 
 import { bridgeGlobals } from './global-bridge.js';
 import { applyCollisionDetection } from './cache.js';
-import { buildLinkageGeometry, calculateBeamBounds } from './linkage-geometry.js';
+import {
+    buildLinkageGeometry,
+    calculateBeamBounds,
+    computeSupportBomContribution,
+} from './linkage-geometry.js';
+import { formatNumber } from './math.js';
+import {
+    formatBoltDiameter,
+    getVBeamCountsByType,
+    needsSplitVBolts,
+} from './beam-bolt-helpers.js';
+import {
+    calculateActuatorStroke,
+    calculateBeamCostByVolume,
+    calculateRequiredActuatorForce,
+    getRefPricePerCubicInch,
+} from './solver.js';
+import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
 
     // ============================================================================
     // RENDERER - Performance Optimized
