@@ -70,6 +70,30 @@ $rules = @(
         End     = '// Keyboard shortcuts'
         Replace = @('// Viewport navigation & SpaceMouse - js/linkage/viewport-input.js', '')
         IncludeEnd = $false
+    },
+    @{
+        Start   = '// === SOLAR PANEL EVENT HANDLERS ==='
+        End     = '// Support beams master toggle'
+        Replace = @('// Solar panel event handlers - js/linkage/solar-panel-input.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = 'function computeReciprocalDrillData(data) {'
+        End     = '// Config persistence (save/load, presets) - js/linkage/config-persistence.js'
+        Replace = @('// Build guide (BOM, PDF/CSV, drill templates) - js/linkage/build-guide.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = '// MEASUREMENT TOOLS'
+        End     = '// Cache, collision helpers, undo/redo - js/linkage/cache.js, js/linkage/history.js'
+        Replace = @('// Measurement tools, IBC & human scale - js/linkage/measurement-overlay.js', '')
+        IncludeEnd = $false
+    },
+    @{
+        Start   = "document.getElementById('chk-measure').onchange = e => {"
+        End     = '// Solar panel event handlers - js/linkage/solar-panel-input.js'
+        Replace = @('// Measurement / IBC reference handlers - js/linkage/reference-input.js', '')
+        IncludeEnd = $false
     }
 )
 
