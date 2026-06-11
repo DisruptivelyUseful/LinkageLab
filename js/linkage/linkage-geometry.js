@@ -1,6 +1,25 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
+import { INCHES_PER_FOOT, WOOD_COLOR } from './constants.js';
+import {
+    degToRad,
+    radToDeg,
+    v3,
+    vAdd,
+    vSub,
+    vScale,
+    vMag,
+    vNorm,
+    vCross,
+    vDot,
+} from './math.js';
+import { Beam3D } from './geometry-classes.js';
+import { solveLinkage } from './solver.js';
+import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
+import { getOptimalClosedAngleForAnimation } from './animation.js';
+import { requestRender } from './render-app.js';
+import { showToast } from '../core/feedback.js';
 
     // ============================================================================
     // SOLAR PANEL SYSTEM
