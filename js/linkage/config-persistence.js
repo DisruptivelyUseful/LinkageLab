@@ -1,6 +1,6 @@
 // ============================================================================
 // LINKAGE LAB - Config persistence (save/load, presets, applyConfig) (ES module)
-// Depends on global: state, showToast, syncUI, linkage-geometry sp* helpers, unitConverter
+// Depends on global: state, syncUI, unitConverter, ensureHardwareAssemblies, threeRenderer
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
@@ -12,6 +12,13 @@ import { computeMinFoldAngleVBeamOverlap } from './solver.js';
 import { updateVBeamDimensionUIVisibility } from './beam-bolt-helpers.js';
 import { invalidateGeometryCache } from './cache.js';
 import { saveStateToHistory } from './history.js';
+import {
+    applyLegacyPanelsSupport,
+    applySupportBeamsConfig,
+    buildGeometrySnapshot,
+    buildLinkageGeometry,
+    resetSupportBeamsToDefaults,
+} from './linkage-geometry.js';
 
 // ============================================================================
 // SAVE/LOAD & PRESETS
