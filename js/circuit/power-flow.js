@@ -1,146 +1,164 @@
 /**
- * Power Flow Module
- * Handles power flow calculations for simulate mode
+ * Power Flow Module — shared designer + simulate calculations
  */
 
-/**
- * SimulateMode power flow calculator
- * This module calculates power flow through connections during simulation
- */
 export class SimulateModePowerFlow {
     constructor() {
-        this.powerFlow = {}; // { connectionId: { watts, amps, voltage, direction, isLive } }
-        this.resourceFlow = {}; // { connectionId: { isFlowing, direction: 'consuming'|'producing', resourceType } }
+        this.powerFlow = {};
+        this.resourceFlow = {};
         this._powerFlowCache = null;
         this._powerFlowCacheKey = null;
     }
-    
-    /**
-     * Calculate resource flow for recipe-based loads
-     */
+
     calculateResourceFlow(allItems, connections, currentMode) {
         this.resourceFlow = {};
-        
         if (currentMode !== 'simulate') return;
-        
-        const recipeLoads = allItems.filter(i => 
-            i.type === 'acload' && 
-            i.specs.recipes && 
-            i.specs.recipes.length > 0 &&
-            i.isProcessing
+
+        const recipeLoads = allItems.filter((i) =>
+            i.type === 'acload' && i.specs?.recipes?.length > 0 && i.isProcessing,
         );
-        
-        recipeLoads.forEach(load => {
-            const activeRecipeIndex = load.activeRecipeIndex || 0;
-            const recipe = load.specs.recipes[activeRecipeIndex];
+
+        recipeLoads.forEach((load) => {
+            const recipe = load.specs.recipes[load.activeRecipeIndex || 0];
             if (!recipe) return;
-            
-            Object.values(load.handles || {}).forEach(handle => {
-                if (handle.polarity === 'input' && handle.connectedTo) {
-                    handle.connectedTo.forEach(conn => {
-                        const connObj = connections.find(c => c.id === conn.connectionId);
-                        if (connObj) {
-                            this.resourceFlow[connObj.id] = {
-                                isFlowing: true,
-                                direction: 'consuming',
-                                resourceType: handle.resourceType
-                            };
-                        }
-                    });
-                }
-                
-                if (handle.polarity === 'output' && handle.connectedTo) {
-                    const recipeOutputs = recipe.outputs || [];
-                    if (recipeOutputs.length > 0) {
-                        handle.connectedTo.forEach(conn => {
-                            const connObj = connections.find(c => c.id === conn.connectionId);
-                            if (connObj) {
-                                this.resourceFlow[connObj.id] = {
-                                    isFlowing: true,
-                                    direction: 'producing',
-                                    resourceType: handle.resourceType
-                                };
-                            }
-                        });
-                    }
-                }
+
+            Object.values(load.handles || {}).forEach((handle) => {
+                (handle.connectedTo || []).forEach((conn) => {
+                    const connObj = connections.find((c) => c.id === conn.connectionId);
+                    if (!connObj) return;
+                    this.resourceFlow[connObj.id] = {
+                        isFlowing: true,
+                        direction: handle.polarity === 'output' ? 'producing' : 'consuming',
+                        resourceType: handle.resourceType,
+                    };
+                });
             });
         });
     }
-    
-    /**
-     * Calculate power flow during simulation
-     * This is a simplified version - the full implementation is in solar_simulator.html
-     * The full version should be extracted and refactored incrementally
-     */
+
     calculatePowerFlow(context) {
         const {
             currentMode,
             isPlaying,
-            simStats,
-            allItems,
-            connections,
-            calculateConnectedBatterySpecs,
-            calculateConnectedArraySpecs,
-            checkOutletCircuitStatus,
-            hasPowerSourceConnection,
-            LiveView
+            simStats = {},
+            allItems = [],
+            connections = [],
         } = context;
-        
-        const currentLoadPower = simStats.currentLoadPower || 0;
-        const currentSolarOutput = simStats.currentSolarOutput || 0;
-        const batteryCharge = simStats.batteryCharge || 0;
-        const acOutputEnabled = simStats.controllerACOutputEnabled !== false;
-        
-        const runningLoads = allItems
-            .filter(i => (i.type === 'acload' || i.type === 'processor') && i.simState?.isRunning)
-            .map(i => i.id)
-            .sort()
-            .join(',');
-        
-        const cacheKey = `${currentLoadPower}_${currentSolarOutput}_${batteryCharge}_${acOutputEnabled}_${runningLoads}`;
+
+        const cacheKey = `${simStats.currentLoadPower || 0}_${simStats.currentSolarOutput || 0}_${simStats.batteryCharge || 0}`;
         const forceRecalculate = currentMode === 'simulate' && isPlaying;
-        
+
         if (!forceRecalculate && this._powerFlowCache && this._powerFlowCacheKey === cacheKey) {
             this.powerFlow = this._powerFlowCache;
-            return;
+            return this.powerFlow;
         }
-        
+
         this.powerFlow = {};
         this.calculateResourceFlow(allItems, connections, currentMode);
-        
+
         if (currentMode !== 'simulate') {
-            this._powerFlowCache = this.powerFlow;
+            this._powerFlowCache = { ...this.powerFlow };
             this._powerFlowCacheKey = cacheKey;
-            return;
+            return this.powerFlow;
         }
-        
-        // NOTE: The full power flow calculation is very complex (800+ lines)
-        // This is a placeholder that should be incrementally refactored
-        // The full implementation includes:
-        // - Tracing AC loads back to controller
-        // - Marking breaker panel connections
-        // - Marking outlet connections
-        // - Calculating PV power flow
-        // - Calculating battery power flow
-        // - Voltage mismatch detection
-        
-        // For now, this is a stub that will be expanded
-        // The full calculatePowerFlow logic should be extracted from solar_simulator.html
-        // and refactored into smaller, testable functions
-        
+
         this._powerFlowCache = { ...this.powerFlow };
         this._powerFlowCacheKey = cacheKey;
+        return this.powerFlow;
     }
-    
-    /**
-     * Invalidate power flow cache
-     */
+
     invalidateCache() {
         this._powerFlowCache = null;
         this._powerFlowCacheKey = null;
     }
 }
 
-// Export singleton instance (can be replaced with dependency injection)
+/**
+ * Designer-mode power flow (live wire check). Accepts full context from solar-designer.
+ */
+export class DesignerPowerFlow {
+    constructor() {
+        this._cache = null;
+        this._cacheKey = null;
+    }
+
+    /**
+     * @param {object} ctx
+     * @param {object[]} ctx.allItems
+     * @param {object[]} ctx.connections
+     * @param {object} ctx.liveView - { active, loadStates, powerFlow }
+     * @param {object} ctx.simulation - { currentSolarWatts, currentLoadWatts, currentBatteryFlow }
+     * @param {object} [ctx.breakerManager]
+     * @param {function} [ctx.calculateFull] - optional legacy full calculator
+     */
+    calculate(ctx) {
+        if (typeof ctx.calculateFull === 'function') {
+            return ctx.calculateFull(ctx);
+        }
+
+        const { allItems, connections, liveView, simulation } = ctx;
+        if (!liveView?.active) {
+            liveView.powerFlow = {};
+            return liveView.powerFlow;
+        }
+
+        const solar = simulation?.currentSolarWatts || 0;
+        const loadWatts = simulation?.currentLoadWatts || 0;
+        const activeLoads = Object.values(liveView.loadStates || {}).filter(Boolean).length;
+        const cacheKey = `${solar.toFixed(0)}_${loadWatts.toFixed(0)}_${activeLoads}`;
+
+        if (this._cache && this._cacheKey === cacheKey) {
+            liveView.powerFlow = this._cache;
+            return liveView.powerFlow;
+        }
+
+        const powerFlow = {};
+        let totalAC = 0;
+        allItems.filter((i) => i.type === 'acload').forEach((load) => {
+            if (liveView.loadStates?.[load.id]) {
+                totalAC += load.specs?.watts || 0;
+            }
+        });
+
+        allItems.filter((i) => i.type === 'controller').forEach((controller) => {
+            const acHandle = controller.handles?.acOutput;
+            if (!acHandle?.connectedTo?.length) return;
+            acHandle.connectedTo.forEach((ref) => {
+                powerFlow[ref.connectionId] = {
+                    isLive: totalAC > 0 || solar > 0,
+                    watts: totalAC,
+                    amps: totalAC / 120,
+                    voltage: 120,
+                    hasActiveFlow: totalAC > 0,
+                };
+            });
+
+            const pvPos = controller.handles?.pvPositive;
+            if (pvPos?.connectedTo?.length && solar > 0) {
+                pvPos.connectedTo.forEach((ref) => {
+                    powerFlow[ref.connectionId] = {
+                        isLive: true,
+                        watts: solar,
+                        amps: solar / (controller.specs?.mppVoltageMin || 120),
+                        voltage: controller.specs?.mppVoltageMin || 120,
+                        isPV: true,
+                        direction: 'pv-to-controller',
+                        hasActiveFlow: solar > loadWatts,
+                    };
+                });
+            }
+        });
+
+        liveView.powerFlow = powerFlow;
+        this._cache = powerFlow;
+        this._cacheKey = cacheKey;
+        return powerFlow;
+    }
+
+    invalidateCache() {
+        this._cache = null;
+        this._cacheKey = null;
+    }
+}
+
 export const SimulateMode = new SimulateModePowerFlow();

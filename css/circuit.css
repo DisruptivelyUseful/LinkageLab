@@ -1,0 +1,160 @@
+/* ============================================
+   Shared circuit canvas + sidebar styles
+   Used by designer and simulator modes
+   ============================================ */
+
+.sidebar-section {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light, rgba(255, 255, 255, 0.08));
+}
+
+.sidebar-section h3 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--clr-primary, #00d4ff);
+    margin: 0 0 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.score-bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.score-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px 10px;
+    background: rgba(15, 22, 32, 0.85);
+    border: 1px solid rgba(var(--clr-primary-rgb, 0, 212, 255), 0.2);
+    border-radius: var(--radius-sm, 4px);
+}
+
+.score-item .stat-label,
+.score-item .score-label {
+    font-size: 0.65rem;
+    color: var(--text-muted, #8899aa);
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+}
+
+.score-item .stat-value,
+.score-item .score-value {
+    font-family: var(--font-mono, monospace);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--clr-primary, #00d4ff);
+}
+
+#left-sidebar,
+#right-sidebar {
+    background: var(--gradient-panel, linear-gradient(180deg, #1a2332 0%, #121820 100%));
+    color: var(--text-primary, #e1e8ed);
+}
+
+.wire-group path.wire,
+path.wire {
+    fill: none !important;
+    stroke-width: 3;
+    cursor: pointer;
+}
+
+.sim-topbar-row-controls,
+.sim-topbar-native .sim-topbar-row-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    flex-wrap: wrap;
+    padding: 5px 16px;
+    border-bottom: 1px solid rgba(var(--clr-primary-rgb, 0, 212, 255), 0.15);
+    background: rgba(15, 22, 32, 0.6);
+    min-height: 42px;
+}
+
+.simulator-native-host {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+.sim-topbar-native {
+    position: relative;
+    z-index: 20;
+    flex-shrink: 0;
+}
+
+#view-solar-simulate > #topbar {
+    position: relative;
+    z-index: 30;
+}
+
+.simulator-native-stage {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+}
+
+#view-solar-simulate {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+#view-solar-simulate.active {
+    display: flex;
+}
+
+#view-solar-simulate .simulator-native-stage #main-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    margin-top: 0;
+    height: 100%;
+    position: relative;
+    display: flex;
+}
+
+#view-solar-simulate .simulator-native-stage #canvas-container {
+    position: absolute;
+    top: 0;
+    left: 260px;
+    right: 340px;
+    bottom: 0;
+}
+
+#view-solar-simulate .simulator-native-stage #left-sidebar,
+#view-solar-simulate .simulator-native-stage #right-sidebar {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: var(--z-sticky, 100);
+}
+
+#view-solar-simulate .simulator-native-stage:has(#right-sidebar.closed) #canvas-container {
+    right: 0;
+}
+
+#view-solar-simulate .simulator-native-stage:has(#left-sidebar.collapsed) #canvas-container {
+    left: 0;
+}
+
+#view-solar-simulate .simulator-native-stage #left-sidebar.collapsed > *:not(#left-sidebar-toggle) {
+    display: none;
+}
+
+@media (max-width: 900px) {
+    .sim-topbar-row-controls {
+        gap: 8px;
+        padding: 6px 10px;
+    }
+}

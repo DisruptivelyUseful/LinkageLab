@@ -15,6 +15,11 @@
     display: block;
 }
 
+#view-solar-design.active,
+#view-solar-simulate.active {
+    display: flex;
+}
+
 .app-view[hidden] {
     display: none !important;
 }
@@ -134,10 +139,11 @@ body[data-app-mode="solar-design"] #view-solar-design > #topbar .topbar-app-titl
     border-bottom: 1px solid var(--border-subtle, #38444d);
 }
 
-#view-solar-simulate .solar-simulator-frame {
+#view-solar-simulate .simulator-native-host {
     flex: 1;
     width: 100%;
-    min-height: 480px;
-    border: 0;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     background: #0f1419;
 }

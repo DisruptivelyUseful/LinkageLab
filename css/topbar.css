@@ -24,6 +24,7 @@
     padding: 0 16px;
     gap: 15px;
     flex-shrink: 0;
+    overflow: hidden;
 }
 
 /* Subtle scan line effect (aerospace aesthetic) */
@@ -59,6 +60,8 @@
 .toolbar-left {
     gap: 10px;
     flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
 }
 
 .topbar-center,
@@ -67,12 +70,17 @@
     flex: 1 1 auto;
     justify-content: center;
     min-width: 0;
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
 }
 
 .topbar-right,
 .toolbar-right {
     gap: 10px;
     flex: 0 0 auto;
+    position: relative;
+    z-index: 2;
 }
 
 /* App title */
@@ -689,6 +697,58 @@
 
 #view-solar-design > #topbar .topbar-right {
     gap: 6px;
+}
+
+#view-solar-simulate > #topbar .topbar-center {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+}
+
+#view-solar-simulate > #topbar .topbar-simulate-center.sim-topbar-row-controls {
+    justify-content: center;
+    flex-wrap: nowrap;
+    gap: 10px;
+    padding: 0 8px;
+    min-height: 0;
+    border: none;
+    background: transparent;
+}
+
+#view-solar-simulate > #topbar .sim-celestial-topbar {
+    width: clamp(120px, 20vw, 260px);
+}
+
+#view-solar-simulate > #topbar .sim-sun-track-bg {
+    height: 18px;
+}
+
+#view-solar-simulate > #topbar .sim-sun-labels {
+    display: none;
+}
+
+#view-solar-simulate > #topbar .sim-time-inline {
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+#view-solar-simulate > #topbar .topbar-sim-slider {
+    width: 90px;
+    min-width: 60px;
+}
+
+#view-solar-simulate > #topbar .sim-play-btn,
+#view-solar-simulate > #topbar .sim-reset-btn {
+    min-width: 30px;
+    padding: 4px 8px !important;
+}
+
+#view-solar-simulate > #topbar .sim-select {
+    font-size: 0.72rem;
+    padding: 3px 6px;
 }
 
 #view-solar-simulate > #topbar .mode-toggle button {

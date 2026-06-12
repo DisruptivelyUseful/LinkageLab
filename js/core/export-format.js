@@ -33,6 +33,7 @@ const ExportFormat = (function() {
     const STORAGE_KEYS = {
         LINKAGE_EXPORT: 'linkageLabExport',
         DESIGNER_EXPORT: 'solarDesignerExport',
+        CIRCUIT_DOCUMENT: 'linkageLab_circuitDocument',
         COMBINED_EXPORT: 'linkageLabCombinedExport',
         AUTOMATION_RULES: 'sharedAutomationRules'
     };

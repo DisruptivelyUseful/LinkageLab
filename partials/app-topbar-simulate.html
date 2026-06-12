@@ -8,9 +8,33 @@
             <button type="button" id="btn-mode-simulate" data-app-nav-mode="solar-simulate" class="topbar-btn active" title="Solar 3D Simulation Mode">▶</button>
         </div>
     </div>
-    <div class="topbar-center topbar-simulate-center">
-        <span class="topbar-label">3D Simulation</span>
-        <span id="sim-topbar-summary" class="topbar-time-display">Design a circuit in Solar Design, then simulate here.</span>
+    <div class="topbar-center topbar-simulate-center sim-topbar-row-controls">
+        <div class="sim-ctrl-playback">
+            <button id="playPauseButton" class="topbar-btn sim-play-btn" title="Play/Pause (Space)">▶</button>
+            <input type="range" id="speedSlider" class="topbar-sim-slider" min="1" max="100" value="10" title="Simulation speed">
+            <span class="topbar-sim-speed" id="speedLabel">1x</span>
+            <button id="resetSimulationBtn" class="topbar-btn sim-reset-btn" title="Reset simulation">↺</button>
+        </div>
+        <div class="sim-celestial-bar sim-celestial-topbar">
+            <span class="sim-celestial-clock" id="simCelestialClock">12:00 PM</span>
+            <div class="sim-sun-track">
+                <div class="sim-sun-track-bg">
+                    <div id="sim-sun-indicator" class="sim-sun">☀️</div>
+                </div>
+                <div class="sim-sun-labels">
+                    <span>Sunrise</span><span>Noon</span><span>Sunset</span>
+                </div>
+            </div>
+        </div>
+        <span class="time-display sim-time-inline" id="timeDisplay">0 hours (Day 1, 00:00)</span>
+        <div class="sim-ctrl-weather">
+            <select id="weatherDifficulty" class="sim-select" title="Weather condition">
+                <option value="clear" selected>☀️ Clear</option>
+                <option value="easy">🌤️ Easy</option>
+                <option value="medium">⛅ Medium</option>
+                <option value="hard">🌦️ Hard</option>
+            </select>
+        </div>
     </div>
     <div class="topbar-right">
         <div class="topbar-file-controls">

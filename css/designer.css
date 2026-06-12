@@ -2,6 +2,8 @@
    SOLAR DESIGNER MODE - Specific Styles
    ============================================ */
 
+@import url('circuit.css');
+
 /* Main content area */
 #main-content {
     display: flex;

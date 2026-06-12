@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from './helpers/app-ready.js';
+import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
 
 test.describe('Linkage viewport interaction', () => {
     test('webgl canvas receives pointer hits in the viewport center', async ({ page }) => {
@@ -48,13 +48,8 @@ test.describe('Linkage viewport interaction', () => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
-        await page.locator('#btn-mode-solar').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
-        await expect.poll(async () => page.evaluate(() => globalThis.SolarDesigner?.isInitialized?.())).toBe(true);
-
-        await page.locator('#view-solar-design [data-app-nav-mode="linkage"]').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('linkage');
-        await waitForAppReady(page);
+        await navigateAppMode(page, 'solar-design');
+        await navigateAppMode(page, 'linkage');
 
         const overlayDisplay = await page.evaluate(() => {
             const canvas = document.querySelector('#view-linkage #canvas');

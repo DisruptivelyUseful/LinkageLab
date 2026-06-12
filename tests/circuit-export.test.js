@@ -8,14 +8,16 @@ describe('circuit-export', () => {
     });
 
     it('publishCircuitExport stores on bus and localStorage', () => {
-        const bus = { circuitData: null };
+        const bus = { circuitData: null, circuitDocument: null };
         globalThis.AppRouter = { getAppStateBus: () => bus };
 
         const payload = { version: 2, schematic: { components: [{ id: 1 }], connections: [] } };
         publishCircuitExport(payload);
 
-        expect(bus.circuitData).toEqual(payload);
-        expect(resolveCircuitExport()).toEqual(payload);
+        expect(bus.circuitDocument?.items).toEqual([{ id: 1 }]);
+        expect(bus.circuitData?.schematic?.components).toEqual([{ id: 1 }]);
+        expect(resolveCircuitExport()?.schematic?.components).toEqual([{ id: 1 }]);
+        expect(localStorage.getItem('linkageLab_circuitDocument')).toBeTruthy();
     });
 
     it('buildSimulatorFrameSrc includes embedded import params', () => {

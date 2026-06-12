@@ -37,7 +37,11 @@ const SolarDesigner = (function() {
         
         // Calculate required wire gauge for a connection
         calculateGauge(connection, allItems) {
-            const sourceItem = allItems.find(i => 
+            if (typeof globalThis.calculateWireGauge === 'function') {
+                const ratings = globalThis.AWG_RATINGS || this.AWG_RATINGS;
+                return globalThis.calculateWireGauge(connection, allItems, ratings);
+            }
+            const sourceItem = allItems.find(i =>
                 Object.values(i.handles).some(h => h.connectedTo.some(c => c.connectionId === connection.id))
             );
             const targetItem = allItems.find(i => 
@@ -1643,7 +1647,16 @@ const SolarDesigner = (function() {
         // Evaluate all rules (called from simulation tick)
         evaluate() {
             if (!LiveView.state.active || !Simulation.isPlaying) return;
-            
+
+            const simState = {
+                time: Simulation.time,
+                batterySOC: Simulation.getAverageSOC() * 100,
+                solarWatts: Simulation.currentSolarWatts,
+            };
+            if (typeof globalThis.AutomationEngine?.evaluate === 'function') {
+                globalThis.AutomationEngine.evaluate(simState);
+            }
+
             const now = Simulation.time;
             
             this.rules.forEach(rule => {
@@ -2128,6 +2141,9 @@ const SolarDesigner = (function() {
     // ============================================
     
     function createPanel(x, y, specs = PANEL_PRESETS[0]) {
+        if (globalThis.CircuitCore?.createPanel) {
+            return globalThis.CircuitCore.createPanel(x, y, specs, () => ++itemIdCounter);
+        }
         const id = `panel-${++itemIdCounter}`;
         const imp = specs.imp || (specs.wmp / specs.vmp) || (specs.isc * 0.9);
         
@@ -2148,6 +2164,9 @@ const SolarDesigner = (function() {
     }
     
     function createBattery(x, y, specs = BATTERY_PRESETS[0]) {
+        if (globalThis.CircuitCore?.createBattery) {
+            return globalThis.CircuitCore.createBattery(x, y, specs, () => ++itemIdCounter);
+        }
         const id = `battery-${++itemIdCounter}`;
         const kWh = (specs.voltage * specs.ah) / 1000;
         
@@ -2167,6 +2186,9 @@ const SolarDesigner = (function() {
     }
     
     function createController(x, y, specs = CONTROLLER_PRESETS[0]) {
+        if (globalThis.CircuitCore?.createController) {
+            return globalThis.CircuitCore.createController(x, y, specs, () => ++itemIdCounter);
+        }
         const id = `controller-${++itemIdCounter}`;
         const isHybrid = specs.type === 'hybrid_inverter' || specs.type === 'all_in_one';
         const isAllInOne = specs.type === 'all_in_one';
@@ -2891,6 +2913,9 @@ const SolarDesigner = (function() {
     
     // Generate smooth bezier curve between two points
     function generateCurvePath(sx, sy, ex, ey, sourceSide, targetSide) {
+        if (globalThis.CircuitCore?.generateCurvePath) {
+            return globalThis.CircuitCore.generateCurvePath(sx, sy, ex, ey, sourceSide, targetSide);
+        }
         sourceSide = sourceSide || 'right';
         targetSide = targetSide || 'left';
         
@@ -5828,21 +5853,45 @@ const SolarDesigner = (function() {
     function syncExportToStorage() {
         try {
             const config = getSolarConfig();
-            const exportData = ExportFormat.createDesignerExport({
-                components: config.items,
-                connections: config.connections,
-                canvasWidth: 2000, canvasHeight: 1500,
-                zoom: svg ? d3.zoomTransform(svg.node()).k : 1,
-                panX: svg ? d3.zoomTransform(svg.node()).x : 0,
-                panY: svg ? d3.zoomTransform(svg.node()).y : 0,
-                automationRules: Automations.exportRules(),
-                timeOfDay: Simulation.time,
-                isLiveMode: LiveView.state.active,
-                loadStates: LiveView.state.loadStates,
-                breakerStates: LiveView.state.breakerStates,
+            const exportMeta = {
+                automation: Automations.exportRules(),
+                simulation: {
+                    timeOfDay: Simulation.time,
+                    isLiveMode: LiveView.state.active,
+                    loadStates: LiveView.state.loadStates,
+                    breakerStates: LiveView.state.breakerStates,
+                },
                 totalPanelWatts: allItems.filter(i => i.type === 'panel').reduce((s, p) => s + (p.specs.wmp || 0), 0),
                 totalBatteryKwh: allItems.filter(i => i.type === 'battery' || i.type === 'smartbattery').reduce((s, b) => s + (b.specs.kWh || (b.specs.voltage * b.specs.ah / 1000) || 0), 0),
                 componentCount: allItems.length,
+                canvasWidth: 2000,
+                canvasHeight: 1500,
+                zoom: svg ? d3.zoomTransform(svg.node()).k : 1,
+                panX: svg ? d3.zoomTransform(svg.node()).x : 0,
+                panY: svg ? d3.zoomTransform(svg.node()).y : 0,
+            };
+
+            if (typeof globalThis.CircuitStore?.saveFromDesignerConfig === 'function') {
+                globalThis.CircuitStore.saveFromDesignerConfig(config, exportMeta);
+                return;
+            }
+
+            const exportData = ExportFormat.createDesignerExport({
+                components: config.items,
+                connections: config.connections,
+                canvasWidth: exportMeta.canvasWidth,
+                canvasHeight: exportMeta.canvasHeight,
+                zoom: exportMeta.zoom,
+                panX: exportMeta.panX,
+                panY: exportMeta.panY,
+                automationRules: exportMeta.automation,
+                timeOfDay: exportMeta.simulation.timeOfDay,
+                isLiveMode: exportMeta.simulation.isLiveMode,
+                loadStates: exportMeta.simulation.loadStates,
+                breakerStates: exportMeta.simulation.breakerStates,
+                totalPanelWatts: exportMeta.totalPanelWatts,
+                totalBatteryKwh: exportMeta.totalBatteryKwh,
+                componentCount: exportMeta.componentCount,
             });
             ExportFormat.saveToStorage(ExportFormat.STORAGE_KEYS.DESIGNER_EXPORT, exportData);
         } catch (e) {
@@ -6722,6 +6771,9 @@ const SolarDesigner = (function() {
         }
         
         // Check for breaker tripping after power flow is calculated
+        if (globalThis.CircuitCore?.checkVoltageMismatch) {
+            globalThis.CircuitCore.checkVoltageMismatch(allItems, connections);
+        }
         LiveView.BreakerManager.checkTripping();
         
         // Save power flow result to cache for performance optimization
@@ -6987,6 +7039,27 @@ const SolarDesigner = (function() {
     // INITIALIZATION
     // ============================================
     
+    function wireSharedAutomationEngine() {
+        const engine = globalThis.AutomationEngine;
+        if (!engine?.init) return;
+        engine.init({
+            getSimulationState: () => ({
+                time: Simulation.time,
+                batterySOC: Simulation.getAverageSOC() * 100,
+                solarWatts: Simulation.currentSolarWatts,
+            }),
+            executeAction: (actionType, targetIds, options = {}) => Automations.executeAction({
+                action: {
+                    type: actionType,
+                    targetIds: targetIds || [],
+                    targetType: options.targetType,
+                },
+            }),
+            showNotification: (message, type) => showToast(message, type),
+            getTargetItems: (targetType) => allItems.filter((i) => i.type === targetType),
+        });
+    }
+
     function init(config) {
         if (isInitialized) return;
         
@@ -6998,19 +7071,32 @@ const SolarDesigner = (function() {
         initSVG();
         setupEventListeners();
         setupTooltips();
+        wireSharedAutomationEngine();
         populateRightSidebarLibraries();
         setupRightSidebarListeners();
         
         isInitialized = true;
         
-        // Load saved config if exists
-        const saved = localStorage.getItem('linkageLab_solarConfig');
-        if (saved) {
-            try {
-                loadSolarConfig(JSON.parse(saved));
-            } catch (e) {
-                console.error('Error loading solar config:', e);
+        // Load saved config if exists (prefer unified circuit document)
+        let loadedConfig = null;
+        if (typeof globalThis.CircuitStore?.resolveCircuitDocument === 'function') {
+            const doc = globalThis.CircuitStore.resolveCircuitDocument();
+            if (doc) {
+                loadedConfig = globalThis.CircuitStore.toDesignerConfig(doc);
             }
+        }
+        if (!loadedConfig) {
+            const saved = localStorage.getItem('linkageLab_solarConfig');
+            if (saved) {
+                try {
+                    loadedConfig = JSON.parse(saved);
+                } catch (e) {
+                    console.error('Error loading solar config:', e);
+                }
+            }
+        }
+        if (loadedConfig) {
+            loadSolarConfig(loadedConfig);
         }
         
         render();
@@ -9374,11 +9460,16 @@ const SolarDesigner = (function() {
     }
     
     function populateRightSidebarLibraries() {
+        const presetLib = globalThis.CircuitCore?.getPresetLibrary?.() || globalThis.getPresetLibrary?.();
+        const panelPresets = presetLib?.panels || PANEL_PRESETS;
+        const batteryPresets = presetLib?.batteries || BATTERY_PRESETS;
+        const controllerPresets = presetLib?.controllers || CONTROLLER_PRESETS;
+
         // Panel library
         const panelLibrary = document.getElementById('panelLibrary');
         if (panelLibrary) {
             panelLibrary.innerHTML = '';
-            PANEL_PRESETS.forEach((preset, i) => {
+            panelPresets.forEach((preset, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'library-item';
                 btn.innerHTML = `<span class="library-item-icon">☀️</span><span class="library-item-name">${preset.name}</span>`;
@@ -9405,7 +9496,7 @@ const SolarDesigner = (function() {
         const batteryLibrary = document.getElementById('batteryLibrary');
         if (batteryLibrary) {
             batteryLibrary.innerHTML = '';
-            BATTERY_PRESETS.forEach((preset, i) => {
+            batteryPresets.forEach((preset, i) => {
                 const btn = document.createElement('button');
                 btn.className = 'library-item';
                 const icon = preset.smartBattery ? '🔋+' : '🔋';
@@ -9467,7 +9558,7 @@ const SolarDesigner = (function() {
         const ecoflowLibrary = document.getElementById('ecoflowLibrary');
         if (controllerLibrary) controllerLibrary.innerHTML = '';
         if (ecoflowLibrary) ecoflowLibrary.innerHTML = '';
-        CONTROLLER_PRESETS.forEach((preset) => {
+        controllerPresets.forEach((preset) => {
             const target = preset.ecosystemType === 'ecoflow' ? ecoflowLibrary : controllerLibrary;
             if (target) addControllerLibraryItem(preset, target);
         });

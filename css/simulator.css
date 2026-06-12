@@ -2,6 +2,8 @@
    SOLAR SIMULATOR MODE - Specific Styles
    ============================================ */
 
+@import url('circuit.css');
+
 /* Simulator loads designer.css before this file; overrides only below */
 
 .simulator-page {
@@ -12,9 +14,13 @@
     --sim-bottom-dock-height: 0px;
 }
 
-/* Embedded: only controls row visible */
+/* Embedded: unified app shell owns the topbar — no extra native controls row */
 body.simulator-embedded {
-    --sim-topbar-height: var(--sim-topbar-controls-height);
+    --sim-topbar-height: 0px;
+}
+
+body.simulator-embedded .sim-topbar-native {
+    display: none !important;
 }
 
 /* Embedded in unified app shell — hide ONLY the actions row (outer shell handles nav) */
@@ -1333,6 +1339,23 @@ path.wire.ac-240 {
     background: var(--space-400);
     margin: 16px 0;
     border-radius: 0;
+}
+
+/* Embedded in unified app — layout lives inside #view-solar-simulate, not viewport-fixed */
+body.simulator-embedded #view-solar-simulate .simulator-native-stage #main-content {
+    margin-top: 0;
+    height: 100%;
+}
+
+body.simulator-embedded #view-solar-simulate .simulator-native-stage #left-sidebar,
+body.simulator-embedded #view-solar-simulate .simulator-native-stage #right-sidebar {
+    position: absolute;
+    top: 0;
+}
+
+body.simulator-embedded #view-solar-simulate .simulator-native-stage #canvas-container {
+    position: absolute;
+    top: 0;
 }
 
 /* Main content area */

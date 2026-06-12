@@ -38,6 +38,22 @@ function bindOnce(element, handler) {
     handler(element);
 }
 
+/** Wire unified shell mode-toggle buttons (linkage / design / simulate). */
+export function bindAppNavButtons(root = document) {
+    root.querySelectorAll('[data-app-nav-mode]').forEach((btn) => {
+        if (btn.dataset.shellNavBound === 'true') return;
+        btn.dataset.shellNavBound = 'true';
+        btn.addEventListener('click', () => {
+            const mode = btn.dataset.appNavMode;
+            if (mode && globalThis.AppRouter?.navigateTo) {
+                globalThis.AppRouter.navigateTo(mode).catch((err) => {
+                    console.error('[topbar] navigation failed:', err);
+                });
+            }
+        });
+    });
+}
+
 /** Open unified build guide; lazy-boots linkage shell if user started in solar/simulate. */
 async function openBuildGuide() {
     if (typeof globalThis.showBuildGuide === 'function') {

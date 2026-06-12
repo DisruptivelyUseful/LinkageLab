@@ -33,7 +33,22 @@ async function waitForSolarDesignReady(page) {
 
 async function waitForSolarSimulateReady(page) {
     await expect(page.locator('#view-solar-simulate')).toHaveClass(/active/);
-    await expect(page.locator('#view-solar-simulate .solar-simulator-frame')).toBeVisible();
+    await expect(page.locator('#view-solar-simulate .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
+    await page.waitForFunction(() => {
+        return Boolean(document.querySelector('#view-solar-simulate #main-content')
+            && document.querySelector('#view-solar-simulate #playPauseButton'));
+    }, { timeout: 60_000 });
+}
+
+/** Navigate via AppRouter (avoids topbar overlap blocking mode-toggle clicks). */
+export async function navigateAppMode(page, mode) {
+    await page.evaluate(async (targetMode) => {
+        if (targetMode === 'solar-simulate') {
+            globalThis.SolarDesigner?.syncExportToStorage?.();
+        }
+        await globalThis.AppRouter.navigateTo(targetMode);
+    }, mode);
+    await waitForAppReady(page);
 }
 
 /** Wait until the unified app shell finishes booting for the active mode. */

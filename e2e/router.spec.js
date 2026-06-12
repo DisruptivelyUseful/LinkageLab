@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { waitForAppReady } from './helpers/app-ready.js';
+import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
 
 test.describe('App router', () => {
     test('defaults to linkage view on /index.html', async ({ page }) => {
@@ -23,9 +23,7 @@ test.describe('App router', () => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
-        await page.locator('#btn-mode-solar').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
-        await expect.poll(async () => page.evaluate(() => globalThis.SolarDesigner?.isInitialized?.())).toBe(true);
+        await navigateAppMode(page, 'solar-design');
 
         await page.waitForFunction(() => {
             const container = document.getElementById('solar-canvas-container');
@@ -55,9 +53,8 @@ test.describe('App router', () => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
-        await page.locator('#btn-mode-solar').click();
+        await navigateAppMode(page, 'solar-design');
 
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
         await expect(page.locator('#view-solar-design')).toHaveClass(/active/);
         await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
 
@@ -81,13 +78,12 @@ test.describe('App router', () => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
-        await page.locator('#btn-mode-solar').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
-        await expect.poll(async () => page.evaluate(() => globalThis.SolarDesigner?.isInitialized?.())).toBe(true);
+        await navigateAppMode(page, 'solar-design');
 
-        await page.locator('#btn-solar-simulate').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-simulate');
-        await expect(page.locator('#view-solar-simulate .solar-simulator-frame')).toBeVisible();
+        await page.locator('#btn-solar-simulate-top').click();
+        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-simulate', { timeout: 60_000 });
+        await expect(page.locator('#view-solar-simulate .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
+        await expect(page.locator('#view-solar-simulate #playPauseButton')).toBeVisible();
 
         const busCircuit = await page.evaluate(() => {
             const data = globalThis.AppRouter.getAppStateBus().circuitData;

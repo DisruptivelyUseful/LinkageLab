@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { linkageExportToSyncConfig } from './linkage-import.js';
+import * as CircuitStore from '../circuit/circuit-store.js';
 
 const MANIFEST_PATH = 'config/solar-designer-manifest.json';
 let designerBootPromise = null;
@@ -116,6 +117,7 @@ async function ensureSolarDesignerRuntime() {
 
     await loadScriptOnce('https://d3js.org/d3.v7.min.js');
     await ensureSolarConstants();
+    await import('../circuit/circuit-core.js');
     await import('../core/export-format.js');
     await import('../core/feedback.js');
     await loadScriptOnce('js/core/automation.js');
@@ -155,8 +157,10 @@ function applyLinkageExport(SolarDesigner, exportData) {
  * @param {{ linkageExport?: object | null, topbarHtml?: string }} [options]
  */
 export async function initSolarDesignerApp(container, options = {}) {
+    globalThis.CircuitStore = CircuitStore;
     if (!designerBootPromise) {
         designerBootPromise = (async () => {
+            ensureStylesheet('css/circuit.css', 'circuit-shared-css');
             ensureStylesheet('css/designer.css', 'solar-designer-css');
 
             const manifest = JSON.parse(await fetchText(MANIFEST_PATH));

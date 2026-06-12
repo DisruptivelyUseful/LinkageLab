@@ -8,6 +8,12 @@ body:not(.solar-mode) #right-sidebar {
     display: none !important;
 }
 
+/* Simulator sidebars live inside the unified simulate view */
+#view-solar-simulate #left-sidebar,
+#view-solar-simulate #right-sidebar {
+    display: block !important;
+}
+
 /* Keep linkage 2D overlay hidden even when solar designer CSS is loaded globally */
 #view-linkage #canvas {
     display: none !important;

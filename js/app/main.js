@@ -20,11 +20,11 @@ import {
 } from '../solar/designer-app.js';
 import { resolveCircuitExport } from '../solar/circuit-export.js';
 import {
-    activateSimulatorFrame,
     initSolarSimulatorApp,
     refreshSolarSimulatorFromCircuit,
 } from '../solar/simulator-app.js';
 import {
+    bindAppNavButtons,
     bindSimulatorTopbar,
     bindSolarDesignerTopbar,
     renderAppTopbarHtml,
@@ -41,18 +41,7 @@ function syncDocumentModeButtons(mode) {
 }
 
 function wireShellModeButtons(root) {
-    root.querySelectorAll('[data-app-nav-mode]').forEach((btn) => {
-        if (btn.dataset.shellNavBound === 'true') return;
-        btn.dataset.shellNavBound = 'true';
-        btn.addEventListener('click', () => {
-            const mode = btn.dataset.appNavMode;
-            if (mode) {
-                navigateTo(mode).catch((err) => {
-                    console.error('[app] navigation failed:', err);
-                });
-            }
-        });
-    });
+    bindAppNavButtons(root);
 }
 
 function resolveLinkageExport() {
@@ -67,12 +56,22 @@ function resolveLinkageExport() {
     return null;
 }
 
+/** Build + publish linkage export when linkage view is active (designer handoff). */
+function buildFreshLinkageExportForHandoff() {
+    if (typeof globalThis.buildLinkageExportData !== 'function' || !globalThis.state) {
+        return resolveLinkageExport();
+    }
+    const exportData = globalThis.buildLinkageExportData();
+    globalThis.publishLinkageExport?.(exportData);
+    return exportData;
+}
+
 registerModeLoader(APP_MODES.LINKAGE, async () => {
     await bootLinkageApp();
 });
 
 registerModeLoader(APP_MODES.SOLAR_DESIGN, async (container) => {
-    const linkageExport = resolveLinkageExport();
+    const linkageExport = buildFreshLinkageExportForHandoff();
     const topbarHtml = await renderAppTopbarHtml(APP_MODES.SOLAR_DESIGN);
     await initSolarDesignerApp(container, {
         linkageExport,
@@ -125,26 +124,31 @@ async function main() {
         }
         if (mode === APP_MODES.SOLAR_DESIGN) {
             scheduleSolarDesignerLayoutRefresh();
-            refreshSolarDesignerFromExport(resolveLinkageExport()).catch((err) => {
+            const lastMode = getAppStateBus().lastMode;
+            const linkageExport = lastMode === APP_MODES.LINKAGE
+                ? buildFreshLinkageExportForHandoff()
+                : resolveLinkageExport();
+            refreshSolarDesignerFromExport(linkageExport).catch((err) => {
                 console.error('[app] solar designer refresh failed:', err);
             });
             bindSolarDesignerTopbar(document.getElementById('view-solar-design') || document);
         }
-        if (mode === APP_MODES.SOLAR_SIMULATE) {
-            // Sync the designer's current schematic to localStorage before loading the simulator frame
+        if (mode === APP_MODES.SOLAR_SIMULATE && !event.detail?.isFirstLoad) {
             globalThis.SolarDesigner?.syncExportToStorage?.();
-            activateSimulatorFrame();
             const circuit = resolveCircuitExport();
-            refreshSolarSimulatorFromCircuit(circuit).catch((err) => {
-                console.error('[app] solar simulator refresh failed:', err);
-            });
             const simView = document.getElementById('view-solar-simulate');
-            if (simView) {
-                bindSimulatorTopbar(simView, {
-                    onReload: (data) => refreshSolarSimulatorFromCircuit(data),
+            refreshSolarSimulatorFromCircuit(circuit)
+                .then(() => {
+                    if (!simView) return;
+                    bindAppNavButtons(simView);
+                    bindSimulatorTopbar(simView, {
+                        onReload: (data) => refreshSolarSimulatorFromCircuit(data),
+                    });
+                    updateSimulatorTopbarSummary(simView, circuit);
+                })
+                .catch((err) => {
+                    console.error('[app] solar simulator refresh failed:', err);
                 });
-                updateSimulatorTopbarSummary(simView, circuit);
-            }
         }
         syncDocumentModeButtons(mode);
     });

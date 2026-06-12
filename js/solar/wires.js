@@ -12,6 +12,9 @@ function createWireSystem() {
         
         // Calculate required wire gauge for a connection
         calculateGauge(connection, allItems) {
+            if (typeof globalThis.calculateWireGauge === 'function') {
+                return globalThis.calculateWireGauge(connection, allItems, AWG_RATINGS);
+            }
             // Get source and target items
             const sourceItem = allItems.find(i => 
                 Object.values(i.handles).some(h => h.connectedTo.some(c => c.connectionId === connection.id))

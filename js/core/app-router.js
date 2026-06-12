@@ -88,7 +88,7 @@ function setActiveView(mode) {
         el.hidden = !active;
     });
     document.body.dataset.appMode = mode;
-    document.body.classList.toggle('solar-mode', mode === APP_MODES.SOLAR_DESIGN);
+    document.body.classList.toggle('solar-mode', mode === APP_MODES.SOLAR_DESIGN || mode === APP_MODES.SOLAR_SIMULATE);
 }
 
 /**
@@ -120,7 +120,9 @@ export async function navigateTo(mode, options = {}) {
         throw new Error(`View container not found for mode: ${mode}`);
     }
 
-    if (!loadedModes.has(mode)) {
+    const wasAlreadyLoaded = loadedModes.has(mode);
+
+    if (!wasAlreadyLoaded) {
         // Show the target view before first boot so layout-dependent canvases get real dimensions.
         setActiveView(mode);
 
@@ -146,7 +148,9 @@ export async function navigateTo(mode, options = {}) {
         writeHashForMode(mode, { replace: !!options.replaceHash });
     }
 
-    window.dispatchEvent(new CustomEvent('app:navigate', { detail: { mode } }));
+    window.dispatchEvent(new CustomEvent('app:navigate', {
+        detail: { mode, isFirstLoad: !wasAlreadyLoaded },
+    }));
 }
 
 let routerInitialized = false;
