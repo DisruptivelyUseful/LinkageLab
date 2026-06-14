@@ -11,11 +11,29 @@ import {
     getUnifiedConfig,
     publishLinkageExport,
 } from '../linkage/export-bridge.js';
+import {
+    PROJECT_SCHEMA_VERSION,
+    PROJECT_STORAGE_KEY,
+    initProjectStore,
+    normalizeProjectDocument,
+    publishProjectDocument,
+    resolveProjectDocument,
+    saveSimulatorSnapshot,
+} from './project-store.js';
+import { createCircuitDocument, fromDesignerExport } from '../circuit/circuit-store.js';
 
-export const PROJECT_SCHEMA_VERSION = 3;
-export const PROJECT_STORAGE_KEY = 'linkageLabProject';
+export {
+    PROJECT_SCHEMA_VERSION,
+    PROJECT_STORAGE_KEY,
+    initProjectStore,
+    normalizeProjectDocument,
+    publishProjectDocument,
+    resolveProjectDocument,
+    saveSimulatorSnapshot,
+};
 
-/** @typedef {import('../linkage/export-bridge.js').getUnifiedConfig} BuildProject */
+/** @deprecated use normalizeProjectDocument */
+export const normalizeProjectImport = normalizeProjectDocument;
 
 /**
  * Build a unified project file from the current app state (all modes).
@@ -25,6 +43,7 @@ export function buildProjectExport() {
     const project = getUnifiedConfig();
     project.schemaVersion = PROJECT_SCHEMA_VERSION;
     project.exportType = 'linkageLab.project';
+    project.updatedAt = Date.now();
 
     const designer = globalThis.SolarDesigner;
     if (designer?.isInitialized?.()) {
@@ -32,7 +51,15 @@ export function buildProjectExport() {
         const connections = designer.getConnections();
         const circuit = designer.getSolarConfig();
 
-        project.circuit = circuit;
+        project.circuit = createCircuitDocument({
+            items,
+            connections,
+            itemIdCounter: circuit.itemIdCounter,
+            connectionIdCounter: circuit.connectionIdCounter,
+        }, {
+            automation: circuit.automations || circuit.automation,
+            simulation: circuit.simulation,
+        });
 
         const totalPanelWatts = items
             .filter((i) => i.type === 'panel')
@@ -85,106 +112,29 @@ export function buildProjectExport() {
         project.handoff = { linkage: buildLinkageExportData() };
     }
 
-    return project;
-}
-
-/**
- * Normalize legacy export shapes into a consistent project object.
- * @param {object} raw
- * @returns {object}
- */
-export function normalizeProjectImport(raw) {
-    if (!raw || typeof raw !== 'object') {
-        throw new Error('Invalid project file');
+    if (typeof globalThis.getSimulatorProjectSnapshot === 'function') {
+        const simSlice = globalThis.getSimulatorProjectSnapshot();
+        if (simSlice?.simulation) project.simulation = simSlice.simulation;
+        if (simSlice?.structureGeometry && !project.structureGeometry) {
+            project.structureGeometry = simSlice.structureGeometry;
+        }
+        if (simSlice?.circuit && !project.circuit) {
+            project.circuit = fromDesignerExport({ circuit: simSlice.circuit, simulation: simSlice.simulation });
+        }
     }
 
-    if (raw.exportType === 'linkageLab.project' || raw.schemaVersion >= 3) {
-        return raw;
-    }
-
-    if (raw.source === ExportFormat.SOURCES.COMBINED && raw.linkage && raw.designer) {
-        return {
-            schemaVersion: PROJECT_SCHEMA_VERSION,
-            exportType: 'linkageLab.project',
-            ...raw.linkage,
-            circuit: designerExportToCircuit(raw.designer),
-            handoff: { linkage: raw.linkage, designer: raw.designer },
-        };
-    }
-
-    if (raw.source === ExportFormat.SOURCES.SOLAR_DESIGNER && raw.schematic) {
-        return {
-            schemaVersion: PROJECT_SCHEMA_VERSION,
-            exportType: 'linkageLab.project',
-            circuit: designerExportToCircuit(raw),
-            handoff: { designer: raw },
-        };
-    }
-
-    if (raw.items && raw.connections) {
-        return {
-            schemaVersion: PROJECT_SCHEMA_VERSION,
-            exportType: 'linkageLab.project',
-            circuit: raw,
-        };
-    }
-
-    return {
-        schemaVersion: PROJECT_SCHEMA_VERSION,
-        exportType: 'linkageLab.project',
-        ...raw,
-    };
-}
-
-function designerExportToCircuit(designerExport) {
-    const schematic = designerExport.schematic;
-    if (!schematic) return null;
-
-    return {
-        items: (schematic.components || []).map((c) => ({
-            ...c,
-            handles: c.handles || {},
-        })),
-        connections: (schematic.connections || []).map((c) => ({
-            id: c.id,
-            sourceItemId: c.sourceItemId,
-            sourceHandleKey: c.sourceHandleKey || c.sourceHandle,
-            targetItemId: c.targetItemId,
-            targetHandleKey: c.targetHandleKey || c.targetHandle,
-        })),
-        automations: designerExport.automation,
-        simulation: designerExport.simulation,
-    };
-}
-
-function compactSolarToCircuit(compact) {
-    if (!compact?.items?.length) return null;
-    return {
-        items: compact.items.map((item) => ({
-            id: item.id,
-            type: item.type,
-            x: item.x,
-            y: item.y,
-            specs: item.specs || {},
-            handles: {},
-        })),
-        connections: (compact.connections || []).map((conn) => ({
-            id: conn.id,
-            sourceItemId: conn.src,
-            sourceHandleKey: conn.srcH,
-            targetItemId: conn.tgt,
-            targetHandleKey: conn.tgtH,
-        })),
-    };
+    return normalizeProjectDocument(project);
 }
 
 function resolveCircuitFromProject(project) {
     if (project.circuit?.items) return project.circuit;
     if (project.handoff?.designer) {
-        const fromHandoff = designerExportToCircuit(project.handoff.designer);
-        if (fromHandoff?.items?.length) return fromHandoff;
+        const doc = fromDesignerExport(project.handoff.designer);
+        return doc.items?.length ? doc : null;
     }
-    if (project.solarDesigner) return compactSolarToCircuit(project.solarDesigner);
+    if (project.solarDesigner) {
+        return fromDesignerExport({ solarDesigner: project.solarDesigner });
+    }
     return null;
 }
 
@@ -193,14 +143,16 @@ function resolveCircuitFromProject(project) {
  * @param {object} rawProject
  */
 export function applyProjectImport(rawProject) {
-    const project = normalizeProjectImport(rawProject);
+    const project = normalizeProjectDocument(rawProject);
+    publishProjectDocument(project);
 
     const linkageTrigger = project.structure || project.mode || project.foldAngle !== undefined
         || ('supportBeams' in project)
-        || (project.panels && project.panels.support);
+        || (project.panels && project.panels.support)
+        || project.linkage;
     if (linkageTrigger && typeof globalThis.applyConfig === 'function') {
         try {
-            globalThis.applyConfig(project);
+            globalThis.applyConfig(project.linkage || project);
         } catch (err) {
             console.warn('[project-export] linkage apply failed:', err);
         }
@@ -210,7 +162,14 @@ export function applyProjectImport(rawProject) {
     const designer = globalThis.SolarDesigner;
     if (circuit && designer?.isInitialized?.()) {
         try {
-            designer.loadSolarConfig(circuit);
+            designer.loadSolarConfig({
+                items: circuit.items,
+                connections: circuit.connections,
+                itemIdCounter: circuit.itemIdCounter,
+                connectionIdCounter: circuit.connectionIdCounter,
+                automations: circuit.automation,
+                simulation: circuit.simulation || project.simulation,
+            });
             designer.render?.();
         } catch (err) {
             console.warn('[project-export] circuit apply failed:', err);
@@ -233,24 +192,22 @@ export function applyProjectImport(rawProject) {
                 targetItemId: conn.targetItemId,
                 targetHandle: conn.targetHandleKey || conn.targetHandle,
             })),
+            automationRules: circuit.automation,
+            simulation: project.simulation || circuit.simulation,
             componentCount: circuit.items?.length || 0,
+            structureGeometry: project.structureGeometry || project.geometrySnapshot,
+            cameraState: project.cameraState,
         }) : null);
     if (designerHandoff) {
         publishCircuitExport(designerHandoff);
     }
 
-    const geometry = project.structureGeometry
-        || project.geometrySnapshot
-        || linkageHandoff?.structureGeometry;
-    if (geometry) {
-        localStorage.setItem('linkageLabGeometry', JSON.stringify(geometry));
-        globalThis.linkageLabGeometry = geometry;
-    }
-
-    try {
-        localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(buildProjectExport()));
-    } catch (err) {
-        localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
+    if (typeof globalThis.applySimulatorProjectImport === 'function') {
+        try {
+            globalThis.applySimulatorProjectImport(project);
+        } catch (err) {
+            console.warn('[project-export] simulator apply failed:', err);
+        }
     }
 
     if (typeof globalThis.saveStateToHistory === 'function') {
@@ -260,8 +217,18 @@ export function applyProjectImport(rawProject) {
 
 /** Save unified project to localStorage. */
 export function saveProject() {
+    globalThis.flushSimulatorAutosave?.();
     const project = buildProjectExport();
-    localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
+    publishProjectDocument(project);
+    // Keep legacy linkage autosave in sync so a normal refresh restores deploy angle, etc.
+    if (typeof globalThis.getConfigSnapshot === 'function') {
+        try {
+            localStorage.setItem('linkageLab_config', JSON.stringify(globalThis.getConfigSnapshot()));
+        } catch (err) {
+            console.warn('[project-export] Failed to sync linkageLab_config:', err);
+        }
+    }
+    globalThis.clearSimulatorDirtyGuard?.();
     showToast('Project saved (linkage + electrical + wiring)', 'info');
 }
 

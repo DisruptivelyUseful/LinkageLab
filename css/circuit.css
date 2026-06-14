@@ -21,14 +21,16 @@
 .score-bar {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 3px;
 }
 
 .score-item {
     display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 8px 10px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 5px 8px;
     background: rgba(15, 22, 32, 0.85);
     border: 1px solid rgba(var(--clr-primary-rgb, 0, 212, 255), 0.2);
     border-radius: var(--radius-sm, 4px);
@@ -36,18 +38,21 @@
 
 .score-item .stat-label,
 .score-item .score-label {
-    font-size: 0.65rem;
+    font-size: 0.72rem;
     color: var(--text-muted, #8899aa);
-    text-transform: uppercase;
-    letter-spacing: 0.35px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
 }
 
 .score-item .stat-value,
 .score-item .score-value {
     font-family: var(--font-mono, monospace);
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     font-weight: 700;
     color: var(--clr-primary, #00d4ff);
+    text-align: right;
+    white-space: nowrap;
 }
 
 #left-sidebar,
@@ -61,6 +66,28 @@ path.wire {
     fill: none !important;
     stroke-width: 3;
     cursor: pointer;
+}
+
+.wire.dc-positive,
+path.wire.dc-positive,
+path.wire.positive {
+    stroke: var(--energy-red) !important;
+}
+
+.wire.dc-negative,
+path.wire.dc-negative,
+path.wire.negative {
+    stroke: #333 !important;
+}
+
+.wire.ac,
+path.wire.ac {
+    stroke: var(--energy-amber) !important;
+}
+
+.wire.resource,
+path.wire.resource {
+    stroke: #6fa06c !important;
 }
 
 .sim-topbar-row-controls,
@@ -92,7 +119,7 @@ path.wire {
     flex-shrink: 0;
 }
 
-#view-solar-simulate > #topbar {
+#view-solar > #topbar {
     position: relative;
     z-index: 30;
 }
@@ -105,17 +132,17 @@ path.wire {
     height: auto;
 }
 
-#view-solar-simulate {
+#view-solar {
     display: flex;
     flex-direction: column;
     min-height: 100vh;
 }
 
-#view-solar-simulate.active {
+#view-solar.active {
     display: flex;
 }
 
-#view-solar-simulate .simulator-native-stage #main-content {
+#view-solar .simulator-native-stage #main-content {
     flex: 1 1 auto;
     min-height: 0;
     margin-top: 0;
@@ -124,7 +151,7 @@ path.wire {
     display: flex;
 }
 
-#view-solar-simulate .simulator-native-stage #canvas-container {
+#view-solar .simulator-native-stage #canvas-container {
     position: absolute;
     top: 0;
     left: 260px;
@@ -132,23 +159,23 @@ path.wire {
     bottom: 0;
 }
 
-#view-solar-simulate .simulator-native-stage #left-sidebar,
-#view-solar-simulate .simulator-native-stage #right-sidebar {
+#view-solar .simulator-native-stage #left-sidebar,
+#view-solar .simulator-native-stage #right-sidebar {
     position: absolute;
     top: 0;
     bottom: 0;
     z-index: var(--z-sticky, 100);
 }
 
-#view-solar-simulate .simulator-native-stage:has(#right-sidebar.closed) #canvas-container {
+#view-solar .simulator-native-stage:has(#right-sidebar.closed) #canvas-container {
     right: 0;
 }
 
-#view-solar-simulate .simulator-native-stage:has(#left-sidebar.collapsed) #canvas-container {
+#view-solar .simulator-native-stage:has(#left-sidebar.collapsed) #canvas-container {
     left: 0;
 }
 
-#view-solar-simulate .simulator-native-stage #left-sidebar.collapsed > *:not(#left-sidebar-toggle) {
+#view-solar .simulator-native-stage #left-sidebar.collapsed > *:not(#left-sidebar-toggle) {
     display: none;
 }
 

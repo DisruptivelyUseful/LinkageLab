@@ -656,6 +656,12 @@ import { syncUI } from './state-sync.js';
             try {
                 const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
                 config.geometrySnapshot = buildGeometrySnapshot(data);
+                if (typeof globalThis.buildHardwareAssemblyDebugSnapshot === 'function') {
+                    config.hardwareAssemblyDebug = globalThis.buildHardwareAssemblyDebugSnapshot(
+                        data,
+                        data.structureCenter || data.structureBounds?.center
+                    );
+                }
             } catch (e) {
                 config.geometrySnapshot = { error: e.message };
             }

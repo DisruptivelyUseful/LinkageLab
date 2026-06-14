@@ -43,11 +43,12 @@ export function resolveCircuitExport() {
  * @returns {string}
  */
 export function buildSimulatorFrameSrc() {
-    const url = ExportFormat.buildImportURL('solar_simulator.html', 'solarDesigner');
-    const parsed = new URL(url, globalThis.location?.origin || 'http://localhost');
+    const parsed = new URL('index.html', globalThis.location?.href || 'http://localhost/index.html');
+    parsed.hash = '#/solar/simulate';
+    parsed.searchParams.set('import', 'solarDesigner');
     parsed.searchParams.set('embedded', '1');
     parsed.searchParams.set('ts', String(Date.now()));
-    return `${parsed.pathname}${parsed.search}`;
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
 }
 
 export {

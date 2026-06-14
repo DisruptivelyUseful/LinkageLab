@@ -411,14 +411,16 @@
 .incident-report {
     background: linear-gradient(180deg, var(--space-700) 0%, var(--space-800) 100%);
     border: 2px solid var(--status-warning);
-    border-radius: 16px;
-    max-width: 600px;
-    width: 90%;
-    max-height: 85vh;
-    overflow-y: auto;
+    border-radius: 12px;
+    max-width: 440px;
+    width: 92%;
+    max-height: min(85vh, 480px);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     box-shadow: 
-        0 0 80px rgba(239, 68, 68, 0.3),
-        0 25px 50px rgba(0, 0, 0, 0.6);
+        0 0 60px rgba(239, 68, 68, 0.25),
+        0 20px 40px rgba(0, 0, 0, 0.55);
     animation: incidentSlideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
@@ -463,11 +465,12 @@
 
 .incident-header {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.05) 100%);
-    padding: 20px 24px;
+    padding: 12px 16px;
     border-bottom: 1px solid rgba(239, 68, 68, 0.3);
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .incident-report.warning-level .incident-header {
@@ -491,14 +494,9 @@
 }
 
 .incident-icon {
-    font-size: 48px;
+    font-size: 32px;
     line-height: 1;
-    animation: incidentPulse 1s ease infinite;
-}
-
-@keyframes incidentPulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.1); }
+    flex-shrink: 0;
 }
 
 .incident-title-group {
@@ -507,12 +505,12 @@
 
 .incident-type {
     font-family: var(--font-display);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.12em;
     color: var(--status-warning);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .incident-report.warning-level .incident-type {
@@ -533,18 +531,22 @@
 
 .incident-title {
     font-family: var(--font-display);
-    font-size: 20px;
+    font-size: 16px;
     font-weight: 700;
     color: var(--text-primary);
     margin: 0;
+    line-height: 1.25;
 }
 
 .incident-body {
-    padding: 24px;
+    padding: 12px 16px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 0;
 }
 
 .incident-section {
-    margin-bottom: 20px;
+    margin-bottom: 12px;
 }
 
 .incident-section:last-child {
@@ -553,15 +555,15 @@
 
 .incident-section-title {
     font-family: var(--font-display);
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     color: var(--text-tertiary);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .incident-section-title::after {
@@ -573,17 +575,18 @@
 
 .incident-description {
     color: var(--text-secondary);
-    font-size: 14px;
-    line-height: 1.6;
+    font-size: 13px;
+    line-height: 1.45;
+    margin: 0;
 }
 
 .incident-math {
     background: var(--space-800);
     border: 1px solid var(--space-500);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 10px 12px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
+    font-size: 12px;
 }
 
 .incident-math-row {
@@ -621,7 +624,7 @@
 .incident-realworld {
     background: linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, transparent 100%);
     border-left: 3px solid var(--status-warning);
-    padding: 12px 16px;
+    padding: 8px 10px;
     border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
@@ -632,10 +635,10 @@
 
 .incident-realworld-title {
     font-family: var(--font-display);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--status-warning);
-    margin-bottom: 4px;
+    margin-bottom: 2px;
 }
 
 .incident-report.warning-level .incident-realworld-title {
@@ -644,26 +647,27 @@
 
 .incident-realworld-text {
     color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0;
 }
 
 .incident-solution {
     background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, transparent 100%);
     border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: var(--radius-md);
-    padding: 16px;
+    padding: 10px 12px;
 }
 
 .incident-solution-title {
     font-family: var(--font-display);
-    font-size: 12px;
+    font-size: 10px;
     font-weight: 600;
     color: var(--status-nominal);
-    margin-bottom: 8px;
+    margin-bottom: 4px;
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 6px;
 }
 
 .incident-solution-list {
@@ -674,9 +678,9 @@
 
 .incident-solution-list li {
     color: var(--text-secondary);
-    font-size: 13px;
-    line-height: 1.5;
-    padding: 4px 0 4px 20px;
+    font-size: 12px;
+    line-height: 1.4;
+    padding: 2px 0 2px 18px;
     position: relative;
 }
 
@@ -689,21 +693,23 @@
 }
 
 .incident-footer {
-    padding: 16px 24px;
+    padding: 10px 16px;
     border-top: 1px solid var(--space-500);
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
+    flex-shrink: 0;
+    background: var(--space-800);
 }
 
 .incident-btn {
     font-family: var(--font-display);
-    padding: 12px 24px;
+    padding: 8px 18px;
     border-radius: var(--radius-md);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.04em;
     cursor: pointer;
     transition: all var(--transition-fast);
     border: 1px solid;

@@ -16,133 +16,187 @@
         document.head.appendChild(style);
     }
 
-    function skyColorsForHour(hours) {
-        let bgColor;
-        let gridColor;
-
-        if (hours < 5 || hours > 21) {
-            bgColor = '#0a1520';
-            gridColor = 'rgba(100, 150, 200, 0.03)';
-        } else if (hours < 6) {
-            const t = hours - 5;
-            bgColor = `rgb(${10 + t * 20}, ${21 + t * 20}, ${32 + t * 30})`;
-            gridColor = 'rgba(150, 180, 200, 0.04)';
-        } else if (hours < 7) {
-            const t = hours - 6;
-            bgColor = `rgb(${30 + t * 30}, ${41 + t * 30}, ${62 + t * 20})`;
-            gridColor = 'rgba(200, 180, 150, 0.05)';
-        } else if (hours < 18) {
-            const noon = Math.abs(hours - 12) / 5;
-            const brightness = 1 - noon * 0.2;
-            bgColor = `rgb(${Math.round(26 * brightness + 20)}, ${Math.round(43 * brightness + 20)}, ${Math.round(60 * brightness + 20)})`;
-            gridColor = 'rgba(240, 173, 78, 0.04)';
-        } else if (hours < 19) {
-            const t = hours - 18;
-            bgColor = `rgb(${60 - t * 30}, ${63 - t * 22}, ${80 - t * 18})`;
-            gridColor = 'rgba(240, 173, 78, 0.05)';
-        } else if (hours < 20) {
-            const t = hours - 19;
-            bgColor = `rgb(${30 - t * 15}, ${41 - t * 15}, ${62 - t * 25})`;
-            gridColor = 'rgba(150, 150, 200, 0.04)';
-        } else {
-            const t = hours - 20;
-            bgColor = `rgb(${15 - t * 5}, ${26 - t * 5}, ${37 - t * 17})`;
-            gridColor = 'rgba(100, 150, 200, 0.03)';
-        }
-
-        return { bgColor, gridColor };
+    function normalizeHour(hours) {
+        return ((hours % 24) + 24) % 24;
     }
 
-    function paintCelestialOverlay(overlay, hours) {
-        while (overlay.firstChild) {
-            overlay.removeChild(overlay.firstChild);
+    function resolveSunTimes(options = {}) {
+        const sunrise = options.sunrise ?? 6;
+        const sunset = options.sunset ?? 18;
+        const twilight = options.twilight ?? 1;
+        return { sunrise, sunset, twilight };
+    }
+
+    function skyColorsForHour(hours, options = {}) {
+        const h = normalizeHour(hours);
+        const { sunrise, sunset, twilight } = resolveSunTimes(options);
+
+        const night = { r: 10, g: 21, b: 32 };       // #0a1520
+        const dawn = { r: 30, g: 41, b: 62 };
+        const day = { r: 42, g: 78, b: 118 };        // lighter blue daylight
+        const dusk = { r: 30, g: 41, b: 62 };
+
+        const lerp = (a, b, t) => ({
+            r: Math.round(a.r + (b.r - a.r) * t),
+            g: Math.round(a.g + (b.g - a.g) * t),
+            b: Math.round(a.b + (b.b - a.b) * t),
+        });
+        const clamp01 = (t) => Math.max(0, Math.min(1, t));
+        const toCss = ({ r, g, b }) => `rgb(${r}, ${g}, ${b})`;
+
+        const dawnStart = Math.max(0, sunrise - twilight);
+        const duskEnd = Math.min(24, sunset + twilight);
+
+        let rgb;
+        if (h < dawnStart || h >= duskEnd) {
+            rgb = night;
+        } else if (h < sunrise) {
+            rgb = lerp(night, dawn, clamp01((h - dawnStart) / (sunrise - dawnStart || 1)));
+        } else if (h < sunrise + twilight * 0.5) {
+            rgb = lerp(dawn, day, clamp01((h - sunrise) / (twilight * 0.5 || 1)));
+        } else if (h < sunset - twilight * 0.5) {
+            const noon = Math.abs(h - (sunrise + sunset) / 2) / Math.max(1, (sunset - sunrise) / 2);
+            const brightness = 1 + (1 - noon) * 0.12;
+            rgb = {
+                r: Math.min(255, Math.round(day.r * brightness)),
+                g: Math.min(255, Math.round(day.g * brightness)),
+                b: Math.min(255, Math.round(day.b * brightness)),
+            };
+        } else if (h < sunset) {
+            rgb = lerp(day, dusk, clamp01((h - (sunset - twilight * 0.5)) / (twilight * 0.5 || 1)));
+        } else {
+            rgb = lerp(dusk, night, clamp01((h - sunset) / (duskEnd - sunset || 1)));
         }
 
-        const isNight = hours < 6 || hours > 19;
-        const isDawn = hours >= 5 && hours < 7;
-        const isDusk = hours >= 18 && hours < 20;
-        const isDay = hours >= 7 && hours < 18;
+        const gridAlpha = h >= sunrise && h < sunset ? 0.04 : 0.03;
+        const gridColor = `rgba(150, 190, 230, ${gridAlpha})`;
+
+        return { bgColor: toCss(rgb), gridColor };
+    }
+
+    function ensureStarsContainer(overlay) {
+        let starsContainer = overlay.querySelector('.celestial-stars');
+        if (starsContainer) return starsContainer;
+
+        ensureTwinkleStyle();
+        starsContainer = document.createElement('div');
+        starsContainer.className = 'celestial-stars';
+        starsContainer.style.cssText = 'position:absolute;inset:0;';
+
+        for (let i = 0; i < 50; i++) {
+            const star = document.createElement('div');
+            const x = Math.random() * 100;
+            const y = Math.random() * 60;
+            const size = 1 + Math.random() * 2;
+            const opacity = 0.3 + Math.random() * 0.7;
+            const twinkleDelay = Math.random() * 3;
+
+            star.style.cssText = `
+                position: absolute;
+                left: ${x}%;
+                top: ${y}%;
+                width: ${size}px;
+                height: ${size}px;
+                background: white;
+                border-radius: 50%;
+                opacity: ${opacity};
+                box-shadow: 0 0 ${size * 2}px ${size}px rgba(255, 255, 255, 0.5);
+                animation: celestial-twinkle ${2 + Math.random() * 2}s ease-in-out ${twinkleDelay}s infinite;
+            `;
+            starsContainer.appendChild(star);
+        }
+
+        overlay.appendChild(starsContainer);
+        return starsContainer;
+    }
+
+    function ensureCelestialElement(overlay, className) {
+        let el = overlay.querySelector(`.${className}`);
+        if (!el) {
+            el = document.createElement('div');
+            el.className = className;
+            el.style.position = 'absolute';
+            el.style.pointerEvents = 'none';
+            el.style.transition = 'opacity 0.4s ease';
+            overlay.appendChild(el);
+        }
+        return el;
+    }
+
+    function updateCelestialGraphics(overlay, hours, options = {}) {
+        const h = normalizeHour(hours);
+        const { sunrise, sunset, twilight } = resolveSunTimes(options);
+        const dayLength = Math.max(0.5, sunset - sunrise);
+
+        const dawnStart = Math.max(0, sunrise - twilight);
+        const duskEnd = Math.min(24, sunset + twilight);
+        const isNight = h < dawnStart || h >= duskEnd;
+        const isDawn = h >= dawnStart && h < sunrise + twilight * 0.5;
+        const isDusk = h >= sunset - twilight * 0.5 && h < duskEnd;
+        const isDay = h >= sunrise && h < sunset;
+
+        const sun = ensureCelestialElement(overlay, 'celestial-sun');
+        const moon = ensureCelestialElement(overlay, 'celestial-moon');
+        const starsContainer = ensureStarsContainer(overlay);
 
         if (isDay || isDawn) {
-            const sunProgress = (hours - 6) / 12;
-            const sunX = 10 + sunProgress * 80;
-            const sunY = 10 + Math.sin(sunProgress * Math.PI) * -40 + 40;
-            const sunSize = isDawn ? 40 + (hours - 5) * 10 : 60;
-            const sunOpacity = isDawn ? 0.3 + (hours - 5) * 0.4 : 1;
+            const sunProgress = Math.max(0, Math.min(1, (h - sunrise) / dayLength));
+            const sunX = 8 + sunProgress * 84;
+            const sunY = 12 + Math.sin(sunProgress * Math.PI) * -38 + 38;
+            const sunSize = isDawn ? 40 + Math.max(0, h - dawnStart) * 12 : 58;
+            const sunOpacity = isDawn
+                ? 0.25 + Math.max(0, (h - dawnStart) / (twilight || 1)) * 0.75
+                : 1;
 
-            const sun = document.createElement('div');
-            sun.style.cssText = `
-                position: absolute;
-                left: ${sunX}%;
-                top: ${sunY}%;
-                width: ${sunSize}px;
-                height: ${sunSize}px;
-                background: radial-gradient(circle, #FFD700 0%, #FFA500 40%, transparent 70%);
-                border-radius: 50%;
-                opacity: ${sunOpacity};
-                box-shadow: 0 0 ${sunSize}px ${sunSize / 2}px rgba(255, 215, 0, 0.3);
-                transition: all 1s ease;
-            `;
-            overlay.appendChild(sun);
+            sun.style.display = 'block';
+            sun.style.left = `${sunX}%`;
+            sun.style.top = `${sunY}%`;
+            sun.style.width = `${sunSize}px`;
+            sun.style.height = `${sunSize}px`;
+            sun.style.borderRadius = '50%';
+            sun.style.opacity = String(sunOpacity);
+            sun.style.background = 'radial-gradient(circle, #FFD700 0%, #FFA500 40%, transparent 70%)';
+            sun.style.boxShadow = `0 0 ${sunSize}px ${sunSize / 2}px rgba(255, 215, 0, 0.35)`;
+        } else {
+            sun.style.display = 'none';
         }
 
         if (isNight || isDusk) {
-            const moonProgress = hours < 12 ? (hours + 6) / 12 : (hours - 18) / 12;
-            const moonX = 10 + moonProgress * 80;
-            const moonY = 10 + Math.sin(moonProgress * Math.PI) * -30 + 30;
-            const moonSize = isDusk ? 30 + (20 - hours) * 5 : 40;
-            const moonOpacity = isDusk ? 0.3 + (20 - hours) * 0.35 : 0.8;
-
-            const moon = document.createElement('div');
-            moon.style.cssText = `
-                position: absolute;
-                left: ${moonX}%;
-                top: ${moonY}%;
-                width: ${moonSize}px;
-                height: ${moonSize}px;
-                background: radial-gradient(circle at 30% 30%, #FFF 0%, #E0E0E0 50%, #A0A0A0 100%);
-                border-radius: 50%;
-                opacity: ${moonOpacity};
-                box-shadow: 0 0 ${moonSize}px ${moonSize / 3}px rgba(255, 255, 255, 0.2);
-                transition: all 1s ease;
-            `;
-            overlay.appendChild(moon);
-        }
-
-        if (isNight) {
-            ensureTwinkleStyle();
-            const starsContainer = document.createElement('div');
-            starsContainer.style.cssText = 'position:absolute;inset:0;';
-
-            for (let i = 0; i < 50; i++) {
-                const star = document.createElement('div');
-                const x = Math.random() * 100;
-                const y = Math.random() * 60;
-                const size = 1 + Math.random() * 2;
-                const opacity = 0.3 + Math.random() * 0.7;
-                const twinkleDelay = Math.random() * 3;
-
-                star.style.cssText = `
-                    position: absolute;
-                    left: ${x}%;
-                    top: ${y}%;
-                    width: ${size}px;
-                    height: ${size}px;
-                    background: white;
-                    border-radius: 50%;
-                    opacity: ${opacity};
-                    box-shadow: 0 0 ${size * 2}px ${size}px rgba(255, 255, 255, 0.5);
-                    animation: celestial-twinkle ${2 + Math.random() * 2}s ease-in-out ${twinkleDelay}s infinite;
-                `;
-                starsContainer.appendChild(star);
+            const nightSpan = 24 - duskEnd + dawnStart;
+            let moonProgress = 0.5;
+            if (h >= duskEnd) {
+                moonProgress = (h - duskEnd) / Math.max(0.5, nightSpan);
+            } else if (h < dawnStart) {
+                moonProgress = (h + (24 - duskEnd)) / Math.max(0.5, nightSpan);
             }
+            moonProgress = Math.max(0, Math.min(1, moonProgress));
 
-            overlay.appendChild(starsContainer);
+            const moonX = 8 + moonProgress * 84;
+            const moonY = 12 + Math.sin(moonProgress * Math.PI) * -28 + 28;
+            const moonSize = isDusk ? 34 + Math.max(0, duskEnd - h) * 6 : 40;
+            const moonOpacity = isDusk
+                ? 0.25 + Math.max(0, (duskEnd - h) / (twilight || 1)) * 0.55
+                : 0.85;
+
+            moon.style.display = 'block';
+            moon.style.left = `${moonX}%`;
+            moon.style.top = `${moonY}%`;
+            moon.style.width = `${moonSize}px`;
+            moon.style.height = `${moonSize}px`;
+            moon.style.borderRadius = '50%';
+            moon.style.opacity = String(moonOpacity);
+            moon.style.background = 'radial-gradient(circle at 30% 30%, #FFF 0%, #E0E0E0 50%, #A0A0A0 100%)';
+            moon.style.boxShadow = `0 0 ${moonSize}px ${moonSize / 3}px rgba(255, 255, 255, 0.2)`;
+        } else {
+            moon.style.display = 'none';
         }
+
+        starsContainer.style.display = isNight ? 'block' : 'none';
+        starsContainer.style.opacity = isDusk ? String(Math.max(0, (h - (sunset - twilight * 0.5)) / (twilight || 1))) : '1';
     }
 
     function formatClockFromHours(hours) {
-        const h = ((hours % 24) + 24) % 24;
+        const h = normalizeHour(hours);
         const wholeHours = Math.floor(h);
         const mins = Math.round((h - wholeHours) * 60);
         const ampm = wholeHours >= 12 ? 'PM' : 'AM';
@@ -150,20 +204,21 @@
         return `${displayHours}:${String(mins).padStart(2, '0')} ${ampm}`;
     }
 
-    function updateSunTrackIndicator(hours, sunIndicatorEl) {
+    function updateSunTrackIndicator(hours, sunIndicatorEl, options = {}) {
         if (!sunIndicatorEl) return;
-        const h = ((hours % 24) + 24) % 24;
-        const sunrise = 6;
-        const sunset = 18;
+        const h = normalizeHour(hours);
+        const { sunrise, sunset } = resolveSunTimes(options);
+
         let progress = 0.5;
         if (h >= sunrise && h <= sunset) {
-            progress = (h - sunrise) / (sunset - sunrise);
+            progress = (h - sunrise) / Math.max(0.5, sunset - sunrise);
         } else if (h > sunset) {
             progress = 1;
         } else {
             progress = 0;
         }
-        sunIndicatorEl.style.left = `${10 + progress * 80}%`;
+
+        sunIndicatorEl.style.left = `${8 + progress * 84}%`;
         sunIndicatorEl.style.opacity = h >= sunrise && h <= sunset ? '1' : '0.35';
     }
 
@@ -171,26 +226,23 @@
      * Apply sky gradient + celestial overlay to a canvas container.
      * @param {HTMLElement} container
      * @param {number} hours - hour of day (0-24, fractional OK)
-     * @param {{ overlayId?: string, skipBackground?: boolean }} [options]
+     * @param {{ overlayId?: string, skipBackground?: boolean, sunrise?: number, sunset?: number, twilight?: number }} [options]
      */
     function updateContainer(container, hours, options = {}) {
         if (!container) return;
 
-        const h = ((hours % 24) + 24) % 24;
+        const h = normalizeHour(hours);
         const overlayId = options.overlayId || 'celestial-overlay';
 
         if (!options.skipBackground) {
-            const { bgColor, gridColor } = skyColorsForHour(h);
+            const { bgColor, gridColor } = skyColorsForHour(h, options);
             container.style.backgroundColor = bgColor;
             container.style.backgroundImage = `
                 linear-gradient(${gridColor} 1px, transparent 1px),
                 linear-gradient(90deg, ${gridColor} 1px, transparent 1px)
             `;
+            container.style.backgroundSize = '20px 20px';
         }
-
-        const hourKey = Math.floor(h * 2);
-        if (container.dataset.celestialHourKey === String(hourKey)) return;
-        container.dataset.celestialHourKey = String(hourKey);
 
         let overlay = container.querySelector(`#${overlayId}`);
         if (!overlay) {
@@ -201,18 +253,21 @@
                 inset: 0;
                 pointer-events: none;
                 overflow: hidden;
-                z-index: 1;
+                z-index: 0;
             `;
             container.appendChild(overlay);
         }
 
-        paintCelestialOverlay(overlay, h);
+        updateCelestialGraphics(overlay, h, options);
     }
 
     function clearOverlay(container, overlayId = 'celestial-overlay') {
         if (!container) return;
         delete container.dataset.celestialHourKey;
         container.querySelector(`#${overlayId}`)?.remove();
+        container.style.backgroundColor = '';
+        container.style.backgroundImage = '';
+        container.style.backgroundSize = '';
     }
 
     global.CelestialSky = {

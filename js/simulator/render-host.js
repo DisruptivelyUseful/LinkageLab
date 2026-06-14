@@ -1,7 +1,8 @@
 // ============================================================================
-// Simulator render host — canvas/SVG mount helpers (Phase 6 boundary)
-// Delegates to runtime globals after solar-simulator.runtime.js loads.
+// Simulator render host — canvas/SVG mount helpers (Phase 6/11 boundary)
 // ============================================================================
+
+import { createViewportCulling } from './viewport-culling.js';
 
 /** @returns {{ render?: Function, updateSvgDimensions?: Function } | null} */
 export function getSimulatorRenderApi() {
@@ -9,7 +10,10 @@ export function getSimulatorRenderApi() {
         render: globalThis.render,
         updateSvgDimensions: globalThis.updateSvgDimensions,
         bootSimulatorApplication: globalThis.bootSimulatorApplication,
+        createViewportCulling,
     };
 }
+
+export { createViewportCulling };
 
 export default getSimulatorRenderApi;

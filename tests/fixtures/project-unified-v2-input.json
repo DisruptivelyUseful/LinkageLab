@@ -1,0 +1,57 @@
+{
+  "version": "unified-v2",
+  "circuit": {
+    "items": [
+      {
+        "id": 1,
+        "type": "panel",
+        "x": 100,
+        "y": 200,
+        "specs": {
+          "wmp": 200,
+          "voc": 24.6,
+          "vmp": 20.5,
+          "imp": 9.76
+        },
+        "handles": {
+          "positive": {
+            "id": "h1"
+          },
+          "negative": {
+            "id": "h2"
+          }
+        }
+      },
+      {
+        "id": 2,
+        "type": "controller",
+        "x": 300,
+        "y": 200,
+        "specs": {
+          "maxVoc": 150
+        },
+        "handles": {}
+      }
+    ],
+    "connections": [
+      {
+        "id": "c1",
+        "sourceItemId": 1,
+        "sourceHandleKey": "positive",
+        "targetItemId": 2,
+        "targetHandleKey": "pvPos"
+      }
+    ],
+    "itemIdCounter": 3,
+    "connectionIdCounter": 2
+  },
+  "simulation": {
+    "latitude": 40,
+    "dayOfYear": 172,
+    "weatherDifficulty": "clear"
+  },
+  "summary": {
+    "panelCount": 1,
+    "controllerCount": 1
+  }
+}

@@ -2123,10 +2123,8 @@ const SolarDesigner = (function() {
         svgNode.setAttribute('width', width);
         svgNode.setAttribute('height', height);
 
-        const transform = d3.zoomTransform(svgNode);
-        const needsRecenter = options.force
-            || container.dataset.viewportReady !== 'true'
-            || (transform.k === 1 && transform.x <= 1 && transform.y <= 1);
+        const needsRecenter = options.force === true
+            || (options.recenter === true && container.dataset.viewportReady !== 'true');
 
         if (needsRecenter) {
             svg.call(zoomBehavior.transform, d3.zoomIdentity.translate(width / 2, height / 2));
@@ -2793,11 +2791,26 @@ const SolarDesigner = (function() {
         const arrayCenterX = (panelGrid[0]?.[0]?.x + panelGrid[0]?.[gridCols-1]?.x + panelWidthPx) / 2 || 0;
         
         if (!controller) {
-            // Find PowMR 5000W Hybrid in presets
-            const powmrPreset = CONTROLLER_PRESETS.find(p => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
-            const controllerWidth = powmrPreset.width ? powmrPreset.width * 0.12 : 100;
-            controller = createController(arrayCenterX - controllerWidth/2 - 50, arrayBottomY, powmrPreset);
+            const stringVoc = gridRows * (panelSpecs.voc || 24);
+            const preset = globalThis.ControllerFaults?.pickControllerPresetForStringVoc?.(
+                CONTROLLER_PRESETS,
+                stringVoc,
+            ) || CONTROLLER_PRESETS.find((p) => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
+            const controllerWidth = preset.width ? preset.width * 0.12 : 100;
+            controller = createController(arrayCenterX - controllerWidth / 2 - 50, arrayBottomY, preset);
             allItems.push(controller);
+        } else {
+            const stringVoc = gridRows * (panelSpecs.voc || 24);
+            const requiredMaxVoc = Math.ceil(stringVoc * 1.05);
+            if ((controller.specs.maxVoc || 0) < requiredMaxVoc && globalThis.ControllerFaults?.pickControllerPresetForStringVoc) {
+                const preset = globalThis.ControllerFaults.pickControllerPresetForStringVoc(
+                    CONTROLLER_PRESETS,
+                    stringVoc,
+                );
+                if (preset) {
+                    globalThis.ControllerFaults.applyControllerPresetSpecs(controller, preset);
+                }
+            }
         }
         
         if (!battery) {
@@ -3164,7 +3177,7 @@ const SolarDesigner = (function() {
             .attr("data-connection-id", d => d.id)
             .attr("class", d => {
                 const sourceItem = allItems.find(i => i.id === d.sourceItemId);
-                const sourceHandle = sourceItem?.handles[d.sourceHandleKey];
+                const sourceHandle = resolveConnectionHandle(sourceItem, d, 'source');
                 const polarity = sourceHandle?.polarity || '';
                 
                 let wireClass = "wire";
@@ -3198,8 +3211,9 @@ const SolarDesigner = (function() {
                 const targetItem = allItems.find(i => i.id === d.targetItemId);
                 if (!sourceItem || !targetItem) return "";
                 
-                const sourceHandle = sourceItem.handles[d.sourceHandleKey];
-                const targetHandle = targetItem.handles[d.targetHandleKey];
+                const sourceHandle = resolveConnectionHandle(sourceItem, d, 'source');
+                const targetHandle = resolveConnectionHandle(targetItem, d, 'target');
+                if (!sourceHandle || !targetHandle) return "";
                 
                 const x1 = sourceItem.x + sourceHandle.x;
                 const y1 = sourceItem.y + sourceHandle.y;
@@ -3215,7 +3229,7 @@ const SolarDesigner = (function() {
             })
             .attr("class", d => {
                 const sourceItem = allItems.find(i => i.id === d.sourceItemId);
-                const sourceHandle = sourceItem?.handles[d.sourceHandleKey];
+                const sourceHandle = resolveConnectionHandle(sourceItem, d, 'source');
                 const polarity = sourceHandle?.polarity || '';
                 
                 let wireClass = "wire";
@@ -4816,18 +4830,50 @@ const SolarDesigner = (function() {
         isDragging = false;
     }
     
+    function resolveConnectionHandle(item, conn, role) {
+        if (!item?.handles) return null;
+        const keyField = role === 'source' ? 'sourceHandleKey' : 'targetHandleKey';
+        const altField = role === 'source' ? 'sourceHandle' : 'targetHandle';
+        const idField = role === 'source' ? 'sourceHandleId' : 'targetHandleId';
+
+        const handleKey = conn[keyField] || conn[altField];
+        if (handleKey && item.handles[handleKey]) return item.handles[handleKey];
+
+        const handleId = conn[idField];
+        if (handleId) {
+            const byId = Object.values(item.handles).find((handle) => handle && handle.id === handleId);
+            if (byId) return byId;
+        }
+
+        return null;
+    }
+
+    function getWirePreviewColor(polarity) {
+        switch (polarity) {
+            case 'positive':
+            case 'pv-positive': return '#d9534f';
+            case 'negative':
+            case 'pv-negative': return '#333333';
+            case 'ac':
+            case 'load': return '#f0ad4e';
+            case 'parallel': return '#00a8e8';
+            default: return '#888888';
+        }
+    }
+
     function handleDragStart(event, item, handleKey, handle) {
         event.sourceEvent.stopPropagation();
         draggingHandle = { item, handleKey, handle };
         
         const startX = item.x + handle.x;
         const startY = item.y + handle.y;
+        const previewColor = getWirePreviewColor(handle.polarity);
         
         tempWire = tempGroup.append("path")
             .attr("class", "wire temp-wire")
-            .attr("stroke", "#888")
-            .attr("stroke-width", 2)
-            .attr("stroke-dasharray", "5,5")
+            .attr("stroke", previewColor)
+            .attr("stroke-width", 3)
+            .attr("stroke-dasharray", "10,6")
             .attr("fill", "none")
             .attr("d", `M ${startX} ${startY} L ${startX} ${startY}`);
     }
@@ -4841,7 +4887,14 @@ const SolarDesigner = (function() {
         const transform = d3.zoomTransform(svg.node());
         const [mouseX, mouseY] = transform.invert([event.sourceEvent.offsetX, event.sourceEvent.offsetY]);
         
-        tempWire.attr("d", `M ${startX} ${startY} L ${mouseX} ${mouseY}`);
+        const sourceSide = getHandleSide(draggingHandle.item, draggingHandle.handle);
+        let targetSide = 'top';
+        if (mouseY > startY + 20) targetSide = 'top';
+        else if (mouseY < startY - 20) targetSide = 'bottom';
+        else if (mouseX > startX) targetSide = 'left';
+        else targetSide = 'right';
+
+        tempWire.attr("d", generateCurvePath(startX, startY, mouseX, mouseY, sourceSide, targetSide));
     }
     
     function handleDragEnd(event) {
@@ -5017,6 +5070,28 @@ const SolarDesigner = (function() {
         const connectionCountEl = document.getElementById('stat-connection-count');
         if (componentCountEl) componentCountEl.textContent = allItems.length;
         if (connectionCountEl) connectionCountEl.textContent = connections.length;
+
+        const controller = allItems.find((item) => item.type === 'controller');
+        if (controller && globalThis.createArraySpecsCalculator) {
+            const { calculateConnectedArraySpecs } = globalThis.createArraySpecsCalculator({
+                getItems: () => allItems,
+                getConnections: () => connections,
+            });
+            const arraySpecs = calculateConnectedArraySpecs(controller);
+            if (arraySpecs.voc > (controller.specs.maxVoc || 0)) {
+                if (arrayWattsEl) {
+                    arrayWattsEl.title = `Array Voc ${arraySpecs.voc.toFixed(1)}V exceeds controller max ${controller.specs.maxVoc}V (${arraySpecs.config})`;
+                    arrayWattsEl.classList.add('danger');
+                }
+            } else if (arrayWattsEl) {
+                arrayWattsEl.title = arraySpecs.panelCount > 0
+                    ? `Array ${arraySpecs.config}, Voc ${arraySpecs.voc.toFixed(1)}V`
+                    : '';
+                arrayWattsEl.classList.remove('danger');
+            }
+        } else if (arrayWattsEl) {
+            arrayWattsEl.classList.remove('danger');
+        }
         
         // Calculate total cost
         let totalCost = 0;
@@ -6978,6 +7053,166 @@ const SolarDesigner = (function() {
         };
     }
     
+    function handlesMisalignedWithBounds(item) {
+        if (!item?.width || !item?.height || !item?.handles) return false;
+
+        for (const handle of Object.values(item.handles)) {
+            if (!handle) continue;
+            if (handle.x === undefined || handle.y === undefined) return true;
+            if (handle.x < -12 || handle.x > item.width + 12 || handle.y < -12 || handle.y > item.height + 12) {
+                return true;
+            }
+        }
+
+        if (item.type === 'panel') {
+            const pos = item.handles.positive;
+            const neg = item.handles.negative;
+            if (pos && Math.abs(pos.x) > 6) return true;
+            if (neg && Math.abs(neg.x - item.width) > 6) return true;
+            if (pos && Math.abs(pos.y - item.height / 2) > 6) return true;
+            if (neg && Math.abs(neg.y - item.height / 2) > 6) return true;
+        }
+
+        return false;
+    }
+
+    function itemNeedsHandleRehydration(item) {
+        if (!item?.type) return false;
+        const handles = item.handles;
+        if (!handles || Object.keys(handles).length === 0) return true;
+        if (Object.values(handles).some((handle) => handle && (handle.x === undefined || handle.y === undefined))) {
+            return true;
+        }
+        return handlesMisalignedWithBounds(item);
+    }
+
+    /** Repair handle geometry after circuit store / simulator handoff. */
+    function normalizeCircuitItems(items) {
+        return (items || []).map(rehydrateItemHandles);
+    }
+
+    function createTemplateForItem(item) {
+        const counter = itemIdCounter;
+        const x = item.x ?? 0;
+        const y = item.y ?? 0;
+        const specs = item.specs || {};
+        let template = null;
+
+        try {
+            switch (item.type) {
+                case 'panel': {
+                    template = createPanel(x, y, specs);
+                    if (item.width) template.width = item.width;
+                    if (item.height) template.height = item.height;
+                    const w = template.width;
+                    const h = template.height;
+                    template.handles = {
+                        positive: { id: `${item.id}-pos`, polarity: 'positive', x: 0, y: h / 2, side: 'left', connectedTo: [] },
+                        negative: { id: `${item.id}-neg`, polarity: 'negative', x: w, y: h / 2, side: 'right', connectedTo: [] },
+                    };
+                    break;
+                }
+                case 'battery':
+                    template = createBattery(x, y, specs);
+                    break;
+                case 'smartbattery':
+                    template = createSmartBattery(x, y, specs.kWh, item.parentControllerId);
+                    break;
+                case 'controller':
+                    template = createController(x, y, specs);
+                    break;
+                case 'acbreaker':
+                    template = createACBreaker(x, y, specs.rating || 20);
+                    break;
+                case 'dcbreaker':
+                    template = createDCBreaker(x, y, specs.rating || 30);
+                    break;
+                case 'acload':
+                    template = createACLoad(x, y, specs);
+                    break;
+                case 'acoutlet':
+                    template = createACOutlet(x, y);
+                    break;
+                case 'combiner':
+                    template = createCombiner(x, y, specs.inputs || 4);
+                    break;
+                case 'solarcombiner':
+                    template = createSolarCombinerBox(x, y, specs.inputs || 4);
+                    break;
+                case 'breakerpanel':
+                    template = createBreakerPanel(x, y);
+                    break;
+                case 'spiderbox':
+                    template = createSpiderBox(x, y);
+                    break;
+                case 'doublevoltagehub':
+                    template = createDoubleVoltageHub(x, y);
+                    break;
+                case 'producer':
+                    template = createProducer(x, y, specs);
+                    break;
+                case 'container': {
+                    const width = item.width || 60;
+                    const height = item.height || 80;
+                    template = {
+                        id: item.id,
+                        type: 'container',
+                        x,
+                        y,
+                        width,
+                        height,
+                        specs,
+                        handles: {
+                            input: { id: `${item.id}-in`, polarity: 'pipe', x: -5, y: height / 2, connectedTo: [] },
+                            output: { id: `${item.id}-out`, polarity: 'pipe', x: width + 5, y: height / 2, connectedTo: [] },
+                        },
+                    };
+                    break;
+                }
+                default:
+                    return null;
+            }
+        } finally {
+            itemIdCounter = counter;
+        }
+
+        if (!template) return null;
+        template.id = item.id;
+        if (item.subtype) template.subtype = item.subtype;
+        if (item.width) template.width = item.width;
+        if (item.height) template.height = item.height;
+        return template;
+    }
+
+    function rehydrateItemHandles(item) {
+        if (!itemNeedsHandleRehydration(item)) return item;
+
+        const template = createTemplateForItem(item);
+        if (!template?.handles) return item;
+
+        const handles = {};
+        for (const [key, templateHandle] of Object.entries(template.handles)) {
+            const saved = item.handles?.[key] || {};
+            handles[key] = {
+                ...templateHandle,
+                x: saved.x ?? templateHandle.x,
+                y: saved.y ?? templateHandle.y,
+                id: saved.id ?? templateHandle.id,
+                polarity: saved.polarity || templateHandle.polarity,
+                side: saved.side || templateHandle.side,
+                type: saved.type || templateHandle.type,
+                connectedTo: Array.isArray(saved.connectedTo) ? saved.connectedTo : (templateHandle.connectedTo || []),
+            };
+        }
+
+        return {
+            ...item,
+            width: item.width ?? template.width,
+            height: item.height ?? template.height,
+            handles,
+        };
+    }
+
     function loadSolarConfig(config) {
         if (!config) return;
         
@@ -6998,8 +7233,15 @@ const SolarDesigner = (function() {
             ResourceSystem.importState(config.resources);
         }
         
-        allItems = config.items || [];
-        connections = config.connections || [];
+        allItems = normalizeCircuitItems(config.items || []);
+        const normalizedConnections = globalThis.CircuitStore?.normalizeDesignerConnections
+            ? globalThis.CircuitStore.normalizeDesignerConnections(allItems, config.connections || [])
+            : (config.connections || []).map((conn) => ({
+                ...conn,
+                sourceHandleKey: conn.sourceHandleKey || conn.sourceHandle,
+                targetHandleKey: conn.targetHandleKey || conn.targetHandle,
+            }));
+        connections = normalizedConnections;
         itemIdCounter = config.itemIdCounter || 0;
         connectionIdCounter = config.connectionIdCounter || 0;
         
@@ -7075,8 +7317,6 @@ const SolarDesigner = (function() {
         populateRightSidebarLibraries();
         setupRightSidebarListeners();
         
-        isInitialized = true;
-        
         // Load saved config if exists (prefer unified circuit document)
         let loadedConfig = null;
         if (typeof globalThis.CircuitStore?.resolveCircuitDocument === 'function') {
@@ -7098,6 +7338,8 @@ const SolarDesigner = (function() {
         if (loadedConfig) {
             loadSolarConfig(loadedConfig);
         }
+
+        isInitialized = true;
         
         render();
         updateAutomationsList();
@@ -7369,10 +7611,9 @@ const SolarDesigner = (function() {
             }
         });
         
-        // Auto-save (designer config + keep designer export in sync for simulator)
+        // Auto-save via unified circuit store (legacy linkageLab_solarConfig deprecated)
         setInterval(() => {
             if (allItems.length > 0 || connections.length > 0) {
-                localStorage.setItem('linkageLab_solarConfig', JSON.stringify(getSolarConfig()));
                 syncExportToStorage();
             }
         }, 5000);
@@ -7984,8 +8225,8 @@ const SolarDesigner = (function() {
         
         // Open Solar Simulator with import flag
         const simulatorUrl = typeof ExportFormat !== 'undefined'
-            ? ExportFormat.buildImportURL('solar_simulator.html', 'solarDesigner')
-            : 'solar_simulator.html?import=solarDesigner';
+            ? ExportFormat.buildUnifiedAppURL('solar-simulate', { importSource: 'solarDesigner' })
+            : 'index.html#/solar/simulate?import=solarDesigner';
         window.open(simulatorUrl, '_blank');
         
         showToast(`Exported ${allItems.length} components to 3D Simulator`, 'info');
@@ -9776,6 +10017,7 @@ const SolarDesigner = (function() {
         refreshCanvasViewport,
         getSolarConfig,
         loadSolarConfig,
+        normalizeCircuitItems,
         clearAll,
         getItems: () => allItems,
         getConnections: () => connections,

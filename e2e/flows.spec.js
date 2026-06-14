@@ -107,10 +107,11 @@ test.describe('LinkageLab core flows', () => {
 
         await page.locator('#btn-save-top').click();
         await expect.poll(async () => page.evaluate(() => {
-            const raw = localStorage.getItem('linkageLab_config');
+            const raw = localStorage.getItem('linkageLabProject')
+                || localStorage.getItem('linkageLab_config');
             if (!raw) return null;
             const config = JSON.parse(raw);
-            return config.structure?.modules ?? null;
+            return config.structure?.modules ?? config.linkage?.structure?.modules ?? null;
         })).toBe(targetModules);
 
         await setModules(page, 6);

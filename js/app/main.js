@@ -10,26 +10,30 @@ import {
     initAppRouter,
     navigateTo,
     registerModeLoader,
+    SOLAR_VIEW_ID,
 } from '../core/app-router.js';
 import { bootLinkageApp } from '../linkage/bootstrap.js';
 import { scheduleLinkageViewportRefresh } from '../linkage/viewport-refresh.js';
-import {
-    initSolarDesignerApp,
-    refreshSolarDesignerFromExport,
-    scheduleSolarDesignerLayoutRefresh,
-} from '../solar/designer-app.js';
+import { linkageExportToSyncConfig, shouldSyncPanelsFromLinkage } from '../solar/linkage-import.js';
 import { resolveCircuitExport } from '../solar/circuit-export.js';
 import {
-    initSolarSimulatorApp,
-    refreshSolarSimulatorFromCircuit,
+    initCircuitStore,
+    subscribe,
+    toDesignerExport,
+} from '../circuit/circuit-store.js';
+import { initProjectStore } from '../core/project-store.js';
+import {
+    ensureSolarCanvasBoot,
+    refreshSolarCanvasFromCircuit,
+    setSolarCanvasAppMode,
 } from '../solar/simulator-app.js';
 import {
     bindAppNavButtons,
-    bindSimulatorTopbar,
-    bindSolarDesignerTopbar,
+    bindSolarTopbar,
     renderAppTopbarHtml,
-    updateSimulatorTopbarSummary,
+    updateSolarTopbarSummary,
 } from './topbar.js';
+import { showToast } from '../core/feedback.js';
 
 function syncDocumentModeButtons(mode) {
     document.querySelectorAll('[data-app-nav-mode]').forEach((btn) => {
@@ -56,7 +60,7 @@ function resolveLinkageExport() {
     return null;
 }
 
-/** Build + publish linkage export when linkage view is active (designer handoff). */
+/** Build + publish linkage export when linkage view is active. */
 function buildFreshLinkageExportForHandoff() {
     if (typeof globalThis.buildLinkageExportData !== 'function' || !globalThis.state) {
         return resolveLinkageExport();
@@ -66,36 +70,55 @@ function buildFreshLinkageExportForHandoff() {
     return exportData;
 }
 
+async function bootSolarMode(container, appMode) {
+    const topbarHtml = await renderAppTopbarHtml('solar-unified');
+    if (!container.querySelector('#topbar')) {
+        container.innerHTML = topbarHtml;
+    }
+    await ensureSolarCanvasBoot(container, appMode);
+    wireShellModeButtons(container);
+    bindSolarTopbar(container, {
+        onReload: (data) => refreshSolarCanvasFromCircuit(data),
+    });
+    updateSolarTopbarSummary(container, resolveCircuitExport());
+    syncDocumentModeButtons(appMode);
+}
+
 registerModeLoader(APP_MODES.LINKAGE, async () => {
     await bootLinkageApp();
 });
 
 registerModeLoader(APP_MODES.SOLAR_DESIGN, async (container) => {
-    const linkageExport = buildFreshLinkageExportForHandoff();
-    const topbarHtml = await renderAppTopbarHtml(APP_MODES.SOLAR_DESIGN);
-    await initSolarDesignerApp(container, {
-        linkageExport,
-        topbarHtml,
-    });
-    wireShellModeButtons(container);
-    bindSolarDesignerTopbar(container);
-    syncDocumentModeButtons(APP_MODES.SOLAR_DESIGN);
+    await bootSolarMode(container, APP_MODES.SOLAR_DESIGN);
 });
 
 registerModeLoader(APP_MODES.SOLAR_SIMULATE, async (container) => {
-    const circuitExport = resolveCircuitExport();
-    const topbarHtml = await renderAppTopbarHtml(APP_MODES.SOLAR_SIMULATE);
-    await initSolarSimulatorApp(container, {
-        circuitExport,
-        topbarHtml,
-    });
-    wireShellModeButtons(container);
-    bindSimulatorTopbar(container, {
-        onReload: (data) => refreshSolarSimulatorFromCircuit(data),
-    });
-    updateSimulatorTopbarSummary(container, circuitExport);
-    syncDocumentModeButtons(APP_MODES.SOLAR_SIMULATE);
+    await bootSolarMode(container, APP_MODES.SOLAR_SIMULATE);
 });
+
+function applyLinkagePanelSync() {
+    const linkageExport = buildFreshLinkageExportForHandoff();
+    const syncConfig = linkageExportToSyncConfig(linkageExport);
+    if (!syncConfig) return;
+
+    let attempts = 0;
+    const trySync = () => {
+        if (!globalThis.SolarDesigner?.isInitialized?.()) {
+            if (attempts++ < 120) requestAnimationFrame(trySync);
+            return;
+        }
+        if (!shouldSyncPanelsFromLinkage(globalThis.SolarDesigner, syncConfig)) return;
+
+        const result = globalThis.SolarDesigner.syncPanelsFromLinkage(syncConfig);
+        globalThis.saveSimulatorCircuitToStore?.();
+        globalThis.SolarDesigner.render?.();
+        if (result?.synced) {
+            showToast(result.message || 'Linkage panels synced to solar canvas', 'info');
+        }
+    };
+
+    trySync();
+}
 
 function showBootError(message) {
     const root = document.getElementById('app-root') || document.body;
@@ -107,49 +130,62 @@ function showBootError(message) {
 
 async function main() {
     initAppRouter({ defaultMode: APP_MODES.LINKAGE });
+    initProjectStore();
+    initCircuitStore();
+
+    subscribe((doc) => {
+        const bus = getAppStateBus();
+        bus.circuitDocument = doc;
+        bus.circuitData = toDesignerExport(doc);
+
+        const mode = getCurrentMode();
+        if ((mode === APP_MODES.SOLAR_DESIGN || mode === APP_MODES.SOLAR_SIMULATE)
+            && typeof globalThis.applySimulatorCircuitImport === 'function'
+            && bus.circuitData) {
+            globalThis.applySimulatorCircuitImport(bus.circuitData, { fitView: false });
+        }
+    });
 
     globalThis.AppRouter = {
         APP_MODES,
         navigateTo,
         getAppStateBus,
         getCurrentMode,
-        refreshSolarDesignerFromExport,
-        refreshSolarSimulatorFromCircuit,
+        refreshSolarCanvasFromCircuit,
+        refreshSolarSimulatorFromCircuit: refreshSolarCanvasFromCircuit,
     };
 
     window.addEventListener('app:navigate', (event) => {
         const mode = event.detail?.mode;
+        const lastMode = getAppStateBus().lastMode;
+        const solarView = document.getElementById(SOLAR_VIEW_ID);
+
         if (mode === APP_MODES.LINKAGE) {
             scheduleLinkageViewportRefresh();
         }
+
         if (mode === APP_MODES.SOLAR_DESIGN) {
-            scheduleSolarDesignerLayoutRefresh();
-            const lastMode = getAppStateBus().lastMode;
-            const linkageExport = lastMode === APP_MODES.LINKAGE
-                ? buildFreshLinkageExportForHandoff()
-                : resolveLinkageExport();
-            refreshSolarDesignerFromExport(linkageExport).catch((err) => {
-                console.error('[app] solar designer refresh failed:', err);
-            });
-            bindSolarDesignerTopbar(document.getElementById('view-solar-design') || document);
-        }
-        if (mode === APP_MODES.SOLAR_SIMULATE && !event.detail?.isFirstLoad) {
-            globalThis.SolarDesigner?.syncExportToStorage?.();
-            const circuit = resolveCircuitExport();
-            const simView = document.getElementById('view-solar-simulate');
-            refreshSolarSimulatorFromCircuit(circuit)
-                .then(() => {
-                    if (!simView) return;
-                    bindAppNavButtons(simView);
-                    bindSimulatorTopbar(simView, {
-                        onReload: (data) => refreshSolarSimulatorFromCircuit(data),
-                    });
-                    updateSimulatorTopbarSummary(simView, circuit);
-                })
-                .catch((err) => {
-                    console.error('[app] solar simulator refresh failed:', err);
+            setSolarCanvasAppMode('build');
+            if (lastMode === APP_MODES.LINKAGE) {
+                applyLinkagePanelSync();
+            }
+            if (solarView) {
+                bindSolarTopbar(solarView, {
+                    onReload: (data) => refreshSolarCanvasFromCircuit(data),
                 });
+            }
         }
+
+        if (mode === APP_MODES.SOLAR_SIMULATE) {
+            setSolarCanvasAppMode('simulate');
+            if (solarView) {
+                bindSolarTopbar(solarView, {
+                    onReload: (data) => refreshSolarCanvasFromCircuit(data),
+                });
+                updateSolarTopbarSummary(solarView, resolveCircuitExport());
+            }
+        }
+
         syncDocumentModeButtons(mode);
     });
 

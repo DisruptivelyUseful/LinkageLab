@@ -5,7 +5,7 @@
 import { loadSimulatorRuntime } from './runtime-loader.js';
 import { stageCircuitExport } from './config-io.js';
 
-const WORKSPACE_URL = 'solar_simulator.html';
+const WORKSPACE_URL = 'partials/simulator-workspace.html';
 
 const OVERLAY_IDS = [
     '#bomOverlay',
@@ -13,6 +13,7 @@ const OVERLAY_IDS = [
     '#tutorialOverlay',
     '#incidentReportOverlay',
     '#hintPopup',
+    '#shortcutsOverlay',
 ];
 
 /**

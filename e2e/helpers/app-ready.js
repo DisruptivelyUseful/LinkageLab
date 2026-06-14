@@ -22,30 +22,20 @@ async function waitForLinkageReady(page) {
     await expect(page.locator('#view-linkage #sidebar')).toBeVisible();
 }
 
-async function waitForSolarDesignReady(page) {
+async function waitForSolarCanvasReady(page) {
     await page.waitForFunction(() => {
         return typeof globalThis.SolarDesigner !== 'undefined'
             && globalThis.SolarDesigner.isInitialized();
     }, { timeout: 60_000 });
 
-    await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
-}
-
-async function waitForSolarSimulateReady(page) {
-    await expect(page.locator('#view-solar-simulate')).toHaveClass(/active/);
-    await expect(page.locator('#view-solar-simulate .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
-    await page.waitForFunction(() => {
-        return Boolean(document.querySelector('#view-solar-simulate #main-content')
-            && document.querySelector('#view-solar-simulate #playPauseButton'));
-    }, { timeout: 60_000 });
+    await expect(page.locator('#view-solar')).toHaveClass(/active/);
+    await expect(page.locator('#view-solar .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
+    await expect(page.locator('#view-solar #canvas-container svg#canvas')).toBeVisible({ timeout: 60_000 });
 }
 
 /** Navigate via AppRouter (avoids topbar overlap blocking mode-toggle clicks). */
 export async function navigateAppMode(page, mode) {
     await page.evaluate(async (targetMode) => {
-        if (targetMode === 'solar-simulate') {
-            globalThis.SolarDesigner?.syncExportToStorage?.();
-        }
         await globalThis.AppRouter.navigateTo(targetMode);
     }, mode);
     await waitForAppReady(page);
@@ -69,13 +59,8 @@ export async function waitForAppReady(page) {
 
     const mode = await page.evaluate(() => globalThis.AppRouter.getCurrentMode());
 
-    if (mode === 'solar-design') {
-        await waitForSolarDesignReady(page);
-        return;
-    }
-
-    if (mode === 'solar-simulate') {
-        await waitForSolarSimulateReady(page);
+    if (mode === 'solar-design' || mode === 'solar-simulate') {
+        await waitForSolarCanvasReady(page);
         return;
     }
 

@@ -3622,6 +3622,15 @@ import { showToast } from '../core/feedback.js';
             ...w,
             center: sp(w.center),
         });
+
+        // High-detail hardware assembly placements (only point fields move; the
+        // beamDir / vBoltDir / right / frame vectors are directions and stay put).
+        data.hardwareAssemblyPlacements = (data.hardwareAssemblyPlacements || []).map(pl => !pl ? pl : {
+            ...pl,
+            pos:        pl.pos        ? sp(pl.pos)        : pl.pos,
+            bottomPos:  pl.bottomPos  ? sp(pl.bottomPos)  : pl.bottomPos,
+            vBoltPivot: pl.vBoltPivot ? sp(pl.vBoltPivot) : pl.vBoltPivot,
+        });
     
         // Support beams sub-array (elements are the same objects now in data.beams, but keep
         // the array reference consistent so callers iterating data.supportBeams also get shifted data)

@@ -10,10 +10,18 @@ export const APP_MODES = Object.freeze({
     SOLAR_SIMULATE: 'solar-simulate',
 });
 
+/** Both solar modes share one canvas host. */
+export const SOLAR_VIEW_ID = 'view-solar';
+
+export const SOLAR_APP_MODES = Object.freeze([
+    APP_MODES.SOLAR_DESIGN,
+    APP_MODES.SOLAR_SIMULATE,
+]);
+
 const VIEW_BY_MODE = Object.freeze({
     linkage: 'view-linkage',
-    'solar-design': 'view-solar-design',
-    'solar-simulate': 'view-solar-simulate',
+    'solar-design': SOLAR_VIEW_ID,
+    'solar-simulate': SOLAR_VIEW_ID,
 });
 
 const HASH_BY_MODE = Object.freeze({
@@ -36,11 +44,13 @@ const modeLoadPromises = new Map();
 
 /**
  * In-memory session state passed between modes (replaces localStorage hops).
- * @type {{ linkageExport: object | null, circuitData: object | null, lastMode: AppMode | null }}
+ * @type {{ linkageExport: object | null, circuitData: object | null, circuitDocument: object | null, projectDocument: object | null, lastMode: AppMode | null }}
  */
 const appStateBus = {
     linkageExport: null,
     circuitData: null,
+    circuitDocument: null,
+    projectDocument: null,
     lastMode: null,
 };
 
@@ -80,15 +90,42 @@ export function resolveModeFromHash(hash) {
  * @param {AppMode} mode
  */
 function setActiveView(mode) {
-    Object.entries(VIEW_BY_MODE).forEach(([modeName, viewId]) => {
-        const el = document.getElementById(viewId);
-        if (!el) return;
-        const active = modeName === mode;
-        el.classList.toggle('active', active);
-        el.hidden = !active;
-    });
+    const isSolar = mode === APP_MODES.SOLAR_DESIGN || mode === APP_MODES.SOLAR_SIMULATE;
+    const linkageEl = document.getElementById('view-linkage');
+    const solarEl = document.getElementById(SOLAR_VIEW_ID);
+
+    if (linkageEl) {
+        const active = mode === APP_MODES.LINKAGE;
+        linkageEl.classList.toggle('active', active);
+        linkageEl.hidden = !active;
+    }
+    if (solarEl) {
+        solarEl.classList.toggle('active', isSolar);
+        solarEl.hidden = !isSolar;
+    }
+
     document.body.dataset.appMode = mode;
-    document.body.classList.toggle('solar-mode', mode === APP_MODES.SOLAR_DESIGN || mode === APP_MODES.SOLAR_SIMULATE);
+    document.body.dataset.solarCanvasMode = isSolar
+        ? (mode === APP_MODES.SOLAR_SIMULATE ? 'simulate' : 'build')
+        : '';
+    document.body.classList.toggle('solar-mode', isSolar);
+    document.body.classList.toggle('solar-build-mode', mode === APP_MODES.SOLAR_DESIGN);
+    document.body.classList.toggle('solar-simulate-mode', mode === APP_MODES.SOLAR_SIMULATE);
+}
+
+/** Mark modes as booted (shared solar canvas marks both solar modes). */
+export function markModesLoaded(...modes) {
+    modes.forEach((m) => {
+        if (VIEW_BY_MODE[m]) loadedModes.add(m);
+    });
+}
+
+export function isSolarMode(mode) {
+    return mode === APP_MODES.SOLAR_DESIGN || mode === APP_MODES.SOLAR_SIMULATE;
+}
+
+export function isSolarCanvasBooted() {
+    return loadedModes.has(APP_MODES.SOLAR_DESIGN) || loadedModes.has(APP_MODES.SOLAR_SIMULATE);
 }
 
 /**
@@ -120,7 +157,8 @@ export async function navigateTo(mode, options = {}) {
         throw new Error(`View container not found for mode: ${mode}`);
     }
 
-    const wasAlreadyLoaded = loadedModes.has(mode);
+    const wasAlreadyLoaded = loadedModes.has(mode)
+        || (isSolarMode(mode) && isSolarCanvasBooted());
 
     if (!wasAlreadyLoaded) {
         // Show the target view before first boot so layout-dependent canvases get real dimensions.

@@ -13,7 +13,7 @@ test.describe('Simulator handoff regressions (Phase 9)', () => {
         await navigateAppMode(page, 'solar-simulate');
 
         await expect.poll(async () => page.evaluate(() => {
-            const paths = document.querySelectorAll('#view-solar-simulate .wires-layer path.wire');
+            const paths = document.querySelectorAll('#view-solar .wires-layer path.wire');
             return [...paths].filter((path) => Boolean(path.getAttribute('d'))).length;
         }), { timeout: 5000 }).toBeGreaterThan(0);
     });
@@ -23,17 +23,18 @@ test.describe('Simulator handoff regressions (Phase 9)', () => {
         await waitForAppReady(page);
 
         await navigateAppMode(page, 'solar-design');
-        await navigateAppMode(page, 'solar-simulate');
         await page.evaluate(() => {
-            const bus = globalThis.AppRouter.getAppStateBus();
-            const data = JSON.parse(JSON.stringify(bus.circuitData));
-            const controller = data.schematic?.components?.find((item) => item.type === 'controller');
-            if (!controller) throw new Error('No controller in staged circuit export');
+            const controller = globalThis.getSimulatorCircuitItems?.()?.find((item) => item.type === 'controller');
+            if (!controller) throw new Error('No controller on canvas');
             controller.destroyed = true;
-            globalThis.applySimulatorCircuitImport(data);
+            const group = document.querySelector(`[data-item-id="${controller.id}"]`);
+            if (group) group.removeAttribute('data-destroyed');
+            globalThis.requestSimulatorRender?.();
         });
 
-        await expect(page.locator('#view-solar-simulate .reset-button')).toBeVisible({ timeout: 5000 });
-        await expect(page.locator('#view-solar-simulate .destroyed-label')).toContainText('DESTROYED');
+        await expect.poll(async () => {
+            return page.locator('#view-solar .reset-button').count();
+        }, { timeout: 10_000 }).toBeGreaterThan(0);
+        await expect(page.locator('#view-solar .destroyed-label')).toContainText('DESTROYED');
     });
 });

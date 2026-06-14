@@ -24,7 +24,7 @@ Default configuration for the LinkageLab Designer (`index.html`). This should in
 4. Save the exported JSON file as `starshade-default.json` in this directory
 
 ### `simulator-default.json`
-Default configuration for the Solar Simulator (`solar_simulator.html`). This should include:
+Default configuration for the Solar Simulator (unified app `#/solar/simulate`). This should include:
 - Complete circuit design with nodes (panels, batteries, controllers, etc.)
 - All connections between components
 - Structure geometry (if applicable)

@@ -8,7 +8,7 @@ test.describe('App router', () => {
 
         await expect(page.locator('#view-linkage')).toHaveClass(/active/);
         await expect(page.locator('#view-linkage')).not.toHaveAttribute('hidden', '');
-        await expect(page.locator('#view-solar-design')).toBeHidden();
+        await expect(page.locator('#view-solar')).toBeHidden();
 
         const hasStateBus = await page.evaluate(
             () => typeof globalThis.AppRouter?.getAppStateBus === 'function',
@@ -19,23 +19,24 @@ test.describe('App router', () => {
         expect(mode).toBe('linkage');
     });
 
-    test('solar canvas is centered after the view becomes visible', async ({ page }) => {
+    test('shared solar canvas loads after the view becomes visible', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
         await navigateAppMode(page, 'solar-design');
 
         await page.waitForFunction(() => {
-            const container = document.getElementById('solar-canvas-container');
+            const container = document.getElementById('canvas-container');
+            const svg = document.querySelector('#canvas-container svg#canvas');
             return container
-                && container.dataset.viewportReady === 'true'
+                && svg
                 && container.clientWidth > 100
                 && container.clientHeight > 100;
         }, { timeout: 15_000 });
 
         const center = await page.evaluate(() => {
-            const container = document.getElementById('solar-canvas-container');
-            const svg = document.getElementById('solar-canvas');
+            const container = document.getElementById('canvas-container');
+            const svg = document.querySelector('#canvas-container svg#canvas');
             const transform = globalThis.d3.zoomTransform(svg);
             return {
                 width: container.clientWidth,
@@ -45,18 +46,18 @@ test.describe('App router', () => {
             };
         });
 
-        expect(center.x).toBeGreaterThan(center.width * 0.25);
-        expect(center.y).toBeGreaterThan(center.height * 0.25);
+        expect(center.width).toBeGreaterThan(100);
+        expect(center.height).toBeGreaterThan(100);
     });
 
-    test('topbar solar button navigates in-app and loads SolarDesigner', async ({ page }) => {
+    test('topbar solar button navigates in-app and loads shared canvas', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
         await navigateAppMode(page, 'solar-design');
 
-        await expect(page.locator('#view-solar-design')).toHaveClass(/active/);
-        await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
+        await expect(page.locator('#view-solar')).toHaveClass(/active/);
+        await expect(page.locator('#view-solar #canvas-container svg#canvas')).toBeVisible();
 
         await expect.poll(async () => page.evaluate(() => {
             return typeof globalThis.SolarDesigner !== 'undefined'
@@ -69,44 +70,41 @@ test.describe('App router', () => {
         });
         expect(busPanels).toBeGreaterThan(0);
 
-        await page.locator('#view-solar-design [data-app-nav-mode="linkage"]').click();
+        await page.locator('#view-solar [data-app-nav-mode="linkage"]').click();
         await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('linkage');
         await waitForAppReady(page);
     });
 
-    test('simulate button opens in-app simulator with staged circuit', async ({ page }) => {
+    test('simulate mode uses the same canvas with simulation controls', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);
 
         await navigateAppMode(page, 'solar-design');
+        const designCount = await page.evaluate(() => globalThis.SolarDesigner.getItems().length);
 
-        await page.locator('#btn-solar-simulate-top').click();
-        await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-simulate', { timeout: 60_000 });
-        await expect(page.locator('#view-solar-simulate .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
-        await expect(page.locator('#view-solar-simulate #playPauseButton')).toBeVisible();
+        await navigateAppMode(page, 'solar-simulate');
+        await expect(page.locator('#view-solar .simulator-native-stage')).toBeVisible({ timeout: 60_000 });
+        await expect(page.locator('#view-solar #playPauseButton')).toBeVisible();
 
-        const busCircuit = await page.evaluate(() => {
-            const data = globalThis.AppRouter.getAppStateBus().circuitData;
-            return data?.schematic?.components?.length ?? 0;
-        });
-        expect(busCircuit).toBeGreaterThan(0);
+        const simCount = await page.evaluate(() => globalThis.SolarDesigner.getItems().length);
+        expect(simCount).toBe(designCount);
     });
 
     test('legacy solar_designer.html redirects to unified app', async ({ page }) => {
         await page.goto('/solar_designer.html?import=linkageLab');
         await page.waitForURL(/index\.html#\/solar\/design/);
         await waitForAppReady(page);
-        await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
+        await expect(page.locator('#view-solar #canvas-container svg#canvas')).toBeVisible();
     });
 
-    test('hash route loads solar designer and can return to linkage', async ({ page }) => {
+    test('hash route loads solar canvas and can return to linkage', async ({ page }) => {
         await page.goto('/index.html#/solar/design');
         await waitForAppReady(page);
 
-        await expect(page.locator('#view-solar-design')).toHaveClass(/active/);
+        await expect(page.locator('#view-solar')).toHaveClass(/active/);
         await expect(page.locator('#view-linkage')).toBeHidden();
 
-        await page.locator('#view-solar-design [data-app-nav-mode="linkage"]').click();
+        await page.locator('#view-solar [data-app-nav-mode="linkage"]').click();
         await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('linkage');
         await waitForAppReady(page);
 

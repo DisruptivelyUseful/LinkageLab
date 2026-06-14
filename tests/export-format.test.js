@@ -37,4 +37,13 @@ describe('export-format', () => {
         expect(url).toContain('#/solar/design');
         expect(url).toContain('import=linkageLab');
     });
+
+    it('serializeHandles preserves layout coordinates for round-trip', () => {
+        const serialized = ExportFormat.serializeHandles({
+            positive: { id: 'p1-pos', polarity: 'positive', x: 0, y: 42, connectedTo: [] },
+        });
+        expect(serialized.positive.x).toBe(0);
+        expect(serialized.positive.y).toBe(42);
+        expect(serialized.positive.id).toBe('p1-pos');
+    });
 });

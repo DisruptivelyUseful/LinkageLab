@@ -894,6 +894,89 @@ function createBeamStack(stackParams) {
 }
 
 /**
+ * Canonical right-handed orientation frame for a pivot bracket / hardware assembly.
+ *
+ * This is the single source of truth for how a bracket-mounted assembly is oriented
+ * at a pivot. Both the simple bracket mesh and the high-detail hardware assembly
+ * consume this frame so they can never drift apart again.
+ *
+ * Columns map the assembly's LOCAL axes to WORLD directions:
+ *   - x = bolt axis   (bracket width, the V-stack bolt passing through the side holes)
+ *   - y = bracket up  (the U-channel opening direction)
+ *   - z = beam axis   (bracket depth, running along the V-beams)
+ *
+ * Vectors are expected already in their final space (cylinder, arch-transformed, or
+ * array-offset), so this works uniformly across all render modes. isBottom selects
+ * the U-opening direction (bottom opens up, top opens down).
+ *
+ * Two regimes, matching createBracketMesh exactly so the high-detail assembly lands
+ * on top of the (correct) simple bracket:
+ *   - Cylinder (isArch false): the bracket stays UPRIGHT. It only yaws about world Y
+ *     so its depth follows the beam's horizontal projection; up stays world +Y
+ *     (flipped for the top ring). The beam's vertical tilt does NOT tilt the bracket.
+ *   - Arch (isArch true): the bracket tilts in full 3D with the beam.
+ *
+ * @param {{x:number,y:number,z:number}} beamDir - Vertical beam direction at the pivot.
+ * @param {{x:number,y:number,z:number}} vBoltDir - V-stack bolt direction at the pivot.
+ * @param {boolean} isBottom - True for bottom-ring brackets.
+ * @param {boolean} isArch - True in arch (vertical orientation) mode.
+ * @returns {{x:Object, y:Object, z:Object}} Orthonormal world-space basis vectors.
+ */
+function computeHwBracketBasis(beamDir, vBoltDir, isBottom, isArch) {
+    const dot = (a, b) => a.x * b.x + a.y * b.y + a.z * b.z;
+
+    let beamAxis = vNorm(beamDir);
+    if (vMag(beamAxis) < 1e-4) beamAxis = { x: 0, y: 0, z: 1 };
+
+    if (!isArch) {
+        // --- Cylinder: upright bracket, yaw only (matches createBracketMesh cylinder) ---
+        const h = Math.hypot(beamAxis.x, beamAxis.z);
+        let z = h > 1e-4
+            ? { x: beamAxis.x / h, y: 0, z: beamAxis.z / h }
+            : { x: 0, y: 0, z: 1 };
+        let y = { x: 0, y: 1, z: 0 };
+        let x = vNorm(vCross(y, z)); // horizontal, perpendicular to beam = bolt axis
+        if (vMag(x) < 1e-4) x = { x: 1, y: 0, z: 0 };
+        // Point the bolt axis along vBoltDir when known so the asymmetric hardware
+        // stack extends on the correct side (flip x+z keeps it right-handed).
+        const bolt = vNorm(vBoltDir);
+        if (vMag(bolt) > 1e-4 && dot(x, bolt) < 0) { x = vScale(x, -1); z = vScale(z, -1); }
+        // Top ring: U opens downward — flip up and depth (180° about bolt axis).
+        if (!isBottom) { y = vScale(y, -1); z = vScale(z, -1); }
+        return { x, y, z };
+    }
+
+    // --- Arch: full 3D frame (bracket tilts with the beam) ---
+    let boltAxis = vNorm(vBoltDir);
+    if (vMag(boltAxis) < 1e-4) boltAxis = vNorm(vCross(beamAxis, { x: 0, y: 1, z: 0 }));
+    boltAxis = vSub(boltAxis, vScale(beamAxis, dot(boltAxis, beamAxis)));
+    if (vMag(boltAxis) < 1e-4) {
+        boltAxis = vNorm(vCross(beamAxis, { x: 0, y: 1, z: 0 }));
+        if (vMag(boltAxis) < 1e-4) boltAxis = { x: 1, y: 0, z: 0 };
+    }
+    boltAxis = vNorm(boltAxis);
+
+    // Right-handed up so that boltAxis × up = beamAxis.
+    let up = vNorm(vCross(beamAxis, boltAxis));
+    if (vMag(up) < 1e-4) up = { x: 0, y: 1, z: 0 };
+
+    // Orient the U-channel: bottom brackets open up (+Y), top brackets open down (-Y).
+    // Flipping both up and boltAxis preserves right-handedness with z = beamAxis.
+    const wantUpSign = isBottom ? 1 : -1;
+    const haveUpSign = up.y >= 0 ? 1 : -1;
+    if (haveUpSign !== wantUpSign) {
+        up = vScale(up, -1);
+        boltAxis = vScale(boltAxis, -1);
+    }
+
+    return {
+        x: { x: boltAxis.x, y: boltAxis.y, z: boltAxis.z },
+        y: { x: up.x, y: up.y, z: up.z },
+        z: { x: beamAxis.x, y: beamAxis.y, z: beamAxis.z }
+    };
+}
+
+/**
  * Solves the linkage geometry for a given fold angle
  * Calculates positions of all beams, brackets, and bolts based on state parameters
  * @param {number} foldAngle - Fold angle in radians
@@ -2447,6 +2530,7 @@ function solveLinkage(foldAngle) {
             originalHardwarePlacements.forEach(pl => {
                 const newPl = {
                     assemblyId: pl.assemblyId,
+                    moduleIndex: pl.moduleIndex,
                     pos: pl.pos ? { x: pl.pos.x, y: pl.pos.y, z: pl.pos.z + offsetZ } : null,
                     bottomY: pl.bottomY,
                     isBottom: pl.isBottom,
@@ -2455,12 +2539,35 @@ function solveLinkage(foldAngle) {
                     vBoltDir: pl.vBoltDir ? { ...pl.vBoltDir } : null,
                     sideHoleY: pl.sideHoleY,
                     vBoltPivot: pl.vBoltPivot ? { x: pl.vBoltPivot.x, y: pl.vBoltPivot.y, z: pl.vBoltPivot.z + offsetZ } : null,
-                    bottomPos: pl.bottomPos ? { x: pl.bottomPos.x, y: pl.bottomPos.y, z: pl.bottomPos.z + offsetZ } : null
+                    bottomPos: pl.bottomPos ? { x: pl.bottomPos.x, y: pl.bottomPos.y, z: pl.bottomPos.z + offsetZ } : null,
+                    frame: pl.frame ? {
+                        x: { ...pl.frame.x },
+                        y: { ...pl.frame.y },
+                        z: { ...pl.frame.z }
+                    } : null
                 };
                 hardwareAssemblyPlacements.push(newPl);
             });
         }
     } // End of array duplication block
+
+    // Attach a single canonical orientation frame to every bracket and hardware
+    // assembly placement. Computed here (after all arch/array transforms) so the
+    // simple bracket mesh and the high-detail assembly share identical orientation
+    // and stay locked to the real pivot/bolt axis. See computeHwBracketBasis.
+    const isArchMode = state.orientation === 'vertical';
+    brackets.forEach(bracket => {
+        if (bracket && bracket.beamDir) {
+            const boltDir = bracket.boltDir || bracket.right || bracket.beamDir;
+            bracket.basis = computeHwBracketBasis(bracket.beamDir, boltDir, bracket.isBottom, isArchMode);
+        }
+    });
+    hardwareAssemblyPlacements.forEach(pl => {
+        if (pl && pl.beamDir) {
+            const boltDir = pl.vBoltDir || pl.right || pl.beamDir;
+            pl.frame = computeHwBracketBasis(pl.beamDir, boltDir, pl.isBottom, isArchMode);
+        }
+    });
 
     // Build StructureGeometry from the generated beams for panel placement
     const structureGeometry = buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight);

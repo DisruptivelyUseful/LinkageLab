@@ -425,8 +425,13 @@ const ExportFormat = (function() {
         const serialized = {};
         for (const [key, handle] of Object.entries(handles)) {
             serialized[key] = {
+                id: handle.id,
                 type: handle.type,
                 polarity: handle.polarity,
+                x: handle.x,
+                y: handle.y,
+                side: handle.side,
+                isClosed: handle.isClosed,
                 connectedTo: handle.connectedTo ? handle.connectedTo.map(c => ({
                     connectionId: c.connectionId,
                     targetItemId: c.targetItemId,

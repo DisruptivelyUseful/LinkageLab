@@ -1,0 +1,54 @@
+<!-- Energy Zone Picker Modal (Site location + GHI zone) -->
+<div id="energy-zone-modal" class="energy-zone-modal" role="dialog" aria-modal="true" aria-labelledby="energy-zone-modal-title">
+    <div class="ez-container">
+        <header class="ez-header">
+            <div class="ez-header-text">
+                <h1 id="energy-zone-modal-title">Site Location &amp; Energy Zone</h1>
+                <p class="ez-header-sub"><span id="energy-zone-ghi-source">Loading GHI data…</span> · click map to select</p>
+            </div>
+            <button type="button" class="ez-close" title="Close">&times;</button>
+        </header>
+        <div class="ez-body">
+            <div class="ez-map-column">
+                <div id="energy-zone-map-host"></div>
+                <form id="energy-zone-address-form" class="ez-address-form">
+                    <label class="ez-address-label">
+                        <span>Address or place name</span>
+                        <input type="text" id="energy-zone-address" autocomplete="street-address" placeholder="e.g. 10 Downing St, London, UK">
+                    </label>
+                    <button type="submit" class="ez-btn ez-btn-secondary" id="energy-zone-address-btn">Look up</button>
+                    <p class="ez-address-note">Search uses OpenStreetMap Nominatim. Data © OpenStreetMap contributors.</p>
+                    <p class="ez-address-error" id="energy-zone-geocode-error" hidden></p>
+                    <div id="energy-zone-geocode-results" class="ez-geocode-results" hidden></div>
+                </form>
+                <form id="energy-zone-coords-form" class="ez-coords-form">
+                    <div class="ez-coords-heading">Or use coordinates (WGS84)</div>
+                    <label>
+                        <span>Latitude</span>
+                        <input type="number" id="energy-zone-lat" step="0.0001" min="-90" max="90" placeholder="40.7128">
+                    </label>
+                    <label>
+                        <span>Longitude</span>
+                        <input type="number" id="energy-zone-lng" step="0.0001" min="-180" max="180" placeholder="-74.0060">
+                    </label>
+                    <button type="submit" class="ez-btn ez-btn-secondary">Go to coordinates</button>
+                </form>
+            </div>
+            <aside class="ez-results-column">
+                <div id="energy-zone-results" class="ez-results-panel">
+                    <div class="ez-result-card ez-result-card-muted">
+                        <p class="ez-result-hint">Click the map to pick your project site.</p>
+                    </div>
+                </div>
+                <div id="energy-zone-cities" class="ez-cities-panel"></div>
+            </aside>
+        </div>
+        <footer class="ez-footer">
+            <p class="ez-footer-note">Applies latitude and solar resource (GHI) to simulation output.</p>
+            <div class="ez-footer-actions">
+                <button type="button" class="ez-btn ez-btn-ghost" id="energy-zone-cancel">Cancel</button>
+                <button type="button" class="ez-btn ez-btn-primary" id="energy-zone-apply" disabled>Apply to simulation</button>
+            </div>
+        </footer>
+    </div>
+</div>

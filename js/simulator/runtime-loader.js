@@ -2,6 +2,16 @@
 // Simulator runtime loader — shared constants + circuit core, then runtime script
 // ============================================================================
 
+import { bridgeGlobals } from '../linkage/global-bridge.js';
+import { INCIDENT_TEMPLATES } from '../circuit/incident-templates.js';
+import { createIncidentUI } from '../circuit/incident-ui.js';
+import { createFaultDetection } from '../circuit/fault-detection.js';
+import * as CircuitStore from '../circuit/circuit-store.js';
+import { createViewportCulling } from './viewport-culling.js';
+import { createArraySpecsCalculator } from '../circuit/array-specs.js';
+import * as ControllerFaults from '../circuit/controller-faults.js';
+import * as ProjectStore from '../core/project-store.js';
+
 async function loadClassicScript(src) {
     return new Promise((resolve, reject) => {
         const existing = document.querySelector(`script[data-runtime-src="${src}"]`);
@@ -58,6 +68,27 @@ export async function loadSimulatorRuntime(options = {}) {
     await import('../circuit/component-library.js');
     await import('../circuit/circuit-core.js');
     await import('../core/automation.js');
+    await import('../circuit/incident-templates.js');
+    await import('../circuit/incident-ui.js');
+    await import('../circuit/fault-detection.js');
+    await import('../circuit/circuit-store.js');
+    await import('../circuit/array-specs.js');
+    await import('../circuit/controller-faults.js');
+    await import('../core/project-store.js');
+    await import('./viewport-culling.js');
+
+    const { CircuitNormalize } = await import('../circuit/circuit-normalize.js');
+    bridgeGlobals({
+        IncidentTemplates: INCIDENT_TEMPLATES,
+        createIncidentUI,
+        FaultDetection: { createFaultDetection },
+        CircuitStore,
+        ProjectStore,
+        CircuitNormalize,
+        createViewportCulling,
+        createArraySpecsCalculator,
+        ControllerFaults,
+    });
 
     if (typeof globalThis.d3 === 'undefined') {
         await loadClassicScript('https://d3js.org/d3.v7.min.js');

@@ -6,6 +6,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { forwardNominatim } from '../server/nominatimForward.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const portArg = process.argv.find((arg, i) => process.argv[i - 1] === '--port');
@@ -27,8 +28,25 @@ const mimeTypes = {
     '.woff2': 'font/woff2',
 };
 
-const server = http.createServer((req, res) => {
-    let urlPath = decodeURIComponent(new URL(req.url, `http://127.0.0.1:${port}`).pathname);
+function sendJson(res, status, json) {
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(json));
+}
+
+const server = http.createServer(async (req, res) => {
+    const url = new URL(req.url, `http://127.0.0.1:${port}`);
+    let urlPath = decodeURIComponent(url.pathname);
+
+    if (urlPath === '/api/geocode' && req.method === 'GET') {
+        try {
+            const { status, json } = await forwardNominatim(url.searchParams.get('q') ?? '');
+            sendJson(res, status, json);
+        } catch {
+            sendJson(res, 502, { error: 'Geocoding service unavailable' });
+        }
+        return;
+    }
+
     if (urlPath === '/') urlPath = '/index.html';
 
     const filePath = path.normalize(path.join(root, urlPath.replace(/^\/+/, '')));

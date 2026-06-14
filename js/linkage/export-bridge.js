@@ -4,6 +4,7 @@ import { bridgeGlobals } from './global-bridge.js';
 import { getConfigSnapshot } from './config-persistence.js';
 import { saveStateToHistory } from './history.js';
 import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.js';
+import { buildHardwareAssemblyDebugSnapshot } from './hardware-detail.js';
 
     function generateDefaultFilename() {
         const modules = state.modules;
@@ -72,6 +73,15 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
                 maxHeight: +(data.structureBounds?.maxHeight ?? data.maxHeight).toFixed(1)
             }
         };
+
+        try {
+            config.hardwareAssemblyDebug = buildHardwareAssemblyDebugSnapshot(
+                data,
+                data.structureCenter || data.structureBounds?.center
+            );
+        } catch (e) {
+            config.hardwareAssemblyDebug = { error: e.message };
+        }
         
         // Add solar designer data if initialized
         if (typeof SolarDesigner !== 'undefined' && SolarDesigner.isInitialized()) {
@@ -562,9 +572,6 @@ import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.j
 
         if (globalThis.AppRouter?.navigateTo) {
             await globalThis.AppRouter.navigateTo('solar-design');
-            if (globalThis.AppRouter.refreshSolarDesignerFromExport) {
-                await globalThis.AppRouter.refreshSolarDesignerFromExport(exportData);
-            }
             showToast(`Opened solar design with ${panelCount} panels`, 'info');
             attachGlbToLinkageExport(exportData);
             return;

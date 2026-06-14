@@ -465,8 +465,8 @@
     }
 
     /* Keep in-app solar/simulate topbars on a single row */
-    #view-solar-design > #topbar,
-    #view-solar-simulate > #topbar {
+    #view-solar > #topbar,
+    #view-solar > #topbar {
         height: 52px;
         min-height: 52px;
         max-height: 52px;
@@ -484,8 +484,8 @@
         flex-wrap: wrap;
     }
 
-    #view-solar-design > #topbar .topbar-right,
-    #view-solar-simulate > #topbar .topbar-right {
+    #view-solar > #topbar .topbar-right,
+    #view-solar > #topbar .topbar-right {
         flex-wrap: nowrap;
     }
 }
@@ -622,8 +622,8 @@
 }
 
 /* In-app mode topbars: flow inside the view shell (not viewport-fixed) */
-#view-solar-design > #topbar,
-#view-solar-simulate > #topbar {
+#view-solar > #topbar,
+#view-solar > #topbar {
     position: relative;
     top: auto;
     left: auto;
@@ -638,22 +638,22 @@
     box-sizing: border-box;
 }
 
-#view-solar-design > #topbar .topbar-left,
-#view-solar-design > #topbar .topbar-center,
-#view-solar-design > #topbar .topbar-right,
-#view-solar-simulate > #topbar .topbar-left,
-#view-solar-simulate > #topbar .topbar-center,
-#view-solar-simulate > #topbar .topbar-right {
+#view-solar > #topbar .topbar-left,
+#view-solar > #topbar .topbar-center,
+#view-solar > #topbar .topbar-right,
+#view-solar > #topbar .topbar-left,
+#view-solar > #topbar .topbar-center,
+#view-solar > #topbar .topbar-right {
     flex-wrap: nowrap;
 }
 
-#view-solar-design > #topbar .topbar-center {
+#view-solar > #topbar .topbar-center {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
 }
 
-#view-solar-design > #topbar .topbar-solar-center {
+#view-solar > #topbar .topbar-solar-center {
     gap: 10px;
     justify-content: center;
 }
@@ -672,40 +672,40 @@
     white-space: nowrap;
 }
 
-#view-solar-design > #topbar .topbar-solar-center {
+#view-solar > #topbar .topbar-solar-center {
     flex-wrap: nowrap;
     gap: 8px;
 }
 
-#view-solar-design > #topbar .topbar-solar-center:not(:has(.topbar-sim-controls.active)) .topbar-divider {
+#view-solar > #topbar .topbar-solar-center:not(:has(.topbar-sim-controls.active)) .topbar-divider {
     display: none;
 }
 
-#view-solar-design > #topbar .mode-toggle button {
+#view-solar > #topbar .mode-toggle button {
     min-width: 36px;
     padding: 6px 10px;
 }
 
-#view-solar-design > #topbar .topbar-app-title {
+#view-solar > #topbar .topbar-app-title {
     font-size: 0.95rem;
 }
 
-#view-solar-design > #topbar .topbar-mode-btns .topbar-btn {
+#view-solar > #topbar .topbar-mode-btns .topbar-btn {
     min-width: 72px;
     padding: 6px 10px;
 }
 
-#view-solar-design > #topbar .topbar-right {
+#view-solar > #topbar .topbar-right {
     gap: 6px;
 }
 
-#view-solar-simulate > #topbar .topbar-center {
+#view-solar > #topbar .topbar-center {
     flex: 1 1 auto;
     min-width: 0;
     overflow: hidden;
 }
 
-#view-solar-simulate > #topbar .topbar-simulate-center.sim-topbar-row-controls {
+#view-solar > #topbar .topbar-simulate-center.sim-topbar-row-controls {
     justify-content: center;
     flex-wrap: nowrap;
     gap: 10px;
@@ -715,19 +715,19 @@
     background: transparent;
 }
 
-#view-solar-simulate > #topbar .sim-celestial-topbar {
+#view-solar > #topbar .sim-celestial-topbar {
     width: clamp(120px, 20vw, 260px);
 }
 
-#view-solar-simulate > #topbar .sim-sun-track-bg {
+#view-solar > #topbar .sim-sun-track-bg {
     height: 18px;
 }
 
-#view-solar-simulate > #topbar .sim-sun-labels {
+#view-solar > #topbar .sim-sun-labels {
     display: none;
 }
 
-#view-solar-simulate > #topbar .sim-time-inline {
+#view-solar > #topbar .sim-time-inline {
     font-size: 0.72rem;
     padding: 3px 8px;
     max-width: 200px;
@@ -735,23 +735,23 @@
     text-overflow: ellipsis;
 }
 
-#view-solar-simulate > #topbar .topbar-sim-slider {
+#view-solar > #topbar .topbar-sim-slider {
     width: 90px;
     min-width: 60px;
 }
 
-#view-solar-simulate > #topbar .sim-play-btn,
-#view-solar-simulate > #topbar .sim-reset-btn {
+#view-solar > #topbar .sim-play-btn,
+#view-solar > #topbar .sim-reset-btn {
     min-width: 30px;
     padding: 4px 8px !important;
 }
 
-#view-solar-simulate > #topbar .sim-select {
+#view-solar > #topbar .sim-select {
     font-size: 0.72rem;
     padding: 3px 6px;
 }
 
-#view-solar-simulate > #topbar .mode-toggle button {
+#view-solar > #topbar .mode-toggle button {
     min-width: 36px;
     padding: 6px 10px;
 }

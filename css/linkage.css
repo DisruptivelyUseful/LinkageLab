@@ -9,9 +9,14 @@ body:not(.solar-mode) #right-sidebar {
 }
 
 /* Simulator sidebars live inside the unified simulate view */
-#view-solar-simulate #left-sidebar,
-#view-solar-simulate #right-sidebar {
-    display: block !important;
+#view-solar #left-sidebar {
+    display: flex !important;
+    flex-direction: column;
+}
+
+#view-solar #right-sidebar {
+    display: flex !important;
+    flex-direction: column;
 }
 
 /* Keep linkage 2D overlay hidden even when solar designer CSS is loaded globally */

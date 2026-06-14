@@ -1,0 +1,17 @@
+{
+  "year": 2024,
+  "worldTotal": 8019495460,
+  "byZone": {
+    "1": 1375626,
+    "2": 490194119,
+    "3": 1148846677,
+    "4": 2689232753,
+    "5": 3008444878,
+    "6": 657219227
+  },
+  "method": "RestCountries national populations spread across a ~2° sample grid inside each Natural Earth country polygon; each sample uses NASA POWER GHI. Captures north–south spread (e.g. Arctic vs capital) unlike a single centroid. For gridded census-based totals, add GPW 1° GeoTIFF at scripts/cache/gpw-pop-count-2020-1deg.tif and re-run.",
+  "matchedPopulation": 7995313279,
+  "unmatchedNaturalEarthNames": [
+    "Somaliland"
+  ]
+}

@@ -9,21 +9,19 @@ test.describe('Cross-mode smoke', () => {
         await expect(page.locator('#view-linkage #canvas-webgl')).toBeVisible();
 
         await navigateAppMode(page, 'solar-design');
-        await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
+        await expect(page.locator('#view-solar #canvas-container svg#canvas')).toBeVisible();
         const designComponents = await page.evaluate(() => globalThis.SolarDesigner?.getItems?.()?.length ?? 0);
         expect(designComponents).toBeGreaterThan(0);
 
         await navigateAppMode(page, 'solar-simulate');
-        await expect(page.locator('#view-solar-simulate #playPauseButton')).toBeVisible();
-        await expect(page.locator('#view-solar-simulate .simulator-native-stage #main-content')).toBeVisible();
-        const simComponents = await page.evaluate(() => {
-            const data = globalThis.AppRouter.getAppStateBus().circuitData;
-            return data?.schematic?.components?.length ?? 0;
-        });
-        expect(simComponents).toBeGreaterThan(0);
+        await expect(page.locator('#view-solar #playPauseButton')).toBeVisible();
+        await expect(page.locator('#view-solar .simulator-native-stage #main-content')).toBeVisible();
+
+        const afterSim = await page.evaluate(() => globalThis.SolarDesigner?.getItems?.()?.length ?? 0);
+        expect(afterSim).toBe(designComponents);
 
         await navigateAppMode(page, 'solar-design');
-        await expect(page.locator('#view-solar-design #solar-canvas')).toBeVisible();
+        await expect(page.locator('#view-solar #canvas-container svg#canvas')).toBeVisible();
 
         await navigateAppMode(page, 'linkage');
         await expect(page.locator('#view-linkage #canvas-webgl')).toBeVisible();
@@ -47,7 +45,7 @@ test.describe('Cross-mode smoke', () => {
         await page.locator('#btn-mode-solar').click({ timeout: 10_000 });
         await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('solar-design');
 
-        await page.locator('#view-solar-design [data-app-nav-mode="linkage"]').click({ timeout: 10_000 });
+        await page.locator('#view-solar [data-app-nav-mode="linkage"]').click({ timeout: 10_000 });
         await expect.poll(async () => page.evaluate(() => globalThis.AppRouter.getCurrentMode())).toBe('linkage');
         await waitForAppReady(page);
     });

@@ -23,7 +23,8 @@ describe('circuit-export', () => {
     it('buildSimulatorFrameSrc includes embedded import params', () => {
         vi.stubGlobal('location', { origin: 'http://localhost:8765', href: 'http://localhost:8765/index.html' });
         const src = buildSimulatorFrameSrc();
-        expect(src).toContain('solar_simulator.html');
+        expect(src).toContain('index.html');
+        expect(src).toContain('#/solar/simulate');
         expect(src).toContain('import=solarDesigner');
         expect(src).toContain('embedded=1');
     });

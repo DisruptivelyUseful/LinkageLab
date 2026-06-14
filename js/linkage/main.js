@@ -6,6 +6,7 @@ import { debounce, radToDeg } from './math.js';
 import { showToast } from '../core/feedback.js';
 import { VALIDATION_RULES } from './validation.js';
 import { applyConfig, getConfigSnapshot, updatePresetSelect } from './config-persistence.js';
+import { resolveProjectDocument } from '../core/project-store.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { saveStateToHistory } from './history.js';
 import { syncUI } from './state-sync.js';
@@ -46,14 +47,26 @@ import { initViewportInput } from './viewport-input.js';
         // Initialize solar panel arch mode UI
         updateArchWallFacesUI();
         
-        // Load configuration: localStorage first, then default JSON fallback
-        const saved = localStorage.getItem('linkageLab_config');
+        // Load configuration: unified project document first, then legacy autosave, then default JSON
+        let configApplied = false;
+        const projectDoc = resolveProjectDocument();
+        if (projectDoc && (projectDoc.foldAngle !== undefined || projectDoc.structure || projectDoc.linkage)) {
+            try {
+                applyConfig(projectDoc.linkage || projectDoc);
+                configApplied = true;
+            } catch (e) {
+                console.warn('Error loading project document config:', e);
+            }
+        }
+
+        const saved = !configApplied ? localStorage.getItem('linkageLab_config') : null;
         if (saved) {
             try {
                 const config = JSON.parse(saved);
                 // Validate config before applying - check for obviously bad values
                 if (config && typeof config === 'object') {
                     applyConfig(config);
+                    configApplied = true;
                 } else {
                     console.warn('Invalid config format, skipping load');
                     localStorage.removeItem('linkageLab_config');
@@ -63,7 +76,9 @@ import { initViewportInput } from './viewport-input.js';
                 // Clear corrupted config
                 localStorage.removeItem('linkageLab_config');
             }
-        } else {
+        }
+
+        if (!configApplied) {
             // No localStorage - load default config from JSON file
             fetch('configs/starshade-default.json')
                 .then(response => {

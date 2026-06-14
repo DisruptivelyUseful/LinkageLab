@@ -1,0 +1,58 @@
+<div id="topbar" class="topbar topbar-solar-unified">
+    <div class="topbar-left">
+        <h1 class="topbar-app-title">StarShade Lab</h1>
+        <div class="topbar-divider"></div>
+        <div class="mode-toggle">
+            <button type="button" id="btn-mode-linkage" data-app-nav-mode="linkage" class="topbar-btn" title="Linkage Design Mode">⚙️</button>
+            <button type="button" id="btn-mode-solar" data-app-nav-mode="solar-design" class="topbar-btn" title="Solar circuit design (edit)">⚡</button>
+            <button type="button" id="btn-mode-simulate" data-app-nav-mode="solar-simulate" class="topbar-btn" title="Solar simulation">▶</button>
+        </div>
+    </div>
+    <div class="topbar-center topbar-solar-center">
+        <div class="topbar-solar-build-panel" data-solar-topbar-panel="build">
+            <span class="topbar-label topbar-designer-label">Electrical Design</span>
+            <span class="topbar-designer-hint">Edit circuit · drag components · wire handles</span>
+            <button type="button" class="topbar-btn topbar-icon-btn" data-energy-zone-picker title="Pick site location &amp; energy zone">🗺️</button>
+            <span id="sim-topbar-summary" class="topbar-solar-summary"></span>
+        </div>
+        <div class="topbar-solar-simulate-panel sim-topbar-row-controls" data-solar-topbar-panel="simulate" hidden>
+            <div class="sim-ctrl-playback">
+                <button id="playPauseButton" class="topbar-btn sim-play-btn" title="Play/Pause (Space)">▶</button>
+                <input type="range" id="speedSlider" class="topbar-sim-slider" min="1" max="100" value="10" title="Simulation speed">
+                <span class="topbar-sim-speed" id="speedLabel">1x</span>
+                <button id="resetSimulationBtn" class="topbar-btn sim-reset-btn" title="Reset simulation">↺</button>
+            </div>
+            <div class="sim-celestial-bar sim-celestial-topbar">
+                <span class="sim-celestial-clock" id="simCelestialClock">12:00 PM</span>
+                <div class="sim-sun-track">
+                    <div class="sim-sun-track-bg">
+                        <div id="sim-sun-indicator" class="sim-sun">☀️</div>
+                    </div>
+                    <div class="sim-sun-labels">
+                        <span>Sunrise</span><span>Noon</span><span>Sunset</span>
+                    </div>
+                </div>
+            </div>
+            <span class="time-display sim-time-inline" id="timeDisplay">0 hours (Day 1, 00:00)</span>
+            <div class="sim-ctrl-weather">
+                <button type="button" class="topbar-btn topbar-icon-btn" id="btn-energy-zone-picker" data-energy-zone-picker title="Pick site location &amp; energy zone">🗺️</button>
+                <span id="sim-site-zone-badge" class="sim-site-zone-badge" hidden title="Active energy zone"></span>
+                <select id="weatherDifficulty" class="sim-select" title="Weather condition">
+                    <option value="clear" selected>☀️ Clear</option>
+                    <option value="easy">🌤️ Easy</option>
+                    <option value="medium">⛅ Medium</option>
+                    <option value="hard">🌦️ Hard</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="topbar-right">
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-solar-save-top" title="Save to browser">💾</button>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-solar-load-top" title="Load from browser">📂</button>
+        <div class="topbar-divider"></div>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-solar-export-top" title="Export JSON file">⬇️</button>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-solar-import-top" title="Import JSON file">⬆️</button>
+        <div class="topbar-divider"></div>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-solar-review-top" title="Unified build guide">📋</button>
+    </div>
+</div>

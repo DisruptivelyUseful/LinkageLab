@@ -1,0 +1,192 @@
+{
+  "version": "unified-v2",
+  "exportType": "unified",
+  "timestamp": "2026-06-11T00:00:00.000Z",
+  "circuit": {
+    "items": [
+      {
+        "id": "panel-1",
+        "type": "panel",
+        "x": 320,
+        "y": 120,
+        "width": 138,
+        "height": 92,
+        "specs": {
+          "name": "Rich Solar 200W Mono",
+          "wmp": 200,
+          "vmp": 20.5,
+          "voc": 24.6,
+          "isc": 10.8,
+          "imp": 9.76,
+          "width": 1150,
+          "height": 770,
+          "cost": 150,
+          "scaleFactor": 119.4
+        },
+        "handles": {
+          "positive": { "id": "panel-1-pos", "polarity": "positive", "x": 0, "y": 46, "side": "left", "connectedTo": [] },
+          "negative": { "id": "panel-1-neg", "polarity": "negative", "x": 138, "y": 46, "side": "right", "connectedTo": [] }
+        }
+      },
+      {
+        "id": "controller-2",
+        "type": "controller",
+        "x": 289,
+        "y": 240,
+        "width": 72,
+        "height": 120,
+        "specs": {
+          "name": "Generic MPPT 100/20",
+          "type": "charge_controller",
+          "maxVoc": 100,
+          "maxIsc": 20,
+          "maxWmp": 520,
+          "ratedChargeCurrent": 20,
+          "supportedVoltages": [12, 24],
+          "width": 300,
+          "height": 500,
+          "cost": 80,
+          "mpptCount": 1,
+          "scaleFactor": 144
+        },
+        "handles": {
+          "pvPositive": { "id": "controller-2-pv-pos", "polarity": "pv-positive", "x": 27, "y": -5, "side": "top", "connectedTo": [], "mpptIndex": 0 },
+          "pvNegative": { "id": "controller-2-pv-neg", "polarity": "pv-negative", "x": 45, "y": -5, "side": "top", "connectedTo": [], "mpptIndex": 0 },
+          "batteryPositive": { "id": "controller-2-batt-pos", "polarity": "battery-positive", "x": 27, "y": 125, "side": "bottom", "connectedTo": [] },
+          "batteryNegative": { "id": "controller-2-batt-neg", "polarity": "battery-negative", "x": 45, "y": 125, "side": "bottom", "connectedTo": [] }
+        }
+      },
+      {
+        "id": "battery-3",
+        "type": "battery",
+        "x": 305,
+        "y": 400,
+        "width": 40,
+        "height": 60,
+        "specs": {
+          "name": "12V 100Ah LiFePO4",
+          "voltage": 12.8,
+          "ah": 100,
+          "maxDischargeRate": 1,
+          "maxDischarge": 100,
+          "width": 330,
+          "height": 175,
+          "cost": 400,
+          "kWh": 1.28,
+          "scaleFactor": 411.4
+        },
+        "handles": {
+          "positive": { "id": "battery-3-pos", "polarity": "positive", "x": 10, "y": -5, "side": "top", "connectedTo": [] },
+          "negative": { "id": "battery-3-neg", "polarity": "negative", "x": 30, "y": -5, "side": "top", "connectedTo": [] }
+        }
+      },
+      {
+        "id": "acload-4",
+        "type": "acload",
+        "x": 480,
+        "y": 280,
+        "width": 90,
+        "height": 95,
+        "specs": {
+          "name": "LED Light",
+          "voltage": 120,
+          "maxWatts": 15,
+          "avgWatts": 10,
+          "icon": "💡",
+          "behavior": { "type": "simple" },
+          "cost": 0
+        },
+        "handles": {
+          "input": { "id": "acload-4-in", "polarity": "ac", "x": -5, "y": 47.5, "side": "left", "connectedTo": [], "voltage": 120 }
+        }
+      }
+    ],
+    "connections": [
+      {
+        "id": "conn-1",
+        "sourceItemId": "panel-1",
+        "sourceHandleId": "panel-1-pos",
+        "sourceHandleKey": "positive",
+        "targetItemId": "controller-2",
+        "targetHandleId": "controller-2-pv-pos",
+        "targetHandleKey": "pvPositive",
+        "polarity": "positive",
+        "wireGauge": "10",
+        "wireAmps": 9.76,
+        "estimatedLength": 1.5,
+        "costPerFoot": 0.45,
+        "totalWireCost": 0.68,
+        "waypoints": [],
+        "voltageMismatch": false
+      },
+      {
+        "id": "conn-2",
+        "sourceItemId": "panel-1",
+        "sourceHandleId": "panel-1-neg",
+        "sourceHandleKey": "negative",
+        "targetItemId": "controller-2",
+        "targetHandleId": "controller-2-pv-neg",
+        "targetHandleKey": "pvNegative",
+        "polarity": "negative",
+        "wireGauge": "10",
+        "wireAmps": 9.76,
+        "estimatedLength": 1.5,
+        "costPerFoot": 0.45,
+        "totalWireCost": 0.68,
+        "waypoints": [],
+        "voltageMismatch": false
+      },
+      {
+        "id": "conn-3",
+        "sourceItemId": "controller-2",
+        "sourceHandleId": "controller-2-batt-pos",
+        "sourceHandleKey": "batteryPositive",
+        "targetItemId": "battery-3",
+        "targetHandleId": "battery-3-pos",
+        "targetHandleKey": "positive",
+        "polarity": "positive",
+        "wireGauge": "10",
+        "wireAmps": 20,
+        "estimatedLength": 1.2,
+        "costPerFoot": 0.45,
+        "totalWireCost": 0.54,
+        "waypoints": [],
+        "voltageMismatch": false
+      },
+      {
+        "id": "conn-4",
+        "sourceItemId": "controller-2",
+        "sourceHandleId": "controller-2-batt-neg",
+        "sourceHandleKey": "batteryNegative",
+        "targetItemId": "battery-3",
+        "targetHandleId": "battery-3-neg",
+        "targetHandleKey": "negative",
+        "polarity": "negative",
+        "wireGauge": "10",
+        "wireAmps": 20,
+        "estimatedLength": 1.2,
+        "costPerFoot": 0.45,
+        "totalWireCost": 0.54,
+        "waypoints": [],
+        "voltageMismatch": false
+      }
+    ],
+    "itemIdCounter": 4,
+    "connectionIdCounter": 4
+  },
+  "simulation": {
+    "latitude": 40,
+    "dayOfYear": 172,
+    "weatherDifficulty": "clear"
+  },
+  "summary": {
+    "panelCount": 1,
+    "totalWatts": 200,
+    "batteryCount": 1,
+    "totalKWh": 1.28,
+    "controllerCount": 1,
+    "connectionCount": 4,
+    "hasStructureGeometry": false,
+    "structureType": "unknown"
+  }
+}

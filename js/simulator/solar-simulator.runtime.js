@@ -123,6 +123,22 @@
         // Component presets — shared library (js/core/constants.js via runtime-loader.js)
         const PANEL_PRESETS = globalThis.NORMALIZED_PANEL_PRESETS
             || (globalThis.PANEL_PRESETS || []).map((p) => ({ width: 1650, height: 992, ...p }));
+
+        /** Canvas node palette — aligned with css/variables.css tokens */
+        const NODE_COLORS = Object.freeze({
+            nominal: '#10b981',
+            caution: '#f59e0b',
+            danger: '#ef4444',
+            primary: '#22d3ee',
+            ac: '#f59e0b',
+            dcPositive: '#ef4444',
+            panelFill: '#1a2a3a',
+            panelStroke: '#3a5a7a',
+            panelLabel: '#fbbf24',
+            panelVoltage: '#67e8f9',
+            canvasGrid: '#0f1a25',
+        });
+        globalThis.NODE_COLORS = NODE_COLORS;
         const BATTERY_PRESETS = globalThis.BATTERY_PRESETS || [];
         const CONTROLLER_PRESETS = globalThis.CONTROLLER_PRESETS || [];
         const BREAKER_PRESETS = globalThis.BREAKER_PRESETS
@@ -220,7 +236,17 @@
             }
         }
         
+        function syncLibrarySearchUi(searchTerm) {
+            const searchInput = document.getElementById('librarySearchInput');
+            const searchBox = document.querySelector('.library-search');
+            const term = (searchTerm ?? searchInput?.value ?? '').trim();
+            if (searchBox) {
+                searchBox.classList.toggle('has-value', term.length > 0);
+            }
+        }
+
         function filterLibraryComponents(searchTerm) {
+            syncLibrarySearchUi(searchTerm);
             const term = searchTerm.toLowerCase().trim();
             const categories = document.querySelectorAll('.library-category');
             let totalVisibleItems = 0;
@@ -315,6 +341,7 @@
             if (searchInput) {
                 searchInput.value = '';
                 filterLibraryComponents('');
+                syncLibrarySearchUi('');
                 searchInput.focus();
             }
         }
@@ -516,6 +543,7 @@
                 allItems.push(newItem);
                 selectItem(newItem);
                 showToast('📋 Component duplicated', 'success', 1500);
+                historyManager.pushState();
                 render();
             } else {
                 showToast('⚠️ Cannot duplicate this component type', 'warning', 2000);
@@ -633,7 +661,27 @@
                         setTimeout(updateBackgroundRendererSize, 350);
                     }
                 }
+
+                // Space — play/pause simulation (simulate mode only)
+                if (e.key === ' ' && !isTyping && currentMode === 'simulate') {
+                    e.preventDefault();
+                    playPause();
+                }
+
+                // ? — keyboard shortcuts overlay
+                if ((e.key === '?' || (e.shiftKey && e.key === '/')) && !isTyping) {
+                    e.preventDefault();
+                    toggleShortcutsOverlay();
+                }
             });
+        }
+
+        function toggleShortcutsOverlay(force) {
+            const overlay = document.getElementById('shortcutsOverlay');
+            if (!overlay) return;
+            const show = typeof force === 'boolean' ? force : overlay.hidden;
+            overlay.hidden = !show;
+            overlay.classList.toggle('visible', show);
         }
         
         // ============================================
@@ -643,32 +691,163 @@
         let currentMode = 'simulate'; // 'build', 'live', or 'simulate' - simulator always runs in simulate mode
         let circuitEditEnabled = true; // Inline canvas editing (wires, components, waypoints) while simulating
 
-        // Touch / iPad: lighter visuals and 2D-first defaults
-        const USE_LITE_LIVE_VISUALS = (() => {
+        // Touch / iPad: lighter canvas defaults; wire animations only disabled for coarse touch or reduced motion
+        const PREFER_LITE_CANVAS = (() => {
             try {
                 return window.matchMedia('(hover: none) and (pointer: coarse)').matches
-                    || window.matchMedia('(prefers-reduced-motion: reduce)').matches
                     || (navigator.maxTouchPoints > 0 && Math.min(window.innerWidth, window.innerHeight) < 1200);
             } catch (e) {
                 return false;
             }
         })();
-        const PREFER_LITE_CANVAS = USE_LITE_LIVE_VISUALS;
+        const USE_LITE_LIVE_VISUALS = (() => {
+            try {
+                return window.matchMedia('(hover: none) and (pointer: coarse)').matches
+                    || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            } catch (e) {
+                return false;
+            }
+        })();
         if (USE_LITE_LIVE_VISUALS) {
             document.body.classList.add('lite-live-visuals');
+        }
+
+        function updateCanvasModeBadge() {
+            const badge = document.getElementById('canvasModeBadge');
+            if (!badge) return;
+            if (currentMode === 'build') {
+                badge.textContent = 'Design';
+                badge.dataset.mode = 'build';
+            } else if (currentMode === 'simulate') {
+                badge.textContent = 'Simulate';
+                badge.dataset.mode = 'simulate';
+            } else {
+                badge.textContent = 'Live';
+                badge.dataset.mode = 'live';
+            }
         }
 
         function setMode(mode) {
             if (mode === 'live') {
                 currentMode = 'live';
-            } else {
-                currentMode = 'simulate';
+            } else if (mode === 'build') {
+                currentMode = 'build';
+                circuitEditEnabled = true;
+                isPlaying = false;
+                if (animationFrameId) {
+                    cancelAnimationFrame(animationFrameId);
+                    animationFrameId = null;
+                }
                 if (typeof LiveView !== 'undefined' && LiveView.stop) {
                     LiveView.stop();
                 }
                 if (LiveView?.state) LiveView.state.active = false;
+                applyCanvasViewModeStyles('2d');
+                const simStatsSection = document.getElementById('simStatsSection');
+                if (simStatsSection) simStatsSection.style.display = 'none';
+                const simulatePanel = document.querySelector('[data-solar-topbar-panel="simulate"]');
+                const buildPanel = document.querySelector('[data-solar-topbar-panel="build"]');
+                if (simulatePanel) simulatePanel.hidden = true;
+                if (buildPanel) buildPanel.hidden = false;
+                resetDesignCanvasBackground();
+            } else {
+                currentMode = 'simulate';
+                circuitEditEnabled = true;
+                if (typeof LiveView !== 'undefined' && LiveView.stop) {
+                    LiveView.stop();
+                }
+                if (LiveView?.state) LiveView.state.active = false;
+                const simStatsSection = document.getElementById('simStatsSection');
+                if (simStatsSection) simStatsSection.style.display = 'block';
+                const simulatePanel = document.querySelector('[data-solar-topbar-panel="simulate"]');
+                const buildPanel = document.querySelector('[data-solar-topbar-panel="build"]');
+                if (simulatePanel) simulatePanel.hidden = false;
+                if (buildPanel) buildPanel.hidden = true;
+                if (allItems.length > 0) {
+                    initializeSimulationFromBuild();
+                    if (!animationFrameId) {
+                        lastTimestamp = performance.now();
+                        animationFrameId = requestAnimationFrame(simulationLoop);
+                    }
+                }
             }
+            updateCanvasModeBadge();
+            refreshCelestialCanvas();
             render();
+        }
+
+        function applySolarCanvasMode(canvasMode) {
+            if (canvasMode === 'build') {
+                setMode('build');
+                return;
+            }
+            if (canvasMode === 'simulate') {
+                setMode('simulate');
+            }
+        }
+
+        function getCanvasViewMode() {
+            return scene3D?.viewMode || '2d';
+        }
+
+        /** Sun/stars overlay is for simulate mode on the flat 2D blueprint canvas only. */
+        function shouldShowSimulate2DCelestial() {
+            if (currentMode !== 'simulate') return false;
+            return getCanvasViewMode() === '2d';
+        }
+
+        function resetDesignCanvasBackground() {
+            const canvasContainer = document.getElementById('canvas-container');
+            if (!canvasContainer) return;
+            if (typeof CelestialSky !== 'undefined') {
+                CelestialSky.clearOverlay(canvasContainer);
+            }
+            canvasContainer.style.backgroundColor = '';
+            canvasContainer.style.backgroundImage = '';
+            canvasContainer.style.backgroundSize = '';
+            const svg = d3.select('#canvas-container svg');
+            if (!svg.empty()) {
+                svg.style('background-color', '');
+            }
+        }
+
+        function getCelestialOptions() {
+            const { sunrise, sunset } = getSunriseSunset(simulationLatitude, currentDayOfYear);
+            return { sunrise, sunset, twilight: 1 };
+        }
+
+        function refreshCelestialCanvas(hourOfDay = elapsedHours % 24) {
+            const canvasContainer = document.getElementById('canvas-container');
+            if (!canvasContainer) return;
+
+            if (!shouldShowSimulate2DCelestial()) {
+                if (currentMode === 'build') {
+                    resetDesignCanvasBackground();
+                } else if (typeof CelestialSky !== 'undefined') {
+                    CelestialSky.clearOverlay(canvasContainer);
+                }
+                return;
+            }
+
+            if (typeof CelestialSky === 'undefined') return;
+
+            const celestialOptions = getCelestialOptions();
+            CelestialSky.updateContainer(canvasContainer, hourOfDay, celestialOptions);
+
+            const svg = d3.select('#canvas-container svg');
+            if (!svg.empty()) {
+                svg.style('background-color', 'transparent');
+            }
+
+            CelestialSky.updateSunTrackIndicator(
+                hourOfDay,
+                document.getElementById('sim-sun-indicator'),
+                celestialOptions
+            );
+            const clockEl = document.getElementById('simCelestialClock');
+            if (clockEl) {
+                clockEl.textContent = CelestialSky.formatClockFromHours(hourOfDay);
+            }
         }
         
         // ============================================
@@ -2276,7 +2455,8 @@
                     i.type === 'acload' && 
                     i.specs.recipes && 
                     i.specs.recipes.length > 0 &&
-                    i.isProcessing
+                    i.isProcessing &&
+                    i.simState?.isRunning !== false
                 );
                 
                 recipeLoads.forEach(load => {
@@ -2533,27 +2713,32 @@
                             return;
                         }
                         
-                        // For outlets, trace through input
+                        // For outlets, trace through input and any load-bearing ports
                         if (item.type === 'acoutlet') {
-                            // Mark connection to load if exists
-                            if (item.handles?.load?.connectedTo) {
-                                item.handles.load.connectedTo.forEach(conn => {
+                            const markHandleConnections = (handle) => {
+                                if (!handle?.connectedTo) return;
+                                handle.connectedTo.forEach(conn => {
                                     const connObj = connections.find(c => c.id === conn.connectionId);
                                     if (connObj && !visitedConnections.has(connObj.id)) {
                                         visitedConnections.add(connObj.id);
                                         markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
                                     }
                                 });
-                            }
-                            // Trace through input
+                            };
+
+                            markHandleConnections(item.handles?.load);
+                            markHandleConnections(item.handles?.output);
+
                             if (item.handles?.input?.connectedTo) {
                                 item.handles.input.connectedTo.forEach(conn => {
                                     const connObj = connections.find(c => c.id === conn.connectionId);
                                     if (connObj && !visitedConnections.has(connObj.id)) {
                                         visitedConnections.add(connObj.id);
                                         markConnectionLive(connObj.id, loadWatts, loadVoltage, 'to-load');
-                                        
-                                        const otherItemId = connObj.sourceItemId === item.id ? connObj.targetItemId : connObj.sourceItemId;
+
+                                        const otherItemId = connObj.sourceItemId === item.id
+                                            ? connObj.targetItemId
+                                            : connObj.sourceItemId;
                                         const otherItem = allItems.find(i => i.id === otherItemId);
                                         if (otherItem) traceBack(otherItem, null);
                                     }
@@ -3088,24 +3273,13 @@
                         connections = connections.filter(c => c.id !== conn.id);
                         
                         // Show failure card
-                        showIncidentReport({
-                            type: 'error',
-                            icon: '💥',
-                            category: 'Voltage Mismatch',
-                            title: 'Appliance Destroyed!',
-                            description: `The ${load.specs?.name || 'appliance'} was connected to a 240V source but is rated for 120V. When power flowed, the appliance was destroyed by overvoltage.`,
-                            math: {
-                                explanation: 'Connecting a 120V appliance to 240V doubles the voltage, causing excessive current flow and component failure.',
-                                formula: 'Power = Voltage² / Resistance',
-                                result: 'At 240V, power is 4x rated power → instant failure'
-                            },
-                            realworld: 'In real life, connecting a 120V device to 240V will cause immediate damage - components will overheat, fuses will blow, and the device may catch fire or explode.',
-                            solutions: [
-                                'Always match appliance voltage to circuit voltage',
-                                'Use a step-down transformer if you must connect 120V devices to 240V',
-                                'Check appliance labels for voltage requirements before connecting'
-                            ]
-                        });
+                        const loadVoltage = load.specs?.voltage || 120;
+                        const circuitVoltage = 240;
+                        showIncidentReport(INCIDENT_TEMPLATES.loadExplosion(
+                            load.specs?.name || 'Appliance',
+                            loadVoltage,
+                            circuitVoltage,
+                        ));
                         
                         // Recalculate power flow after explosion (invalidate cache)
                         SimulateMode._powerFlowCache = null;
@@ -3186,6 +3360,8 @@
         // === PERFORMANCE: Caching and indexing ===
         const _specsCache = { array: new Map(), battery: new Map(), version: 0 };
         let _connectionIndex = null; // { byItemId: Map<itemId, connection[]> }
+        let _itemsById = null;
+        let _itemsByIdSource = null;
         
         // Invalidate caches when connections change
         function invalidateSpecsCache() {
@@ -3193,6 +3369,26 @@
             _specsCache.battery.clear();
             _specsCache.version++;
             _connectionIndex = null;
+        }
+
+        function getItemById(itemId) {
+            if (!_itemsById || _itemsByIdSource !== allItems) {
+                _itemsById = new Map(allItems.map(item => [item.id, item]));
+                _itemsByIdSource = allItems;
+            }
+            return _itemsById.get(itemId);
+        }
+
+        const _arraySpecsCalc = globalThis.createArraySpecsCalculator({
+            getItems: () => allItems,
+            getConnections: () => connections,
+            getCache: () => _specsCache.array,
+        });
+        function calculateConnectedArraySpecs(controller) {
+            return _arraySpecsCalc.calculateConnectedArraySpecs(controller);
+        }
+        function calculatePartialStringVoltage(startPanel, startHandle) {
+            return _arraySpecsCalc.calculatePartialStringVoltage(startPanel, startHandle);
         }
         
         // Build connection index for fast lookups
@@ -3217,7 +3413,6 @@
         // Tracks if a render is already scheduled to prevent redundant renders
         let _renderPending = false;
         let _renderScheduled = false;
-        let _wireRenderScheduled = false; // Phase 1.3: Debounce wire rendering during drag
         let _initialRenderDone = false;
         let _zoomRenderTimer = null;
         let _circuitImportRendered = false;
@@ -3267,6 +3462,82 @@
         
         // Latitude and seasonal simulation settings
         let simulationLatitude = 40; // Default latitude (NYC/Madrid area)
+        let simulationLongitude = -74; // Default longitude (NYC) — refined by energy zone picker
+        let siteGhiKwhPerM2Day = null; // NASA POWER GHI at site; scales panel output
+        let energyZoneId = null;
+        let energyZoneLabel = null;
+        let energyZoneColor = null;
+        const REFERENCE_GHI_KWH = 5.0;
+
+        window.simulationLatitude = simulationLatitude;
+
+        function getSiteGhiScale() {
+            if (siteGhiKwhPerM2Day == null || !Number.isFinite(siteGhiKwhPerM2Day)) return 1;
+            return Math.max(0.2, Math.min(1.6, siteGhiKwhPerM2Day / REFERENCE_GHI_KWH));
+        }
+
+        function updateSiteLocationDisplay() {
+            const latInput = document.getElementById('simLatitudeInput');
+            if (latInput && Number.isFinite(simulationLatitude)) {
+                latInput.value = String(Math.round(simulationLatitude * 10) / 10);
+            }
+            const zoneEl = document.getElementById('simEnergyZoneLabel');
+            if (zoneEl) {
+                if (energyZoneId != null) {
+                    zoneEl.textContent = `${energyZoneLabel || 'Zone ' + energyZoneId} · ${siteGhiKwhPerM2Day?.toFixed(1) ?? '—'} kWh/m²/d`;
+                    zoneEl.style.borderColor = energyZoneColor || 'var(--clr-primary)';
+                    zoneEl.hidden = false;
+                } else {
+                    zoneEl.hidden = true;
+                    zoneEl.textContent = '';
+                }
+            }
+            if (typeof globalThis.refreshEnergyZoneTopbarBadge === 'function') {
+                globalThis.refreshEnergyZoneTopbarBadge({
+                    lat: simulationLatitude,
+                    lng: simulationLongitude,
+                    ghi: siteGhiKwhPerM2Day,
+                    zoneId: energyZoneId,
+                    zoneColor: energyZoneColor,
+                });
+            }
+        }
+
+        function applySimulatorSiteLocation(selection) {
+            if (!selection || selection.lat == null) return;
+            simulationLatitude = Math.max(-90, Math.min(90, selection.lat));
+            simulationLongitude = selection.lng ?? simulationLongitude ?? 0;
+            siteGhiKwhPerM2Day = selection.ghi ?? siteGhiKwhPerM2Day;
+            energyZoneId = selection.zoneId ?? null;
+            energyZoneLabel = selection.zoneLabel ?? (energyZoneId != null ? `Zone ${energyZoneId}` : null);
+            energyZoneColor = selection.zoneColor ?? null;
+            window.simulationLatitude = simulationLatitude;
+            simulationStartDayOfYear = getSummerSolsticeDay(simulationLatitude);
+            updateSiteLocationDisplay();
+            updateTimeDisplay();
+            updateSimulationDisplay();
+            const hourOfDay = Math.floor(elapsedHours) % 24;
+            updateBackgroundColor(hourOfDay);
+            updateStructureLighting(hourOfDay);
+            updateShadowAngle(hourOfDay);
+            render();
+            if (typeof globalThis.ProjectStore?.saveSimulatorSnapshot === 'function'
+                && typeof globalThis.getSimulatorProjectSnapshot === 'function') {
+                globalThis.ProjectStore.saveSimulatorSnapshot(globalThis.getSimulatorProjectSnapshot());
+            }
+        }
+
+        globalThis.applySimulatorSiteLocation = applySimulatorSiteLocation;
+        globalThis.getSimulatorSiteLocation = function getSimulatorSiteLocation() {
+            return {
+                lat: simulationLatitude,
+                lng: simulationLongitude,
+                ghi: siteGhiKwhPerM2Day,
+                zoneId: energyZoneId,
+                zoneLabel: energyZoneLabel,
+                zoneColor: energyZoneColor,
+            };
+        };
         let simulationStartDayOfYear = 172; // Default: June 21 (summer solstice for Northern Hemisphere)
         let currentDayOfYear = 172; // Tracks current day during simulation
         
@@ -3277,6 +3548,7 @@
         let _lastTapInfo = { id: null, time: 0 };
         let _lastTapHandledAt = 0;
         let _lastWireTapInfo = { id: null, time: 0 };
+        let _suppressNextCanvasDeselect = false;
         let dragOffset = { x: 0, y: 0 };
         let tempWire = null;
         let draggingHandle = null;
@@ -4270,6 +4542,19 @@
             
             // Remove old resource port handles (keep cord handle)
             const cordHandle = load.handles.cord;
+            const savedLinks = [];
+            Object.values(load.handles).forEach((oldHandle) => {
+                if (!oldHandle?.resourceType || oldHandle.id === cordHandle?.id) return;
+                (oldHandle.connectedTo || []).forEach((ref) => {
+                    savedLinks.push({
+                        polarity: oldHandle.polarity,
+                        resourceType: oldHandle.resourceType,
+                        connectionId: ref.connectionId,
+                        otherItemId: ref.itemId,
+                        otherHandleId: ref.handleId,
+                    });
+                });
+            });
             // Update cord position for recipe loads (on left side)
             if (isRecipeBased) {
                 cordHandle.x = -5;
@@ -4352,6 +4637,48 @@
                     };
                 });
             }
+
+            remigrateLoadPortConnections(load);
+
+            savedLinks.forEach((link) => {
+                const newHandle = Object.values(load.handles).find((h) =>
+                    h?.resourceType === link.resourceType && h.polarity === link.polarity,
+                );
+                if (!newHandle) return;
+
+                const conn = connections.find(c => c.id === link.connectionId);
+                if (!conn) return;
+
+                if (conn.sourceItemId === load.id) {
+                    conn.sourceHandleId = newHandle.id;
+                    conn.sourceHandleKey = Object.entries(load.handles).find(([, h]) => h?.id === newHandle.id)?.[0];
+                }
+                if (conn.targetItemId === load.id) {
+                    conn.targetHandleId = newHandle.id;
+                    conn.targetHandleKey = Object.entries(load.handles).find(([, h]) => h?.id === newHandle.id)?.[0];
+                }
+
+                newHandle.connectedTo = [{
+                    itemId: link.otherItemId,
+                    handleId: link.otherHandleId,
+                    connectionId: link.connectionId,
+                }];
+
+                const otherItem = allItems.find(i => i.id === link.otherItemId);
+                const otherHandle = otherItem
+                    ? Object.values(otherItem.handles || {}).find(h => h?.id === link.otherHandleId)
+                    : null;
+                if (otherHandle) {
+                    otherHandle.connectedTo = (otherHandle.connectedTo || []).filter(r => r.connectionId !== link.connectionId);
+                    otherHandle.connectedTo.push({
+                        itemId: load.id,
+                        handleId: newHandle.id,
+                        connectionId: link.connectionId,
+                    });
+                }
+
+                invalidatedConnections.add(conn.id);
+            });
         }
         
         
@@ -4526,55 +4853,16 @@
             return false;
         }
         
-        // Phase 1.3: Viewport culling - only render visible items
-        function getVisibleItems() {
-            // On initial load, show all items
-            if (!_initialRenderDone) {
-                return allItems;
-            }
-            
-            try {
-                const transform = d3.zoomTransform(svg.node());
-                if (!transform) return allItems;
-                
-                const viewport = {
-                    x: -transform.x / transform.k,
-                    y: -transform.y / transform.k,
-                    width: svgWidth / transform.k,
-                    height: svgHeight / transform.k
-                };
-                
-                // Add 200px buffer for smooth scrolling
-                const buffer = 200 / transform.k;
-                
-                return allItems.filter(item => {
-                    const itemRight = item.x + (item.width || 100);
-                    const itemBottom = item.y + (item.height || 100);
-                    return itemRight >= viewport.x - buffer &&
-                           item.x <= viewport.x + viewport.width + buffer &&
-                           itemBottom >= viewport.y - buffer &&
-                           item.y <= viewport.y + viewport.height + buffer;
-                });
-            } catch (e) {
-                // Fallback to all items if transform fails
-                return allItems;
-            }
-        }
-        
-        function getVisibleConnections() {
-            const visibleItems = getVisibleItems();
-            const visibleItemIds = new Set(visibleItems.map(i => i.id));
-            
-            // Include connections between visible items, or connections to/from selected items
-            return connections.filter(conn => {
-                const sourceVisible = visibleItemIds.has(conn.sourceItemId);
-                const targetVisible = visibleItemIds.has(conn.targetItemId);
-                const sourceSelected = selectedItem && selectedItem.id === conn.sourceItemId;
-                const targetSelected = selectedItem && selectedItem.id === conn.targetItemId;
-                
-                return (sourceVisible && targetVisible) || sourceSelected || targetSelected;
-            });
-        }
+        // Phase 1.3: Viewport culling - only render visible items (Phase 11 module)
+        const { getVisibleItems, getVisibleConnections } = globalThis.createViewportCulling({
+            getAllItems: () => allItems,
+            getConnections: () => connections,
+            getSelectedItem: () => selectedItem,
+            getSelectedConnection: () => selectedConnection,
+            isInitialRenderDone: () => _initialRenderDone,
+            getSvgDimensions: () => ({ width: svgWidth, height: svgHeight }),
+            getZoomTransform: () => (svg?.node?.() ? d3.zoomTransform(svg.node()) : null),
+        });
         
         /**
          * Fit view to show all items with padding
@@ -4639,33 +4927,51 @@
                 .call(zoomBehavior.transform, transform)
                 .on('end', finishFit);
         }
+
+        function zoomCanvasBy(factor) {
+            if (!svg?.node()) return;
+            updateSvgDimensions();
+            svg.transition()
+                .duration(200)
+                .call(zoomBehavior.scaleBy, factor, [svgWidth / 2, svgHeight / 2]);
+        }
+
+        function zoomCanvasIn() {
+            zoomCanvasBy(1.25);
+        }
+
+        function zoomCanvasOut() {
+            zoomCanvasBy(0.8);
+        }
         
         function render() {
-            cleanupPowerStation2D();
-            renderItems();
+            if (!isDragging) {
+                cleanupPowerStation2D();
+                renderItems();
             
-            // Phase 3: Sync 2D nodes to 3D scene
-            if (scene3D && scene3D.initialized) {
-                syncNodesTo3D();
-                // Phase 4: Sync connections after nodes are synced
-                syncConnectionsTo3D();
+                // Phase 3: Sync 2D nodes to 3D scene
+                if (scene3D && scene3D.initialized) {
+                    syncNodesTo3D();
+                    // Phase 4: Sync connections after nodes are synced
+                    syncConnectionsTo3D();
                 
-                // Update sky, celestial objects, and sun position based on simulation time (if in simulate mode)
-                if (currentMode === 'simulate') {
-                    const hourOfDay = typeof elapsedHours !== 'undefined' ? elapsedHours % 24 : 12;
-                    const dayOfYear = typeof currentDayOfYear !== 'undefined' ? currentDayOfYear : 172;
-                    const latitude = typeof simulationLatitude !== 'undefined' ? simulationLatitude : 40;
+                    // Update sky, celestial objects, and sun position based on simulation time (if in simulate mode)
+                    if (currentMode === 'simulate') {
+                        const hourOfDay = typeof elapsedHours !== 'undefined' ? elapsedHours % 24 : 12;
+                        const dayOfYear = typeof currentDayOfYear !== 'undefined' ? currentDayOfYear : 172;
+                        const latitude = typeof simulationLatitude !== 'undefined' ? simulationLatitude : 40;
                     
-                    // Update sky color and celestial objects (moon, stars)
-                    if (scene3D.updateSkyAndCelestials) {
-                        scene3D.updateSkyAndCelestials(hourOfDay);
-                    }
+                        // Update sky color and celestial objects (moon, stars)
+                        if (scene3D.updateSkyAndCelestials) {
+                            scene3D.updateSkyAndCelestials(hourOfDay);
+                        }
                     
-                    // Update sun position for shadows
-                    if (scene3D.shadowsEnabled) {
-                        const solarPos = calculateSolarPosition(latitude, dayOfYear, hourOfDay);
-                        if (solarPos && solarPos.elevation > 0) {
-                            scene3D.updateSunPosition(solarPos.elevation, solarPos.azimuth);
+                        // Update sun position for shadows
+                        if (scene3D.shadowsEnabled) {
+                            const solarPos = calculateSolarPosition(latitude, dayOfYear, hourOfDay);
+                            if (solarPos && solarPos.elevation > 0) {
+                                scene3D.updateSunPosition(solarPos.elevation, solarPos.azimuth);
+                            }
                         }
                     }
                 }
@@ -4676,13 +4982,23 @@
                 SimulateMode.calculatePowerFlow();
             }
             
-            renderWires();
-            updateScores();
+            renderWires(isDragging ? { pathsOnly: true } : {});
+            if (!isDragging) {
+                updateScores();
+            }
             
             // In split mode, SVG is already rendering on top of 3D, no overlay needed
             
             if (!_initialRenderDone && allItems.length === 0) {
                 _initialRenderDone = true;
+            }
+
+            const summaryEl = document.getElementById('sim-topbar-summary');
+            if (summaryEl) {
+                const count = allItems.length;
+                summaryEl.textContent = count > 0
+                    ? `${count} components on canvas`
+                    : 'Add components from the library panel.';
             }
         }
         
@@ -4719,8 +5035,8 @@
                 )
                 .on("click", (event, d) => {
                     event.stopPropagation();
+                    _suppressNextCanvasDeselect = true;
                     selectItem(d);
-                    openInspector(d);
                 })
                 .on("pointerup", function(event, d) {
                     if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
@@ -4986,8 +5302,8 @@
                 .attr("height", d.height)
                 .attr("rx", 6)
                 .attr("ry", 6)
-                .attr("fill", "#1a2a3a")
-                .attr("stroke", "#3a5a7a")
+                .attr("fill", NODE_COLORS.panelFill)
+                .attr("stroke", NODE_COLORS.panelStroke)
                 .attr("stroke-width", 2);
             
             // Add subtle gradient effect for depth
@@ -5019,7 +5335,7 @@
                     .attr("y1", 6)
                     .attr("x2", (d.width / cellCols) * i)
                     .attr("y2", d.height - 6)
-                    .attr("stroke", "#0f1a25")
+                    .attr("stroke", NODE_COLORS.canvasGrid)
                     .attr("stroke-width", 1)
                     .attr("opacity", 0.6);
             }
@@ -5032,7 +5348,7 @@
                     .attr("y1", (d.height / cellRows) * i)
                     .attr("x2", d.width - 6)
                     .attr("y2", (d.height / cellRows) * i)
-                    .attr("stroke", "#0f1a25")
+                    .attr("stroke", NODE_COLORS.canvasGrid)
                     .attr("stroke-width", 1)
                     .attr("opacity", 0.6);
             }
@@ -5071,7 +5387,7 @@
                 .attr("y", d.height / 2 - 10)
                 .attr("dominant-baseline", "middle")
                 .attr("text-anchor", "middle")
-                .attr("fill", "#ffdd57")
+                .attr("fill", NODE_COLORS.panelLabel)
                 .attr("font-size", Math.max(10, Math.min(14, d.height / 8)))
                 .attr("font-weight", "bold")
                 .text(panelOutputWatts + "W");
@@ -5083,7 +5399,7 @@
                 .attr("y", d.height / 2 + 8)
                 .attr("dominant-baseline", "middle")
                 .attr("text-anchor", "middle")
-                .attr("fill", "#aaccff")
+                .attr("fill", NODE_COLORS.panelVoltage)
                 .attr("font-size", Math.max(8, Math.min(11, d.height / 10)))
                 .text(d.specs.voc.toFixed(1) + "V");
             
@@ -5215,7 +5531,7 @@
                     .attr("x", d.width / 2)
                     .attr("y", d.height * 0.75)
                     .attr("dominant-baseline", "middle")
-                    .attr("fill", batteryPercent >= 50 ? "#5cb85c" : batteryPercent >= 20 ? "#f0ad4e" : "#d9534f")
+                    .attr("fill", batteryPercent >= 50 ? NODE_COLORS.nominal : batteryPercent >= 20 ? NODE_COLORS.caution : NODE_COLORS.danger)
                     .text(`${currentCharge > 0 ? currentCharge.toFixed(1) : batteryKwh.toFixed(1)}kWh (${batteryPercent.toFixed(0)}%)`);
             } else {
                 g.append("text")
@@ -5366,15 +5682,19 @@
                     .style("pointer-events", "none");
                 
                 // Make reset button clickable
-                resetBtn.on("click", (event) => {
+                const resetHandler = (event) => {
                     event.stopPropagation();
-                    d.destroyed = false;
-                    d.batteryOvervoltage = false;
-                    d.incompatibleVoltageShown = false;
-                    d.reversedPolarityWarningShown = false;
+                    globalThis.ControllerFaults?.resetControllerFault?.(d);
+                    hideIncidentReport();
+                    if (seriesVoltageInterval) {
+                        clearInterval(seriesVoltageInterval);
+                        seriesVoltageInterval = null;
+                    }
+                    invalidateSpecsCache();
                     render();
                     validateSystem();
-                });
+                };
+                resetBtn.on("click", resetHandler);
                 
                 return; // Don't render normal controller content if destroyed
             }
@@ -6205,7 +6525,7 @@
             const colors = resourceColors[d.specs.resourceType] || { fill: '#2a3a2a', stroke: '#6fa06c', accent: '#6fa06c' };
             
             // Main container rect - matching other node styles
-            g.append("rect")
+            const bodyRect = g.append("rect")
                 .attr("class", "item-rect resource-container-rect")
                 .attr("width", d.width)
                 .attr("height", d.height)
@@ -6213,7 +6533,13 @@
                 .attr("ry", 10)
                 .style("fill", colors.fill)
                 .style("stroke", colors.stroke)
-                .style("stroke-width", 2);
+                .style("stroke-width", 2)
+                .style("cursor", "pointer")
+                .on("click", (event) => {
+                    event.stopPropagation();
+                    _suppressNextCanvasDeselect = true;
+                    selectItem(d);
+                });
             
             // Capacity bar background (inside the container)
             const barMargin = 8;
@@ -6745,192 +7071,127 @@
             }
         }
         
+        function findLoadPowerConnection(load) {
+            if (!load?.handles) return null;
+
+            const cordHandle = load.handles.cord;
+            if (cordHandle?.connectedTo?.length) {
+                for (const ref of cordHandle.connectedTo) {
+                    const conn = connections.find(c => c.id === ref.connectionId);
+                    if (!conn) continue;
+                    const otherItemId = conn.sourceItemId === load.id ? conn.targetItemId : conn.sourceItemId;
+                    const otherItem = allItems.find(i => i.id === otherItemId);
+                    if (otherItem) return { conn, otherItem };
+                }
+            }
+
+            for (const conn of connections) {
+                if (conn.sourceItemId !== load.id && conn.targetItemId !== load.id) continue;
+                const loadHandleId = conn.sourceItemId === load.id ? conn.sourceHandleId : conn.targetHandleId;
+                const loadHandle = Object.values(load.handles).find(h => h?.id === loadHandleId);
+                if (loadHandle?.polarity !== 'load') continue;
+                const otherItemId = conn.sourceItemId === load.id ? conn.targetItemId : conn.sourceItemId;
+                const otherItem = allItems.find(i => i.id === otherItemId);
+                if (otherItem) return { conn, otherItem };
+            }
+
+            return null;
+        }
+
+        function isSimulateACPowerAvailable() {
+            if (simStats.controllerACOutputEnabled === false) return false;
+            return simStats.batteryCharge > 0 || (simStats.solarOutput || 0) > 0;
+        }
+
+        function checkDirectACSourceLive(otherItem) {
+            if (otherItem.type === 'controller') {
+                const isHybrid = otherItem.specs?.type === 'hybrid_inverter' || otherItem.specs?.type === 'all_in_one';
+                if (!isHybrid) {
+                    return { isLive: false, message: "Load not connected to a valid AC source" };
+                }
+                if (currentMode === 'simulate') {
+                    if (simStats.controllerACOutputEnabled === false) {
+                        return { isLive: false, message: "Inverter AC output is off" };
+                    }
+                    if (!isSimulateACPowerAvailable()) {
+                        return { isLive: false, message: "Inverter has no power" };
+                    }
+                    return { isLive: true };
+                }
+                if (LiveView.state.active && LiveView.state.controllerACOutputEnabled === false) {
+                    return { isLive: false, message: "Inverter AC output is off" };
+                }
+                const arraySpecs = calculateConnectedArraySpecs(otherItem);
+                if ((arraySpecs.wmp || 0) > 0 || (otherItem.specs.internalBatteryKWh || 0) > 0) {
+                    return { isLive: true };
+                }
+                if (hasPowerSourceConnection(otherItem)) {
+                    return { isLive: true };
+                }
+                return { isLive: false, message: "Inverter has no power" };
+            }
+
+            if (otherItem.type === 'doublevoltagehub') {
+                if (currentMode === 'simulate') {
+                    if (!isSimulateACPowerAvailable()) {
+                        return { isLive: false, message: "This circuit has no power. Check your breakers." };
+                    }
+                    return { isLive: true };
+                }
+                if (hasPowerSourceConnection(otherItem)) {
+                    return { isLive: true };
+                }
+                return { isLive: false, message: "This circuit has no power. Check your breakers." };
+            }
+
+            if (otherItem.type === 'acbreaker') {
+                if (!LiveView.BreakerManager.isBreakerClosed(otherItem)) {
+                    return { isLive: false, message: "This circuit has no power. Check your breakers." };
+                }
+                if (currentMode === 'simulate') {
+                    if (!isSimulateACPowerAvailable()) {
+                        return { isLive: false, message: "This circuit has no power. Check your breakers." };
+                    }
+                    return { isLive: true };
+                }
+                if (hasPowerSourceConnection(otherItem)) {
+                    return { isLive: true };
+                }
+                return { isLive: false, message: "This circuit has no power. Check your breakers." };
+            }
+
+            return null;
+        }
+
         // Helper function to check if a load's circuit is live (used by toggleLoad)
         function checkLoadCircuitStatus(load) {
             // Safety check: make sure load still exists
             if (!load || !allItems.find(i => i.id === load.id)) {
                 return { isLive: false, message: "Load not found" };
             }
-            
-            // Find the connection from load to outlet
-            const loadConn = connections.find(c => {
-                const sourceItem = allItems.find(i => i.id === c.sourceItemId);
-                const targetItem = allItems.find(i => i.id === c.targetItemId);
-                return (sourceItem?.id === load.id && targetItem?.type === 'acoutlet') ||
-                       (targetItem?.id === load.id && sourceItem?.type === 'acoutlet');
-            });
-            if (!loadConn) return { isLive: false, message: "Load not connected to outlet" };
-            
-            // Find the outlet
-            let outlet = allItems.find(i => 
-                (i.id === loadConn.sourceItemId || i.id === loadConn.targetItemId) &&
-                i.type === 'acoutlet'
-            );
-            if (!outlet) return { isLive: false, message: "Outlet not found" };
-            
-            // Trace back through daisy-chained outlets to find the breaker
-            const visitedOutlets = new Set();
-            const traceToBreaker = (currentOutlet) => {
-                if (visitedOutlets.has(currentOutlet.id)) return null;
-                visitedOutlets.add(currentOutlet.id);
-                
-                // Check all connections from this outlet
-                const outletConnections = connections.filter(c => 
-                    c.sourceItemId === currentOutlet.id || c.targetItemId === currentOutlet.id
-                );
-                
-                for (const outletConn of outletConnections) {
-                    const otherItem = allItems.find(i => 
-                        (i.id === outletConn.sourceItemId || i.id === outletConn.targetItemId) &&
-                        i.id !== currentOutlet.id
-                    );
-                    if (!otherItem) continue;
-                    
-                    // Check if it's a regular AC breaker
-                    if (otherItem.type === 'acbreaker') {
-                        const breakerHandle = otherItem.handles?.loadOut;
-                        const outletHandle = currentOutlet.handles?.input;
-                        if (breakerHandle && outletHandle &&
-                            (outletConn.sourceHandleId === breakerHandle.id || outletConn.targetHandleId === breakerHandle.id) &&
-                            (outletConn.sourceHandleId === outletHandle.id || outletConn.targetHandleId === outletHandle.id)) {
-                            // Use unified breaker state checking
-                            if (!LiveView.BreakerManager.isBreakerClosed(otherItem)) {
-                                return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                            }
-                            // Verify breaker is connected to a power source
-                            if (!hasPowerSourceConnection(otherItem)) {
-                                return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                            }
-                            return { isLive: true };
-                        }
-                    }
-                    
-                    // Check if it's a breaker panel
-                    if (otherItem.type === 'breakerpanel') {
-                        if (otherItem.mainBreakerOn === false) {
-                            return { isLive: false, message: "Main breaker is off" };
-                        }
-                        
-                        // Find which circuit handle this outlet is connected to
-                        // Check both directions: circuit handle's connectedTo, and outlet's input connected to circuit handle
-                        const circuitHandle = Object.values(otherItem.handles).find(h => {
-                            if (!h.circuitName) return false;
-                            
-                            // Method 1: Check if circuit handle's connectedTo includes this outlet
-                            if (h.connectedTo) {
-                                const hasConnection = h.connectedTo.some(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (!connObj) return false;
-                                    return (connObj.sourceItemId === currentOutlet.id || connObj.targetItemId === currentOutlet.id) &&
-                                           (connObj.sourceHandleId === h.id || connObj.targetHandleId === h.id);
-                                });
-                                if (hasConnection) return true;
-                            }
-                            
-                            // Method 2: Check if outlet's input handle is connected to this circuit handle
-                            const outletInputHandle = currentOutlet.handles?.input;
-                            if (outletInputHandle) {
-                                const hasDirectConnection = connections.some(conn => {
-                                    return ((conn.sourceItemId === currentOutlet.id && conn.sourceHandleId === outletInputHandle.id &&
-                                             conn.targetItemId === otherItem.id && conn.targetHandleId === h.id) ||
-                                            (conn.targetItemId === currentOutlet.id && conn.targetHandleId === outletInputHandle.id &&
-                                             conn.sourceItemId === otherItem.id && conn.sourceHandleId === h.id));
-                                });
-                                if (hasDirectConnection) return true;
-                            }
-                            
-                            return false;
-                        });
-                        
-                        if (circuitHandle && circuitHandle.circuitName) {
-                            const circuitIndex = parseInt(circuitHandle.id.match(/circuit-(\d+)/)?.[1]) - 1;
-                            if (circuitIndex >= 0 && circuitIndex < 8) {
-                                // Use unified breaker state checking
-                                if (!LiveView.BreakerManager.isBreakerPanelCircuitClosed(otherItem, circuitIndex)) {
-                                    return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                                }
-                                // Verify panel is connected to a power source
-                                if (!hasPowerSourceConnection(otherItem)) {
-                                    return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                                }
-                                return { isLive: true };
-                            }
-                        }
-                    }
-                    
-                    // Check if it's a spider box
-                    if (otherItem.type === 'spiderbox') {
-                        // Find which circuit handle this outlet is connected to
-                        // Check both directions: circuit handle's connectedTo, and outlet's input connected to circuit handle
-                        const circuitHandle = Object.values(otherItem.handles).find(h => {
-                            if (!h.circuitName) return false;
-                            
-                            // Method 1: Check if circuit handle's connectedTo includes this outlet
-                            if (h.connectedTo) {
-                                const hasConnection = h.connectedTo.some(conn => {
-                                    const connObj = connections.find(c => c.id === conn.connectionId);
-                                    if (!connObj) return false;
-                                    return (connObj.sourceItemId === currentOutlet.id || connObj.targetItemId === currentOutlet.id) &&
-                                           (connObj.sourceHandleId === h.id || connObj.targetHandleId === h.id);
-                                });
-                                if (hasConnection) return true;
-                            }
-                            
-                            // Method 2: Check if outlet's input handle is connected to this circuit handle
-                            const outletInputHandle = currentOutlet.handles?.input;
-                            if (outletInputHandle) {
-                                const hasDirectConnection = connections.some(conn => {
-                                    return ((conn.sourceItemId === currentOutlet.id && conn.sourceHandleId === outletInputHandle.id &&
-                                             conn.targetItemId === otherItem.id && conn.targetHandleId === h.id) ||
-                                            (conn.targetItemId === currentOutlet.id && conn.targetHandleId === outletInputHandle.id &&
-                                             conn.sourceItemId === otherItem.id && conn.sourceHandleId === h.id));
-                                });
-                                if (hasDirectConnection) return true;
-                            }
-                            
-                            return false;
-                        });
-                        
-                        if (circuitHandle && circuitHandle.circuitName) {
-                            const circuitIndex = parseInt(circuitHandle.id.match(/circuit-(\d+)/)?.[1]) - 1;
-                            if (circuitIndex >= 0 && circuitIndex < otherItem.specs.circuits.length) {
-                                // Use unified breaker state checking
-                                if (!LiveView.BreakerManager.isSpiderBoxCircuitClosed(otherItem, circuitIndex)) {
-                                    return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                                }
-                                // Verify spider box is connected to a power source
-                                if (!hasPowerSourceConnection(otherItem)) {
-                                    return { isLive: false, message: "This circuit has no power. Check your breakers." };
-                                }
-                                return { isLive: true };
-                            }
-                        }
-                    }
-                    
-                    // If it's another outlet, check if we're tracing backwards through daisy-chain
-                    // Current outlet's INPUT should be connected to previous outlet's OUTPUT
-                    if (otherItem.type === 'acoutlet') {
-                        const currentOutletInput = currentOutlet.handles?.input;
-                        const previousOutletOutput = otherItem.handles?.output;
-                        
-                        // Check if this connection is: previousOutlet.output → currentOutlet.input
-                        if (currentOutletInput && previousOutletOutput &&
-                            (outletConn.sourceHandleId === previousOutletOutput.id || outletConn.targetHandleId === previousOutletOutput.id) &&
-                            (outletConn.sourceHandleId === currentOutletInput.id || outletConn.targetHandleId === currentOutletInput.id)) {
-                            // This is a daisy-chain connection going backwards - trace through it
-                            const result = traceToBreaker(otherItem);
-                            if (result) return result;
-                        }
-                    }
+
+            const powerLink = findLoadPowerConnection(load);
+            if (!powerLink) {
+                return { isLive: false, message: "Load not connected to outlet" };
+            }
+
+            const { otherItem } = powerLink;
+
+            if (otherItem.type === 'acoutlet') {
+                const outletStatus = checkOutletCircuitStatus(otherItem);
+                if (!outletStatus.isLive) {
+                    return {
+                        isLive: false,
+                        message: outletStatus.message || "This circuit has no power. Check your breakers.",
+                    };
                 }
-                
-                return null;
-            };
-            
-            const result = traceToBreaker(outlet);
-            if (result) return result;
-            
-            return { isLive: false, message: "Circuit not found" };
+                return { isLive: true };
+            }
+
+            const directStatus = checkDirectACSourceLive(otherItem);
+            if (directStatus) return directStatus;
+
+            return { isLive: false, message: "Load not connected to a valid AC source" };
         }
         
         // Check if turning on a load would trip a breaker
@@ -9365,7 +9626,9 @@
             }
         }
         
-        function renderWires() {
+        function renderWires(options = {}) {
+            const pathsOnly = options.pathsOnly === true;
+
             // Phase 1.3: Use viewport culling to only render visible connections
             const visibleConnections = getVisibleConnections();
             const wireGroups = wiresGroup.selectAll(".wire-group")
@@ -9375,7 +9638,8 @@
             
             const newWireGroups = wireGroups.enter()
                 .append("g")
-                .attr("class", "wire-group");
+                .attr("class", "wire-group")
+                .attr("data-connection-id", d => d.id);
 
             // Invisible wide hit path for touch — sits below the visual wire
             newWireGroups.append("path")
@@ -9450,12 +9714,25 @@
             
             const mergedGroups = wireGroups.merge(newWireGroups);
 
-            mergedGroups.select(".wire-hit-area")
-                .attr("d", d => generateWirePath(d));
-            
-            // Update wire path and classes
+            mergedGroups.attr("data-connection-id", d => d.id);
+
+            mergedGroups.each(function(d) {
+                let path = generateWirePath(d);
+                if (!path) {
+                    invalidateWirePathCache(d.id);
+                    path = generateWirePath(d);
+                }
+                const group = d3.select(this);
+                group.select(".wire-hit-area").attr("d", path);
+                group.select("path.wire").attr("d", path);
+            });
+
+            if (pathsOnly) {
+                return;
+            }
+
+            // Update wire classes and styling (paths set above)
             mergedGroups.select(".wire")
-                .attr("d", d => generateWirePath(d))
                 .classed("selected", d => selectedConnection && selectedConnection.id === d.id)
                 .classed("power-flowing", d => {
                     if (USE_LITE_LIVE_VISUALS) return false;
@@ -9825,6 +10102,13 @@
                 .attr("stroke-width", d => {
                     // Get base width from wire gauge
                     const baseWidth = getWireStrokeWidth(d);
+
+                    if (currentMode === 'simulate') {
+                        const resourceFlow = SimulateMode.resourceFlow && SimulateMode.resourceFlow[d.id];
+                        if (resourceFlow?.isFlowing) {
+                            return Math.max(4, baseWidth + 1.5);
+                        }
+                    }
                     
                     // In simulate mode, make live wires slightly thicker for visibility (works even when paused)
                     if (currentMode === 'simulate') {
@@ -9939,8 +10223,8 @@
                         d3.select(this).attr('transform', `translate(${event.x}, ${event.y})`);
                         // Phase 1.3: Invalidate cache when waypoint moves
                         invalidateWirePathCache(conn.id);
-                        // Update wire path in real-time
-                        group.select('.wire').attr('d', generateWirePath(conn));
+                        const path = generateWirePath(conn);
+                        applyWirePathToDom(conn.id, path);
                     })
                     .on('end', function(event) {
                         d3.select(this).select('.waypoint-inner')
@@ -10149,10 +10433,182 @@
             if (handleKey) {
                 return Object.values(item.handles).find(h => h && h.id === handleKey) || null;
             }
+
+            // Recover stale handle refs after port regeneration
+            if (conn.polarity === 'resource' && conn.resourceType) {
+                const otherItemId = role === 'source' ? conn.targetItemId : conn.sourceItemId;
+                const otherHandleId = role === 'source' ? conn.targetHandleId : conn.sourceHandleId;
+                const otherItem = allItems.find(i => i.id === otherItemId);
+                const otherHandle = otherItem
+                    ? Object.values(otherItem.handles || {}).find(h => h?.id === otherHandleId)
+                    : null;
+                const wantPolarity = otherHandle?.polarity === 'input'
+                    ? 'output'
+                    : otherHandle?.polarity === 'output'
+                        ? 'input'
+                        : null;
+                const candidates = Object.values(item.handles).filter((h) => {
+                    if (!h?.resourceType) return false;
+                    if (h.resourceType === conn.resourceType) return true;
+                    if (h.resourceType === RESOURCE_TYPES.GENERIC) return true;
+                    if (item.specs?.resourceType === RESOURCE_TYPES.GENERIC) return true;
+                    return false;
+                });
+                const match = wantPolarity
+                    ? candidates.find(h => h.polarity === wantPolarity)
+                    : candidates[0];
+                if (match) {
+                    conn[idField] = match.id;
+                    const keyEntry = Object.entries(item.handles).find(([, h]) => h?.id === match.id);
+                    if (keyEntry) conn[keyField] = keyEntry[0];
+                    return match;
+                }
+            }
+
+            if (conn.polarity === 'load' && item.handles.cord) {
+                conn[idField] = item.handles.cord.id;
+                if (!conn[keyField]) conn[keyField] = 'cord';
+                return item.handles.cord;
+            }
+
             return null;
         }
 
+        function areHandlesConnectable(sourceItem, sourceHandle, targetItem, targetHandle) {
+            if (!sourceItem || !targetItem || !sourceHandle || !targetHandle) return false;
+            if (sourceItem.id === targetItem.id && sourceHandle.id === targetHandle.id) return false;
+
+            const resourceValidation = validateResourceTypeCompatibility(
+                sourceItem, sourceHandle, targetItem, targetHandle,
+            );
+            if (!resourceValidation.valid) return false;
+
+            const voltageValidation = validateACVoltageCompatibility(
+                sourceItem, sourceHandle, targetItem, targetHandle,
+            );
+            return voltageValidation.valid;
+        }
+
+        function normalizeConnectionEndpoints(sourceItem, sourceHandle, targetItem, targetHandle) {
+            // Resource pipes: store as output → input for consistent flow animation
+            if (sourceHandle.resourceType && targetHandle.resourceType) {
+                if (sourceHandle.polarity === 'input' && targetHandle.polarity === 'output') {
+                    return {
+                        sourceItem: targetItem,
+                        sourceHandle: targetHandle,
+                        targetItem: sourceItem,
+                        targetHandle: sourceHandle,
+                    };
+                }
+                return { sourceItem, sourceHandle, targetItem, targetHandle };
+            }
+
+            // AC cords: outlet/source → load cord for power-flow direction
+            const sourceIsLoad = sourceItem.type === 'acload' || sourceItem.type === 'processor';
+            const targetIsLoad = targetItem.type === 'acload' || targetItem.type === 'processor';
+            if (sourceHandle.polarity === 'load' && !targetIsLoad) {
+                return {
+                    sourceItem: targetItem,
+                    sourceHandle: targetHandle,
+                    targetItem: sourceItem,
+                    targetHandle: sourceHandle,
+                };
+            }
+            if (targetHandle.polarity === 'load' && sourceIsLoad) {
+                return {
+                    sourceItem: targetItem,
+                    sourceHandle: targetHandle,
+                    targetItem: sourceItem,
+                    targetHandle: sourceHandle,
+                };
+            }
+
+            return { sourceItem, sourceHandle, targetItem, targetHandle };
+        }
+
+        function getConnectedResourceContainer(ownerItem, ownerHandle) {
+            if (!ownerHandle?.connectedTo?.length) return null;
+
+            for (const ref of ownerHandle.connectedTo) {
+                const conn = connections.find(c => c.id === ref.connectionId);
+                if (!conn) continue;
+
+                const otherItemId = conn.sourceItemId === ownerItem.id ? conn.targetItemId : conn.sourceItemId;
+                const otherHandleId = conn.sourceItemId === ownerItem.id ? conn.targetHandleId : conn.sourceHandleId;
+                const otherItem = allItems.find(i => i.id === otherItemId);
+                if (!otherItem || otherItem.type !== 'resourcecontainer') continue;
+
+                const otherHandle = Object.values(otherItem.handles || {}).find(h => h?.id === otherHandleId);
+                if (!otherHandle) return otherItem;
+
+                if (ownerHandle.polarity === 'input' && otherHandle.polarity === 'output') return otherItem;
+                if (ownerHandle.polarity === 'output' && otherHandle.polarity === 'input') return otherItem;
+            }
+
+            return null;
+        }
+
+        function remigrateLoadPortConnections(load) {
+            connections.forEach((conn) => {
+                if (conn.sourceItemId !== load.id && conn.targetItemId !== load.id) return;
+                if (conn.polarity !== 'resource') return;
+
+                const role = conn.sourceItemId === load.id ? 'source' : 'target';
+                const handle = resolveWireHandle(load, conn, role);
+                if (!handle) return;
+
+                if (conn.sourceItemId === load.id) {
+                    conn.sourceHandleId = handle.id;
+                    const keyEntry = Object.entries(load.handles).find(([, h]) => h?.id === handle.id);
+                    if (keyEntry) conn.sourceHandleKey = keyEntry[0];
+                } else {
+                    conn.targetHandleId = handle.id;
+                    const keyEntry = Object.entries(load.handles).find(([, h]) => h?.id === handle.id);
+                    if (keyEntry) conn.targetHandleKey = keyEntry[0];
+                }
+
+                handle.connectedTo = handle.connectedTo || [];
+                const otherItemId = conn.sourceItemId === load.id ? conn.targetItemId : conn.sourceItemId;
+                const otherHandleId = conn.sourceItemId === load.id ? conn.targetHandleId : conn.sourceHandleId;
+                if (!handle.connectedTo.some(r => r.connectionId === conn.id)) {
+                    handle.connectedTo.push({
+                        itemId: otherItemId,
+                        handleId: otherHandleId,
+                        connectionId: conn.id,
+                    });
+                }
+                invalidatedConnections.add(conn.id);
+            });
+        }
+
         function normalizeImportedConnections(items, connections) {
+            const normalizePolarity = (p) => {
+                if (p === 'pv-positive') return 'positive';
+                if (p === 'pv-negative') return 'negative';
+                return p;
+            };
+
+            const inferHandleSide = (item, handle) => {
+                if (handle?.side) return handle.side;
+                const centerX = (item.width || 0) / 2;
+                const centerY = (item.height || 0) / 2;
+                const dx = (handle?.x ?? 0) - centerX;
+                const dy = (handle?.y ?? 0) - centerY;
+                if (Math.abs(dx) > Math.abs(dy)) {
+                    return dx > 0 ? 'right' : 'left';
+                }
+                return dy > 0 ? 'bottom' : 'top';
+            };
+
+            items.forEach((item) => {
+                if (!item?.handles) return;
+                Object.values(item.handles).forEach((handle) => {
+                    if (handle && !handle.side) {
+                        handle.side = inferHandleSide(item, handle);
+                    }
+                });
+            });
+
             connections.forEach((conn) => {
                 const sourceItem = items.find((i) => i.id === conn.sourceItemId);
                 const targetItem = items.find((i) => i.id === conn.targetItemId);
@@ -10160,8 +10616,39 @@
 
                 const sourceHandle = resolveWireHandle(sourceItem, conn, 'source');
                 const targetHandle = resolveWireHandle(targetItem, conn, 'target');
-                if (sourceHandle) conn.sourceHandleId = sourceHandle.id;
-                if (targetHandle) conn.targetHandleId = targetHandle.id;
+                if (sourceHandle) {
+                    conn.sourceHandleId = sourceHandle.id;
+                    if (!conn.sourceHandleKey) {
+                        const keyEntry = Object.entries(sourceItem.handles)
+                            .find(([, handle]) => handle?.id === sourceHandle.id);
+                        if (keyEntry) conn.sourceHandleKey = keyEntry[0];
+                    }
+                }
+                if (targetHandle) {
+                    conn.targetHandleId = targetHandle.id;
+                    if (!conn.targetHandleKey) {
+                        const keyEntry = Object.entries(targetItem.handles)
+                            .find(([, handle]) => handle?.id === targetHandle.id);
+                        if (keyEntry) conn.targetHandleKey = keyEntry[0];
+                    }
+                }
+
+                if (!conn.polarity && sourceHandle && targetHandle) {
+                    const srcPol = normalizePolarity(sourceHandle.polarity);
+                    const tgtPol = normalizePolarity(targetHandle.polarity);
+                    if (srcPol === tgtPol) {
+                        conn.polarity = srcPol;
+                    } else if (sourceHandle.polarity === 'parallel' && targetHandle.polarity === 'parallel') {
+                        conn.polarity = 'parallel';
+                    } else if (sourceHandle.polarity === 'load' || targetHandle.polarity === 'load') {
+                        conn.polarity = 'load';
+                    } else if (sourceHandle.resourceType && targetHandle.resourceType) {
+                        conn.polarity = 'resource';
+                        conn.resourceType = sourceHandle.resourceType;
+                    } else {
+                        conn.polarity = 'mixed';
+                    }
+                }
 
                 // Designer handoff does not include manual wire routing — drop stale simulator waypoints.
                 delete conn.waypoints;
@@ -10182,19 +10669,61 @@
                 invalidatedConnections.clear();
             }
         }
+
+        function collectConnectionsForItemIds(itemIds) {
+            const seen = new Set();
+            const result = [];
+            for (const itemId of itemIds) {
+                for (const conn of getConnectionsForItem(itemId)) {
+                    if (!seen.has(conn.id)) {
+                        seen.add(conn.id);
+                        result.push(conn);
+                    }
+                }
+            }
+            return result;
+        }
+
+        function applyWirePathToDom(connId, path) {
+            if (!path) return false;
+            const connKey = String(connId);
+            let group = wiresGroup.select(`.wire-group[data-connection-id="${connKey}"]`);
+            if (group.empty()) {
+                group = wiresGroup.selectAll(".wire-group").filter(d => d && String(d.id) === connKey);
+            }
+            if (group.empty()) return false;
+            group.select(".wire-hit-area").attr("d", path);
+            group.select("path.wire").attr("d", path);
+            return true;
+        }
+
+        function updateWirePathsForConnections(conns) {
+            if (!conns.length) return;
+
+            for (const conn of conns) {
+                invalidateWirePathCache(conn.id);
+                const path = generateWirePath(conn);
+                applyWirePathToDom(conn.id, path);
+            }
+        }
         
         // Generate a smooth bezier curve between two handles (with caching)
         function generateWirePath(conn) {
+            // During drag, always recompute — endpoints move every frame.
+            const useCache = !isDragging;
+
             // Check cache first (if not invalidated)
-            if (!invalidatedConnections.has(conn.id)) {
+            if (useCache && !invalidatedConnections.has(conn.id)) {
                 const cached = wirePathCache.get(conn.id);
                 if (cached !== undefined) {
                     return cached;
                 }
             }
             
-            const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
-            const targetItem = allItems.find(i => i.id === conn.targetItemId);
+            const sourceItem = getItemById(conn.sourceItemId)
+                || allItems.find(i => i.id === conn.sourceItemId);
+            const targetItem = getItemById(conn.targetItemId)
+                || allItems.find(i => i.id === conn.targetItemId);
             if (!sourceItem || !targetItem) return "";
             
             const sourceHandle = resolveWireHandle(sourceItem, conn, 'source');
@@ -10213,9 +10742,14 @@
                 path = generateWaypointPath(start, end, conn.waypoints, sourceHandle.side, targetHandle.side);
             }
             
-            // Cache the result
-            wirePathCache.set(conn.id, path);
-            invalidatedConnections.delete(conn.id);
+            // Cache successful paths only — empty paths mean handles aren't ready yet
+            if (useCache && path) {
+                wirePathCache.set(conn.id, path);
+                invalidatedConnections.delete(conn.id);
+            } else if (useCache) {
+                wirePathCache.delete(conn.id);
+                invalidatedConnections.add(conn.id);
+            }
             
             return path;
         }
@@ -10434,21 +10968,12 @@
                 });
             }
             
-            // Phase 1.3: Invalidate wire path cache for connections involving moved nodes
-            connections.forEach(conn => {
-                if (conn.sourceItemId === d.id || conn.targetItemId === d.id) {
-                    invalidateWirePathCache(conn.id);
-                }
-            });
-            
-            // Phase 1.3: Debounced wire rendering during drag
-            if (!_wireRenderScheduled) {
-                _wireRenderScheduled = true;
-                requestAnimationFrame(() => {
-                    _wireRenderScheduled = false;
-                    renderWires();
-                });
+            // Update wire paths synchronously so lines track nodes in the same frame
+            const movedItemIds = [d.id];
+            if (d._arrayOffsets) {
+                d._arrayOffsets.forEach(({ panel }) => movedItemIds.push(panel.id));
             }
+            updateWirePathsForConnections(collectConnectionsForItemIds(movedItemIds));
         }
         
         function dragEnded(event, d) {
@@ -10489,6 +11014,12 @@
             if (d) {
                 d._duplicating = false;
             }
+
+            if (d && !d._wasDuplicating) {
+                historyManager.pushState();
+            }
+
+            render();
         }
         
         function showParallelStringFeedback() {
@@ -10513,8 +11044,6 @@
             
             // Get individual panel wattage from connected panels
             const panelWattage = getIndividualPanelWattage(controller);
-            
-            if (!areHintsEnabled()) return;
             
             // Show enhanced incident report for parallel string addition
             showIncidentReport(INCIDENT_TEMPLATES.parallelStringAdded(
@@ -10943,16 +11472,16 @@
                 _dragCursorDot.attr("cx", mouseX).attr("cy", mouseY);
             }
 
-            const snapDist = HANDLE_RADIUS * 8;
-            let nearestItem = null, nearestHandle = null, nearestDist = snapDist;
+            const snapDistSq = (HANDLE_RADIUS * 8) ** 2;
+            let nearestItem = null, nearestHandle = null, nearestDistSq = snapDistSq;
 
             for (const candidate of allItems) {
                 for (const h of Object.values(candidate.handles)) {
                     if (candidate.id === draggingHandle.itemId && h.id === draggingHandle.handleId) continue;
                     const pos = getHandlePosition(candidate, h);
-                    const dist = Math.sqrt((mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2);
-                    if (dist < nearestDist) {
-                        nearestDist = dist;
+                    const distSq = (mouseX - pos.x) ** 2 + (mouseY - pos.y) ** 2;
+                    if (distSq < nearestDistSq && areHandlesConnectable(sourceItem, sourceHandle, candidate, h)) {
+                        nearestDistSq = distSq;
                         nearestItem = candidate;
                         nearestHandle = h;
                     }
@@ -11024,7 +11553,7 @@
                     const pos = getHandlePosition(item, handle);
                     const dist = Math.sqrt((x - pos.x) ** 2 + (y - pos.y) ** 2);
                     
-                    if (dist < closestDist) {
+                    if (dist < closestDist && areHandlesConnectable(sourceItem, sourceHandle, item, handle)) {
                         closestDist = dist;
                         targetItem = item;
                         targetHandle = handle;
@@ -11615,6 +12144,10 @@
         }
         
         function createConnection(sourceItem, sourceHandle, targetItem, targetHandle) {
+            ({ sourceItem, sourceHandle, targetItem, targetHandle } = normalizeConnectionEndpoints(
+                sourceItem, sourceHandle, targetItem, targetHandle,
+            ));
+
             // Check if connection already exists
             const exists = connections.some(c => 
                 (c.sourceHandleId === sourceHandle.id && c.targetHandleId === targetHandle.id) ||
@@ -11707,6 +12240,7 @@
             };
             
             connections.push(conn);
+            invalidateWirePathCache(conn.id);
             invalidateSpecsCache(); // Connections changed - clear cached specs
             sourceHandle.connectedTo.push({ itemId: targetItem.id, handleId: targetHandle.id, connectionId: conn.id });
             targetHandle.connectedTo.push({ itemId: sourceItem.id, handleId: sourceHandle.id, connectionId: conn.id });
@@ -11861,7 +12395,7 @@
             sidebar.classList.remove('closed');
             
             // Switch to inspector tab
-            switchRightPanelTab('inspector');
+            switchRightPanelTab('inspector', { force: true });
             
             // Show quick actions
             showQuickActions(true);
@@ -13465,438 +13999,9 @@
         // PHASE 6: FAULT DETECTION AND PROTECTION SYSTEM
         // ============================================
         
-        // Fault detection system
-        function detectFaults() {
-            const faults = [];
-            const warnings = [];
-            
-            // Check all controllers
-            const controllers = allItems.filter(i => i.type === 'controller');
-            controllers.forEach(controller => {
-                // Skip if already destroyed
-                if (controller.destroyed) return;
-                
-                const arraySpecs = calculateConnectedArraySpecs(controller);
-                const batterySpecs = calculateConnectedBatterySpecs(controller);
-                
-                // FAULT 1: Array VOC > controller limit (already handled, but ensure it's in fault list)
-                if (arraySpecs.voc > controller.specs.maxVoc) {
-                    if (!controller.destroyed) {
-                        faults.push({
-                            type: 'controller_voc_overload',
-                            controller: controller,
-                            actualVoltage: arraySpecs.voc,
-                            maxVoltage: controller.specs.maxVoc
-                        });
-                    }
-                }
-                
-                // FAULT 2: 48V battery to 12V controller (voltage mismatch)
-                if (batterySpecs.voltage > 0) {
-                    const supportedVoltages = controller.specs.supportedVoltages || [12, 24, 48];
-                    const maxSupportedVoltage = Math.max(...supportedVoltages);
-                    const nominalBatteryVoltage = Math.round(batterySpecs.voltage / 12) * 12;
-                    
-                    // Check if battery voltage significantly exceeds max supported (e.g., 48V on 12V-only controller)
-                    if (batterySpecs.voltage > maxSupportedVoltage + 10 && !controller.destroyed) {
-                        faults.push({
-                            type: 'controller_battery_overvoltage',
-                            controller: controller,
-                            batteryVoltage: batterySpecs.voltage,
-                            maxSupportedVoltage: maxSupportedVoltage
-                        });
-                    }
-                    
-                    // WARNING: Incompatible battery voltage (not fatal, but won't work)
-                    if (!supportedVoltages.includes(nominalBatteryVoltage) && batterySpecs.voltage > 12 && batterySpecs.voltage <= maxSupportedVoltage + 10) {
-                        warnings.push({
-                            type: 'incompatible_battery_voltage',
-                            controller: controller,
-                            batteryVoltage: nominalBatteryVoltage,
-                            supportedVoltages: supportedVoltages
-                        });
-                    }
-                }
-                
-                // FAULT 3: Battery reverse polarity (check connections)
-                // This is a critical fault - wrong polarity destroys the controller immediately
-                // Only triggers when BOTH battery wires are connected (circuit is complete)
-                const battPosConn = controller.handles?.batteryPositive?.connectedTo || [];
-                const battNegConn = controller.handles?.batteryNegative?.connectedTo || [];
-                
-                // Only check if both connections exist (circuit is complete)
-                if (battPosConn.length > 0 && battNegConn.length > 0) {
-                    let reversePolarityDetected = false;
-                    let faultBattery = null;
-                    
-                    // Check if controller BATT+ is connected to battery negative terminal
-                    for (const posConn of battPosConn) {
-                        const battery = allItems.find(i => i.id === posConn.itemId && i.type === 'battery');
-                        if (battery) {
-                            const connectedHandle = Object.values(battery.handles).find(h => h.id === posConn.handleId);
-                            if (connectedHandle && connectedHandle.polarity === 'negative') {
-                                reversePolarityDetected = true;
-                                faultBattery = battery;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Also check if controller BATT- is connected to battery positive terminal
-                    if (!reversePolarityDetected) {
-                        for (const negConn of battNegConn) {
-                            const battery = allItems.find(i => i.id === negConn.itemId && i.type === 'battery');
-                            if (battery) {
-                                const connectedHandle = Object.values(battery.handles).find(h => h.id === negConn.handleId);
-                                if (connectedHandle && connectedHandle.polarity === 'positive') {
-                                    reversePolarityDetected = true;
-                                    faultBattery = battery;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // If reverse polarity detected and controller not already destroyed
-                    if (reversePolarityDetected && faultBattery && !controller.destroyed) {
-                        faults.push({
-                            type: 'battery_reverse_polarity',
-                            controller: controller,
-                            battery: faultBattery
-                        });
-                    }
-                }
-                
-                // WARNING: Reversed solar panel polarity
-                // This is a warning - panels with reverse polarity won't damage the controller but won't produce power
-                // Only triggers when BOTH PV wires are connected (circuit is complete)
-                const pvPosConn = controller.handles?.pvPositive?.connectedTo || [];
-                const pvNegConn = controller.handles?.pvNegative?.connectedTo || [];
-                
-                // Only check if both connections exist (circuit is complete)
-                if (pvPosConn.length > 0 && pvNegConn.length > 0) {
-                    let reversePanelDetected = false;
-                    let faultPanel = null;
-                    
-                    // Check if PV+ is connected to panel negative terminal
-                    for (const posConn of pvPosConn) {
-                        const panel = allItems.find(i => i.id === posConn.itemId && i.type === 'panel');
-                        if (panel) {
-                            const connectedHandle = Object.values(panel.handles).find(h => h.id === posConn.handleId);
-                            if (connectedHandle && connectedHandle.polarity === 'negative') {
-                                reversePanelDetected = true;
-                                faultPanel = panel;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // Also check if PV- is connected to panel positive terminal
-                    if (!reversePanelDetected) {
-                        for (const negConn of pvNegConn) {
-                            const panel = allItems.find(i => i.id === negConn.itemId && i.type === 'panel');
-                            if (panel) {
-                                const connectedHandle = Object.values(panel.handles).find(h => h.id === negConn.handleId);
-                                if (connectedHandle && connectedHandle.polarity === 'positive') {
-                                    reversePanelDetected = true;
-                                    faultPanel = panel;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // Add warning if detected
-                    if (reversePanelDetected && faultPanel) {
-                        warnings.push({
-                            type: 'reversed_panel_polarity',
-                            controller: controller,
-                            panel: faultPanel
-                        });
-                    }
-                }
-                
-                // WARNING: Array IMP too high (clipping)
-                if (arraySpecs.imp > controller.specs.maxIsc) {
-                    warnings.push({
-                        type: 'array_imp_clipping',
-                        controller: controller,
-                        actualImp: arraySpecs.imp,
-                        maxIsc: controller.specs.maxIsc
-                    });
-                }
-            });
-            
-            // Check all AC loads
-            const acLoads = allItems.filter(i => i.type === 'acload');
-            acLoads.forEach(load => {
-                if (load.destroyed) return;
-                
-                // FAULT 4: 120VAC load to 240V line
-                if (load.specs.voltage === 120) {
-                    // Find the circuit this load is on
-                    const loadConn = connections.find(c => 
-                        (c.sourceItemId === load.id && c.polarity === 'load') ||
-                        (c.targetItemId === load.id && c.polarity === 'load')
-                    );
-                    
-                    if (loadConn) {
-                        // Trace back to find the voltage source
-                        const sourceItem = allItems.find(i => 
-                            i.id === (loadConn.sourceItemId === load.id ? loadConn.targetItemId : loadConn.sourceItemId)
-                        );
-                        
-                        if (sourceItem) {
-                            let circuitVoltage = null;
-                            
-                            // Check if connected to outlet
-                            if (sourceItem.type === 'acoutlet' && sourceItem.specs.voltage) {
-                                circuitVoltage = sourceItem.specs.voltage;
-                            }
-                            // Check if connected to breaker panel
-                            else if (sourceItem.type === 'breakerpanel') {
-                                const circuitHandle = Object.values(sourceItem.handles).find(h => 
-                                    h.circuitName && loadConn.sourceHandleId === h.id || loadConn.targetHandleId === h.id
-                                );
-                                if (circuitHandle && circuitHandle.voltage) {
-                                    circuitVoltage = circuitHandle.voltage;
-                                }
-                            }
-                            // Check if connected to spiderbox
-                            else if (sourceItem.type === 'spiderbox') {
-                                const circuitHandle = Object.values(sourceItem.handles).find(h => 
-                                    h.circuitName && loadConn.sourceHandleId === h.id || loadConn.targetHandleId === h.id
-                                );
-                                if (circuitHandle && circuitHandle.voltage) {
-                                    circuitVoltage = circuitHandle.voltage;
-                                }
-                            }
-                            // Check if connected to AC breaker
-                            else if (sourceItem.type === 'acbreaker' && sourceItem.specs.voltage) {
-                                circuitVoltage = sourceItem.specs.voltage;
-                            }
-                            // Check if connected to double voltage hub
-                            else if (sourceItem.type === 'doublevoltagehub') {
-                                const hubAcOutputHandle = sourceItem.handles?.acOutput;
-                                if (hubAcOutputHandle && 
-                                    (loadConn.sourceHandleId === hubAcOutputHandle.id || loadConn.targetHandleId === hubAcOutputHandle.id)) {
-                                    circuitVoltage = 240; // Double voltage hub outputs 240V
-                                }
-                            }
-                            
-                            // If 120V load is on 240V circuit, it will explode
-                            if (circuitVoltage === 240 && LiveView.state.active && LiveView.state.loadStates[load.id]) {
-                                faults.push({
-                                    type: 'load_240v_explosion',
-                                    load: load,
-                                    circuitVoltage: circuitVoltage
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // Check all wires for overcurrent (too-thin wire without breaker)
-            connections.forEach(conn => {
-                if (conn.destroyed || conn.burned) return;
-                
-                // Get wire current
-                const currentAmps = calculateWireCurrent(conn);
-                const wireSpec = conn.wireGauge ? WIRE_GAUGE_SPECS[conn.wireGauge] : getWireGaugeForAmps(currentAmps);
-                
-                // Check if wire is too thin for the current
-                if (wireSpec && currentAmps > wireSpec.amps) {
-                    // Check if there's a breaker protecting this wire
-                    let hasBreaker = false;
-                    
-                    // Trace back to find breaker
-                    const sourceItem = allItems.find(i => i.id === conn.sourceItemId);
-                    const targetItem = allItems.find(i => i.id === conn.targetItemId);
-                    
-                    // Check if source or target is a breaker
-                    if ((sourceItem && (sourceItem.type === 'acbreaker' || sourceItem.type === 'breaker')) ||
-                        (targetItem && (targetItem.type === 'acbreaker' || targetItem.type === 'breaker'))) {
-                        hasBreaker = true;
-                    }
-                    
-                    // Check if wire is on a breaker panel circuit
-                    if (!hasBreaker) {
-                        if (sourceItem && sourceItem.type === 'breakerpanel') {
-                            const circuitHandle = Object.values(sourceItem.handles).find(h => h.id === conn.sourceHandleId);
-                            if (circuitHandle && circuitHandle.circuitName) {
-                                // Check if circuit breaker is closed
-                                const breakerId = `${sourceItem.id}-circuit-${circuitHandle.circuitName.replace('Circuit ', '')}`;
-                                if (LiveView.state.breakerStates[breakerId]?.isClosed) {
-                                    hasBreaker = true;
-                                }
-                            }
-                        }
-                    }
-                    
-                    // If no breaker and wire is overloaded, it will burn
-                    if (!hasBreaker && currentAmps > wireSpec.amps * 1.2) { // 20% over rating to trigger
-                        // Only check in live view when circuit is actually live
-                        if (LiveView.state.active) {
-                            const powerFlow = LiveView.state.powerFlow[conn.id];
-                            if (powerFlow && powerFlow.isLive && powerFlow.watts > 0) {
-                                faults.push({
-                                    type: 'wire_overcurrent',
-                                    connection: conn,
-                                    currentAmps: currentAmps,
-                                    wireRating: wireSpec.amps,
-                                    wireGauge: wireSpec.gauge
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // Check for battery dead short (+ to - direct connection)
-            const batteries = allItems.filter(i => i.type === 'battery');
-            batteries.forEach(battery => {
-                if (battery.destroyed) return;
-                
-                const posHandle = battery.handles?.positive || battery.handles?.batteryPositive;
-                const negHandle = battery.handles?.negative || battery.handles?.batteryNegative;
-                
-                if (posHandle && negHandle) {
-                    // Check if positive and negative are directly connected (dead short)
-                    const posConns = posHandle.connectedTo || [];
-                    const negConns = negHandle.connectedTo || [];
-                    
-                    for (const posConn of posConns) {
-                        for (const negConn of negConns) {
-                            // If same connection ID, it's a direct short
-                            if (posConn.connectionId === negConn.connectionId) {
-                                // Check if battery has internal protection
-                                const hasInternalProtection = battery.specs.hasInternalProtection !== false; // Default to true
-                                
-                                if (!hasInternalProtection) {
-                                    faults.push({
-                                        type: 'battery_dead_short',
-                                        battery: battery,
-                                        connection: connections.find(c => c.id === posConn.connectionId)
-                                    });
-                                } else {
-                                    warnings.push({
-                                        type: 'battery_dead_short_protected',
-                                        battery: battery
-                                    });
-                                }
-                            }
-                        }
-                    }
-                }
-            });
-            
-            return { faults, warnings };
-        }
-        
-        // Process detected faults and warnings
-        function processFaultsAndWarnings() {
-            const { faults, warnings } = detectFaults();
-            
-            // Process faults (destructive)
-            faults.forEach(fault => {
-                switch (fault.type) {
-                    case 'controller_voc_overload':
-                        if (!fault.controller.destroyed) {
-                            fault.controller.destroyed = true;
-                            triggerOverloadEffect(fault.controller, fault.actualVoltage, fault.maxVoltage);
-                        }
-                        break;
-                        
-                    case 'controller_battery_overvoltage':
-                        if (!fault.controller.destroyed) {
-                            fault.controller.destroyed = true;
-                            triggerBatteryOvervoltageExplosion(fault.controller, fault.batteryVoltage, fault.maxSupportedVoltage);
-                        }
-                        break;
-                        
-                    case 'battery_reverse_polarity':
-                        if (!fault.controller.destroyed) {
-                            fault.controller.destroyed = true;
-                            triggerReversePolarityExplosion(fault.controller, fault.battery);
-                        }
-                        break;
-                        
-                    case 'load_240v_explosion':
-                        if (!fault.load.destroyed) {
-                            fault.load.destroyed = true;
-                            triggerLoadExplosion(fault.load, fault.circuitVoltage);
-                        }
-                        break;
-                        
-                    case 'wire_overcurrent':
-                        if (!fault.connection.burned) {
-                            fault.connection.burned = true;
-                            triggerWireBurn(fault.connection, fault.currentAmps, fault.wireRating);
-                        }
-                        break;
-                        
-                    case 'battery_dead_short':
-                        if (!fault.battery.destroyed) {
-                            fault.battery.destroyed = true;
-                            triggerBatteryShort(fault.battery, fault.connection);
-                        }
-                        break;
-                }
-            });
-            
-            // Process warnings (non-destructive)
-            warnings.forEach(warning => {
-                switch (warning.type) {
-                    case 'reversed_panel_polarity':
-                        if (!warning.controller.reversedPolarityWarningShown) {
-                            warning.controller.reversedPolarityWarningShown = true;
-                            // Show enhanced incident report for reversed panel polarity
-                            showIncidentReport(INCIDENT_TEMPLATES.reversedPanelPolarity(warning.controller, warning.panel));
-                            // Add visual warning to the panel
-                            setDamageState(warning.panel.id, 'warning', 0);
-                        }
-                        break;
-                        
-                    case 'array_imp_clipping':
-                        // Already handled in validateSystem, but ensure it's shown
-                        break;
-                        
-                    case 'incompatible_battery_voltage':
-                        // Already handled in validateSystem
-                        break;
-                        
-                    case 'battery_dead_short_protected':
-                        if (!warning.battery.shortCircuitWarningShown) {
-                            warning.battery.shortCircuitWarningShown = true;
-                            showIncidentReport({
-                                type: 'warning',
-                                icon: '⚠️',
-                                category: 'PROTECTION ACTIVATED',
-                                title: 'Short Circuit Detected',
-                                description: 'A dead short was detected on this battery. The battery\'s internal BMS (Battery Management System) protection has activated to prevent damage.',
-                                math: [
-                                    { label: 'Condition', value: 'Direct short circuit', status: 'danger' },
-                                    { label: 'Protection', value: 'BMS activated', status: 'good' },
-                                    { label: 'Battery Status', value: 'Protected', status: 'good' }
-                                ],
-                                realworld: 'Modern lithium batteries include a Battery Management System (BMS) that detects dangerous conditions like short circuits and disconnects the cells to prevent thermal runaway. While this protection saved the battery, the condition should be corrected immediately.',
-                                solutions: [
-                                    'Remove the short circuit connection immediately',
-                                    'Check for accidental wire contact between terminals',
-                                    'Ensure all connections include proper loads or fuses',
-                                    'The battery should recover once the short is removed'
-                                ],
-                                learnMoreTopic: 'battery-safety'
-                            });
-                            // Add visual warning to the battery
-                            setDamageState(warning.battery.id, 'warning', 0);
-                        }
-                        break;
-                }
-            });
-        }
-        
+        // Fault detection system (Phase 11 — wired after incident UI below)
+        let detectFaults;
+        let processFaultsAndWarnings;
         // Visual effect functions for different fault types
         function triggerBatteryOvervoltageExplosion(controller, actualVoltage, maxVoltage) {
             triggerOverloadEffect(controller, actualVoltage, maxVoltage);
@@ -14252,8 +14357,7 @@
                     controller.incompatibleVoltageShown = false;
                     controllerGroup.classed('operational', false).classed('error', true);
                     
-                    // DESTRUCTION EFFECT - only trigger once
-                    if (!controller.destroyed) {
+                    if (globalThis.ControllerFaults?.shouldTriggerVocOverload?.(controller, arraySpecs)) {
                         controller.destroyed = true;
                         triggerOverloadEffect(controller, arraySpecs.voc, controller.specs.maxVoc);
                     }
@@ -14349,6 +14453,8 @@
         }
         
         function triggerOverloadEffect(controller, actualVoltage, maxVoltage) {
+            if (controller.vocFaultSuppressed) return;
+
             const controllerGroup = selectItemGroup(controller.id);
             
             // Create explosion particles
@@ -14408,7 +14514,6 @@
             
             // Show incident report with live voltage readout
             setTimeout(() => {
-                if (!areHintsEnabled()) return;
                 showIncidentReport(INCIDENT_TEMPLATES.controllerOvervoltage(controller, actualVoltage, maxVoltage));
                 if (seriesVoltageInterval) clearInterval(seriesVoltageInterval);
                 seriesVoltageInterval = setInterval(updateSeriesVoltageReadout, 200);
@@ -14532,384 +14637,6 @@
                 </div>
             `;
             hintPopup.classList.remove('hidden');
-        }
-        
-        // Calculate voltage for a partial/incomplete string of panels
-        // This works even when the string isn't fully connected back to the controller
-        function calculatePartialStringVoltage(startPanel, startHandle) {
-            if (!startPanel || startPanel.type !== 'panel') {
-                return { voltage: 0, panelCount: 0 };
-            }
-            
-            const visited = new Set();
-            const panels = [];
-            
-            // Trace series connections from this panel
-            function traceSeries(currentPanel, currentHandle) {
-                if (visited.has(currentPanel.id)) return;
-                visited.add(currentPanel.id);
-                panels.push(currentPanel);
-                
-                // Find the opposite terminal
-                const otherHandle = currentHandle.polarity === 'positive' 
-                    ? currentPanel.handles.negative 
-                    : currentPanel.handles.positive;
-                
-                // Trace through series connections
-                if (otherHandle && otherHandle.connectedTo) {
-                    for (const conn of otherHandle.connectedTo) {
-                        const item = allItems.find(i => i.id === conn.itemId);
-                        if (item && item.type === 'panel' && !visited.has(item.id)) {
-                            const connectedHandle = Object.values(item.handles).find(h => h.id === conn.handleId);
-                            if (connectedHandle && connectedHandle.polarity !== otherHandle.polarity) {
-                                traceSeries(item, connectedHandle);
-                            }
-                        }
-                    }
-                }
-            }
-            
-            traceSeries(startPanel, startHandle);
-            
-            // Calculate total Voc (series connection: voltages add)
-            const totalVoc = panels.reduce((sum, p) => sum + (p.specs.voc || 0), 0);
-            
-            return {
-                voltage: totalVoc,
-                panelCount: panels.length
-            };
-        }
-        
-        function calculateConnectedArraySpecs(controller) {
-            // Check cache first
-            const cacheKey = controller.id;
-            if (_specsCache.array.has(cacheKey)) return _specsCache.array.get(cacheKey);
-            
-            // Find all COMPLETE circuits connected to the controller
-            // A complete circuit requires BOTH positive AND negative paths from panel to controller
-            
-            const completeStrings = [];
-            
-            // Helper: normalize polarity for comparison
-            const normalizePolarity = (p) => {
-                if (p === 'pv-positive') return 'positive';
-                if (p === 'pv-negative') return 'negative';
-                return p;
-            };
-            
-            // Trace from controller to find all reachable panels, tracking the polarity path
-            // targetPolarity: 'positive' or 'negative' - what panel terminal we're looking for at the END of a string
-            function traceToPanels(startItem, startHandle, targetPolarity, visited = new Set(), depth = 0) {
-                if (depth > 50) return [];
-                const key = startItem.id + '-' + startHandle.id;
-                if (visited.has(key)) return [];
-                visited.add(key);
-                
-                const panels = [];
-                
-                if (startItem.type === 'panel') {
-                    // We found a panel - add it
-                    panels.push(startItem);
-                    
-                    // Also trace through series connections to find more panels
-                    // If we entered via positive, check negative for series connection (and vice versa)
-                    const entryPolarity = normalizePolarity(startHandle.polarity);
-                    const otherHandle = entryPolarity === 'positive' ? 
-                        startItem.handles.negative : startItem.handles.positive;
-                    
-                    // Trace through the other terminal to find series-connected panels
-                    otherHandle.connectedTo.forEach(conn => {
-                        const item = allItems.find(i => i.id === conn.itemId);
-                        if (item && item.type === 'panel') {
-                            const handle = Object.values(item.handles).find(hh => hh.id === conn.handleId);
-                            if (handle) {
-                                // Series connection: opposite polarities connect
-                                panels.push(...traceToPanels(item, handle, targetPolarity, visited, depth + 1));
-                            }
-                        }
-                    });
-                    
-                    return panels;
-                }
-                
-                // For combiners, we enter via output and need to trace back through matching polarity inputs
-                if (startItem.type === 'combiner' || startItem.type === 'solarcombiner') {
-                    const isOutputHandle = startHandle.id.includes('-out-');
-                    
-                    if (isOutputHandle) {
-                        // Determine which input polarity to follow based on output polarity
-                        const outputPolarity = normalizePolarity(startHandle.polarity);
-                        
-                        Object.entries(startItem.handles).forEach(([name, h]) => {
-                            if (h.inputIndex !== undefined) {
-                                // Only follow inputs matching the polarity we're tracing
-                                const inputPolarity = normalizePolarity(h.polarity);
-                                if (inputPolarity !== outputPolarity) return;
-                                
-                                // For solar combiner, check breaker state
-                                if (startItem.type === 'solarcombiner' && !startItem.breakerStates[h.inputIndex]) {
-                                    return;
-                                }
-                                h.connectedTo.forEach(conn => {
-                                    const item = allItems.find(i => i.id === conn.itemId);
-                                    if (item) {
-                                        const handle = Object.values(item.handles).find(hh => hh.id === conn.handleId);
-                                        if (handle) {
-                                            panels.push(...traceToPanels(item, handle, targetPolarity, visited, depth + 1));
-                                        }
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    return panels;
-                }
-                
-                // For breakers, trace through if closed
-                if (startItem.type === 'breaker') {
-                    if (!startItem.isClosed) return [];
-                    
-                    // Determine which side we entered from and trace to the other side
-                    const handlePolarity = normalizePolarity(startHandle.polarity);
-                    const isLoadSide = startHandle.id.includes('-load-');
-                    const isLineSide = startHandle.id.includes('-line-');
-                    
-                    let targetHandle;
-                    if (isLoadSide) {
-                        // Entered via load, trace to line
-                        targetHandle = handlePolarity === 'positive' ? 
-                            startItem.handles.linePositive : startItem.handles.lineNegative;
-                    } else if (isLineSide) {
-                        // Entered via line, trace to load
-                        targetHandle = handlePolarity === 'positive' ? 
-                            startItem.handles.loadPositive : startItem.handles.loadNegative;
-                    }
-                    
-                    if (targetHandle) {
-                        targetHandle.connectedTo.forEach(conn => {
-                            const item = allItems.find(i => i.id === conn.itemId);
-                            if (item) {
-                                const handle = Object.values(item.handles).find(hh => hh.id === conn.handleId);
-                                if (handle) {
-                                    panels.push(...traceToPanels(item, handle, targetPolarity, visited, depth + 1));
-                                }
-                            }
-                        });
-                    }
-                    return panels;
-                }
-                
-                // For direct connections
-                startHandle.connectedTo.forEach(conn => {
-                    const item = allItems.find(i => i.id === conn.itemId);
-                    if (item) {
-                        const handle = Object.values(item.handles).find(hh => hh.id === conn.handleId);
-                        if (handle) {
-                            panels.push(...traceToPanels(item, handle, targetPolarity, visited, depth + 1));
-                        }
-                    }
-                });
-                
-                return panels;
-            }
-            
-            // Find panels reachable from PV+ (looking for panel positive terminals)
-            // Support multiple MPPTs by checking all PV positive handles
-            const panelsFromPositive = new Set();
-            const mpptCount = controller.specs.mpptCount || 1;
-            
-            // Check all PV positive handles (legacy pvPositive or numbered pvPositive1, pvPositive2, etc.)
-            const pvPositiveHandles = [];
-            if (controller.handles.pvPositive) {
-                pvPositiveHandles.push(controller.handles.pvPositive);
-            }
-            for (let i = 1; i <= mpptCount; i++) {
-                const handleKey = `pvPositive${i}`;
-                if (controller.handles[handleKey]) {
-                    pvPositiveHandles.push(controller.handles[handleKey]);
-                }
-            }
-            
-            pvPositiveHandles.forEach(pvPosHandle => {
-                if (pvPosHandle && pvPosHandle.connectedTo) {
-                    pvPosHandle.connectedTo.forEach(conn => {
-                        const item = allItems.find(i => i.id === conn.itemId);
-                        if (item) {
-                            const handle = Object.values(item.handles).find(h => h.id === conn.handleId);
-                            if (handle) {
-                                // Use a fresh visited set for each parallel connection
-                                traceToPanels(item, handle, 'positive', new Set()).forEach(p => {
-                                    panelsFromPositive.add(p.id);
-                                });
-                            }
-                        }
-                    });
-                }
-            });
-            
-            // Find panels reachable from PV- (looking for panel negative terminals)
-            // Support multiple MPPTs by checking all PV negative handles
-            const panelsFromNegative = new Set();
-            
-            // Check all PV negative handles (legacy pvNegative or numbered pvNegative1, pvNegative2, etc.)
-            const pvNegativeHandles = [];
-            if (controller.handles.pvNegative) {
-                pvNegativeHandles.push(controller.handles.pvNegative);
-            }
-            for (let i = 1; i <= mpptCount; i++) {
-                const handleKey = `pvNegative${i}`;
-                if (controller.handles[handleKey]) {
-                    pvNegativeHandles.push(controller.handles[handleKey]);
-                }
-            }
-            
-            pvNegativeHandles.forEach(pvNegHandle => {
-                if (pvNegHandle && pvNegHandle.connectedTo) {
-                    pvNegHandle.connectedTo.forEach(conn => {
-                        const item = allItems.find(i => i.id === conn.itemId);
-                        if (item) {
-                            const handle = Object.values(item.handles).find(h => h.id === conn.handleId);
-                            if (handle) {
-                                // Use a fresh visited set for each parallel connection
-                                traceToPanels(item, handle, 'negative', new Set()).forEach(p => {
-                                    panelsFromNegative.add(p.id);
-                                });
-                            }
-                        }
-                    });
-                }
-            });
-            
-            // A panel is in a complete circuit only if reachable from BOTH positive AND negative paths
-            const completePanelIds = new Set([...panelsFromPositive].filter(id => panelsFromNegative.has(id)));
-            
-            if (completePanelIds.size === 0) {
-                return { wmp: 0, voc: 0, vmp: 0, isc: 0, imp: 0, panelCount: 0, seriesCount: 0, parallelCount: 0 };
-            }
-            
-            // Now trace series strings, but only include panels that are in complete circuits
-            const visitedPanels = new Set();
-            
-            function traceSeriesString(startPanel, startHandle) {
-                const string = [];
-                let currentPanel = startPanel;
-                let currentHandle = startHandle;
-                
-                while (currentPanel && !visitedPanels.has(currentPanel.id)) {
-                    // Only include panels that are in complete circuits
-                    if (!completePanelIds.has(currentPanel.id)) break;
-                    
-                    visitedPanels.add(currentPanel.id);
-                    string.push(currentPanel);
-                    
-                    const otherHandle = currentHandle.polarity === 'positive' 
-                        ? currentPanel.handles.negative 
-                        : currentPanel.handles.positive;
-                    
-                    let nextPanel = null;
-                    let nextHandle = null;
-                    
-                    for (const conn of otherHandle.connectedTo) {
-                        const item = allItems.find(i => i.id === conn.itemId);
-                        if (item && item.type === 'panel' && !visitedPanels.has(item.id) && completePanelIds.has(item.id)) {
-                            const connectedHandle = Object.values(item.handles).find(h => h.id === conn.handleId);
-                            if (connectedHandle && connectedHandle.polarity !== otherHandle.polarity) {
-                                nextPanel = item;
-                                nextHandle = connectedHandle;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    currentPanel = nextPanel;
-                    currentHandle = nextHandle;
-                }
-                
-                return string;
-            }
-            
-            // Build strings from complete panels
-            // First, find "string start" panels - panels whose positive terminal is NOT connected to another panel's negative
-            // These are the first panels in each series string
-            const stringStartPanels = [];
-            for (const panelId of completePanelIds) {
-                const panel = allItems.find(i => i.id === panelId);
-                if (!panel) continue;
-                
-                // Check if positive terminal is connected to another panel's negative terminal
-                const posConnections = panel.handles.positive.connectedTo;
-                const isConnectedToPanelNegative = posConnections.some(conn => {
-                    const connItem = allItems.find(i => i.id === conn.itemId);
-                    if (connItem && connItem.type === 'panel') {
-                        const connHandle = Object.values(connItem.handles).find(h => h.id === conn.handleId);
-                        return connHandle && connHandle.polarity === 'negative';
-                    }
-                    return false;
-                });
-                
-                // If positive is NOT connected to another panel's negative, this is a string start
-                if (!isConnectedToPanelNegative) {
-                    stringStartPanels.push(panel);
-                }
-            }
-            
-            // Now trace strings starting from the identified start panels
-            for (const panel of stringStartPanels) {
-                if (visitedPanels.has(panel.id)) continue;
-                const string = traceSeriesString(panel, panel.handles.positive);
-                if (string.length > 0) {
-                    completeStrings.push(string);
-                }
-            }
-            
-            if (completeStrings.length === 0) {
-                return { wmp: 0, voc: 0, vmp: 0, isc: 0, imp: 0, panelCount: 0, seriesCount: 0, parallelCount: 0 };
-            }
-            
-            const parallelCount = completeStrings.length;
-            const seriesCount = Math.max(...completeStrings.map(s => s.length));
-            const totalPanels = completeStrings.reduce((sum, s) => sum + s.length, 0);
-            
-            // For each string, calculate its voltage (sum of panel voltages in series)
-            const stringVocs = completeStrings.map(s => s.reduce((sum, p) => sum + p.specs.voc, 0));
-            const stringVmps = completeStrings.map(s => s.reduce((sum, p) => sum + p.specs.vmp, 0));
-            
-            // Array Voc is the max string Voc (parallel strings don't add voltage)
-            const voc = Math.max(...stringVocs);
-            const vmp = Math.max(...stringVmps);
-            
-            // Array current is sum of string currents (parallel strings add current)
-            // Each string's current is limited by the lowest panel current in that string
-            // Use IMP for array calculations (not ISC)
-            const stringIscs = completeStrings.map(s => Math.min(...s.map(p => p.specs.isc || 0)));
-            // Calculate IMP for each panel if missing, then get minimum per string
-            const stringImps = completeStrings.map(s => {
-                const panelImps = s.map(p => {
-                    if (p.specs.imp) return p.specs.imp;
-                    // Calculate from WMP/VMP if available
-                    if (p.specs.wmp && p.specs.vmp) return p.specs.wmp / p.specs.vmp;
-                    // Fallback to ISC * 0.9 if IMP not available
-                    if (p.specs.isc) return p.specs.isc * 0.9;
-                    return 0;
-                });
-                return Math.min(...panelImps);
-            });
-            
-            const isc = stringIscs.reduce((sum, i) => sum + i, 0);
-            const imp = stringImps.reduce((sum, i) => sum + i, 0);
-            
-            // Total wattage is sum of all panel wattages
-            const wmp = completeStrings.reduce((sum, s) => sum + s.reduce((sum2, p) => sum2 + p.specs.wmp, 0), 0);
-            
-            const result = { 
-                wmp, voc, vmp, isc, imp, 
-                panelCount: totalPanels, 
-                seriesCount, 
-                parallelCount,
-                config: `${parallelCount}P${seriesCount}S`
-            };
-            _specsCache.array.set(controller.id, result);
-            return result;
         }
         
         function calculateConnectedBatterySpecs(controller) {
@@ -15717,8 +15444,28 @@
         // HINTS & ACHIEVEMENTS
         // ============================================
         
+        const HINTS_PREF_KEY = 'linkageLab_hintsEnabled';
+
+        function loadHintsPreference() {
+            const stored = localStorage.getItem(HINTS_PREF_KEY);
+            if (stored === null) return false;
+            return stored === 'true';
+        }
+
+        let hintsEnabledPreference = loadHintsPreference();
+
+        function setHintsEnabled(enabled) {
+            hintsEnabledPreference = enabled;
+            localStorage.setItem(HINTS_PREF_KEY, enabled ? 'true' : 'false');
+            const toggle = document.getElementById('showHintsToggle');
+            if (toggle) toggle.checked = enabled;
+            if (!enabled) hideHint();
+        }
+
         function areHintsEnabled() {
-            return document.getElementById('showHintsToggle')?.checked !== false;
+            const toggle = document.getElementById('showHintsToggle');
+            if (toggle) return toggle.checked;
+            return hintsEnabledPreference;
         }
         
         function showHint(title, text) {
@@ -15764,469 +15511,56 @@
         }
         
         // ============================================
-        // INCIDENT REPORT SYSTEM - Enhanced Failure Feedback
         // ============================================
-        
-        /**
-         * Shows a detailed incident report modal for failures and dangerous conditions
-         * @param {Object} config - Configuration object for the incident
-         * @param {string} config.type - 'critical', 'warning', or 'info'
-         * @param {string} config.icon - Emoji icon for the incident
-         * @param {string} config.category - Category label (e.g., "CRITICAL FAILURE", "WARNING")
-         * @param {string} config.title - Main title of the incident
-         * @param {string} config.description - What happened
-         * @param {Array} config.math - Array of {label, value, status} objects for the numbers section
-         * @param {string} config.realworld - What this means in real life
-         * @param {Array} config.solutions - Array of solution strings
-         * @param {string} config.learnMoreTopic - Optional topic for learn more button
-         */
-        function showIncidentReport(config) {
-            // Don't show if hints are disabled
-            if (!areHintsEnabled()) return;
-            
-            const overlay = document.getElementById('incidentReportOverlay');
-            const modal = document.getElementById('incidentReportModal');
-            
-            // Set modal class based on type (Phase 3.1: Enhanced card types)
-            modal.className = 'incident-report';
-            if (config.type === 'error' || config.type === 'critical') {
-                // Default critical/error styling (already set)
-                modal.classList.remove('warning-level', 'info-level', 'success-level', 'explanation-level');
-            } else if (config.type === 'warning') {
-                modal.classList.remove('info-level', 'success-level', 'explanation-level');
-                modal.classList.add('warning-level');
-            } else if (config.type === 'info') {
-                modal.classList.remove('warning-level', 'success-level', 'explanation-level');
-                modal.classList.add('info-level');
-            } else if (config.type === 'success') {
-                modal.classList.remove('warning-level', 'info-level', 'explanation-level');
-                modal.classList.add('success-level');
-            } else if (config.type === 'explanation') {
-                modal.classList.remove('warning-level', 'info-level', 'success-level');
-                modal.classList.add('explanation-level');
-            }
-            
-            // Populate content
-            document.getElementById('incidentIcon').textContent = config.icon || '💥';
-            document.getElementById('incidentType').textContent = config.category || 'INCIDENT';
-            document.getElementById('incidentTitle').textContent = config.title || 'Something Went Wrong';
-            document.getElementById('incidentDescription').textContent = config.description || '';
-            
-            // Math section
-            const mathSection = document.getElementById('incidentMathSection');
-            const mathContainer = document.getElementById('incidentMath');
-            if (config.math && config.math.length > 0) {
-                mathSection.style.display = 'block';
-                mathContainer.innerHTML = config.math.map(item => `
-                    <div class="incident-math-row">
-                        <span class="incident-math-label">${item.label}</span>
-                        <span class="incident-math-value ${item.status || ''}">${item.value}</span>
-                    </div>
-                `).join('');
-            } else {
-                mathSection.style.display = 'none';
-            }
-            
-            // Real world section
-            const realworldSection = document.getElementById('incidentRealworldSection');
-            if (config.realworld) {
-                realworldSection.style.display = 'block';
-                document.getElementById('incidentRealworld').textContent = config.realworld;
-            } else {
-                realworldSection.style.display = 'none';
-            }
-            
-            // Solutions
-            const solutionsList = document.getElementById('incidentSolutions');
-            if (config.solutions && config.solutions.length > 0) {
-                solutionsList.innerHTML = config.solutions.map(s => `<li>${s}</li>`).join('');
-            } else {
-                solutionsList.innerHTML = '<li>Review your system design and try again</li>';
-            }
-            
-            // Learn more button
-            const learnMoreBtn = document.getElementById('incidentLearnMore');
-            if (config.learnMoreTopic) {
-                learnMoreBtn.style.display = 'block';
-                learnMoreBtn.dataset.topic = config.learnMoreTopic;
-            } else {
-                learnMoreBtn.style.display = 'none';
-            }
-            
-            // Show overlay
-            overlay.classList.add('visible');
-            
-            // Play sound effect if available
-            playIncidentSound(config.type);
-        }
-        
-        function hideIncidentReport() {
-            const overlay = document.getElementById('incidentReportOverlay');
-            overlay.classList.remove('visible');
-            
-            // Trigger render and update display after dismissing incident report
-            // This ensures load switch visuals are updated if they were turned off during breaker trip
-            if (currentMode === 'simulate') {
-                // Update simulation display to refresh load states
-                updateSimulationDisplay();
-                // Trigger render to update visual switches
-                scheduleRender();
-            } else if (LiveView.state.active) {
-                // Update live view display
-                LiveView.Display.update();
-                LiveView.Animation.scheduleUpdate();
-            } else {
-                // Just trigger a render in build mode
-                scheduleRender();
-            }
-        }
-        
-        // Sound effect system (Web Audio API)
-        let audioContext = null;
-        
-        function initAudioContext() {
-            if (!audioContext) {
-                try {
-                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                } catch (e) {
-                    console.log('Web Audio API not supported');
-                }
-            }
-            return audioContext;
-        }
-        
-        function playIncidentSound(type) {
-            const ctx = initAudioContext();
-            if (!ctx) return;
-            
-            try {
-                const oscillator = ctx.createOscillator();
-                const gainNode = ctx.createGain();
-                
-                oscillator.connect(gainNode);
-                gainNode.connect(ctx.destination);
-                
-                if (type === 'critical') {
-                    // Explosion-like sound: Low rumble with decay
-                    oscillator.type = 'sawtooth';
-                    oscillator.frequency.setValueAtTime(100, ctx.currentTime);
-                    oscillator.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.3);
-                    gainNode.gain.setValueAtTime(0.3, ctx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-                    oscillator.start(ctx.currentTime);
-                    oscillator.stop(ctx.currentTime + 0.4);
-                } else if (type === 'warning') {
-                    // Warning beep
-                    oscillator.type = 'square';
-                    oscillator.frequency.setValueAtTime(440, ctx.currentTime);
-                    gainNode.gain.setValueAtTime(0.1, ctx.currentTime);
-                    gainNode.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-                    oscillator.start(ctx.currentTime);
-                    oscillator.stop(ctx.currentTime + 0.2);
-                }
-            } catch (e) {
-                // Silently fail if audio doesn't work
-            }
-        }
-        
-        // Pre-defined incident report templates for common failures
-        const INCIDENT_TEMPLATES = {
-            controllerOvervoltage: (controller, actualVoltage, maxVoltage) => ({
-                type: 'critical',
-                icon: '💥',
-                category: 'CRITICAL FAILURE',
-                title: 'Controller Destroyed - Overvoltage',
-                description: `The battery voltage connected to this controller (${actualVoltage.toFixed(1)}V) exceeds the controller's maximum supported voltage (${maxVoltage}V). This has caused catastrophic damage to the controller's internal electronics.`,
-                math: [
-                    { label: 'Battery Voltage', value: `${actualVoltage.toFixed(1)}V`, status: 'danger' },
-                    { label: 'Controller Max Voltage', value: `${maxVoltage}V`, status: 'good' },
-                    { label: 'Exceeded By', value: `${(actualVoltage - maxVoltage).toFixed(1)}V`, status: 'danger' }
-                ],
-                realworld: 'In reality, connecting a battery with voltage exceeding the controller\'s rating would instantly destroy the controller\'s MOSFETs and capacitors. This often happens with a loud pop, smoke, and potentially fire. The controller would be completely non-functional and unrepairable.',
-                solutions: [
-                    'Use a controller rated for higher voltage systems',
-                    'Reduce the number of batteries in series',
-                    'Choose batteries with lower individual voltages',
-                    'Check controller specs before connecting batteries'
-                ],
-                learnMoreTopic: 'voltage-ratings'
-            }),
-            
-            controllerReversPolarity: (controller, battery) => ({
-                type: 'critical',
-                icon: '⚡',
-                category: 'CRITICAL FAILURE',
-                title: 'Controller Destroyed - Reverse Polarity',
-                description: 'The battery was connected with reversed polarity (positive to negative and vice versa). This causes current to flow in the wrong direction through components not designed for it.',
-                math: [
-                    { label: 'Battery Positive', value: 'Connected to Controller Negative', status: 'danger' },
-                    { label: 'Battery Negative', value: 'Connected to Controller Positive', status: 'danger' }
-                ],
-                realworld: 'Reverse polarity connections cause immediate and violent failure. The protection diodes and MOSFETs in the controller will short circuit, potentially causing sparks, smoke, melted components, and fire. This is one of the most common and destructive mistakes in solar installations.',
-                solutions: [
-                    'Always double-check polarity before connecting',
-                    'Use color-coded cables (red = positive, black = negative)',
-                    'Install inline fuses or breakers for protection',
-                    'Mark terminals clearly before installation'
-                ],
-                learnMoreTopic: 'polarity-safety'
-            }),
-            
-            wireBurned: (wireGauge, currentAmps, wireRating) => ({
-                type: 'critical',
-                icon: '🔥',
-                category: 'WIRE FIRE',
-                title: 'Wire Burned Out',
-                description: `A ${wireGauge} AWG wire carrying ${currentAmps.toFixed(1)}A exceeded its safe current capacity of ${wireRating}A. The wire overheated and its insulation melted, breaking the circuit.`,
-                math: [
-                    { label: 'Wire Gauge', value: `${wireGauge} AWG`, status: '' },
-                    { label: 'Current Flowing', value: `${currentAmps.toFixed(1)}A`, status: 'danger' },
-                    { label: 'Wire Rating', value: `${wireRating}A`, status: 'good' },
-                    { label: 'Overload', value: `${((currentAmps / wireRating - 1) * 100).toFixed(0)}%`, status: 'danger' }
-                ],
-                realworld: 'Overloaded wires generate heat proportional to I²R (current squared times resistance). This heat builds up in the wire\'s copper core, eventually melting the insulation. This can cause fires, especially if the wire runs through walls or insulation. In extreme cases, the copper itself can melt.',
-                solutions: [
-                    'Use thicker wire (lower AWG number = more capacity)',
-                    'Add a breaker sized below the wire\'s ampacity',
-                    'Split the load across multiple circuits',
-                    'Reduce the total load on this circuit'
-                ],
-                learnMoreTopic: 'wire-sizing'
-            }),
-            
-            breakerTripped: (breakerRating, currentAmps, circuitName) => ({
-                type: 'warning',
-                icon: '⚡',
-                category: 'PROTECTION ACTIVATED',
-                title: 'Circuit Breaker Tripped',
-                description: `The ${breakerRating}A breaker${circuitName ? ` on ${circuitName}` : ''} has tripped because the circuit current (${currentAmps.toFixed(1)}A) exceeded the breaker's rating. This is the breaker doing its job - protecting the circuit from damage.`,
-                math: [
-                    { label: 'Breaker Rating', value: `${breakerRating}A`, status: 'good' },
-                    { label: 'Circuit Current', value: `${currentAmps.toFixed(1)}A`, status: 'warning' },
-                    { label: 'Overload', value: `${((currentAmps / breakerRating - 1) * 100).toFixed(0)}%`, status: 'warning' }
-                ],
-                realworld: 'Circuit breakers are safety devices designed to "sacrifice themselves" by disconnecting before wires or equipment are damaged. When a breaker trips, it means it prevented a potential fire or equipment damage. You can reset the breaker after reducing the load.',
-                solutions: [
-                    'Turn off some loads before resetting the breaker',
-                    'Upgrade to a higher-rated breaker (if wiring supports it)',
-                    'Split loads across multiple circuits',
-                    'Calculate your total load before turning everything on'
-                ],
-                learnMoreTopic: 'breakers'
-            }),
-            
-            loadExplosion: (loadName, requiredVoltage, actualVoltage) => ({
-                type: 'critical',
-                icon: '💥',
-                category: 'APPLIANCE DESTROYED',
-                title: `${loadName} Destroyed - Wrong Voltage`,
-                description: `This ${requiredVoltage}V appliance was connected to a ${actualVoltage}V circuit. The excessive voltage caused immediate and catastrophic failure of the appliance's internal components.`,
-                math: [
-                    { label: 'Appliance Voltage', value: `${requiredVoltage}V`, status: 'good' },
-                    { label: 'Circuit Voltage', value: `${actualVoltage}V`, status: 'danger' },
-                    { label: 'Voltage Mismatch', value: `${((actualVoltage / requiredVoltage - 1) * 100).toFixed(0)}% over`, status: 'danger' }
-                ],
-                realworld: 'Connecting a 120V appliance to 240V delivers 4x the power it\'s designed for (P = V²/R). This causes immediate overheating and failure of motors, electronics, and heating elements. The appliance will typically spark, smoke, and may catch fire.',
-                solutions: [
-                    'Always match appliance voltage to circuit voltage',
-                    'Check appliance labels before connecting',
-                    'Use voltage converters/transformers if needed',
-                    'Keep 120V and 240V circuits clearly marked'
-                ],
-                learnMoreTopic: 'voltage-matching'
-            }),
-            
-            batteryShort: (battery) => ({
-                type: 'critical',
-                icon: '🔋💥',
-                category: 'CRITICAL FAILURE',
-                title: 'Battery Short Circuit',
-                description: 'A direct short circuit was created across the battery terminals. This caused an extremely high current flow that the battery\'s internal protection (if any) attempted to handle.',
-                math: [
-                    { label: 'Battery Voltage', value: `${battery.specs.voltage}V`, status: '' },
-                    { label: 'Internal Resistance', value: '~5mΩ', status: '' },
-                    { label: 'Short Circuit Current', value: `~${(battery.specs.voltage / 0.005).toFixed(0)}A`, status: 'danger' }
-                ],
-                realworld: 'A short circuit on a lithium battery can deliver hundreds or thousands of amps instantly. This generates extreme heat, potentially causing thermal runaway - a chain reaction where the battery heats itself further, leading to fire, explosion, and release of toxic gases. Never short circuit a battery!',
-                solutions: [
-                    'Never connect positive directly to negative',
-                    'Always include a load or controller in the circuit',
-                    'Use fused battery cables',
-                    'Keep metal tools away from battery terminals'
-                ],
-                learnMoreTopic: 'battery-safety'
-            }),
-            
-            batteryOverdischarge: (battery, dischargeAmps, maxAmps) => ({
-                type: 'warning',
-                icon: '🔋⚠️',
-                category: 'BATTERY WARNING',
-                title: 'Excessive Discharge Rate',
-                description: `The battery is being discharged at ${dischargeAmps.toFixed(1)}A, which exceeds its maximum safe discharge rate of ${maxAmps}A. This can damage the battery and reduce its lifespan.`,
-                math: [
-                    { label: 'Current Draw', value: `${dischargeAmps.toFixed(1)}A`, status: 'warning' },
-                    { label: 'Max Discharge', value: `${maxAmps}A`, status: 'good' },
-                    { label: 'Overdraw', value: `${((dischargeAmps / maxAmps - 1) * 100).toFixed(0)}%`, status: 'warning' }
-                ],
-                realworld: 'Exceeding a battery\'s discharge rate causes internal heating, voltage sag, and accelerated degradation. For lithium batteries, this can trigger the Battery Management System (BMS) to disconnect, cutting power suddenly. Repeated overdischarge permanently damages battery capacity.',
-                solutions: [
-                    'Reduce connected loads',
-                    'Add more batteries in parallel for higher discharge capacity',
-                    'Stagger high-power loads (don\'t run all at once)',
-                    'Choose a battery with higher discharge rating'
-                ],
-                learnMoreTopic: 'battery-discharge'
-            }),
-            
-            reversedPanelPolarity: (controller, panel) => ({
-                type: 'warning',
-                icon: '☀️⚠️',
-                category: 'WIRING ERROR',
-                title: 'Solar Panel Reversed Polarity',
-                description: 'One or more solar panels are connected with reversed polarity (positive connected to PV- and negative to PV+). The array will not produce usable power in this configuration.',
-                math: [
-                    { label: 'Panel Positive (+)', value: 'Connected to PV-', status: 'danger' },
-                    { label: 'Panel Negative (-)', value: 'Connected to PV+', status: 'danger' },
-                    { label: 'Result', value: 'No power output', status: 'danger' }
-                ],
-                realworld: 'With reversed polarity, the solar panel\'s output voltage opposes the controller\'s expected input. Most MPPT controllers have reverse polarity protection diodes that block current flow, so no damage occurs - but no power is harvested either. Some older or cheaper controllers may not have this protection and could be damaged.',
-                solutions: [
-                    'Disconnect the panel and swap the connections',
-                    'Connect panel positive (+) to controller PV+',
-                    'Connect panel negative (-) to controller PV-',
-                    'Use color-coded cables: red for positive, black for negative'
-                ],
-                learnMoreTopic: 'panel-wiring'
-            }),
-            
-            batteryReversedPolarity: (controller, battery) => ({
-                type: 'critical',
-                icon: '🔋💥',
-                category: 'CRITICAL FAILURE',
-                title: 'Battery Reversed Polarity',
-                description: 'The battery is connected with reversed polarity (positive terminal connected to BATT- and negative terminal to BATT+). This causes massive reverse current flow through the controller.',
-                math: [
-                    { label: 'Battery Positive (+)', value: 'Connected to BATT-', status: 'danger' },
-                    { label: 'Battery Negative (-)', value: 'Connected to BATT+', status: 'danger' },
-                    { label: 'Result', value: 'Controller destroyed', status: 'danger' }
-                ],
-                realworld: 'Battery reverse polarity is one of the most destructive mistakes in solar installations. Unlike solar panels, batteries can source enormous current. When connected backwards, this current flows through protection diodes and MOSFETs in the wrong direction, causing them to fail catastrophically with sparks, smoke, and potentially fire.',
-                solutions: [
-                    'ALWAYS verify polarity before connecting batteries',
-                    'Use color-coded cables consistently',
-                    'Double-check connections with a multimeter',
-                    'Consider installing a reverse polarity protection fuse'
-                ],
-                learnMoreTopic: 'battery-safety'
-            }),
-            
-            arrayClipping: (arraySpecs, controller, batteryVoltage, maxWattsAtBattery, clippedWatts, lostWatts) => ({
-                type: 'warning',
-                icon: '⚡',
-                category: 'POWER LIMITING',
-                title: 'Array Output Limited by Controller',
-                description: `Your ${arraySpecs.wmp}W array will be limited to ${clippedWatts}W by your charge controller. This is called "clipping" - you're leaving ${lostWatts}W (${((lostWatts / arraySpecs.wmp) * 100).toFixed(0)}%) of potential power on the table.`,
-                math: [
-                    { label: 'Array Rated Power (Wmp)', value: `${arraySpecs.wmp}W`, status: '' },
-                    { label: 'Array Config', value: arraySpecs.config || '-', status: '' },
-                    { label: 'Array Imp (max current)', value: `${arraySpecs.imp?.toFixed(1) || '?'}A`, status: arraySpecs.imp > controller.specs.maxIsc ? 'warning' : 'good' },
-                    { label: 'Controller Max PV Amps', value: `${controller.specs.maxIsc || controller.specs.ratedChargeCurrent}A`, status: '' },
-                    { label: 'Battery Voltage', value: `${batteryVoltage}V (nominal)`, status: '' },
-                    { label: 'Max Output @ This Voltage', value: `${maxWattsAtBattery}W`, status: 'good' },
-                    { label: 'Power Lost to Clipping', value: `-${lostWatts}W`, status: 'danger' }
-                ],
-                realworld: 'Clipping occurs when your array can produce more current than your charge controller can handle. The controller simply limits the current to its maximum rating, wasting the excess. This won\'t damage your equipment, but you\'re not harvesting all available solar energy.',
-                solutions: [
-                    `Increase battery voltage to ${batteryVoltage < 48 ? (batteryVoltage * 2) + 'V' : 'reduce array size'} - higher voltage = more watts at same amps`,
-                    'Add more panels in series per string (increases voltage, same current)',
-                    'Reduce parallel strings (reduces total current)',
-                    'Upgrade to a controller with higher current capacity',
-                    'Accept the clipping if the cost savings outweigh the lost power'
-                ],
-                learnMoreTopic: 'clipping'
-            }),
-            
-            parallelStringAdded: (arraySpecs, controller, batteryVoltage, maxWattsAtBattery, hasHeadroom, panelWattage = null) => {
-                const remainingWatts = maxWattsAtBattery - arraySpecs.wmp;
-                
-                // Determine if user can fit more panels based on individual panel wattage
-                const singlePanelWatts = panelWattage || 250; // fallback to common value
-                const canFitMorePanels = hasHeadroom && remainingWatts >= singlePanelWatts;
-                const panelsCanAdd = Math.floor(remainingWatts / singlePanelWatts);
-                const isMaximized = hasHeadroom && remainingWatts < singlePanelWatts && remainingWatts >= 0;
-                
-                // Determine messaging based on optimization state
-                let capacityLabel, capacityValue, capacityStatus;
-                if (isMaximized) {
-                    capacityLabel = '🎉 Array Optimized!';
-                    capacityValue = `Can't fit another ${singlePanelWatts}W panel`;
-                    capacityStatus = 'good';
-                } else if (canFitMorePanels) {
-                    capacityLabel = '💡 Room to Grow';
-                    capacityValue = `+${panelsCanAdd} more ${singlePanelWatts}W panel${panelsCanAdd > 1 ? 's' : ''} possible`;
-                    capacityStatus = 'info';
-                } else if (!hasHeadroom) {
-                    capacityLabel = 'Power Lost';
-                    capacityValue = `-${arraySpecs.wmp - maxWattsAtBattery}W clipped`;
-                    capacityStatus = 'danger';
+        // INCIDENT REPORT SYSTEM (Phase 11 shared module)
+        // ============================================
+        const INCIDENT_TEMPLATES = globalThis.IncidentTemplates;
+
+        const _incidentUi = globalThis.createIncidentUI({
+            areIncidentReportsEnabled: () => true,
+            showToast,
+            onDismiss: () => {
+                if (currentMode === 'simulate') {
+                    updateSimulationDisplay();
+                    scheduleRender();
+                } else if (LiveView.state.active) {
+                    LiveView.Display.update();
+                    LiveView.Animation.scheduleUpdate();
                 } else {
-                    capacityLabel = 'Remaining Capacity';
-                    capacityValue = `${remainingWatts}W available`;
-                    capacityStatus = 'good';
+                    scheduleRender();
                 }
-                
-                return {
-                    type: isMaximized ? 'success' : (hasHeadroom ? 'info' : 'warning'),
-                    icon: isMaximized ? '🏆' : (hasHeadroom ? '📋' : '⚡'),
-                    category: isMaximized ? 'ARRAY MAXIMIZED' : (hasHeadroom ? 'ARRAY EXPANDED' : 'CONTROLLER LIMIT REACHED'),
-                    title: isMaximized 
-                        ? `Perfect! ${arraySpecs.wmp}W Array Optimized` 
-                        : (hasHeadroom ? `Nice! ${arraySpecs.wmp}W Array` : `Array Limited to ${maxWattsAtBattery}W`),
-                    description: isMaximized 
-                        ? `Excellent work! Your ${arraySpecs.config} array is producing ${arraySpecs.wmp}W — the maximum for this controller at ${batteryVoltage}V. You've squeezed every possible watt out of this configuration!`
-                        : (canFitMorePanels 
-                            ? `Parallel string added! Your ${arraySpecs.config} array is now producing ${arraySpecs.wmp}W. You can still add ${panelsCanAdd} more ${singlePanelWatts}W panel${panelsCanAdd > 1 ? 's' : ''}!`
-                            : (hasHeadroom
-                                ? `Parallel string added! Your ${arraySpecs.config} array is now producing ${arraySpecs.wmp}W. Connect both strings' positive terminals to PV+ and negative terminals to PV-.`
-                                : `Your ${arraySpecs.wmp}W array exceeds what your controller can handle at ${batteryVoltage}V. Output will be limited to ${maxWattsAtBattery}W.`)),
-                    math: [
-                        { label: 'Array Configuration', value: arraySpecs.config || '-', status: '' },
-                        { label: 'Array Rated Power', value: `${arraySpecs.wmp}W`, status: '' },
-                        { label: 'Array Voc', value: `${arraySpecs.voc?.toFixed(1) || '?'}V`, status: arraySpecs.voc > controller.specs.maxVoc ? 'danger' : 'good' },
-                        { label: 'Array Imp', value: `${arraySpecs.imp?.toFixed(1) || '?'}A`, status: arraySpecs.imp > controller.specs.maxIsc ? 'warning' : 'good' },
-                        { label: 'Controller Max PV Amps', value: `${controller.specs.maxIsc || controller.specs.ratedChargeCurrent}A`, status: '' },
-                        { label: 'Battery Voltage', value: `${batteryVoltage}V`, status: '' },
-                        { label: 'Max Output @ This Voltage', value: `${maxWattsAtBattery}W`, status: hasHeadroom ? 'good' : 'warning' },
-                        { label: capacityLabel, value: capacityValue, status: capacityStatus }
-                    ],
-                    realworld: isMaximized 
-                        ? 'You\'ve perfectly sized your solar array to match your controller\'s capacity at this battery voltage. This is the ideal configuration — no wasted panels and no wasted controller capacity!'
-                        : (hasHeadroom 
-                            ? 'Adding parallel strings increases your total current (amps) while keeping voltage the same. This is a great way to expand your array as long as you stay within your controller\'s current limit.'
-                            : 'Your charge controller limits how much current it can accept. At your current battery voltage, you\'ve exceeded this limit. The excess power will be "clipped" — simply not harvested.'),
-                    solutions: isMaximized ? [
-                        '🎯 Your array is perfectly optimized for this configuration!',
-                        'To add more panels, upgrade your controller or increase battery voltage',
-                        `Current max: ${controller.specs.maxIsc || controller.specs.ratedChargeCurrent}A × ${batteryVoltage}V ≈ ${maxWattsAtBattery}W`
-                    ] : (canFitMorePanels ? [
-                        `Add ${panelsCanAdd} more ${singlePanelWatts}W panel${panelsCanAdd > 1 ? 's' : ''} to maximize your array`,
-                        'Keep array Voc under controller max (' + controller.specs.maxVoc + 'V)',
-                        'Keep array Imp under controller max (' + (controller.specs.maxIsc || controller.specs.ratedChargeCurrent) + 'A)'
-                    ] : (hasHeadroom ? [
-                        `You have ${remainingWatts}W remaining capacity`,
-                        'Keep array Voc under controller max (' + controller.specs.maxVoc + 'V)',
-                        'Keep array Imp under controller max (' + (controller.specs.maxIsc || controller.specs.ratedChargeCurrent) + 'A)'
-                    ] : [
-                        'Increase battery bank voltage (more batteries in series)',
-                        'Add more panels in series per string (higher voltage = more power at same current)',
-                        'Remove a parallel string',
-                        'Upgrade to a higher-capacity charge controller'
-                    ])),
-                    learnMoreTopic: 'array-sizing'
-                };
-            }
-        };
-        
+            },
+        });
+
+        const showIncidentReport = _incidentUi.showIncidentReport.bind(_incidentUi);
+        const hideIncidentReport = _incidentUi.hideIncidentReport.bind(_incidentUi);
+        const initIncidentReportListeners = _incidentUi.initIncidentReportListeners.bind(_incidentUi);
+        const playIncidentSound = _incidentUi.playIncidentSound.bind(_incidentUi);
+
+        const _faultDetection = globalThis.FaultDetection.createFaultDetection({
+            getItems: () => allItems,
+            getConnections: () => connections,
+            getLiveView: () => LiveView,
+            calculateConnectedArraySpecs,
+            calculateConnectedBatterySpecs,
+            calculateWireCurrent,
+            getWireGaugeForAmps,
+            getWireGaugeSpecs: () => WIRE_GAUGE_SPECS,
+            incidentTemplates: INCIDENT_TEMPLATES,
+            showIncidentReport,
+            setDamageState,
+            effects: {
+                triggerOverloadEffect,
+                triggerBatteryOvervoltageExplosion,
+                triggerReversePolarityExplosion,
+                triggerLoadExplosion,
+                triggerWireBurn,
+                triggerBatteryShort,
+            },
+        });
+        detectFaults = _faultDetection.detectFaults;
+        processFaultsAndWarnings = _faultDetection.processFaultsAndWarnings;
+
         // Progressive damage state tracking
         const damageStates = new Map(); // itemId -> { level: 'normal'|'warning'|'critical', timer: null }
         
@@ -16392,42 +15726,6 @@
             if (item.type === 'controller') {
                 showIncidentReport(INCIDENT_TEMPLATES.controllerOvervoltage(item, 0, 0));
             }
-        }
-        
-        // Initialize incident report event listeners
-        function initIncidentReportListeners() {
-            const overlay = document.getElementById('incidentReportOverlay');
-            const dismissBtn = document.getElementById('incidentDismiss');
-            const learnMoreBtn = document.getElementById('incidentLearnMore');
-            
-            if (dismissBtn) {
-                dismissBtn.addEventListener('click', hideIncidentReport);
-            }
-            
-            if (learnMoreBtn) {
-                learnMoreBtn.addEventListener('click', () => {
-                    const topic = learnMoreBtn.dataset.topic;
-                    // TODO: Show educational content for this topic
-                    hideIncidentReport();
-                    showToast(`📚 Learn more about "${topic}" coming soon!`, 'info', 3000);
-                });
-            }
-            
-            // Close on overlay click
-            if (overlay) {
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) {
-                        hideIncidentReport();
-                    }
-                });
-            }
-            
-            // Close on Escape key
-            document.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape' && overlay.classList.contains('visible')) {
-                    hideIncidentReport();
-                }
-            });
         }
         
         // ============================================
@@ -16677,6 +15975,7 @@
                 }
                 
                 this.updateUI();
+                scheduleCircuitAutosave();
             }
             
             /**
@@ -16788,6 +16087,57 @@
         
         // Create global history manager instance
         const historyManager = new HistoryManager(50);
+
+        // Debounced autosave — persists circuit edits to ProjectStore / CircuitStore
+        let circuitDirtySinceSave = false;
+        let autosaveTimer = null;
+        const CIRCUIT_AUTOSAVE_MS = 5000;
+
+        function markCircuitDirty() {
+            circuitDirtySinceSave = true;
+        }
+
+        function clearCircuitDirty() {
+            circuitDirtySinceSave = false;
+        }
+
+        function flushCircuitAutosave() {
+            if (autosaveTimer) {
+                clearTimeout(autosaveTimer);
+                autosaveTimer = null;
+            }
+            try {
+                if (globalThis.ProjectStore?.saveSimulatorSnapshot
+                    && typeof globalThis.getSimulatorProjectSnapshot === 'function') {
+                    globalThis.ProjectStore.saveSimulatorSnapshot(globalThis.getSimulatorProjectSnapshot());
+                }
+                if (typeof globalThis.saveSimulatorCircuitToStore === 'function') {
+                    globalThis.saveSimulatorCircuitToStore();
+                }
+                clearCircuitDirty();
+            } catch (err) {
+                console.warn('[autosave] Failed to persist circuit:', err);
+            }
+        }
+
+        function scheduleCircuitAutosave() {
+            markCircuitDirty();
+            if (autosaveTimer) clearTimeout(autosaveTimer);
+            autosaveTimer = setTimeout(flushCircuitAutosave, CIRCUIT_AUTOSAVE_MS);
+        }
+
+        globalThis.flushSimulatorAutosave = flushCircuitAutosave;
+        globalThis.clearSimulatorDirtyGuard = clearCircuitDirty;
+
+        window.addEventListener('beforeunload', (event) => {
+            if (circuitDirtySinceSave) {
+                flushCircuitAutosave();
+                if (circuitDirtySinceSave) {
+                    event.preventDefault();
+                    event.returnValue = '';
+                }
+            }
+        });
         
         // ============================================
         // BREAKER TRIP CHECKING FOR SIMULATE MODE (Phase 3.2)
@@ -16841,24 +16191,13 @@
                     connections = connections.filter(c => c.id !== conn.id);
                     
                     // Show failure card
-                    showIncidentReport({
-                        type: 'error',
-                        icon: '💥',
-                        category: 'Voltage Mismatch',
-                        title: 'Appliance Destroyed!',
-                        description: `The ${load.specs?.name || 'appliance'} was connected to a 240V source but is rated for 120V. When power flowed, the appliance was destroyed by overvoltage.`,
-                        math: {
-                            explanation: 'Connecting a 120V appliance to 240V doubles the voltage, causing excessive current flow and component failure.',
-                            formula: 'Power = Voltage² / Resistance',
-                            result: 'At 240V, power is 4x rated power → instant failure'
-                        },
-                        realworld: 'In real life, connecting a 120V device to 240V will cause immediate damage - components will overheat, fuses will blow, and the device may catch fire or explode.',
-                        solutions: [
-                            'Always match appliance voltage to circuit voltage',
-                            'Use a step-down transformer if you must connect 120V devices to 240V',
-                            'Check appliance labels for voltage requirements before connecting'
-                        ]
-                    });
+                    const loadVoltage = load.specs?.voltage || 120;
+                    const circuitVoltage = 240;
+                    showIncidentReport(INCIDENT_TEMPLATES.loadExplosion(
+                        load.specs?.name || 'Appliance',
+                        loadVoltage,
+                        circuitVoltage,
+                    ));
                     
                     // Recalculate power flow
                     LiveView.PowerFlow.calculate();
@@ -18384,23 +17723,17 @@
                 icon: '🔄',
                 category: 'CONTROLLER REPLACED',
                 title: `Upgraded to ${preset.name}`,
-                description: lostCount > 0 
-                    ? `Controller swapped! ${transferredCount} connection${transferredCount !== 1 ? 's' : ''} transferred. ${lostCount} connection${lostCount !== 1 ? 's' : ''} removed (incompatible handles).`
-                    : `Controller swapped with all ${transferredCount} connection${transferredCount !== 1 ? 's' : ''} maintained.`,
+                description: lostCount > 0
+                    ? `${transferredCount} connection${transferredCount !== 1 ? 's' : ''} kept, ${lostCount} removed (incompatible).`
+                    : `All ${transferredCount} connection${transferredCount !== 1 ? 's' : ''} kept.`,
                 math: [
-                    { label: 'New Controller', value: preset.name, status: 'good' },
-                    { label: 'Max PV Voltage', value: `${preset.maxVoc}V`, status: '' },
-                    { label: 'Max PV Current', value: `${preset.ratedChargeCurrent}A`, status: '' },
-                    { label: 'Max PV Power', value: `${preset.maxWmp}W`, status: '' },
-                    { label: 'Connections Transferred', value: `${transferredCount}`, status: transferredCount > 0 ? 'good' : '' },
-                    ...(lostCount > 0 ? [{ label: 'Connections Removed', value: `${lostCount}`, status: 'warning' }] : [])
+                    { label: 'Controller', value: preset.name, status: 'good' },
+                    { label: 'Max Voc', value: `${preset.maxVoc}V`, status: '' },
+                    { label: 'Max power', value: `${preset.maxWmp}W`, status: '' },
                 ],
-                realworld: 'Swapping controllers is common when upgrading your system. Make sure the new controller can handle your array\'s voltage and current ratings.',
                 solutions: [
-                    'Verify your array Voc is within the new controller\'s limits',
-                    'Check that your string current doesn\'t exceed the new max Isc',
-                    'Reconnect any removed connections if needed'
-                ]
+                    'Confirm array Voc and current are within the new limits',
+                ],
             });
             
             return newController;
@@ -18686,8 +18019,17 @@
                 };
             }
             
-            // Store in localStorage for designer to read
-            localStorage.setItem('solarDesignerExport', JSON.stringify(exportData));
+            // Store in localStorage for designer to read (via unified circuit store when available)
+            if (globalThis.CircuitStore?.saveFromDesignerConfig) {
+                globalThis.CircuitStore.saveFromDesignerConfig({
+                    items: allItems,
+                    connections,
+                    itemIdCounter,
+                    connectionIdCounter,
+                });
+            } else {
+                localStorage.setItem('solarDesignerExport', JSON.stringify(exportData));
+            }
             
             // Open designer in new window
             window.open('index.html#/solar/design', '_blank');
@@ -18786,6 +18128,17 @@
          */
         function saveFullConfig() {
             try {
+                if (globalThis.ProjectStore?.saveSimulatorSnapshot
+                    && typeof globalThis.getSimulatorProjectSnapshot === 'function') {
+                    const snapshot = globalThis.getSimulatorProjectSnapshot();
+                    globalThis.ProjectStore.saveSimulatorSnapshot(snapshot);
+                    showHint("💾 Project Saved",
+                        `Saved ${snapshot.summary.panelCount} panels, ${snapshot.summary.batteryCount} batteries, ` +
+                        `${snapshot.summary.connectionCount} connections` +
+                        (snapshot.summary.hasStructureGeometry ? ', with structure geometry' : ''));
+                    return;
+                }
+
                 const config = getUnifiedConfig();
                 localStorage.setItem('solarUnifiedConfig', JSON.stringify(config));
                 showHint("💾 Config Saved", 
@@ -18803,14 +18156,29 @@
          */
         function loadFullConfig() {
             try {
-                const saved = localStorage.getItem('solarUnifiedConfig');
+                const project = globalThis.ProjectStore?.resolveProjectDocument?.();
+                if (project && typeof globalThis.applySimulatorProjectImport === 'function') {
+                    globalThis.applySimulatorProjectImport(project);
+                    const summary = project.summary || globalThis.getSimulatorProjectSnapshot?.()?.summary;
+                    showHint("📂 Project Loaded",
+                        `Loaded ${summary?.panelCount || 0} panels, ${summary?.batteryCount || 0} batteries, ` +
+                        `${summary?.connectionCount || 0} connections`);
+                    return;
+                }
+
+                const saved = localStorage.getItem('linkageLabProject')
+                    || localStorage.getItem('solarUnifiedConfig');
                 if (!saved) {
                     showHint("ℹ️ No Saved Config", "No saved configuration found. Use 'Load' button to import a JSON file.");
                     return;
                 }
                 
                 const config = JSON.parse(saved);
-                applyUnifiedConfig(config);
+                if (config.exportType === 'linkageLab.project' && globalThis.applySimulatorProjectImport) {
+                    globalThis.applySimulatorProjectImport(config);
+                } else {
+                    applyUnifiedConfig(config);
+                }
                 showHint("📂 Config Loaded", 
                     `Loaded ${config.summary?.panelCount || 0} panels, ${config.summary?.batteryCount || 0} batteries, ` +
                     `${config.summary?.connectionCount || 0} connections`);
@@ -18963,11 +18331,26 @@
             
             // Apply simulation settings
             if (config.simulation) {
-                const latInput = document.getElementById('latitude');
+                const latInput = document.getElementById('simLatitudeInput') || document.getElementById('latitude');
                 const daySlider = document.getElementById('daySlider');
                 const weatherSelect = document.getElementById('weatherDifficulty');
-                
-                if (latInput && config.simulation.latitude) {
+
+                if (config.simulation.latitude != null) {
+                    simulationLatitude = config.simulation.latitude;
+                    window.simulationLatitude = simulationLatitude;
+                }
+                if (config.simulation.longitude != null) {
+                    simulationLongitude = config.simulation.longitude;
+                }
+                if (config.simulation.ghiKwhPerM2Day != null) {
+                    siteGhiKwhPerM2Day = config.simulation.ghiKwhPerM2Day;
+                }
+                if (config.simulation.energyZoneId != null) {
+                    energyZoneId = config.simulation.energyZoneId;
+                    energyZoneLabel = `Zone ${energyZoneId}`;
+                }
+
+                if (latInput && config.simulation.latitude != null) {
                     latInput.value = config.simulation.latitude;
                 }
                 if (daySlider && config.simulation.dayOfYear) {
@@ -18976,11 +18359,17 @@
                 if (weatherSelect && config.simulation.weatherDifficulty) {
                     weatherSelect.value = config.simulation.weatherDifficulty;
                 }
+                updateSiteLocationDisplay();
             }
             
-            // Store in localStorage for persistence
+            // Store in unified project document (Phase 12) with legacy fallback
             try {
-                localStorage.setItem('solarUnifiedConfig', JSON.stringify(config));
+                if (globalThis.ProjectStore?.saveSimulatorSnapshot
+                    && typeof globalThis.getSimulatorProjectSnapshot === 'function') {
+                    globalThis.ProjectStore.saveSimulatorSnapshot(globalThis.getSimulatorProjectSnapshot());
+                } else {
+                    localStorage.setItem('solarUnifiedConfig', JSON.stringify(config));
+                }
                 if (geometryData) {
                     localStorage.setItem('linkageLabGeometry', JSON.stringify(cleanGeometryData(window.linkageLabGeometry)));
                 }
@@ -19514,7 +18903,8 @@
             // This gives peak output of ~85% of rated WMP (realistic for STC conditions)
             // The 0.6 was too aggressive - real panels can achieve 80-90% of rated power in good conditions
             const efficiencyDerating = 0.85; // 85% accounts for temperature, dust, wiring losses, etc.
-            return baseCurve * normalizedSeasonal * efficiencyDerating;
+            const ghiScale = getSiteGhiScale();
+            return baseCurve * normalizedSeasonal * efficiencyDerating * ghiScale;
         }
         
         // Evaluate if a load should be ON based on its schedule and current hour
@@ -20316,6 +19706,10 @@
         }
         
         function simulationLoop(timestamp) {
+            if (currentMode !== 'simulate') {
+                animationFrameId = null;
+                return;
+            }
             // Always execute automations and calculate power flow, even when paused
             // This ensures wire glow and automation state are always up to date
             const currentHourOfDay = Math.floor(elapsedHours) % 24;
@@ -20332,6 +19726,7 @@
                 processFaultsAndWarnings();
                 updateTimeDisplay();
                 updateSimulationDisplay();
+                refreshCelestialCanvas(elapsedHours % 24);
                 render();
                 animationFrameId = requestAnimationFrame(simulationLoop);
                 return;
@@ -20376,11 +19771,11 @@
             // Update displays every frame for smooth animation
             updateTimeDisplay();
             updateSimulationDisplay();
+            refreshCelestialCanvas(elapsedHours % 24);
             
             // Update visual elements if we crossed an hour boundary
             if (currentHour !== previousDisplayHour) {
                 const hourOfDay = currentHour % 24;
-                updateBackgroundColor(hourOfDay);
                 updateStructureLighting(hourOfDay);
                 updateShadowAngle(hourOfDay);
                 previousDisplayHour = currentHour;
@@ -20846,196 +20241,126 @@
         // Process recipe-based loads during simulation (non-power resources only)
         // Power consumption is now handled in calculateLoadConsumption()
         function processRecipeLoads(hourOfDay) {
-            // Recipe-based loads are treated as loads for power consumption
-            // This function only handles non-power resource processing
-            const recipeLoads = allItems.filter(i => i.type === 'acload' && i.specs.recipes && i.specs.recipes.length > 0);
-            
+            const recipeLoads = allItems.filter(i =>
+                (i.type === 'acload' || i.type === 'processor') &&
+                i.specs?.recipes &&
+                i.specs.recipes.length > 0,
+            );
+            const stepHours = 1.0;
+
             recipeLoads.forEach(load => {
-                // Initialize simulation state if not exists
                 if (!load.simState) {
                     load.simState = {
                         isRunning: false,
                         isProcessing: false,
                         recipeTimeElapsed: 0,
                         currentPowerWatts: 0,
-                        lastConsumptionKwh: 0
+                        lastConsumptionKwh: 0,
                     };
                 }
-                
-                // Check if load should be running (power consumption handled by calculateLoadConsumption)
-                // Recipe loads run if they have power and automation allows it
+
                 if (!load.simState.isRunning) {
                     load.isProcessing = false;
                     return;
                 }
-                
+
                 const recipes = load.specs.recipes || [];
                 if (recipes.length === 0) return;
-                
-                // Get active recipe (for now, use first recipe, later support recipe selection)
-                const activeRecipeIndex = load.activeRecipeIndex !== null && load.activeRecipeIndex !== undefined 
-                    ? load.activeRecipeIndex 
-                    : 0;
+
+                const activeRecipeIndex = load.activeRecipeIndex ?? 0;
                 const recipe = recipes[activeRecipeIndex];
                 if (!recipe) return;
-                
-                // Check if load has AC power via cord connection
-                const cordHandle = load.handles.cord;
+
+                const cordHandle = load.handles?.cord;
                 const hasPower = cordHandle && cordHandle.connectedTo.length > 0;
                 if (!hasPower) {
                     load.isProcessing = false;
                     return;
                 }
-                
-                // Recipe processing logic
-                const recipeInputs = recipe.inputs || [];
+
+                const recipeInputs = (recipe.inputs || []).filter(
+                    (input) => input.resourceType && input.resourceType !== RESOURCE_TYPES.POWER,
+                );
                 const recipeOutputs = recipe.outputs || [];
-                const durationHours = recipe.durationHours || 0;
-                
-                // Check if this is an automation-triggered recipe start
-                const isAutomationTriggered = load.pendingRecipeStart === true;
-                
+                const durationHours = Math.max(recipe.durationHours || 0, 1 / 60);
+
+                const findInputHandle = (recipeInput) => Object.values(load.handles || {}).find(h =>
+                    (h.resourceType === recipeInput.resourceType || h.resourceType === RESOURCE_TYPES.GENERIC) &&
+                    h.polarity === 'input',
+                );
+
+                const findOutputHandle = (recipeOutput) => Object.values(load.handles || {}).find(h =>
+                    (h.resourceType === recipeOutput.resourceType || h.resourceType === RESOURCE_TYPES.GENERIC) &&
+                    h.polarity === 'output',
+                );
+
                 if (!load.isProcessing) {
-                    // Check if we have all required recipe inputs
                     let hasAllInputs = true;
-                    
+
                     for (const recipeInput of recipeInputs) {
-                        // Find input handle - either matching exact type OR Generic
-                        const inputHandle = Object.values(load.handles).find(h => 
-                            (h.resourceType === recipeInput.resourceType || h.resourceType === RESOURCE_TYPES.GENERIC) && 
-                            h.polarity === 'input'
-                        );
-                        if (!inputHandle || inputHandle.connectedTo.length === 0) {
+                        const inputHandle = findInputHandle(recipeInput);
+                        const container = inputHandle ? getConnectedResourceContainer(load, inputHandle) : null;
+                        if (!inputHandle || !container) {
                             hasAllInputs = false;
                             break;
                         }
-                        
-                        // Find source container - check both connection directions
-                        const conn = connections.find(c => 
-                            c.targetHandleId === inputHandle.id || 
-                            c.sourceHandleId === inputHandle.id
-                        );
-                        if (conn) {
-                            // Container could be source OR target depending on how connection was made
-                            let container = allItems.find(i => i.id === conn.sourceItemId && i.type === 'resourcecontainer');
-                            if (!container) {
-                                container = allItems.find(i => i.id === conn.targetItemId && i.type === 'resourcecontainer');
-                            }
-                            if (container) {
-                                const requiredAmount = recipeInput.amount || 0;
-                                if ((container.specs.value || 0) < requiredAmount) {
-                                    hasAllInputs = false;
-                                    console.log(`[Recipe] Insufficient input: ${container.specs.name} has ${container.specs.value}, need ${requiredAmount}`);
-                                    break;
-                                }
-                            } else {
-                                hasAllInputs = false;
-                                break;
-                            }
-                        } else {
+
+                        const requiredAmount = recipeInput.amount || 0;
+                        if ((container.specs.value || 0) < requiredAmount) {
                             hasAllInputs = false;
                             break;
                         }
                     }
-                    
-                    if (hasAllInputs && hasPower) {
-                        // Start recipe processing
-                        load.isProcessing = true;
-                        load.recipeTimeElapsed = 0;
-                        load.awaitingInputs = false;
-                        load.pendingRecipeStart = false; // Clear automation trigger flag
-                        
-                        // Log recipe start for debugging
-                        console.log(`Recipe "${recipe.name}" started on ${load.specs.name}. Duration: ${durationHours} hours`);
-                        
-                        // Note: Inputs are now consumed gradually each hour, not all at once
-                        // This simulates realistic processing (e.g., 100g/hour for 5 hours = 500g total)
-                    } else {
+
+                    if (!hasAllInputs || !hasPower) {
                         load.awaitingInputs = !hasAllInputs;
                         load.isProcessing = false;
-                        load.pendingRecipeStart = false; // Clear automation trigger flag on failure too
+                        load.pendingRecipeStart = false;
                         return;
                     }
+
+                    load.isProcessing = true;
+                    load.recipeTimeElapsed = 0;
+                    load.awaitingInputs = false;
+                    load.pendingRecipeStart = false;
                 }
-                
-                // Process recipe - consume inputs gradually each hour
-                load.recipeTimeElapsed += 1.0; // 1 hour
-                
-                // Consume proportional inputs each hour (gradual consumption)
-                if (durationHours > 0) {
-                    const inputsPerHour = 1.0 / durationHours; // Fraction of inputs to consume each hour
-                    
-                    for (const recipeInput of recipeInputs) {
-                        // Find input handle - either matching the exact resource type OR a connected Generic type
-                        const inputHandle = Object.values(load.handles).find(h => 
-                            (h.resourceType === recipeInput.resourceType || h.resourceType === RESOURCE_TYPES.GENERIC) && 
-                            h.polarity === 'input'
-                        );
-                        
-                        if (inputHandle) {
-                            // Find connected container - check both connection directions
-                            const conn = connections.find(c => 
-                                c.targetHandleId === inputHandle.id || 
-                                c.sourceHandleId === inputHandle.id
-                            );
-                            
-                            if (conn) {
-                                // Container could be source OR target depending on how connection was made
-                                let container = allItems.find(i => i.id === conn.sourceItemId && i.type === 'resourcecontainer');
-                                if (!container) {
-                                    container = allItems.find(i => i.id === conn.targetItemId && i.type === 'resourcecontainer');
-                                }
-                                if (container) {
-                                    const hourlyConsumption = (recipeInput.amount || 0) * inputsPerHour;
-                                    container.specs.value = (container.specs.value || 0) - hourlyConsumption;
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                if (load.recipeTimeElapsed >= durationHours) {
-                    // Recipe complete - produce outputs
-                    recipeOutputs.forEach(recipeOutput => {
-                        // Find output handle - either matching exact type OR Generic
-                        const outputHandle = Object.values(load.handles).find(h => 
-                            (h.resourceType === recipeOutput.resourceType || h.resourceType === RESOURCE_TYPES.GENERIC) && 
-                            h.polarity === 'output'
-                        );
-                        if (outputHandle) {
-                            // Find connected container - check both connection directions
-                            const conn = connections.find(c => 
-                                c.sourceHandleId === outputHandle.id || 
-                                c.targetHandleId === outputHandle.id
-                            );
-                            if (conn) {
-                                // Container could be source OR target depending on how connection was made
-                                let container = allItems.find(i => i.id === conn.targetItemId && i.type === 'resourcecontainer');
-                                if (!container) {
-                                    container = allItems.find(i => i.id === conn.sourceItemId && i.type === 'resourcecontainer');
-                                }
-                                if (container) {
-                                    const produced = recipeOutput.amount || 0;
-                                    const capacity = container.specs.capacity || Infinity;
-                                    container.specs.value = Math.min(capacity, (container.specs.value || 0) + produced);
-                                    console.log(`[Recipe] Produced ${produced} to ${container.specs.name}, total: ${container.specs.value}`);
-                                }
-                            }
-                        }
-                    });
-                    
-                    // Reset recipe processing
+
+                const remainingHours = Math.max(0, durationHours - load.recipeTimeElapsed);
+                const hoursThisTick = Math.min(stepHours, remainingHours);
+                if (hoursThisTick <= 0) {
                     load.isProcessing = false;
                     load.recipeTimeElapsed = 0;
-                    
-                    // Log recipe completion
-                    console.log(`Recipe "${recipe.name}" completed on ${load.specs.name}!`);
-                    
-                    // Turn off load after recipe completes (it can be re-triggered by automation)
-                    // Only auto-shutoff if this was a single-run recipe triggered by automation
+                    return;
+                }
+
+                const progressFraction = hoursThisTick / durationHours;
+                recipeInputs.forEach((recipeInput) => {
+                    const inputHandle = findInputHandle(recipeInput);
+                    const container = inputHandle ? getConnectedResourceContainer(load, inputHandle) : null;
+                    if (!container) return;
+
+                    const consumeAmount = (recipeInput.amount || 0) * progressFraction;
+                    container.specs.value = Math.max(0, (container.specs.value || 0) - consumeAmount);
+                });
+
+                load.recipeTimeElapsed += hoursThisTick;
+
+                if (load.recipeTimeElapsed >= durationHours - 1e-9) {
+                    recipeOutputs.forEach((recipeOutput) => {
+                        const outputHandle = findOutputHandle(recipeOutput);
+                        const container = outputHandle ? getConnectedResourceContainer(load, outputHandle) : null;
+                        if (!container) return;
+
+                        const produced = recipeOutput.amount || 0;
+                        const capacity = container.specs.capacity || Infinity;
+                        container.specs.value = Math.min(capacity, (container.specs.value || 0) + produced);
+                    });
+
+                    load.isProcessing = false;
+                    load.recipeTimeElapsed = 0;
                     load.simState.isRunning = false;
                     load.simState.currentPowerWatts = 0;
-                    if (LiveView.state && LiveView.state.loadStates) {
+                    if (LiveView.state?.loadStates) {
                         LiveView.state.loadStates[load.id] = false;
                     }
                 }
@@ -21044,6 +20369,14 @@
         
         // Update background color based on time of day
         function updateBackgroundColor(hourOfDay) {
+            refreshCelestialCanvas(hourOfDay);
+
+            // 3D structure viewport uses its own renderer sky when geometry is loaded
+            const has3DBackground = bgRenderer && window.linkageLabGeometry && !useBlueprintBackground;
+            if (!has3DBackground || shouldShowSimulate2DCelestial()) {
+                return;
+            }
+
             // Get dynamic sunrise/sunset based on latitude and day
             const { sunrise, sunset } = getSunriseSunset(simulationLatitude, currentDayOfYear);
             
@@ -21120,35 +20453,9 @@
                 ({ r, g, b } = nightColor);
             }
             
-            // Update canvas container background
-            // If 3D structure is loaded, Three.js handles the sky color - keep SVG transparent
-            const has3DBackground = bgRenderer && window.linkageLabGeometry;
-            
-            const canvasContainer = document.getElementById('canvas-container');
-            if (canvasContainer) {
-                const newColor = `rgb(${r}, ${g}, ${b})`;
-                // Only set container background as fallback when no 3D
-                if (!has3DBackground) {
-                    canvasContainer.style.backgroundColor = newColor;
-                }
-                // Only update SVG background if no 3D structure (keep transparent for 3D)
-                const svg = d3.select('#main-content svg');
-                if (!svg.empty() && !has3DBackground) {
-                    svg.style('background-color', newColor);
-                }
-
-                if (typeof CelestialSky !== 'undefined') {
-                    if (!has3DBackground) {
-                        CelestialSky.updateContainer(canvasContainer, hourOfDay);
-                    } else {
-                        CelestialSky.clearOverlay(canvasContainer);
-                    }
-                    CelestialSky.updateSunTrackIndicator(hourOfDay, document.getElementById('sim-sun-indicator'));
-                    const clockEl = document.getElementById('simCelestialClock');
-                    if (clockEl) {
-                        clockEl.textContent = CelestialSky.formatClockFromHours(hourOfDay);
-                    }
-                }
+            if (bgRenderer) {
+                const skyColor = (r << 16) | (g << 8) | b;
+                bgRenderer.setClearColor(skyColor);
             }
         }
         
@@ -24386,6 +23693,7 @@
                     }
                     
                     applyCanvasViewModeStyles(mode);
+                    refreshCelestialCanvas();
                     if (!PREFER_LITE_CANVAS) {
                         localStorage.setItem('circuit3d_viewMode', mode);
                     }
@@ -24401,6 +23709,7 @@
                 viewModeSelect.value = initialMode;
                 if (scene3D) scene3D.setViewMode(initialMode);
                 applyCanvasViewModeStyles(initialMode);
+                refreshCelestialCanvas();
                 const viewControlsContainer = document.getElementById('3dViewControlsContainer');
                 if (viewControlsContainer) {
                     viewControlsContainer.style.display = (initialMode === '3d' || initialMode === 'split') ? 'flex' : 'none';
@@ -24473,7 +23782,223 @@
         // ============================================
 
         /** Import designer export payload into live simulator state (embedded app handoff). */
-        function importCircuitFromDesignerExport(data) {
+        function repairCircuitItemHandles(item) {
+            if (!item?.handles || !item.width || !item.height) return item;
+            if (item.type !== 'panel') return item;
+
+            const handles = { ...item.handles };
+            const midY = item.height / 2;
+            if (handles.positive) {
+                handles.positive = {
+                    ...handles.positive,
+                    x: 0,
+                    y: midY,
+                    side: handles.positive.side || 'left',
+                };
+            }
+            if (handles.negative) {
+                handles.negative = {
+                    ...handles.negative,
+                    x: item.width,
+                    y: midY,
+                    side: handles.negative.side || 'right',
+                };
+            }
+            return { ...item, handles };
+        }
+
+        function normalizeImportedItems(items) {
+            if (globalThis.CircuitNormalize?.normalizeCircuitItems) {
+                return globalThis.CircuitNormalize.normalizeCircuitItems(items);
+            }
+            return items.map((item) => repairCircuitItemHandles(item));
+        }
+
+        function createConnectionByKey(sourceItem, sourceHandleKey, targetItem, targetHandleKey) {
+            const sourceHandle = sourceItem?.handles?.[sourceHandleKey];
+            const targetHandle = targetItem?.handles?.[targetHandleKey];
+            if (!sourceHandle || !targetHandle) return;
+            createConnection(sourceItem, sourceHandle, targetItem, targetHandle);
+        }
+
+        function removeAllPanels() {
+            const panels = allItems.filter((i) => i.type === 'panel');
+            panels.forEach((panel) => {
+                connections.filter((c) => c.sourceItemId === panel.id || c.targetItemId === panel.id)
+                    .forEach((conn) => deleteConnection(conn.id));
+            });
+            const count = panels.length;
+            allItems = allItems.filter((i) => i.type !== 'panel');
+            if (selectedItem?.type === 'panel') selectedItem = null;
+            return count;
+        }
+
+        function addPanelFromLinkageWithDimensions(x, y, specs, widthPx, heightPx) {
+            const id = `panel-${++itemIdCounter}`;
+            const imp = specs.imp || (specs.wmp / specs.vmp) || (specs.isc * 0.9);
+            const panel = {
+                id,
+                type: 'panel',
+                x,
+                y,
+                width: widthPx,
+                height: heightPx,
+                specs: {
+                    name: specs.name,
+                    wmp: specs.wmp,
+                    vmp: specs.vmp,
+                    voc: specs.voc,
+                    isc: specs.isc,
+                    imp: parseFloat(imp.toFixed(2)),
+                    width: specs.width,
+                    height: specs.height,
+                    cost: specs.cost || 150,
+                },
+                handles: {
+                    positive: { id: `${id}-pos`, polarity: 'positive', x: 0, y: heightPx / 2, side: 'left', connectedTo: [] },
+                    negative: { id: `${id}-neg`, polarity: 'negative', x: widthPx, y: heightPx / 2, side: 'right', connectedTo: [] },
+                },
+            };
+            allItems.push(panel);
+            return panel;
+        }
+
+        function syncPanelsFromLinkage(config) {
+            if (!config || !config.panels || config.panels.length === 0) {
+                return { synced: false, message: 'No panels to sync' };
+            }
+
+            const removedCount = removeAllPanels();
+            const { panels: linkagePanels, specs: panelSpecs, layout: layoutConfig } = config;
+            const isArchMode = layoutConfig.isArchMode || false;
+            const gridRows = layoutConfig.gridRows || Math.ceil(Math.sqrt(linkagePanels.length));
+            const gridCols = layoutConfig.gridCols || Math.ceil(linkagePanels.length / gridRows);
+            const panelsPerSide = gridRows * gridCols;
+
+            const specWidthMm = panelSpecs.width || 990;
+            const specHeightMm = panelSpecs.height || 1651;
+            const scaleFactor = 0.09;
+            const panelWidthPx = Math.max(60, Math.min(180, specWidthMm * scaleFactor));
+            const panelHeightPx = Math.max(80, Math.min(220, specHeightMm * scaleFactor));
+            const paddingScale = 2.5;
+            const spacingX = Math.max(15, (layoutConfig.paddingX || 2) * paddingScale);
+            const spacingY = Math.max(15, (layoutConfig.paddingY || 2) * paddingScale);
+
+            const panelGrid = [];
+            for (let r = 0; r < gridRows; r++) panelGrid[r] = [];
+
+            if (isArchMode) {
+                const numSides = Math.ceil(linkagePanels.length / panelsPerSide);
+                const arrayWidth = gridCols * (panelWidthPx + spacingX) - spacingX;
+                const arrayHeight = gridRows * (panelHeightPx + spacingY) - spacingY;
+                const groupSpacing = 60;
+                const numPairs = Math.ceil(numSides / 2);
+                const totalWidth = numPairs * (arrayWidth * 2 + groupSpacing) - groupSpacing;
+                const startX = -totalWidth / 2;
+                const startY = -arrayHeight / 2 - 100;
+
+                linkagePanels.forEach((panel, idx) => {
+                    const sideIndex = Math.floor(idx / panelsPerSide);
+                    const pairIndex = Math.floor(sideIndex / 2);
+                    const isASide = sideIndex % 2 === 0;
+                    const withinSide = idx % panelsPerSide;
+                    const row = Math.floor(withinSide / gridCols);
+                    const col = withinSide % gridCols;
+                    const pairStartX = startX + pairIndex * (arrayWidth * 2 + groupSpacing + 40);
+                    const arrayOffsetX = isASide ? 0 : arrayWidth + groupSpacing;
+                    const x = pairStartX + arrayOffsetX + col * (panelWidthPx + spacingX);
+                    const y = startY + row * (panelHeightPx + spacingY);
+                    const newPanel = addPanelFromLinkageWithDimensions(x, y, panelSpecs, panelWidthPx, panelHeightPx);
+                    if (sideIndex === 0 && row < gridRows && col < gridCols) {
+                        panelGrid[row][col] = newPanel;
+                    }
+                });
+            } else {
+                const totalWidth = gridCols * (panelWidthPx + spacingX) - spacingX;
+                const totalHeight = gridRows * (panelHeightPx + spacingY) - spacingY;
+                const startX = -totalWidth / 2;
+                const startY = -totalHeight / 2 - 150;
+                linkagePanels.forEach((panel, idx) => {
+                    const row = Math.floor(idx / gridCols);
+                    const col = idx % gridCols;
+                    const x = startX + col * (panelWidthPx + spacingX);
+                    const y = startY + row * (panelHeightPx + spacingY);
+                    const newPanel = addPanelFromLinkageWithDimensions(x, y, panelSpecs, panelWidthPx, panelHeightPx);
+                    panelGrid[row][col] = newPanel;
+                });
+            }
+
+            let controller = allItems.find((i) => i.type === 'controller');
+            let battery = allItems.find((i) => i.type === 'battery' || i.type === 'smartbattery');
+            const arrayBottomY = (panelGrid[gridRows - 1]?.[0]?.y || 0) + panelHeightPx + 80;
+            const arrayCenterX = ((panelGrid[0]?.[0]?.x || 0) + (panelGrid[0]?.[gridCols - 1]?.x || 0) + panelWidthPx) / 2;
+
+            if (!controller) {
+                const stringVoc = gridRows * (panelSpecs.voc || 24);
+                const preset = globalThis.ControllerFaults?.pickControllerPresetForStringVoc?.(
+                    CONTROLLER_PRESETS,
+                    stringVoc,
+                ) || CONTROLLER_PRESETS.find((p) => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
+                const controllerWidth = preset.width ? preset.width * 0.12 : 100;
+                controller = createController(arrayCenterX - controllerWidth / 2 - 50, arrayBottomY, preset);
+                allItems.push(controller);
+            }
+
+            if (!battery) {
+                const ruixuPreset = BATTERY_PRESETS.find((p) => p.name.includes('Ruixu 48V 314Ah'))
+                    || BATTERY_PRESETS.find((p) => p.name.includes('48V') && p.ah >= 200)
+                    || BATTERY_PRESETS[0];
+                battery = createBattery(controller.x + controller.width + 40, arrayBottomY, ruixuPreset);
+                allItems.push(battery);
+            }
+
+            for (let col = 0; col < gridCols; col++) {
+                for (let row = 0; row < gridRows - 1; row++) {
+                    const upperPanel = panelGrid[row]?.[col];
+                    const lowerPanel = panelGrid[row + 1]?.[col];
+                    if (upperPanel && lowerPanel) {
+                        createConnectionByKey(upperPanel, 'negative', lowerPanel, 'positive');
+                    }
+                }
+            }
+
+            if (gridCols > 0 && gridRows > 0 && controller) {
+                for (let col = 0; col < gridCols; col++) {
+                    const stringTopPanel = panelGrid[0]?.[col];
+                    const stringBottomPanel = panelGrid[gridRows - 1]?.[col];
+                    if (stringTopPanel && controller.handles?.pvPositive) {
+                        createConnectionByKey(stringTopPanel, 'positive', controller, 'pvPositive');
+                    }
+                    if (stringBottomPanel && controller.handles?.pvNegative) {
+                        createConnectionByKey(stringBottomPanel, 'negative', controller, 'pvNegative');
+                    }
+                }
+                if (controller.handles?.batteryPositive && battery?.handles?.positive) {
+                    createConnectionByKey(controller, 'batteryPositive', battery, 'positive');
+                }
+                if (controller.handles?.batteryNegative && battery?.handles?.negative) {
+                    createConnectionByKey(controller, 'batteryNegative', battery, 'negative');
+                }
+            }
+
+            invalidateSpecsCache();
+            render();
+            historyManager.pushState();
+
+            const layoutDesc = isArchMode
+                ? `${Math.ceil(linkagePanels.length / panelsPerSide)} sides (${gridRows}×${gridCols} per side)`
+                : `${gridRows}×${gridCols} grid`;
+
+            return {
+                synced: true,
+                added: linkagePanels.length,
+                removed: removedCount,
+                layout: layoutDesc,
+                message: `Synced ${linkagePanels.length} panels (${layoutDesc})`,
+            };
+        }
+
+        function importCircuitFromDesignerExport(data, options = {}) {
             if (!data) return false;
 
             let items;
@@ -24495,8 +24020,8 @@
 
             if (!items.length) return false;
 
-            allItems = items;
-            connections = conns;
+            allItems = normalizeImportedItems(items);
+            connections = conns.map((conn) => ({ ...conn }));
             invalidateSpecsCache();
             itemIdCounter = idCounter;
             connectionIdCounter = connIdCounter;
@@ -24513,17 +24038,92 @@
 
             updateSvgDimensions();
             render();
-            requestAnimationFrame(() => {
-                requestAnimationFrame(() => fitViewToContent({ immediate: true }));
-            });
-            if (typeof updateStats === 'function') {
-                updateStats();
+            if (options.fitView !== false) {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => fitViewToContent({ immediate: true }));
+                });
+            }
+            if (typeof updateScores === 'function') {
+                updateScores();
             }
 
             return true;
         }
 
         globalThis.applySimulatorCircuitImport = importCircuitFromDesignerExport;
+        globalThis.setSolarCanvasMode = applySolarCanvasMode;
+        globalThis.getSimulatorCircuitItems = () => allItems;
+        globalThis.getSimulatorCircuitConnections = () => connections;
+        globalThis.removeSimulatorPanels = removeAllPanels;
+        globalThis.syncPanelsFromLinkage = syncPanelsFromLinkage;
+        globalThis.requestSimulatorRender = () => render();
+        globalThis.updateSimulatorScores = () => updateScores();
+        globalThis.saveSimulatorCircuitToStore = function saveSimulatorCircuitToStore() {
+            if (typeof globalThis.CircuitStore?.saveFromDesignerConfig !== 'function') return;
+            globalThis.CircuitStore.saveFromDesignerConfig({
+                items: allItems.map((item) => {
+                    const clean = { ...item };
+                    delete clean.mesh;
+                    delete clean.node3D;
+                    return clean;
+                }),
+                connections: connections.map((conn) => ({ ...conn })),
+                itemIdCounter,
+                connectionIdCounter,
+            });
+        };
+
+        if (globalThis.__pendingSolarCanvasMode) {
+            applySolarCanvasMode(globalThis.__pendingSolarCanvasMode);
+            delete globalThis.__pendingSolarCanvasMode;
+        }
+
+        globalThis.getSimulatorProjectSnapshot = function getSimulatorProjectSnapshot() {
+            const panels = allItems.filter((i) => i.type === 'panel');
+            const batteries = allItems.filter((i) => i.type === 'battery');
+            const controllers = allItems.filter((i) => i.type === 'controller');
+
+            return {
+                version: 'unified-v2',
+                circuit: {
+                    items: allItems.map((item) => {
+                        const cleanItem = { ...item };
+                        delete cleanItem.mesh;
+                        delete cleanItem.node3D;
+                        return cleanItem;
+                    }),
+                    connections,
+                    itemIdCounter,
+                    connectionIdCounter,
+                },
+                simulation: {
+                    latitude: simulationLatitude,
+                    longitude: simulationLongitude,
+                    ghiKwhPerM2Day: siteGhiKwhPerM2Day,
+                    energyZoneId,
+                    dayOfYear: currentDayOfYear,
+                    weatherDifficulty: document.getElementById('weatherDifficulty')?.value || 'clear',
+                },
+                structureGeometry: window.linkageLabGeometry
+                    ? cleanGeometryData(window.linkageLabGeometry)
+                    : null,
+                cameraState: window.linkageLabCameraState || null,
+                summary: {
+                    panelCount: panels.length,
+                    totalWatts: panels.reduce((sum, p) => sum + (p.specs?.wmp || 0), 0),
+                    batteryCount: batteries.length,
+                    totalKWh: batteries.reduce((sum, b) => sum + (b.specs?.kWh || 0), 0),
+                    controllerCount: controllers.length,
+                    connectionCount: connections.length,
+                    hasStructureGeometry: !!window.linkageLabGeometry,
+                },
+            };
+        };
+
+        globalThis.applySimulatorProjectImport = function applySimulatorProjectImport(project) {
+            const legacy = globalThis.ProjectStore?.projectDocumentToLegacyUnified?.(project) || project;
+            applyUnifiedConfig(legacy);
+        };
         
         function bootSimulatorApplication() {
             if (globalThis.__simulatorBootComplete) return;
@@ -24531,6 +24131,7 @@
 
             updateSvgDimensions();
             populateLibraries(); // Enable library for adding components
+            syncLibrarySearchUi('');
             setupKeyboardShortcuts();
             setupTooltips();
             setupQuickActions(); // Enable quick actions for editing
@@ -24553,6 +24154,16 @@
                     }
                 });
             }
+
+            document.getElementById('zoomInButton')?.addEventListener('click', () => zoomCanvasIn());
+            document.getElementById('zoomOutButton')?.addEventListener('click', () => zoomCanvasOut());
+            document.getElementById('zoomFitButton')?.addEventListener('click', () => fitViewToContent());
+            document.getElementById('shortcutsHelpButton')?.addEventListener('click', () => toggleShortcutsOverlay(true));
+            document.getElementById('shortcutsOverlayClose')?.addEventListener('click', () => toggleShortcutsOverlay(false));
+            document.getElementById('shortcutsOverlay')?.addEventListener('click', (event) => {
+                if (event.target.id === 'shortcutsOverlay') toggleShortcutsOverlay(false);
+            });
+            updateCanvasModeBadge();
             
             // Add keyboard shortcuts for undo/redo and file operations
             document.addEventListener('keydown', (e) => {
@@ -24576,7 +24187,13 @@
                     }
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 's' && !isTyping) {
                     e.preventDefault();
-                    saveFullConfig();
+                    flushCircuitAutosave();
+                    if (typeof globalThis.saveProject === 'function') {
+                        globalThis.saveProject();
+                        clearCircuitDirty();
+                    } else {
+                        saveFullConfig();
+                    }
                 } else if ((e.ctrlKey || e.metaKey) && e.key === 'o' && !isTyping) {
                     e.preventDefault();
                     document.getElementById('importFullConfigInput')?.click();
@@ -24594,6 +24211,7 @@
             if (latInput) {
                 latInput.value = simulationLatitude;
             }
+            updateSiteLocationDisplay();
             
             // Check for imports via URL parameter
             const urlParams = new URLSearchParams(window.location.search);
@@ -24757,21 +24375,42 @@
                 let configLoaded = false;
                 let attemptingDefaultLoad = false;
 
-                // Prefer the designer's latest export so both views always show the same circuit.
-                // Only fall back to solarUnifiedConfig if designer has never exported.
-                const designerExportRaw = localStorage.getItem('solarDesignerExport');
-                if (designerExportRaw) {
-                    try {
-                        if (importCircuitFromDesignerExport(JSON.parse(designerExportRaw))) {
-                            configLoaded = true;
-                            console.log(`Loaded designer export: ${allItems.length} components`);
+                // Prefer unified circuit document (Phase 10 store)
+                const store = globalThis.CircuitStore;
+                const storeExport = store?.resolveCircuitDocument?.()
+                    ? store.toDesignerExport(store.resolveCircuitDocument())
+                    : null;
+                if (storeExport && importCircuitFromDesignerExport(storeExport)) {
+                    configLoaded = true;
+                    console.log(`Loaded circuit document: ${allItems.length} components`);
+                } else {
+                    const designerExportRaw = localStorage.getItem('solarDesignerExport');
+                    if (designerExportRaw) {
+                        try {
+                            if (importCircuitFromDesignerExport(JSON.parse(designerExportRaw))) {
+                                configLoaded = true;
+                                console.log(`Loaded designer export: ${allItems.length} components`);
+                            }
+                        } catch (e) {
+                            console.warn('Failed to load designer export as default:', e);
                         }
-                    } catch (e) {
-                        console.warn('Failed to load designer export as default:', e);
                     }
                 }
 
-                // Fall back to simulator's own saved config if designer export is absent/empty
+                // Fall back to unified project document, then legacy simulator config
+                if (!configLoaded) {
+                    const projectRaw = localStorage.getItem('linkageLabProject');
+                    if (projectRaw && typeof globalThis.applySimulatorProjectImport === 'function') {
+                        try {
+                            globalThis.applySimulatorProjectImport(JSON.parse(projectRaw));
+                            console.log('Loaded unified project document from localStorage');
+                            configLoaded = true;
+                        } catch (e) {
+                            console.error('Failed to load unified project document:', e);
+                        }
+                    }
+                }
+
                 if (!configLoaded) {
                     const savedUnifiedConfig = localStorage.getItem('solarUnifiedConfig');
                     if (savedUnifiedConfig) {
@@ -24795,15 +24434,27 @@
                             return response.json();
                         })
                         .then(config => {
+                            if (allItems.length > 0) {
+                                console.log('Skipping default config — circuit already populated');
+                                attemptingDefaultLoad = false;
+                                return;
+                            }
                             console.log('Loading default configuration from configs/simulator-default.json...');
                             applyUnifiedConfig(config);
                             render();
                             configLoaded = true;
                             attemptingDefaultLoad = false;
+                            if (!tutorialCompleted && allItems.length > 0) {
+                                setTimeout(() => startTutorial(), 800);
+                            }
                         })
                         .catch(e => {
                             console.log('No default config found at configs/simulator-default.json');
                             attemptingDefaultLoad = false;
+                            if (!configLoaded && allItems.length === 0) {
+                                setupDefaultLayout();
+                                configLoaded = true;
+                            }
                         });
                 }
                 
@@ -24854,13 +24505,12 @@
                 // Only show "No Circuit Loaded" message if nothing was loaded
                 // Wait a bit for async default config load to complete
                 setTimeout(() => {
-                    if (!configLoaded && !savedState && !attemptingDefaultLoad) {
-                        // No circuit loaded - show message to import from designer
-                        showHint("📥 No Circuit Loaded", 
-                            "This simulator requires a circuit design. " +
-                            "Open the Solar Circuit Designer to create a circuit, then click 'Simulate' to export it here.");
+                    if (!configLoaded && !savedState && !attemptingDefaultLoad && allItems.length === 0) {
+                        showHint('👋 Welcome to StarShade Lab',
+                            'Drag components from the Library, connect handles to wire your circuit, ' +
+                            'then switch to Simulate mode to run the model.');
                     }
-                }, 500); // Give async fetch 500ms to complete
+                }, 500);
             }
             
             // Show right sidebar (library/inspector) - open by default in simulator
@@ -24871,13 +24521,25 @@
                 updateRightSidebarToggle();
             }
             
-            // Initialize simulation if we have a circuit
+            // Initialize simulation or build mode if we have a circuit
             if (allItems.length > 0 && !_circuitImportRendered) {
                 render();
                 updateSvgDimensions();
-                setTimeout(() => initializeSimulation(), 200);
+                const pendingMode = globalThis.__pendingSolarCanvasMode || 'simulate';
+                if (pendingMode === 'build') {
+                    setTimeout(() => setMode('build'), 200);
+                } else {
+                    setTimeout(() => initializeSimulation(), 200);
+                }
             } else if (allItems.length > 0) {
-                setTimeout(() => initializeSimulation(), 200);
+                const pendingMode = globalThis.__pendingSolarCanvasMode || 'simulate';
+                if (pendingMode === 'build') {
+                    setTimeout(() => setMode('build'), 200);
+                } else {
+                    setTimeout(() => initializeSimulation(), 200);
+                }
+            } else if (globalThis.__pendingSolarCanvasMode === 'build') {
+                setTimeout(() => setMode('build'), 200);
             }
             
             // Keyboard shortcuts
@@ -25141,8 +24803,14 @@
                     const newLat = parseFloat(e.target.value);
                     if (!isNaN(newLat) && newLat >= -90 && newLat <= 90) {
                         simulationLatitude = newLat;
+                        window.simulationLatitude = simulationLatitude;
+                        siteGhiKwhPerM2Day = null;
+                        energyZoneId = null;
+                        energyZoneLabel = null;
+                        energyZoneColor = null;
                         // Update summer solstice day based on hemisphere
                         simulationStartDayOfYear = getSummerSolsticeDay(simulationLatitude);
+                        updateSiteLocationDisplay();
                         // Update displays
                         updateTimeDisplay();
                         updateSimulationDisplay();
@@ -25160,11 +24828,13 @@
             });
 
             // Show Hints toggle - hide any visible hint when unchecked
-            document.getElementById('showHintsToggle')?.addEventListener('change', (e) => {
-                if (!e.target.checked) {
-                    hideHint();
-                }
-            });
+            const showHintsToggle = document.getElementById('showHintsToggle');
+            if (showHintsToggle) {
+                showHintsToggle.checked = hintsEnabledPreference;
+                showHintsToggle.addEventListener('change', (e) => {
+                    setHintsEnabled(e.target.checked);
+                });
+            }
             
             // Save/Load
             document.getElementById('saveBtn')?.addEventListener('click', saveSystem);
@@ -25318,6 +24988,7 @@
                 });
                 
                 updatePanelArrayArea();
+                historyManager.pushState();
                 render();
                 validateSystem();
             });
@@ -25383,6 +25054,7 @@
                     }
                 });
                 
+                historyManager.pushState();
                 render();
                 validateSystem();
             });
@@ -25625,6 +25297,7 @@
                     controllerGroup.selectAll("*").remove(); // Clear all existing content
                 }
                 
+                historyManager.pushState();
                 render(); // Full re-render
                 validateSystem();
             });
@@ -26036,12 +25709,7 @@
                         // For now, "Next" just hides the hint (can be extended for hint progression)
                         hideHint();
                     } else if (e.target && e.target.id === 'hintHide') {
-                        // Disable hints and hide the popup
-                        const showHintsToggle = document.getElementById('showHintsToggle');
-                        if (showHintsToggle) {
-                            showHintsToggle.checked = false;
-                        }
-                        hideHint();
+                        setHintsEnabled(false);
                     }
                 });
             }
@@ -26055,6 +25723,10 @@
             
             // Canvas click to deselect
             svg.on("click", () => {
+                if (_suppressNextCanvasDeselect) {
+                    _suppressNextCanvasDeselect = false;
+                    return;
+                }
                 deselectAll();
             });
             

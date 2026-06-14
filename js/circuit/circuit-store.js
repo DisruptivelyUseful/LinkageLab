@@ -123,13 +123,53 @@ export function toDesignerExport(doc, extra = {}) {
 export function toDesignerConfig(doc) {
     if (!doc) return { items: [], connections: [] };
 
+    const items = doc.items || [];
     return {
-        items: doc.items || [],
-        connections: doc.connections || [],
+        items,
+        connections: normalizeDesignerConnections(items, doc.connections || []),
         itemIdCounter: doc.itemIdCounter,
         connectionIdCounter: doc.connectionIdCounter,
         sourceHandleKey: doc.sourceHandleKey,
     };
+}
+
+/**
+ * Resolve designer connection endpoints (simulator uses handle ids; designer uses keys).
+ * @param {object[]} items
+ * @param {object[]} connections
+ * @returns {object[]}
+ */
+export function normalizeDesignerConnections(items, connections) {
+    const findHandleKey = (item, conn, role) => {
+        if (!item?.handles) return null;
+        const keyField = role === 'source' ? 'sourceHandleKey' : 'targetHandleKey';
+        const altField = role === 'source' ? 'sourceHandle' : 'targetHandle';
+        const idField = role === 'source' ? 'sourceHandleId' : 'targetHandleId';
+
+        const existingKey = conn[keyField] || conn[altField];
+        if (existingKey && item.handles[existingKey]) return existingKey;
+
+        const handleId = conn[idField];
+        if (handleId) {
+            const entry = Object.entries(item.handles).find(([, handle]) => handle?.id === handleId);
+            if (entry) return entry[0];
+        }
+
+        return existingKey || null;
+    };
+
+    return (connections || []).map((conn) => {
+        const sourceItem = items.find((item) => item.id === conn.sourceItemId);
+        const targetItem = items.find((item) => item.id === conn.targetItemId);
+        const sourceHandleKey = findHandleKey(sourceItem, conn, 'source');
+        const targetHandleKey = findHandleKey(targetItem, conn, 'target');
+
+        return {
+            ...conn,
+            sourceHandleKey: sourceHandleKey || conn.sourceHandleKey || conn.sourceHandle,
+            targetHandleKey: targetHandleKey || conn.targetHandleKey || conn.targetHandle,
+        };
+    });
 }
 
 /**
@@ -138,6 +178,17 @@ export function toDesignerConfig(doc) {
 export function resolveCircuitDocument() {
     const bus = globalThis.AppRouter?.getAppStateBus?.();
     if (bus?.circuitDocument) return bus.circuitDocument;
+    if (bus?.projectDocument?.circuit) return bus.projectDocument.circuit;
+
+    try {
+        const projectRaw = localStorage.getItem('linkageLabProject');
+        if (projectRaw) {
+            const project = JSON.parse(projectRaw);
+            if (project?.circuit?.items) return project.circuit;
+        }
+    } catch (err) {
+        console.warn('[CircuitStore] Failed to read circuit from project document:', err);
+    }
 
     try {
         const saved = localStorage.getItem(CIRCUIT_DOCUMENT_KEY);
@@ -201,6 +252,69 @@ export function publishCircuitDocument(doc, extra = {}) {
 export function saveFromDesignerConfig(config, meta = {}) {
     const doc = createCircuitDocument(config, meta);
     publishCircuitDocument(doc, meta);
+    notifySubscribers(doc);
+    return doc;
+}
+
+const subscribers = new Set();
+
+/** @returns {CircuitDocument | null} */
+export function getState() {
+    return resolveCircuitDocument();
+}
+
+/**
+ * Merge partial circuit data into the canonical document.
+ * @param {object} partial
+ * @param {object} [meta]
+ * @returns {CircuitDocument}
+ */
+export function setState(partial, meta = {}) {
+    const current = resolveCircuitDocument() || createCircuitDocument({ items: [], connections: [] });
+    const mergedConfig = {
+        ...toDesignerConfig(current),
+        ...partial,
+        items: partial.items ?? partial.components ?? current.items,
+        connections: partial.connections ?? current.connections,
+        itemIdCounter: partial.itemIdCounter ?? current.itemIdCounter,
+        connectionIdCounter: partial.connectionIdCounter ?? current.connectionIdCounter,
+    };
+    const doc = createCircuitDocument(mergedConfig, {
+        automation: partial.automation ?? meta.automation ?? current.automation,
+        simulation: partial.simulation ?? meta.simulation ?? current.simulation,
+        summary: partial.summary ?? meta.summary ?? current.summary,
+        ...meta,
+    });
+    publishCircuitDocument(doc, meta);
+    notifySubscribers(doc);
+    return doc;
+}
+
+/**
+ * @param {(doc: CircuitDocument) => void} fn
+ * @returns {() => void}
+ */
+export function subscribe(fn) {
+    subscribers.add(fn);
+    return () => subscribers.delete(fn);
+}
+
+function notifySubscribers(doc) {
+    subscribers.forEach((fn) => {
+        try {
+            fn(doc);
+        } catch (err) {
+            console.warn('[CircuitStore] subscriber failed:', err);
+        }
+    });
+}
+
+/** Hydrate bus + legacy aliases from storage. @returns {CircuitDocument | null} */
+export function initCircuitStore() {
+    const doc = resolveCircuitDocument();
+    if (doc) {
+        publishCircuitDocument(doc);
+    }
     return doc;
 }
 
@@ -210,7 +324,12 @@ export default {
     fromDesignerExport,
     toDesignerExport,
     toDesignerConfig,
+    normalizeDesignerConnections,
     resolveCircuitDocument,
     publishCircuitDocument,
     saveFromDesignerConfig,
+    getState,
+    setState,
+    subscribe,
+    initCircuitStore,
 };

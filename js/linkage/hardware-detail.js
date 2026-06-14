@@ -3,6 +3,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { showToast } from '../core/feedback.js';
 import { getConfigSnapshot } from './config-persistence.js';
+import { radToDeg } from './math.js';
 
 // HARDWARE ASSEMBLY DETAIL VIEW
 // Parametric, editable hardware stacks rendered as an interactive exploded
@@ -202,6 +203,15 @@ function hwGetBracketHoleY(bracketPart) {
     const fromTop = bracketPart.params.sideHoleFromTop != null ? bracketPart.params.sideHoleFromTop : 1.1875;
     // Hole position is fixed on the full bracket; cutoffHeight only clips the mesh visually.
     return (H / 2) - fromTop;
+}
+
+/** Local position of the side-wall hole on the +X (right stack) face, bracket origin at center. */
+function hwGetBracketSideHoleLocal(bracketPart) {
+    const bp = bracketPart && bracketPart.params ? bracketPart.params : {};
+    const halfW = (bp.width || 2.15) / 2;
+    const wallT = bp.wallThickness || 0.12;
+    const sideHoleX = halfW - wallT / 2;
+    return new THREE.Vector3(sideHoleX, hwGetBracketHoleY(bracketPart), 0);
 }
 
 function hwGetBracketStackOrigin(bracketPart, axisKey) {
@@ -671,7 +681,22 @@ function hwTagPartMesh(mesh, part) {
 // --- Bracket GLB loading + cutoff clipping ------------------------------------
 const hwBracketGlb = { loading: false, loaded: false, scene: null, error: false };
 // Shared horizontal clip plane (world space). Keeps y <= constant; updated per build.
-const hwBracketClipPlane = (typeof THREE !== 'undefined') ? new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e6) : null;
+// Lazy-init: this module can load before the THREE CDN script, so do not construct at top level.
+let hwBracketClipPlane = null;
+
+function hwEnsureBracketClipPlane() {
+    if (!hwBracketClipPlane && typeof THREE !== 'undefined') {
+        hwBracketClipPlane = new THREE.Plane(new THREE.Vector3(0, -1, 0), 1e6);
+    }
+    return hwBracketClipPlane;
+}
+
+function hwSetBracketClipCutoff(cutoff, halfHeight) {
+    const plane = hwEnsureBracketClipPlane();
+    if (!plane) return null;
+    plane.constant = cutoff > 0 ? (halfHeight - cutoff) : 1e6;
+    return plane;
+}
 
 function loadHwBracketGlb(onReady) {
     if (hwBracketGlb.loaded) { if (onReady) onReady(hwBracketGlb.scene); return; }
@@ -726,11 +751,12 @@ function buildGlbBracketMesh(p) {
 
     // Uniform semi-transparent material + cutoff clipping plane.
     const cutoff = Math.max(0, p.cutoffHeight || 0);
-    hwBracketClipPlane.constant = cutoff > 0 ? (targetH / 2 - cutoff) : 1e6;
+    const clipPlane = hwSetBracketClipCutoff(cutoff, targetH / 2);
     const mat = getCachedMaterial('hw_bracket_glb_solid', () => new THREE.MeshStandardMaterial({
         color: 0xc2cdd8, metalness: 0.85, roughness: 0.32,
         side: THREE.DoubleSide,
-        clippingPlanes: [hwBracketClipPlane], clipShadows: true
+        clippingPlanes: clipPlane ? [clipPlane] : [],
+        clipShadows: true
     }));
     inner.traverse(ch => { if (ch.isMesh) ch.material = mat; });
 
@@ -752,11 +778,12 @@ function buildParametricBracketMesh(p) {
     const cutoff = Math.max(0, Math.min(H - t, p.cutoffHeight || 0));
     const yBottom = -H / 2;
 
-    hwBracketClipPlane.constant = cutoff > 0 ? (H / 2 - cutoff) : 1e6;
+    const clipPlane = hwSetBracketClipCutoff(cutoff, H / 2);
     const group = new THREE.Group();
     const mat = getCachedMaterial('hw_bracket_solid_clip', () => new THREE.MeshStandardMaterial({
         color: 0xc2cdd8, metalness: 0.85, roughness: 0.32, side: THREE.DoubleSide,
-        clippingPlanes: [hwBracketClipPlane], clipShadows: true
+        clippingPlanes: clipPlane ? [clipPlane] : [],
+        clipShadows: true
     }));
     const addBox = (w, h, d, x, y, z) => {
         const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -980,6 +1007,7 @@ function hwGetOuterVBeamAssembly() {
 function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPivot) {
     placements.push({
         assemblyId: 'outerVBeam',
+        moduleIndex: bracketData.moduleIndex != null ? bracketData.moduleIndex : null,
         pos: { x: bracketData.pos.x, y: bracketData.pos.y, z: bracketData.pos.z },
         bottomY: bracketData.bottomY,
         isBottom: bracketData.isBottom,
@@ -991,7 +1019,193 @@ function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPiv
     });
 }
 
+function hwRoundVec3ForExport(v, places = 3) {
+    if (!v || typeof v.x !== 'number') return null;
+    const f = (n) => +Number(n).toFixed(places);
+    return { x: f(v.x), y: f(v.y), z: f(v.z) };
+}
+
+function hwRoundQuatForExport(q, places = 4) {
+    if (!q) return null;
+    const f = (n) => +Number(n).toFixed(places);
+    return { x: f(q.x), y: f(q.y), z: f(q.z), w: f(q.w) };
+}
+
+function hwApplyQuatToVec3(v, q) {
+    if (typeof THREE === 'undefined') return v ? { ...v } : null;
+    const out = new THREE.Vector3(v.x, v.y, v.z);
+    out.applyQuaternion(q);
+    return { x: out.x, y: out.y, z: out.z };
+}
+
+function hwFindOuterVBoltNearPivot(bolts, pivot, maxDistIn = 0.5) {
+    if (!pivot || !Array.isArray(bolts)) return null;
+    const maxD2 = maxDistIn * maxDistIn;
+    let best = null;
+    let bestD2 = maxD2;
+    bolts.forEach(b => {
+        if (b.boltType !== 'vstack' || b.boltSubType !== 'outer' || !b.center) return;
+        const dx = b.center.x - pivot.x;
+        const dy = b.center.y - pivot.y;
+        const dz = b.center.z - pivot.z;
+        const d2 = dx * dx + dy * dy + dz * dz;
+        if (d2 < bestD2) {
+            bestD2 = d2;
+            best = b;
+        }
+    });
+    return best;
+}
+
+/**
+ * Debug snapshot of high-detail hardware assembly placements for JSON export.
+ * Positions are in solver world space (same as geometrySnapshot); viewer positions
+ * subtract structureCenter (same offset scene-render applies before drawing).
+ *
+ * @param {Object} data - buildLinkageGeometry() output
+ * @param {{x:number,y:number,z:number}} [structureCenter]
+ * @returns {Object}
+ */
+function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
+    ensureHardwareAssemblies();
+    const placements = (data && data.hardwareAssemblyPlacements) || [];
+    const sc = structureCenter || data?.structureCenter || data?.structureBounds?.center || { x: 0, y: 0, z: 0 };
+    const asm = hwGetOuterVBeamAssembly();
+    const bracketPart = asm && asm.parts.find(p => p.type === 'bracket');
+    const bracketHoleY = bracketPart ? hwGetBracketHoleY(bracketPart) : 0;
+    const bp = bracketPart && bracketPart.params ? bracketPart.params : {};
+    const bolts = (data && data.bolts) || [];
+
+    const toViewer = (p) => {
+        if (!p) return null;
+        return hwRoundVec3ForExport({
+            x: p.x - sc.x,
+            y: p.y - sc.y,
+            z: p.z - sc.z
+        });
+    };
+
+    return {
+        schemaVersion: 2,
+        coordinateSystem: 'y-up-inches',
+        note: 'world positions match geometrySnapshot. viewer positions subtract structureCenter. anchorError = centerlineHoleWorld minus vBoltPivot (the bracket centerline is what we place on the pivot; should be ~0). sideHoleWorld is the +X wall hole (informational).',
+        foldAngleDeg: state.foldAngle != null ? +radToDeg(state.foldAngle).toFixed(2) : null,
+        structureCenter: hwRoundVec3ForExport(sc),
+        hardwareFullDetailEnabled: !!state.showHardwareFullDetail,
+        bracketEditor: bracketPart ? {
+            sideHoleFromTop: bp.sideHoleFromTop,
+            sideHoleLocalY: +bracketHoleY.toFixed(4),
+            sideHoleLocalX: +(hwGetBracketSideHoleLocal(bracketPart).x).toFixed(4),
+            posNudge: hwRoundVec3ForExport({ x: bp.posX || 0, y: bp.posY || 0, z: bp.posZ || 0 }, 4),
+            height: bp.height,
+            width: bp.width,
+            depth: bp.depth,
+            wallThickness: bp.wallThickness
+        } : null,
+        placementCount: placements.length,
+        placements: placements.map((pl, index) => {
+            const xf = hwComputeOuterAssemblyTransform(pl);
+            const quat = xf.quaternion;
+            const toWorld = (local) => {
+                const w = hwApplyQuatToVec3(local, quat);
+                if (w) { w.x += xf.position.x; w.y += xf.position.y; w.z += xf.position.z; }
+                return w;
+            };
+            // Centerline hole = the actual anchor point we place on the V-bolt pivot.
+            const centerlineHoleWorld = toWorld({ x: 0, y: bracketHoleY, z: 0 });
+            // Side-wall hole (informational): where the bolt enters the +X wall.
+            const sideHoleLocal = hwGetBracketSideHoleLocal(bracketPart);
+            const sideHoleWorld = toWorld({ x: sideHoleLocal.x, y: sideHoleLocal.y, z: sideHoleLocal.z });
+            const pivot = pl.vBoltPivot || pl.pos;
+            const refBolt = hwFindOuterVBoltNearPivot(bolts, pivot);
+            const anchorError = (centerlineHoleWorld && pivot) ? {
+                x: centerlineHoleWorld.x - pivot.x,
+                y: centerlineHoleWorld.y - pivot.y,
+                z: centerlineHoleWorld.z - pivot.z
+            } : null;
+
+            return {
+                index,
+                assemblyId: pl.assemblyId || 'outerVBeam',
+                moduleIndex: pl.moduleIndex != null ? pl.moduleIndex : null,
+                isBottom: !!pl.isBottom,
+                ring: pl.isBottom ? 'bottom' : 'top',
+                inputs: {
+                    bracketPivotPos: hwRoundVec3ForExport(pl.pos),
+                    vBoltPivot: hwRoundVec3ForExport(pl.vBoltPivot),
+                    bottomPos: hwRoundVec3ForExport(pl.bottomPos),
+                    bottomY: pl.bottomY != null ? +pl.bottomY.toFixed(3) : null,
+                    sideHoleY: pl.sideHoleY != null ? +pl.sideHoleY.toFixed(3) : null,
+                    beamDir: hwRoundVec3ForExport(pl.beamDir, 4),
+                    vBoltDir: hwRoundVec3ForExport(pl.vBoltDir, 4),
+                    right: hwRoundVec3ForExport(pl.right, 4),
+                    frame: pl.frame ? {
+                        x: hwRoundVec3ForExport(pl.frame.x, 4),
+                        y: hwRoundVec3ForExport(pl.frame.y, 4),
+                        z: hwRoundVec3ForExport(pl.frame.z, 4)
+                    } : null,
+                    sideHoleLocal: hwRoundVec3ForExport(
+                        { x: sideHoleLocal.x, y: sideHoleLocal.y, z: sideHoleLocal.z },
+                        4
+                    )
+                },
+                computedTransform: {
+                    world: {
+                        position: hwRoundVec3ForExport(xf.position),
+                        quaternion: hwRoundQuatForExport(quat),
+                        centerlineHoleWorld: hwRoundVec3ForExport(centerlineHoleWorld),
+                        sideHoleWorld: hwRoundVec3ForExport(sideHoleWorld),
+                        bracketCenterWorld: hwRoundVec3ForExport(xf.position)
+                    },
+                    viewer: {
+                        position: toViewer(xf.position),
+                        centerlineHoleWorld: toViewer(centerlineHoleWorld),
+                        sideHoleWorld: toViewer(sideHoleWorld),
+                        bracketCenterWorld: toViewer(xf.position)
+                    },
+                    // anchorError = centerline hole vs V-bolt pivot (should be ~0).
+                    anchorError: anchorError ? hwRoundVec3ForExport(anchorError, 4) : null,
+                    anchorErrorLengthIn: anchorError
+                        ? +Math.hypot(anchorError.x, anchorError.y, anchorError.z).toFixed(4)
+                        : null
+                },
+                reference: {
+                    outerVBoltCenter: refBolt && refBolt.center ? hwRoundVec3ForExport(refBolt.center) : null,
+                    outerVBoltCenterViewer: refBolt && refBolt.center ? toViewer(refBolt.center) : null,
+                    bracketCenterToPivot: pivot ? hwRoundVec3ForExport({
+                        x: xf.position.x - pivot.x,
+                        y: xf.position.y - pivot.y,
+                        z: xf.position.z - pivot.z
+                    }, 4) : null
+                }
+            };
+        })
+    };
+}
+
 function hwComputeAssemblyQuaternion(placement) {
+    // Preferred path: consume the canonical frame the solver attached to this
+    // placement (single source of truth shared with the simple bracket). Maps the
+    // assembly's local axes (x = bolt/width, y = up, z = beam/depth) to world.
+    if (placement.frame && placement.frame.x && placement.frame.y && placement.frame.z) {
+        const fx = vNorm(placement.frame.x);
+        const fy = vNorm(placement.frame.y);
+        const fz = vNorm(placement.frame.z);
+        const m = new THREE.Matrix4();
+        m.set(
+            fx.x, fy.x, fz.x, 0,
+            fx.y, fy.y, fz.y, 0,
+            fx.z, fy.z, fz.z, 0,
+            0, 0, 0, 1
+        );
+        let q = new THREE.Quaternion().setFromRotationMatrix(m);
+        const manualY = (state.bracketZRotation || 0) * (Math.PI / 180);
+        if (Math.abs(manualY) > 0.001) {
+            q.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(fy.x, fy.y, fy.z), manualY));
+        }
+        return { quaternion: q, hwX: fx, hwY: fy, hwZ: fz };
+    }
+
     const beamDir = vNorm(placement.beamDir);
     let right = vNorm(placement.right);
     if (vMag(right) < 0.001) right = vNorm(vCross(beamDir, { x: 0, y: 1, z: 0 }));
@@ -1062,15 +1276,17 @@ function hwComputeOuterAssemblyTransform(placement) {
         return posVec;
     };
 
-    // Anchor bracket side hole to the V-stack bolt pivot (exact horizontal stack alignment).
+    // Anchor the bracket centerline at the hole height to the V-stack bolt pivot.
+    // The V-bolt runs through the bracket center (the beam stack sits between the two
+    // side walls), so the centerline — not a side wall — lands on the pivot.
     if (placement.vBoltPivot) {
         const bracketHoleY = hwGetBracketHoleY(bracketPart);
-        const sideHoleLocal = new THREE.Vector3(0, bracketHoleY, 0);
-        sideHoleLocal.applyQuaternion(quaternion);
+        const holeLocal = new THREE.Vector3(0, bracketHoleY, 0);
+        holeLocal.applyQuaternion(quaternion);
         const position = applyLocalNudge(new THREE.Vector3(
-            placement.vBoltPivot.x - sideHoleLocal.x,
-            placement.vBoltPivot.y - sideHoleLocal.y,
-            placement.vBoltPivot.z - sideHoleLocal.z
+            placement.vBoltPivot.x - holeLocal.x,
+            placement.vBoltPivot.y - holeLocal.y,
+            placement.vBoltPivot.z - holeLocal.z
         ));
         return { position: { x: position.x, y: position.y, z: position.z }, quaternion };
     }
@@ -2190,6 +2406,7 @@ const _moduleExports = {
     hwProjectPointerToAxisPos,
     hwRaycastPartId,
     hwGetBracketHoleY,
+    hwGetBracketSideHoleLocal,
     hwGetBracketStackOrigin,
     getRivetNutDefaults,
     getHardwarePartDefaults,
@@ -2264,8 +2481,9 @@ const _moduleExports = {
     openHardwareDetail,
     closeHardwareDetail,
     getAssemblyHardwareItems,
+    buildHardwareAssemblyDebugSnapshot,
 };
 
 bridgeGlobals(_moduleExports, 'hardwareDetail');
 
-export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwGetOuterVBeamAssembly, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems };
+export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwGetOuterVBeamAssembly, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };

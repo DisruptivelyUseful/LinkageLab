@@ -1,5 +1,5 @@
 // ============================================================================
-// Unified topbar — shared chrome across linkage, solar design, and simulate
+// Unified topbar — shared chrome across linkage and solar canvas modes
 // ============================================================================
 
 import { showToast } from '../core/feedback.js';
@@ -12,8 +12,9 @@ import {
 import { publishCircuitExport, resolveCircuitExport } from '../solar/circuit-export.js';
 
 const TOPBAR_PARTIALS = Object.freeze({
-    'solar-design': 'partials/app-topbar-solar-design.html',
-    'solar-simulate': 'partials/app-topbar-simulate.html',
+    'solar-unified': 'partials/app-topbar-solar-unified.html',
+    'solar-design': 'partials/app-topbar-solar-unified.html',
+    'solar-simulate': 'partials/app-topbar-solar-unified.html',
 });
 
 async function fetchPartial(path) {
@@ -23,11 +24,11 @@ async function fetchPartial(path) {
 }
 
 /**
- * @param {'solar-design' | 'solar-simulate'} mode
+ * @param {'solar-unified' | 'solar-design' | 'solar-simulate'} mode
  * @returns {Promise<string>}
  */
 export async function renderAppTopbarHtml(mode) {
-    const path = TOPBAR_PARTIALS[mode];
+    const path = TOPBAR_PARTIALS[mode] || TOPBAR_PARTIALS['solar-unified'];
     if (!path) return '';
     return fetchPartial(path);
 }
@@ -48,6 +49,7 @@ export function bindAppNavButtons(root = document) {
             if (mode && globalThis.AppRouter?.navigateTo) {
                 globalThis.AppRouter.navigateTo(mode).catch((err) => {
                     console.error('[topbar] navigation failed:', err);
+                    showToast(`Could not switch mode: ${err.message}`, 'error');
                 });
             }
         });
@@ -77,14 +79,19 @@ async function openBuildGuide() {
     }
 }
 
-/** Wire save/load/export actions on the solar designer topbar. */
-export function bindSolarDesignerTopbar(root = document) {
+/** Wire save/load/export on the unified solar topbar. */
+export function bindSolarTopbar(root = document, options = {}) {
+    const onReload = options.onReload;
+
     bindOnce(root.querySelector('#btn-solar-save-top'), (btn) => {
         btn.addEventListener('click', () => saveProject());
     });
 
     bindOnce(root.querySelector('#btn-solar-load-top'), (btn) => {
-        btn.addEventListener('click', () => loadProject());
+        btn.addEventListener('click', () => {
+            loadProject();
+            onReload?.(resolveCircuitExport());
+        });
     });
 
     bindOnce(root.querySelector('#btn-solar-export-top'), (btn) => {
@@ -92,7 +99,10 @@ export function bindSolarDesignerTopbar(root = document) {
     });
 
     bindOnce(root.querySelector('#btn-solar-import-top'), (btn) => {
-        btn.addEventListener('click', () => importProjectFile());
+        btn.addEventListener('click', () => {
+            importProjectFile();
+            onReload?.(resolveCircuitExport());
+        });
     });
 
     bindOnce(root.querySelector('#btn-solar-review-top'), (btn) => {
@@ -101,63 +111,33 @@ export function bindSolarDesignerTopbar(root = document) {
         });
     });
 
-    bindOnce(root.querySelector('#btn-solar-simulate-top'), (btn) => {
-        btn.addEventListener('click', () => globalThis.SolarDesigner?.exportToSimulator?.());
+    import('../solar/energy-zone-picker.js').then(({ bindEnergyZonePickerButton }) => {
+        bindEnergyZonePickerButton(root);
+    }).catch((err) => {
+        console.warn('[topbar] energy zone picker unavailable:', err.message);
     });
 }
 
-/** Wire save/load/export on the simulate-mode shell topbar. */
-export function bindSimulatorTopbar(root = document, options = {}) {
-    const onReload = options.onReload;
+/** @deprecated use bindSolarTopbar */
+export const bindSolarDesignerTopbar = bindSolarTopbar;
 
-    bindOnce(root.querySelector('#btn-sim-save-top'), (btn) => {
-        btn.addEventListener('click', () => saveProject());
-    });
+/** @deprecated use bindSolarTopbar */
+export const bindSimulatorTopbar = bindSolarTopbar;
 
-    bindOnce(root.querySelector('#btn-sim-load-top'), (btn) => {
-        btn.addEventListener('click', () => {
-            loadProject();
-            onReload?.(resolveCircuitExport());
-        });
-    });
-
-    bindOnce(root.querySelector('#btn-sim-export-top'), (btn) => {
-        btn.addEventListener('click', () => exportProjectFile());
-    });
-
-    bindOnce(root.querySelector('#btn-sim-import-top'), (btn) => {
-        btn.addEventListener('click', () => {
-            importProjectFile();
-            onReload?.(resolveCircuitExport());
-        });
-    });
-
-    bindOnce(root.querySelector('#btn-sim-build-guide-top'), (btn) => {
-        btn.addEventListener('click', () => {
-            openBuildGuide();
-        });
-    });
-
-    bindOnce(root.querySelector('#btn-sim-design-top'), (btn) => {
-        btn.addEventListener('click', () => {
-            globalThis.AppRouter?.navigateTo?.('solar-design').catch((err) => {
-                console.error('[topbar] navigate to designer failed:', err);
-                showToast('Failed to open solar designer', 'error');
-            });
-        });
-    });
-}
-
-/** Update simulate topbar summary text. */
-export function updateSimulatorTopbarSummary(root, circuitData) {
+/** Update solar topbar summary text. */
+export function updateSolarTopbarSummary(root, circuitData) {
     const el = root.querySelector('#sim-topbar-summary');
     if (!el) return;
     const count = circuitData?.schematic?.components?.length
         ?? circuitData?.summary?.componentCount
+        ?? globalThis.getSimulatorCircuitItems?.()?.length
         ?? 0;
     el.textContent = count > 0
-        ? `${count} components staged for 3D simulation`
-        : 'Design a circuit in Solar Design, then simulate here.';
+        ? `${count} components on canvas`
+        : 'Add components from the library panel.';
 }
+
+/** @deprecated use updateSolarTopbarSummary */
+export const updateSimulatorTopbarSummary = updateSolarTopbarSummary;
 
 globalThis.openBuildGuide = openBuildGuide;
