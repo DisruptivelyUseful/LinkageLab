@@ -92,30 +92,28 @@ import { calculateJointPositions } from './joint-kinematics.js';
             });
         }
     
-        // Full-detail hardware assemblies (replace outer bracket/bolt stacks)
+        // Full-detail hardware assemblies (replace outer/inner bracket/bolt stacks)
         if (state.showHardwareFullDetail && data.hardwareAssemblyPlacements && data.hardwareAssemblyPlacements.length) {
-            const asm = hwGetOuterVBeamAssembly();
-            if (asm) {
-                data.hardwareAssemblyPlacements.forEach(placement => {
-                    if (placement.assemblyId !== 'outerVBeam') return;
-                    const xf = hwComputeOuterAssemblyTransform(placement);
-                    const instance = buildHardwareAssemblyGroup(asm, {
-                        explode: 0,
-                        syncFromState: false,
-                        excludeBeams: true
-                    });
-                    instance.position.set(xf.position.x, xf.position.y, xf.position.z);
-                    instance.quaternion.copy(xf.quaternion);
-                    instance.traverse(ch => {
-                        if (ch.isMesh) {
-                            ch.castShadow = state.shadowsEnabled || false;
-                            ch.receiveShadow = state.shadowsEnabled || false;
-                        }
-                    });
-                    offsetMesh(instance);
-                    threeRenderer.hardwareAssemblyGroup.add(instance);
+            data.hardwareAssemblyPlacements.forEach(placement => {
+                const asm = hwGetAssemblyById(placement.assemblyId);
+                if (!asm || !asm.detailed || !asm.parts || !asm.parts.length) return;
+                const xf = hwComputeAssemblyTransform(placement);
+                const instance = buildHardwareAssemblyGroup(asm, {
+                    explode: 0,
+                    syncFromState: false,
+                    excludeBeams: true
                 });
-            }
+                instance.position.set(xf.position.x, xf.position.y, xf.position.z);
+                instance.quaternion.copy(xf.quaternion);
+                instance.traverse(ch => {
+                    if (ch.isMesh) {
+                        ch.castShadow = state.shadowsEnabled || false;
+                        ch.receiveShadow = state.shadowsEnabled || false;
+                    }
+                });
+                offsetMesh(instance);
+                threeRenderer.hardwareAssemblyGroup.add(instance);
+            });
         }
         
         // Render actuator visualization lines if one is selected

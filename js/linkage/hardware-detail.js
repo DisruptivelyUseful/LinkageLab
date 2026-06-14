@@ -305,7 +305,20 @@ function getDefaultHardwareAssemblies() {
                     { id: 'c-nut', type: 'nut', label: '1/2"-13 Rivet Nut', axis: 'down', seq: 4, qty: 1, perModule: 1, cost: 0.40, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.5, od: 17 * HW_MM_TO_IN, length: 0.5, flangeOd: 18 * HW_MM_TO_IN, flangeThickness: HW_MM_TO_IN, style: 'rivet', thread: '1/2-13' } }
                 ]
             },
-            innerVBeam: { id: 'innerVBeam', label: 'Inner V-Beam Assembly', detailed: false, explodeGap: 1.4, parts: [] },
+            innerVBeam: {
+                id: 'innerVBeam',
+                label: 'Inner V-Beam Assembly',
+                detailed: true,
+                explodeGap: 1.4,
+                parts: [
+                    { id: 'r-beam', type: 'beam', label: 'Inner V-Beam', axis: 'right', seq: 1, qty: 1, perModule: 2, cost: 0, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
+                      params: { width: 3.5, thickness: 1.5, length: 96, holeOffset: 1.5, holeDiameter: 8 / 25.4, holeAlign: 'center', rotDeg: 90, syncStructure: true, color: 0x8B6914 } },
+                    { id: 'r-washer', type: 'washer', label: 'Washer 5/8"ID 1-5/16"OD', axis: 'right', seq: 2, qty: 1, perModule: 2, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.625, od: 1.3125, thickness: 0.0625 } },
+                    { id: 'r-lock', type: 'lockWasher', label: '5/16" Split Lock Washer', axis: 'right', seq: 3, qty: 1, perModule: 2, cost: 0.06, posAssembled: 0, posExploded: 0, crossOffset: 0, params: lockParams() },
+                    { id: 'r-bolt', type: 'bolt', label: 'Inner V-Beam Bolt (8x60mm button)', axis: 'right', seq: 4, qty: 1, perModule: 2, cost: 0.55, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: true,
+                      params: outerVBoltParams() }
+                ]
+            },
             hCenter:    { id: 'hCenter', label: 'H-Beam Center Linkage Assembly', detailed: false, explodeGap: 1.4, parts: [] },
             vCenter:    { id: 'vCenter', label: 'V-Beam Center Assembly', detailed: false, explodeGap: 1.4, parts: [] }
         }
@@ -382,6 +395,13 @@ function ensureHardwareAssemblies() {
             }
             hwRenumberAxis(asm, 'up');
             hwRenumberAxis(asm, 'down');
+        }
+        if (asm.id === 'innerVBeam' && (!asm.parts || !asm.parts.length)) {
+            const defParts = defaults.assemblies.innerVBeam.parts;
+            if (defParts && defParts.length) {
+                asm.parts = JSON.parse(JSON.stringify(defParts));
+                if (asm.detailed == null) asm.detailed = true;
+            }
         }
         // Remove legacy mirrored left-side duplicates (now rendered via mirror flag).
         if (asm.mirror && asm.mirror.from && asm.mirror.to) {
@@ -999,14 +1019,31 @@ function hwUseFullDetailAssemblies() {
     return !!(asm && asm.detailed && asm.parts && asm.parts.length);
 }
 
-function hwGetOuterVBeamAssembly() {
+function hwUseInnerDetailAssemblies() {
+    if (!state.showHardwareFullDetail) return false;
     ensureHardwareAssemblies();
-    return state.hardwareAssemblies.assemblies.outerVBeam;
+    const asm = state.hardwareAssemblies.assemblies.innerVBeam;
+    return !!(asm && asm.detailed && asm.parts && asm.parts.length);
 }
 
-function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPivot) {
+function hwGetAssemblyById(assemblyId) {
+    ensureHardwareAssemblies();
+    return state.hardwareAssemblies.assemblies[assemblyId] || null;
+}
+
+function hwGetOuterVBeamAssembly() {
+    return hwGetAssemblyById('outerVBeam');
+}
+
+function hwGetInnerVBeamAssembly() {
+    return hwGetAssemblyById('innerVBeam');
+}
+
+function hwAddAssemblyPlacement(placements, assemblyId, bracketData, vBoltDir, vBoltPivot) {
+    const pivotRole = assemblyId === 'innerVBeam' ? 'inner' : 'outer';
     placements.push({
-        assemblyId: 'outerVBeam',
+        assemblyId,
+        pivotRole,
         moduleIndex: bracketData.moduleIndex != null ? bracketData.moduleIndex : null,
         pos: { x: bracketData.pos.x, y: bracketData.pos.y, z: bracketData.pos.z },
         bottomY: bracketData.bottomY,
@@ -1017,6 +1054,10 @@ function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPiv
         sideHoleY: bracketData.sideHoleY,
         vBoltPivot: vBoltPivot ? { x: vBoltPivot.x, y: vBoltPivot.y, z: vBoltPivot.z } : null
     });
+}
+
+function hwAddOuterAssemblyPlacement(placements, bracketData, vBoltDir, vBoltPivot) {
+    hwAddAssemblyPlacement(placements, 'outerVBeam', bracketData, vBoltDir, vBoltPivot);
 }
 
 function hwRoundVec3ForExport(v, places = 3) {
@@ -1086,10 +1127,11 @@ function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
     };
 
     return {
-        schemaVersion: 2,
+        schemaVersion: 3,
         coordinateSystem: 'y-up-inches',
-        note: 'world positions match geometrySnapshot. viewer positions subtract structureCenter. anchorError = centerlineHoleWorld minus vBoltPivot (the bracket centerline is what we place on the pivot; should be ~0). sideHoleWorld is the +X wall hole (informational).',
+        note: 'world positions match geometrySnapshot. viewer positions subtract structureCenter. Outer V-beam assemblies alternate inner/outer radial pivots (crossing beams): normal = bottom inner + top outer; reversed = bottom outer + top inner.',
         foldAngleDeg: state.foldAngle != null ? +radToDeg(state.foldAngle).toFixed(2) : null,
+        vStackReverse: !!state.vStackReverse,
         structureCenter: hwRoundVec3ForExport(sc),
         hardwareFullDetailEnabled: !!state.showHardwareFullDetail,
         bracketEditor: bracketPart ? {
@@ -1104,18 +1146,26 @@ function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
         } : null,
         placementCount: placements.length,
         placements: placements.map((pl, index) => {
-            const xf = hwComputeOuterAssemblyTransform(pl);
+            const plAsm = hwGetAssemblyById(pl.assemblyId || 'outerVBeam');
+            const plBracket = plAsm && plAsm.parts.find(p => p.type === 'bracket');
+            const plBracketHoleY = plBracket ? hwGetBracketHoleY(plBracket) : 0;
+            const pivotRole = pl.pivotRole || (pl.assemblyId === 'innerVBeam' ? 'inner' : 'outer');
+            const flipStackAxis = pl.assemblyId === 'innerVBeam'
+                ? (pivotRole === 'inner') !== !!state.vStackReverse
+                : pl.isBottom !== !!state.vStackReverse;
+            const xf = hwComputeAssemblyTransform(pl);
             const quat = xf.quaternion;
             const toWorld = (local) => {
                 const w = hwApplyQuatToVec3(local, quat);
                 if (w) { w.x += xf.position.x; w.y += xf.position.y; w.z += xf.position.z; }
                 return w;
             };
-            // Centerline hole = the actual anchor point we place on the V-bolt pivot.
-            const centerlineHoleWorld = toWorld({ x: 0, y: bracketHoleY, z: 0 });
-            // Side-wall hole (informational): where the bolt enters the +X wall.
-            const sideHoleLocal = hwGetBracketSideHoleLocal(bracketPart);
-            const sideHoleWorld = toWorld({ x: sideHoleLocal.x, y: sideHoleLocal.y, z: sideHoleLocal.z });
+            const centerlineHoleWorld = plBracket
+                ? toWorld({ x: 0, y: plBracketHoleY, z: 0 })
+                : toWorld({ x: 0, y: 0, z: 0 });
+            const sideHoleWorld = plBracket
+                ? toWorld(hwGetBracketSideHoleLocal(plBracket))
+                : null;
             const pivot = pl.vBoltPivot || pl.pos;
             const refBolt = hwFindOuterVBoltNearPivot(bolts, pivot);
             const anchorError = (centerlineHoleWorld && pivot) ? {
@@ -1127,6 +1177,8 @@ function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
             return {
                 index,
                 assemblyId: pl.assemblyId || 'outerVBeam',
+                pivotRole,
+                flipStackAxis,
                 moduleIndex: pl.moduleIndex != null ? pl.moduleIndex : null,
                 isBottom: !!pl.isBottom,
                 ring: pl.isBottom ? 'bottom' : 'top',
@@ -1144,10 +1196,9 @@ function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
                         y: hwRoundVec3ForExport(pl.frame.y, 4),
                         z: hwRoundVec3ForExport(pl.frame.z, 4)
                     } : null,
-                    sideHoleLocal: hwRoundVec3ForExport(
-                        { x: sideHoleLocal.x, y: sideHoleLocal.y, z: sideHoleLocal.z },
-                        4
-                    )
+                    sideHoleLocal: plBracket
+                        ? hwRoundVec3ForExport(hwGetBracketSideHoleLocal(plBracket), 4)
+                        : null
                 },
                 computedTransform: {
                     world: {
@@ -1263,8 +1314,8 @@ function hwComputeAssemblyQuaternion(placement) {
     return { quaternion, hwX, hwY, hwZ };
 }
 
-function hwComputeOuterAssemblyTransform(placement) {
-    const asm = hwGetOuterVBeamAssembly();
+function hwComputeAssemblyTransform(placement) {
+    const asm = hwGetAssemblyById(placement.assemblyId || 'outerVBeam');
     const bracketPart = asm && asm.parts.find(p => p.type === 'bracket');
     const bp = bracketPart && bracketPart.params ? bracketPart.params : {};
     const { quaternion } = hwComputeAssemblyQuaternion(placement);
@@ -1277,16 +1328,23 @@ function hwComputeOuterAssemblyTransform(placement) {
     };
 
     // Anchor the bracket centerline at the hole height to the V-stack bolt pivot.
-    // The V-bolt runs through the bracket center (the beam stack sits between the two
-    // side walls), so the centerline — not a side wall — lands on the pivot.
+    // Bracketless inner assemblies anchor their local origin on the bolt axis at the pivot.
     if (placement.vBoltPivot) {
-        const bracketHoleY = hwGetBracketHoleY(bracketPart);
-        const holeLocal = new THREE.Vector3(0, bracketHoleY, 0);
-        holeLocal.applyQuaternion(quaternion);
+        if (bracketPart) {
+            const bracketHoleY = hwGetBracketHoleY(bracketPart);
+            const holeLocal = new THREE.Vector3(0, bracketHoleY, 0);
+            holeLocal.applyQuaternion(quaternion);
+            const position = applyLocalNudge(new THREE.Vector3(
+                placement.vBoltPivot.x - holeLocal.x,
+                placement.vBoltPivot.y - holeLocal.y,
+                placement.vBoltPivot.z - holeLocal.z
+            ));
+            return { position: { x: position.x, y: position.y, z: position.z }, quaternion };
+        }
         const position = applyLocalNudge(new THREE.Vector3(
-            placement.vBoltPivot.x - holeLocal.x,
-            placement.vBoltPivot.y - holeLocal.y,
-            placement.vBoltPivot.z - holeLocal.z
+            placement.vBoltPivot.x,
+            placement.vBoltPivot.y,
+            placement.vBoltPivot.z
         ));
         return { position: { x: position.x, y: position.y, z: position.z }, quaternion };
     }
@@ -1312,6 +1370,10 @@ function hwComputeOuterAssemblyTransform(placement) {
         bottom.z + up.z * centerOff
     ));
     return { position: { x: center.x, y: center.y, z: center.z }, quaternion };
+}
+
+function hwComputeOuterAssemblyTransform(placement) {
+    return hwComputeAssemblyTransform(placement);
 }
 
 function buildHardwareAssemblyGroup(assembly, options = {}) {
@@ -2435,9 +2497,14 @@ const _moduleExports = {
     resizeHardwareDetail,
     getActiveHardwareAssembly,
     hwUseFullDetailAssemblies,
+    hwUseInnerDetailAssemblies,
+    hwGetAssemblyById,
     hwGetOuterVBeamAssembly,
+    hwGetInnerVBeamAssembly,
+    hwAddAssemblyPlacement,
     hwAddOuterAssemblyPlacement,
     hwComputeAssemblyQuaternion,
+    hwComputeAssemblyTransform,
     hwComputeOuterAssemblyTransform,
     buildHardwareAssemblyGroup,
     buildHardwareAssemblyScene,
@@ -2486,4 +2553,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'hardwareDetail');
 
-export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwGetOuterVBeamAssembly, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
+export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
