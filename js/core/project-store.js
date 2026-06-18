@@ -267,24 +267,119 @@ export function projectDocumentToLegacyUnified(doc) {
  * @returns {object}
  */
 export function compactProjectForStorage(doc) {
+    const hardwareAssemblies = doc.hardwareAssemblies
+        || doc.linkage?.hardwareAssemblies;
+    const visibility = doc.visibility || doc.linkage?.visibility;
+    const linkage = doc.linkage ? {
+        ...doc.linkage,
+        ...(hardwareAssemblies ? { hardwareAssemblies } : {}),
+        ...(visibility ? { visibility } : {}),
+    } : undefined;
+
     return {
         schemaVersion: doc.schemaVersion,
         exportType: doc.exportType,
         updatedAt: doc.updatedAt,
         version: doc.version,
-        linkage: doc.linkage,
+        linkage,
         structure: doc.structure,
         mode: doc.mode,
         foldAngle: doc.foldAngle,
         panels: doc.panels,
         costs: doc.costs,
         supportBeams: doc.supportBeams,
+        hardwareAssemblies,
+        visibility,
         circuit: doc.circuit,
         simulation: doc.simulation,
         summary: doc.summary,
         cameraState: doc.cameraState,
         automation: doc.automation,
     };
+}
+
+/** Top-level linkage fields stored in project documents and autosave snapshots. */
+export const LINKAGE_CONFIG_KEYS = [
+    'structure',
+    'mode',
+    'panels',
+    'foldAngle',
+    'costs',
+    'hardwareAssemblies',
+    'visibility',
+    'animationStopAngle',
+    'minFoldAngle',
+    'radialVisibleAngle',
+    'rcpVisibleAngle',
+    'panelsVisibleAngle',
+    'ibc',
+    'supportBeams',
+];
+
+/** Pick linkage-oriented fields from a full getConfigSnapshot() object. */
+export function extractLinkageSliceFromConfig(config) {
+    if (!config || typeof config !== 'object') return {};
+    const slice = {};
+    LINKAGE_CONFIG_KEYS.forEach((key) => {
+        if (config[key] !== undefined) slice[key] = config[key];
+    });
+    return slice;
+}
+
+/**
+ * Merge linkage config slices; primary wins when present, supplemental fills gaps.
+ * Used on boot when linkageLabProject may only contain a partial hardware patch.
+ */
+export function mergeLinkageConfig(primary, supplemental) {
+    if (!supplemental) return primary ? { ...primary } : null;
+    if (!primary) return { ...supplemental };
+    const merged = { ...supplemental, ...primary };
+    if (!primary.structure && supplemental.structure) merged.structure = supplemental.structure;
+    if (!primary.panels && supplemental.panels) merged.panels = supplemental.panels;
+    if (!primary.mode && supplemental.mode) merged.mode = supplemental.mode;
+    if (primary.foldAngle === undefined && supplemental.foldAngle !== undefined) {
+        merged.foldAngle = supplemental.foldAngle;
+    }
+    if (!primary.costs && supplemental.costs) merged.costs = supplemental.costs;
+    if (!primary.hardwareAssemblies && supplemental.hardwareAssemblies) {
+        merged.hardwareAssemblies = supplemental.hardwareAssemblies;
+    }
+    if (!primary.visibility && supplemental.visibility) merged.visibility = supplemental.visibility;
+    return merged;
+}
+
+/** Merge top-level linkage slices when applying saved/imported project documents. */
+export function linkageConfigFromProject(doc) {
+    if (!doc || typeof doc !== 'object') return null;
+    const base = (doc.linkage && typeof doc.linkage === 'object') ? { ...doc.linkage } : { ...doc };
+    if (!base.hardwareAssemblies && doc.hardwareAssemblies) {
+        base.hardwareAssemblies = doc.hardwareAssemblies;
+    }
+    if (!base.visibility && doc.visibility) {
+        base.visibility = doc.visibility;
+    }
+    if (base.structure == null && doc.structure) base.structure = doc.structure;
+    if (base.panels == null && doc.panels) base.panels = doc.panels;
+    if (base.mode == null && doc.mode) base.mode = doc.mode;
+    if (base.foldAngle === undefined && doc.foldAngle !== undefined) base.foldAngle = doc.foldAngle;
+    if (base.costs == null && doc.costs) base.costs = doc.costs;
+    return base;
+}
+
+/**
+ * Patch linkage-oriented config slices into the canonical project document.
+ * @param {object} slice - e.g. hardwareAssemblies, visibility, foldAngle
+ */
+export function patchProjectDocumentLinkageSlice(slice) {
+    if (!slice || typeof slice !== 'object') return;
+    const doc = resolveProjectDocument() || createEmptyProjectDocument();
+    const linkage = { ...(doc.linkage || {}), ...slice };
+    publishProjectDocument({
+        ...doc,
+        ...slice,
+        linkage,
+        updatedAt: Date.now(),
+    });
 }
 
 /**
@@ -386,6 +481,11 @@ export default {
     resolveProjectDocument,
     publishProjectDocument,
     projectDocumentToLegacyUnified,
+    linkageConfigFromProject,
+    mergeLinkageConfig,
+    extractLinkageSliceFromConfig,
+    LINKAGE_CONFIG_KEYS,
+    patchProjectDocumentLinkageSlice,
     saveSimulatorSnapshot,
     initProjectStore,
 };

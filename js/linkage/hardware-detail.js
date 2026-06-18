@@ -3,7 +3,10 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { showToast } from '../core/feedback.js';
 import { getConfigSnapshot } from './config-persistence.js';
-import { radToDeg } from './math.js';
+import { patchProjectDocumentLinkageSlice, extractLinkageSliceFromConfig } from '../core/project-store.js';
+import { radToDeg, degToRad } from './math.js';
+import { MAX_FOLD_ANGLE } from './constants.js';
+import { getEffectiveMinFoldAngle } from './solver.js';
 
 // HARDWARE ASSEMBLY DETAIL VIEW
 // Parametric, editable hardware stacks rendered as an interactive exploded
@@ -33,13 +36,463 @@ const HW_AXIS_CROSS = {
 
 const HW_HORIZONTAL_AXES = ['right', 'left', 'front', 'back'];
 
+const HW_SANDWICH_SIDE_AXES = ['up', 'down', 'left', 'right'];
+const HW_SANDWICH_PAIRS = [
+    { positive: 'up', negative: 'down' },
+    { positive: 'right', negative: 'left' },
+];
+
 const HW_MM_TO_IN = 1 / 25.4;
+
+/** Pull-to-flush distance (inches) when sliding a part near another face or bracket wall. */
+const HW_SNAP_THRESHOLD = 0.18;
 
 const HW_PART_TYPES = ['bolt', 'bushing', 'washer', 'lockWasher', 'nut', 'bracket', 'beam'];
 
 // Default position fields added to every stack part.
 function hwDefaultPartPos() {
     return { posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false };
+}
+
+/** Integer stack count for washers and other qty-stacked parts. */
+function hwPartQty(part) {
+    return Math.max(1, Math.round(Number(part?.qty) || 1));
+}
+
+const HW_HBEAM_GAP_WASHER_SHARED_KEY = 'hBeamGapWasher';
+const HW_HBEAM_SANDWICH_ASSEMBLY_IDS = ['outerVBeam', 'innerVBeam', 'hCenter'];
+
+function hwDefaultHBeamGapWasherPart(asmId) {
+    return {
+        id: `${asmId}-hbeam-gap-washer`,
+        type: 'washer',
+        label: 'H-Beam Gap Washer 1/2"ID 2"OD',
+        axis: 'center',
+        seq: 0,
+        qty: 1,
+        perModule: 0,
+        cost: 0.10,
+        sharedKey: HW_HBEAM_GAP_WASHER_SHARED_KEY,
+        posAssembled: 0,
+        posExploded: 0,
+        crossOffset: 0,
+        flipAxis: false,
+        params: { id: 0.5, od: 2.0, thickness: 0.0625 },
+    };
+}
+
+function hwDefaultHBeamPairParts() {
+    const params = {
+        width: 3.5, thickness: 1.5, length: 18, holeOffset: 9, holeDiameter: 0.5,
+        rotDeg: 0, syncStructure: 'hBeam', color: 0x8B6914,
+    };
+    const pos = hwDefaultPartPos();
+    return [
+        { id: 'u-hbeam', type: 'beam', label: 'Horizontal H-Beam', axis: 'up', seq: 0, qty: 1, perModule: 0, cost: 0, ...pos, params: { ...params } },
+        { id: 'd-hbeam', type: 'beam', label: 'Horizontal H-Beam', axis: 'down', seq: 0, qty: 1, perModule: 0, cost: 0, ...pos, params: { ...params } },
+    ];
+}
+
+function hwSyncSharedPartFrom(sourcePart) {
+    if (!sourcePart?.sharedKey) return;
+    Object.values(state.hardwareAssemblies.assemblies).forEach((asm) => {
+        (asm.parts || []).forEach((p) => {
+            if (p.sharedKey !== sourcePart.sharedKey || p.id === sourcePart.id) return;
+            p.label = sourcePart.label;
+            p.cost = sourcePart.cost;
+            p.qty = sourcePart.qty;
+            p.params = JSON.parse(JSON.stringify(sourcePart.params || {}));
+        });
+    });
+}
+
+function hwReconcileSharedParts() {
+    let canonical = null;
+    let bestQty = 0;
+    Object.values(state.hardwareAssemblies?.assemblies || {}).forEach((asm) => {
+        (asm.parts || []).forEach((p) => {
+            if (p.sharedKey !== HW_HBEAM_GAP_WASHER_SHARED_KEY) return;
+            const qty = hwPartQty(p);
+            if (!canonical || qty > bestQty || (qty === bestQty && asm.id === 'outerVBeam')) {
+                canonical = p;
+                bestQty = qty;
+            }
+        });
+    });
+    if (canonical) hwSyncSharedPartFrom(canonical);
+}
+
+// Every non-bracket part is anchored on its axial midpoint so it occupies
+// [start, start+len] along the stack and rotating (flipAxis) never shifts it.
+// Beam meshes are already centered by createHWBeamMesh; others get centered in
+// createHardwarePartMesh via hwCenterMeshAxially.
+function hwUsesAxialCenterPlacement(part) {
+    return !!(part && part.type !== 'bracket');
+}
+
+function hwPartAxisPlacementPos(axisStart, part) {
+    const len = hwGetPartAxialLength(part);
+    return hwUsesAxialCenterPlacement(part) ? axisStart + len / 2 : axisStart;
+}
+
+function hwCenterMeshAxially(group) {
+    const len = group.userData.axialLength;
+    if (!len || group.userData.axialCentered) return;
+    group.children.forEach(ch => { ch.position.y -= len / 2; });
+    group.userData.axialCentered = true;
+}
+
+/**
+ * Sandwich axes (center + side pairs) belong to an assembly whose stack is built
+ * around a center slot: the 'center' axis is centered at 0, and side axes
+ * (up/down or left/right) grow outward starting at the center slot's outer face.
+ * The right/left axes of the V-beam horizontal stacks stay bracket-anchored chains.
+ */
+function hwUsesSandwichAxis(assembly, axisKey) {
+    if (axisKey === 'center') return true;
+    if (!HW_SANDWICH_SIDE_AXES.includes(axisKey)) return false;
+    if (assembly?.id === 'outerVBeam' && (axisKey === 'right' || axisKey === 'left')) return false;
+    if (assembly?.id === 'innerVBeam' && (axisKey === 'right' || axisKey === 'left')) return false;
+    return true;
+}
+
+function hwIsCenterAxis(axisKey) {
+    return axisKey === 'center';
+}
+
+function hwGetAssemblyMirrorPairs(assembly) {
+    if (!assembly) return [];
+    if (Array.isArray(assembly.mirrorPairs)) {
+        return assembly.mirrorPairs.filter(p => p && p.from && p.to);
+    }
+    if (assembly.mirror && assembly.mirror.from && assembly.mirror.to) {
+        return [assembly.mirror];
+    }
+    return [];
+}
+
+function hwMirrorPairEquals(a, b) {
+    return !!(a && b && a.from === b.from && a.to === b.to);
+}
+
+function hwIsMirrorClonePart(part) {
+    return !!(part && part.mirrorOf);
+}
+
+function hwRemoveMirroredPartsOnAxis(asm, axisKey) {
+    if (!asm?.parts) return;
+    asm.parts = asm.parts.filter(p => !(p.axis === axisKey && hwIsMirrorClonePart(p)));
+    hwRenumberAxis(asm, axisKey);
+}
+
+function hwCreateMirroredPart(source, toAxis) {
+    const copy = JSON.parse(JSON.stringify(source));
+    copy.id = `mirror-${source.id}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    copy.axis = toAxis;
+    copy.mirrorOf = source.id;
+    delete copy.sharedKey;
+    return copy;
+}
+
+function hwAssemblyUsesVirtualMirror(asm, pair) {
+    if (!asm?.parts || !pair?.to) return false;
+    return !asm.parts.some(p =>
+        p.type !== 'bracket'
+        && (p.axis || 'right') === pair.to
+        && !hwIsMirrorClonePart(p)
+    );
+}
+
+/** Copy current source-stack parts onto the mirror target axis as editable clones. */
+function hwEnsureMirrorClonesForPair(asm, pair) {
+    if (!asm?.parts || !pair?.from || !pair?.to) return;
+    asm.parts.filter(p => p.mirrorOf && p.axis === pair.to).forEach(clone => {
+        if (!asm.parts.some(s => s.id === clone.mirrorOf && s.axis === pair.from)) {
+            asm.parts = asm.parts.filter(p => p.id !== clone.id);
+        }
+    });
+    asm.parts
+        .filter(p => p.axis === pair.from && !hwIsMirrorClonePart(p) && p.type !== 'bracket')
+        .forEach(src => {
+            if (hwIsSandwichBeamPart(src)) return;
+            if (asm.parts.some(p => p.mirrorOf === src.id && p.axis === pair.to)) return;
+            asm.parts.push(hwCreateMirroredPart(src, pair.to));
+        });
+    hwSyncMirrorClonesFromSources(asm, pair);
+    hwRenumberAxis(asm, pair.to);
+}
+
+function hwSyncMirrorClonesFromSources(asm, pair) {
+    if (!asm?.parts || !pair) return;
+    asm.parts.filter(p => p.mirrorOf && p.axis === pair.to).forEach(clone => {
+        const src = asm.parts.find(s => s.id === clone.mirrorOf && s.axis === pair.from);
+        if (!src) return;
+        clone.label = src.label;
+        clone.type = src.type;
+        clone.qty = src.qty;
+        clone.perModule = src.perModule;
+        clone.cost = src.cost;
+        clone.params = JSON.parse(JSON.stringify(src.params || {}));
+        clone.posAssembled = src.posAssembled;
+        clone.posExploded = src.posExploded;
+        clone.crossOffset = src.crossOffset;
+        clone.flipAxis = src.flipAxis;
+        clone.presetId = src.presetId || null;
+        clone.bomKey = src.bomKey || null;
+    });
+}
+
+function hwApplyMirrorPairChanges(asm, prevPairs, nextPairs) {
+    if (!asm) return;
+    prevPairs.forEach(pair => {
+        if (!nextPairs.some(p => hwMirrorPairEquals(p, pair))) {
+            hwRemoveMirroredPartsOnAxis(asm, pair.to);
+        }
+    });
+    nextPairs.forEach(pair => {
+        if (!prevPairs.some(p => hwMirrorPairEquals(p, pair))) {
+            if (!hwAssemblyUsesVirtualMirror(asm, pair)) {
+                hwEnsureMirrorClonesForPair(asm, pair);
+            }
+        } else if (!hwAssemblyUsesVirtualMirror(asm, pair)) {
+            hwSyncMirrorClonesFromSources(asm, pair);
+        }
+    });
+}
+
+function hwSyncMirrorClonesFromPart(sourcePart) {
+    if (!sourcePart || hwIsMirrorClonePart(sourcePart)) return;
+    const asm = getActiveHardwareAssembly();
+    if (!asm) return;
+    hwGetAssemblyMirrorPairs(asm).forEach(pair => {
+        if (sourcePart.axis !== pair.from) return;
+        if (hwAssemblyUsesVirtualMirror(asm, pair)) return;
+        hwSyncMirrorClonesFromSources(asm, pair);
+    });
+}
+
+function hwReconcileMirrorParts(asm) {
+    if (!asm?.parts) return;
+    const pairs = hwGetAssemblyMirrorPairs(asm);
+    asm.parts = asm.parts.filter(p => {
+        if (!hwIsMirrorClonePart(p)) return true;
+        return pairs.some(pair => pair.to === p.axis);
+    });
+    pairs.forEach(pair => {
+        asm.parts = asm.parts.filter(p => !(p.axis === pair.to && p.id.startsWith('l-')));
+    });
+    if (pairs.length) asm.mirror = { ...pairs[0] };
+    else delete asm.mirror;
+}
+
+function hwGetSandwichOppositeAxis(axisKey) {
+    for (const pair of HW_SANDWICH_PAIRS) {
+        if (axisKey === pair.positive) return pair.negative;
+        if (axisKey === pair.negative) return pair.positive;
+    }
+    return null;
+}
+
+function hwIsSandwichBeamPart(part) {
+    if (!part || part.type !== 'beam' || !part.params) return false;
+    const sync = part.params.syncStructure;
+    return sync === true || sync === 'hBeam';
+}
+
+/** Total thickness of the center-slot hardware (defines the inter-beam gap). */
+function hwGetSandwichCenterSpan(assembly) {
+    if (!assembly?.parts?.length) return 0;
+    let span = 0;
+    assembly.parts
+        .filter(p => (p.axis || '') === 'center' && p.type !== 'bracket' && p.type !== 'beam')
+        .forEach(p => { span += hwGetPartAxialLength(p) * hwPartQty(p); });
+    return span;
+}
+
+function hwGetSandwichCenterHalfSpan(assembly) {
+    return hwGetSandwichCenterSpan(assembly) / 2;
+}
+
+/** Back-compat alias kept for exports/consumers. */
+function hwSumCenterAxisGap(assembly) {
+    return hwGetSandwichCenterSpan(assembly);
+}
+
+/**
+ * Local offset (inches, along the sandwich render axis) from the assembly group
+ * origin to the sandwich pivot point (the bolt axis the H-beams share).
+ *
+ * For outerVBeam / innerVBeam the assembly group is placed so the bracket's
+ * side hole is at the world bolt-pivot. The hole is `bracketHoleY` above the
+ * bracket center, which IS the assembly group local origin. So the pivot lives
+ * at +bracketHoleY in the group's up-axis.
+ *
+ * All other assemblies (hCenter, vCenter …) are anchored directly at the pivot,
+ * so their offset is 0.
+ */
+function hwGetSandwichCenterOffset(assembly) {
+    // Only vertical-sandwich assemblies that carry a U-bracket need the offset.
+    const sandwichAxis = hwGetCenterRenderAxis(assembly);
+    if (sandwichAxis === 'up') {
+        const bracketPart = assembly.parts.find(p => p.type === 'bracket');
+        if (bracketPart) return hwGetBracketHoleY(bracketPart);
+    }
+    return 0;
+}
+
+function hwGetAxisStackOrigin(assembly, axisKey, bracketPart) {
+    if (hwIsCenterAxis(axisKey)) {
+        // Center slot starts at pivotLocal − halfSpan so the stack is centered
+        // on the bolt pivot.
+        return hwGetSandwichCenterOffset(assembly) - hwGetSandwichCenterHalfSpan(assembly);
+    }
+    if (hwUsesSandwichAxis(assembly, axisKey)) {
+        const pivotLocal = hwGetSandwichCenterOffset(assembly);
+        const halfSpan = hwGetSandwichCenterHalfSpan(assembly);
+        // POSITIVE axes (up, right): parts render in +dir, inner face starts at
+        // pivotLocal + halfSpan (outer face of the center slot).
+        // NEGATIVE axes (down, left): parts render in −dir.  We need the part's
+        // first inner face to land at `pivotLocal − halfSpan` in local coords.
+        // With dirVec = -1, worldPos_local = −baseStart, so
+        //   baseStart = −(pivotLocal − halfSpan) = halfSpan − pivotLocal.
+        const pair = HW_SANDWICH_PAIRS.find(p => p.positive === axisKey || p.negative === axisKey);
+        if (pair && pair.negative === axisKey) return halfSpan - pivotLocal;
+        return pivotLocal + halfSpan;
+    }
+    return hwGetBracketStackOrigin(bracketPart, axisKey);
+}
+
+/**
+ * Sequential layout for one axis. Every part occupies [baseStart, baseStart+len].
+ * - center axis: parts are flush-stacked symmetrically around the bolt pivot
+ *   (their combined thickness equals the sandwich gap).
+ * - side sandwich axes: parts grow outward from the outer face of the center
+ *   slot.  Positive axes (up/right) start at pivotLocal+halfSpan; negative axes
+ *   (down/left) start at halfSpan−pivotLocal so they too grow away from center.
+ * - chain axes: parts grow outward from the bracket wall.
+ * posAssembled is an additional per-part fine-tune offset on top of baseStart.
+ */
+function hwComputeAxisLayout(assembly, axisKey) {
+    const bracketPart = assembly.parts.find(p => p.type === 'bracket');
+    const parts = assembly.parts
+        .filter(p => p.type !== 'bracket' && (p.axis || 'right') === axisKey)
+        .sort((a, b) => (a.seq || 0) - (b.seq || 0));
+
+    if (hwIsCenterAxis(axisKey)) {
+        const span = hwGetSandwichCenterSpan(assembly);
+        const pivotLocal = hwGetSandwichCenterOffset(assembly);
+        const startPos = pivotLocal - span / 2;
+        const items = [];
+        let pos = startPos;
+        let rank = 0;
+        parts.forEach(p => {
+            const len = hwGetPartAxialLength(p);
+            const qty = hwPartQty(p);
+            const posAsm = p.posAssembled || 0;
+            for (let c = 0; c < qty; c++) {
+                items.push({
+                    part: p,
+                    baseStart: pos + posAsm + len * c,
+                    partBase: pos,
+                    len,
+                    rank,
+                    copyIndex: c,
+                });
+                rank += 1;
+            }
+            pos += len * qty;
+        });
+        return { items, origin: startPos, span, center: true };
+    }
+
+    const origin = hwGetAxisStackOrigin(assembly, axisKey, bracketPart);
+    const items = [];
+    let pos = origin;
+    let rank = 0;
+    parts.forEach(p => {
+        const len = hwGetPartAxialLength(p);
+        const qty = hwPartQty(p);
+        const partBase = pos;
+        const posAsm = p.posAssembled || 0;
+        for (let c = 0; c < qty; c++) {
+            items.push({
+                part: p,
+                baseStart: partBase + posAsm + len * c,
+                partBase,
+                len,
+                rank,
+                copyIndex: c,
+            });
+            rank += 1;
+        }
+        pos = partBase + hwQtyAssembledSpan(p) + 0.04;
+    });
+    return { items, origin, span: Math.abs(pos - origin), center: false };
+}
+
+/** When one sandwich beam standoff moves, the opposite beam mirrors it. */
+function hwApplySandwichBeamCoupling(assembly, part, newPosAsm) {
+    if (!assembly || !part || !hwIsSandwichBeamPart(part)) return;
+    const oppAxis = hwGetSandwichOppositeAxis(part.axis);
+    if (!oppAxis) return;
+    const opp = assembly.parts.find(p => p.axis === oppAxis && hwIsSandwichBeamPart(p));
+    if (opp && opp.id !== part.id) opp.posAssembled = newPosAsm;
+}
+
+function hwGetSandwichSideBeamOffset(assembly, axisKey) {
+    const beam = assembly?.parts?.find(p => p.axis === axisKey && hwIsSandwichBeamPart(p));
+    return beam ? Math.max(0, beam.posAssembled || 0) : 0;
+}
+
+/** Distance between the two facing beams = center stack thickness + any standoffs. */
+function hwGetAssemblySandwichGap(assembly) {
+    if (!assembly) return 0;
+    let total = hwGetSandwichCenterSpan(assembly);
+    const plane = assembly.sandwichPlane || (assembly.id === 'vCenter' ? 'horizontal' : 'vertical');
+    const sides = plane === 'horizontal' ? ['right', 'left'] : ['up', 'down'];
+    sides.forEach(axisKey => { total += hwGetSandwichSideBeamOffset(assembly, axisKey); });
+    return total;
+}
+
+/**
+ * Lay out every part on one axis. center axis renders along the center render
+ * axis (centered at 0); side/chain axes render along their own direction,
+ * growing outward from the layout origin. All parts occupy [start, start+len].
+ */
+function hwLayoutAxisParts(group, renderAxisArg, partsAxisKey, assembly, opts) {
+    const { bracketPart, bracketHoleY, explode, gap, flipEnd, applySelection, shouldRenderPart } = opts;
+    const renderAxisKey = hwIsCenterAxis(renderAxisArg) ? hwGetCenterRenderAxis(assembly) : renderAxisArg;
+    const dir = HW_AXIS_DIRS[renderAxisKey] || HW_AXIS_DIRS.right;
+    const dirVec = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
+    const cross = HW_AXIS_CROSS[renderAxisKey] || HW_AXIS_CROSS.right;
+    const crossVec = new THREE.Vector3(cross.x, cross.y, cross.z).normalize();
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirVec);
+    const layout = hwComputeAxisLayout(assembly, partsAxisKey);
+
+    layout.items.forEach(({ part, baseStart, len, rank, copyIndex = 0 }) => {
+        // Excluded parts (e.g. beams represented by the real structure beams) still
+        // occupy their slot in the layout so neighbors stack correctly, but no mesh
+        // is drawn for them.
+        if (shouldRenderPart && !shouldRenderPart(part)) return;
+        let crossPos = part.crossOffset || 0;
+        if (HW_HORIZONTAL_AXES.indexOf(renderAxisKey) >= 0 && bracketPart) crossPos += bracketHoleY;
+        const mesh = hwCreatePartMeshForAxis(part, renderAxisKey, assembly);
+        const qty = hwPartQty(part);
+        const explodedStart = qty > 1
+            ? hwPartCopyExplodedPos(part, layout.origin, rank, gap, copyIndex)
+            : hwExplodedAxisPos(part, layout.origin, rank, gap);
+        const axisStart = (1 - explode) * baseStart + explode * explodedStart;
+        const axisPos = hwPartAxisPlacementPos(axisStart, part);
+        const worldPos = new THREE.Vector3();
+        worldPos.addScaledVector(dirVec, axisPos);
+        worldPos.addScaledVector(crossVec, crossPos);
+        mesh.position.copy(worldPos);
+        mesh.quaternion.copy(quat);
+        if (part.flipAxis) mesh.quaternion.multiply(flipEnd);
+        hwTagPartMesh(mesh, part);
+        applySelection(mesh, part);
+        group.add(mesh);
+    });
 }
 
 function hwBindNumberScrub(input, onChange) {
@@ -99,64 +552,206 @@ function hwGetPartAxialLength(part) {
 }
 
 function hwGetPartStackContext(part, assembly, explode) {
-    const bracketPart = assembly.parts.find(p => p.type === 'bracket');
     const axisKey = part.axis || 'right';
-    const dir = HW_AXIS_DIRS[axisKey] || HW_AXIS_DIRS.right;
+    const renderAxis = hwIsCenterAxis(axisKey) ? hwGetCenterRenderAxis(assembly) : axisKey;
+    const dir = HW_AXIS_DIRS[renderAxis] || HW_AXIS_DIRS.right;
     const dirVec = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-    const cross = HW_AXIS_CROSS[axisKey] || HW_AXIS_CROSS.right;
+    const cross = HW_AXIS_CROSS[renderAxis] || HW_AXIS_CROSS.right;
     const crossVec = new THREE.Vector3(cross.x, cross.y, cross.z).normalize();
     const gap = assembly.explodeGap || 1.4;
 
-    const axisParts = assembly.parts.filter(p => p.type !== 'bracket' && p.axis === axisKey)
-        .sort((a, b) => (a.seq || 0) - (b.seq || 0));
+    const layout = hwComputeAxisLayout(assembly, axisKey);
+    const item = layout.items.find(it => it.part.id === part.id && (it.copyIndex || 0) === 0);
+    if (!item) return null;
 
-    const stackOrigin = hwGetBracketStackOrigin(bracketPart, axisKey);
-    let stackPos = stackOrigin;
-    let rank = 0;
-    let ctx = null;
+    return {
+        stackBase: item.partBase != null ? item.partBase : item.baseStart,
+        stackOrigin: layout.origin,
+        rank: item.rank,
+        copyIndex: item.copyIndex || 0,
+        axisKey,
+        renderAxis,
+        dirVec,
+        crossVec,
+        gap,
+        posExp: part.posExploded || 0,
+        explode,
+        center: layout.center,
+    };
+}
 
-    axisParts.forEach(p => {
-        const qty = Math.max(1, p.qty || 1);
-        const partRank = rank;
-        const len = hwGetPartAxialLength(p);
-        for (let c = 0; c < qty; c++) {
-            if (p.id === part.id) {
-                ctx = { stackBase: stackPos, stackOrigin, rank: partRank, copyIndex: c, axisKey, dirVec, crossVec, gap, posExp: p.posExploded || 0, explode };
-                return;
-            }
-        }
-        stackPos += hwQtyAssembledSpan(p) + 0.04;
-        rank = partRank + 1;
-    });
-    return ctx;
+function hwGetCenterRenderAxis(assembly) {
+    if (assembly?.sandwichPlane === 'horizontal') return 'right';
+    if (assembly?.sandwichPlane === 'vertical') return 'up';
+    if (assembly?.id === 'vCenter') return 'right';
+    return 'up';
 }
 
 function hwAxisPosFromPart(part, ctx) {
     if (!ctx) return 0;
-    const posAsm = part.posAssembled || 0;
-    const assembledPos = ctx.stackBase + posAsm;
-    const explodedPos = hwExplodedAxisPos(part, ctx.stackOrigin, ctx.rank, ctx.gap);
-    return (1 - ctx.explode) * assembledPos + ctx.explode * explodedPos;
+    const len = hwGetPartAxialLength(part);
+    const copyIndex = ctx.copyIndex || 0;
+    const assembledStart = ctx.stackBase + (part.posAssembled || 0) + len * copyIndex;
+    const explodedStart = hwExplodedAxisPos(part, ctx.stackOrigin, ctx.rank, ctx.gap);
+    const axisStart = (1 - ctx.explode) * assembledStart + ctx.explode * explodedStart;
+    return hwPartAxisPlacementPos(axisStart, part);
 }
 
 function hwSetPartAxisPosFromWorld(part, ctx, axisPos) {
     if (!ctx) return;
-    const explodedPos = hwExplodedAxisPos(part, ctx.stackOrigin, ctx.rank, ctx.gap);
+    const len = hwGetPartAxialLength(part);
+    const assembly = getActiveHardwareAssembly();
+    const oldPos = part.posAssembled || 0;
+    const placementOffset = hwUsesAxialCenterPlacement(part) ? len / 2 : 0;
+    const explodedStart = hwExplodedAxisPos(part, ctx.stackOrigin, ctx.rank, ctx.gap);
+    const explodedPlacement = hwPartAxisPlacementPos(explodedStart, part);
     const denom = Math.max(1 - ctx.explode, 0.001);
-    part.posAssembled = (axisPos - ctx.explode * explodedPos - (1 - ctx.explode) * ctx.stackBase) / denom;
+    const assembledPlacement = (axisPos - ctx.explode * explodedPlacement) / denom;
+    const assembledStart = assembledPlacement - placementOffset;
+    let posAsm = assembledStart - ctx.stackBase - len * (ctx.copyIndex || 0);
+    if (assembly) posAsm = hwSnapPartAssembledPos(part, assembly, ctx, posAsm);
+    part.posAssembled = posAsm;
+    if (assembly && hwIsSandwichBeamPart(part)) hwApplySandwichBeamCoupling(assembly, part, posAsm);
+    if (assembly && Math.abs(posAsm - oldPos) > 1e-5 && typeof invalidateGeometryCache === 'function') {
+        invalidateGeometryCache();
+    }
+}
+
+function hwIsSnapActive() {
+    ensureHardwareAssemblies();
+    if (state.hardwareAssemblies.snap === false) return false;
+    return hwExplodeFactor() < 0.05;
+}
+
+/** Walk every instance on an axis stack and invoke fn({ part, copyIndex, start, end, partBase, len }). */
+function hwForEachAxisPartInterval(assembly, axisKey, fn, skip) {
+    const layout = hwComputeAxisLayout(assembly, axisKey);
+    layout.items.forEach(({ part, baseStart, len, copyIndex = 0, partBase }) => {
+        const skipSelf = skip && skip.partId === part.id && skip.copyIndex === copyIndex;
+        if (!skipSelf) {
+            fn({
+                part,
+                copyIndex,
+                start: baseStart,
+                end: baseStart + len,
+                partBase: partBase != null ? partBase : baseStart,
+                len,
+                stackOrigin: layout.origin,
+            });
+        }
+    });
+}
+
+/** Axis positions (inches along stack) that part faces may snap flush to. */
+function hwCollectAxisSnapPlanes(assembly, axisKey, skipPartId, skipCopyIndex, editingPart) {
+    const planes = [];
+    const skip = skipPartId != null ? { partId: skipPartId, copyIndex: skipCopyIndex || 0 } : null;
+    const layout = hwComputeAxisLayout(assembly, axisKey);
+    planes.push(layout.origin);
+    // Snap center-slot parts and beams to the bolt-pivot plane.
+    const pivotLocal = hwGetSandwichCenterOffset(assembly);
+    if (hwIsCenterAxis(axisKey) || (editingPart && hwIsSandwichBeamPart(editingPart))) {
+        planes.push(pivotLocal);
+    }
+    hwForEachAxisPartInterval(assembly, axisKey, ({ start, end }) => {
+        planes.push(start, end);
+    }, skip);
+    return planes;
+}
+
+/** Soft snap: if start or end is within threshold of a plane, sit flush on that plane. */
+function hwSnapStartToPlanes(start, end, planes, threshold) {
+    if (!planes.length || threshold <= 0) return start;
+    const len = end - start;
+    let bestStart = start;
+    let bestDist = threshold;
+    planes.forEach(T => {
+        const ds = Math.abs(start - T);
+        if (ds < bestDist) { bestDist = ds; bestStart = T; }
+        const de = Math.abs(end - T);
+        if (de < bestDist) { bestDist = de; bestStart = T - len; }
+    });
+    return bestStart;
+}
+
+function hwSnapPartAssembledPos(part, assembly, ctx, posAsm) {
+    if (!hwIsSnapActive() || !part || !assembly || !ctx) return posAsm;
+    const len = hwGetPartAxialLength(part);
+    const copyIndex = ctx.copyIndex || 0;
+    const start = ctx.stackBase + posAsm + len * copyIndex;
+    const end = start + len;
+    const planes = hwCollectAxisSnapPlanes(assembly, ctx.axisKey, part.id, copyIndex, part);
+    const snappedStart = hwSnapStartToPlanes(start, end, planes, HW_SNAP_THRESHOLD);
+    return +((snappedStart - ctx.stackBase - len * copyIndex).toFixed(4));
+}
+
+function hwApplyPartAssembledPos(part, assembly, posAsm) {
+    const oldPos = part.posAssembled || 0;
+    const ctx = hwGetPartStackContext(part, assembly, hwExplodeFactor());
+    if (!ctx) {
+        part.posAssembled = posAsm;
+        return;
+    }
+    part.posAssembled = hwSnapPartAssembledPos(part, assembly, ctx, posAsm);
+    if (hwIsSandwichBeamPart(part)) hwApplySandwichBeamCoupling(assembly, part, part.posAssembled);
+    if (Math.abs(part.posAssembled - oldPos) > 1e-5 && typeof invalidateGeometryCache === 'function') {
+        invalidateGeometryCache();
+    }
+}
+
+function hwEnsureDetailRaycaster() {
+    if (!hwDetail.raycaster && typeof THREE !== 'undefined') {
+        hwDetail.raycaster = new THREE.Raycaster();
+        hwDetail.pointer = new THREE.Vector2();
+    }
+}
+
+function hwGetDetailCanvas() {
+    if (state.hwDetailMode && hwDetail.embedded) return document.getElementById('canvas-webgl');
+    if (hwDetail.initialized) return document.getElementById('hw-detail-canvas');
+    return document.getElementById('canvas-webgl') || document.getElementById('hw-detail-canvas');
+}
+
+function hwGetDetailCamera() {
+    if (state.hwDetailMode && hwDetail.embedded && typeof threeRenderer !== 'undefined' && threeRenderer.mainCamera) {
+        return threeRenderer.mainCamera;
+    }
+    return hwDetail.camera;
+}
+
+function hwGetFocusAssemblyGroup() {
+    if (!hwDetail.focusGroupUuid || typeof THREE === 'undefined') return null;
+    if (typeof threeRenderer === 'undefined' || !threeRenderer.hardwareAssemblyGroup) return null;
+    let found = null;
+    threeRenderer.hardwareAssemblyGroup.traverse(obj => {
+        if (obj.uuid === hwDetail.focusGroupUuid) found = obj;
+    });
+    return found;
 }
 
 function hwProjectPointerToAxisPos(event, ctx) {
-    if (!ctx || !hwDetail.raycaster || !hwDetail.camera) return null;
-    const canvas = document.getElementById('hw-detail-canvas');
-    if (!canvas) return null;
+    hwEnsureDetailRaycaster();
+    const canvas = hwGetDetailCanvas();
+    const camera = hwGetDetailCamera();
+    if (!ctx || !hwDetail.raycaster || !camera || !canvas) return null;
     const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
     hwDetail.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     hwDetail.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    hwDetail.raycaster.setFromCamera(hwDetail.pointer, hwDetail.camera);
+    hwDetail.raycaster.setFromCamera(hwDetail.pointer, camera);
 
+    let ray = hwDetail.raycaster.ray;
     const camDir = new THREE.Vector3();
-    hwDetail.camera.getWorldDirection(camDir);
+    camera.getWorldDirection(camDir);
+    if (state.hwDetailMode && hwDetail.embedded) {
+        const focusGroup = hwGetFocusAssemblyGroup();
+        if (!focusGroup) return null;
+        focusGroup.updateWorldMatrix(true, false);
+        const inv = new THREE.Matrix4().copy(focusGroup.matrixWorld).invert();
+        ray = hwDetail.raycaster.ray.clone().applyMatrix4(inv);
+        camDir.transformDirection(inv).normalize();
+    }
+
     let planeNormal = new THREE.Vector3().crossVectors(ctx.dirVec, camDir);
     if (planeNormal.lengthSq() < 1e-8) {
         planeNormal = new THREE.Vector3().crossVectors(ctx.dirVec, ctx.crossVec);
@@ -174,27 +769,46 @@ function hwProjectPointerToAxisPos(event, ctx) {
 
     const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, anchor);
     const hit = new THREE.Vector3();
-    if (!hwDetail.raycaster.ray.intersectPlane(plane, hit)) return null;
+    if (!ray.intersectPlane(plane, hit)) return null;
     return hit.dot(ctx.dirVec);
 }
 
 function hwRaycastPartId(event) {
-    if (!hwDetail.raycaster || !hwDetail.camera || !hwDetail.assemblyGroup) return null;
-    const canvas = document.getElementById('hw-detail-canvas');
-    if (!canvas) return null;
+    hwEnsureDetailRaycaster();
+    if (!hwDetail.raycaster) return null;
+    const canvas = hwGetDetailCanvas();
+    const camera = hwGetDetailCamera();
+    if (!canvas || !camera) return null;
     const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
     hwDetail.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     hwDetail.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    hwDetail.raycaster.setFromCamera(hwDetail.pointer, hwDetail.camera);
-    const hits = hwDetail.raycaster.intersectObjects(hwDetail.assemblyGroup.children, true);
-    for (let i = 0; i < hits.length; i++) {
-        let node = hits[i].object;
-        while (node) {
-            if (node.userData && node.userData.partId) return node.userData.partId;
-            node = node.parent;
+    hwDetail.raycaster.setFromCamera(hwDetail.pointer, camera);
+
+    const pickFrom = (root) => {
+        const hits = hwDetail.raycaster.intersectObjects(root.children, true);
+        for (let i = 0; i < hits.length; i++) {
+            let node = hits[i].object;
+            while (node) {
+                if (node.userData && node.userData.partId) return node.userData.partId;
+                node = node.parent;
+            }
         }
+        return null;
+    };
+
+    if (state.hwDetailMode && hwDetail.embedded) {
+        const focusGroup = hwGetFocusAssemblyGroup();
+        if (!focusGroup) return null;
+        const partId = pickFrom(focusGroup);
+        if (!partId) return null;
+        const asm = getActiveHardwareAssembly();
+        const part = asm && asm.parts.find(p => p.id === partId);
+        return (part && part.type !== 'bracket') ? partId : null;
     }
-    return null;
+
+    if (!hwDetail.assemblyGroup) return null;
+    return pickFrom(hwDetail.assemblyGroup);
 }
 
 function hwGetBracketHoleY(bracketPart) {
@@ -273,19 +887,22 @@ function getDefaultHardwareAssemblies() {
     return {
         activeId: 'outerVBeam',
         explode: 0,
+        snap: true,
         assemblies: {
             outerVBeam: {
                 id: 'outerVBeam',
                 label: 'Outer V-Beam Assembly',
                 detailed: true,
                 explodeGap: 1.4,
+                detailCam: { pitchDeg: 8, distMul: 2.0 },
+                sandwichPlane: 'vertical',
                 // Right and left horizontal stacks are identical and mirrored:
                 // only the 'right' parts are stored; the 'left' side is rendered
                 // (and edited) as a live mirror of 'right'.
                 mirror: { from: 'right', to: 'left' },
                 parts: [
-                    // U-bracket (fixed at center). sideHoleFromTop aligns horizontal stacks.
-                    { id: 'bracket', type: 'bracket', label: 'U-Bracket (Unistrut Trolley)', axis: 'center', seq: 0, qty: 1, perModule: 4, cost: 5.0,
+                    // U-bracket sits in the UP stack, above the top H-beam (cylinder mode).
+                    { id: 'bracket', type: 'bracket', label: 'U-Bracket (Unistrut Trolley)', axis: 'up', seq: 5, qty: 1, perModule: 4, cost: 5.0,
                       params: { useGlb: true, height: 3.77, width: 2.15, depth: 1.57, wallThickness: 0.12, holeDiameter: 0.41, bottomLip: 1.01, sideHoleFromTop: 1.1875, cutoffHeight: 0, glbScaleMul: 1, glbRotX: 0, glbRotY: 90, glbRotZ: 0, posX: 0, posY: 0, posZ: 0 } },
                     // Right horizontal stack (bracket wall -> outward); mirrored to left.
                     { id: 'r-beam', type: 'beam', label: 'Outer V-Beam', axis: 'right', seq: 1, qty: 1, perModule: 2, cost: 0, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
@@ -293,14 +910,16 @@ function getDefaultHardwareAssemblies() {
                     { id: 'r-bushing', type: 'bushing', label: 'Bushing 5/16"ID 5/8"OD 1.25"', axis: 'right', seq: 2, qty: 1, perModule: 2, cost: 0.85, posAssembled: 0, posExploded: 0, crossOffset: 0, params: bushingParams() },
                     { id: 'r-lock', type: 'lockWasher', label: '5/16" Split Lock Washer', axis: 'right', seq: 3, qty: 1, perModule: 2, cost: 0.06, posAssembled: 0, posExploded: 0, crossOffset: 0, params: lockParams() },
                     { id: 'r-bolt', type: 'bolt', label: 'Outer V-Beam Bolt (8x60mm button)', axis: 'right', seq: 4, qty: 1, perModule: 2, cost: 0.55, posAssembled: 0, posExploded: 0, crossOffset: 0, params: outerVBoltParams() },
-                    // Horizontal H-beams at pivot (up/down axes); vertical hardware stack on down.
-                    { id: 'u-hbeam', type: 'beam', label: 'Horizontal H-Beam', axis: 'up', seq: 0, qty: 1, perModule: 0, cost: 0, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
-                      params: hBeamBeamParams() },
-                    { id: 'd-hbeam', type: 'beam', label: 'Horizontal H-Beam', axis: 'down', seq: 0, qty: 1, perModule: 0, cost: 0, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
-                      params: Object.assign({}, hBeamBeamParams()) },
-                    { id: 'c-inner-washer', type: 'washer', label: 'Inner Washer 5/8"ID 1-5/16"OD', axis: 'down', seq: 1, qty: 1, perModule: 1, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.625, od: 1.3125, thickness: 0.0625 } },
+                    // Horizontal H-beams at pivot (up/down); gap washer at center between them.
+                    ...(() => {
+                        const beams = hwDefaultHBeamPairParts();
+                        beams[0].params = hBeamBeamParams();
+                        beams[1].params = Object.assign({}, hBeamBeamParams());
+                        return beams;
+                    })(),
+                    hwDefaultHBeamGapWasherPart('outerVBeam'),
                     { id: 'c-bolt', type: 'bolt', label: 'H-Pivot Bolt 1/2"x3" Hex', axis: 'down', seq: 2, qty: 1, perModule: 1, cost: 0.75, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
-                      params: { diameter: 0.5, length: 3.0, threadLength: 1.0, headType: 'hex', headDia: 0.75, headHeight: 0.3125, driveSize: 0, metric: '', headAtInsert: true } },
+                      params: { diameter: 0.5, length: 3.0, threadLength: 1.0, headType: 'hex', headDia: 0.75, headHeight: 0.3125, driveSize: 0, metric: '' } },
                     { id: 'c-outer-washer', type: 'washer', label: 'Outer Washer 5/16"ID 1.5"OD', axis: 'down', seq: 3, qty: 1, perModule: 1, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.3125, od: 1.5, thickness: 0.0625 } },
                     { id: 'c-nut', type: 'nut', label: '1/2"-13 Rivet Nut', axis: 'down', seq: 4, qty: 1, perModule: 1, cost: 0.40, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.5, od: 17 * HW_MM_TO_IN, length: 0.5, flangeOd: 18 * HW_MM_TO_IN, flangeThickness: HW_MM_TO_IN, style: 'rivet', thread: '1/2-13' } }
                 ]
@@ -310,19 +929,65 @@ function getDefaultHardwareAssemblies() {
                 label: 'Inner V-Beam Assembly',
                 detailed: true,
                 explodeGap: 1.4,
+                detailCam: { pitchDeg: 8, distMul: 2.0 },
+                sandwichPlane: 'vertical',
                 parts: [
                     { id: 'r-beam', type: 'beam', label: 'Inner V-Beam', axis: 'right', seq: 1, qty: 1, perModule: 2, cost: 0, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
                       params: { width: 3.5, thickness: 1.5, length: 96, holeOffset: 1.5, holeDiameter: 8 / 25.4, holeAlign: 'center', rotDeg: 90, syncStructure: true, color: 0x8B6914 } },
                     { id: 'r-washer', type: 'washer', label: 'Washer 5/8"ID 1-5/16"OD', axis: 'right', seq: 2, qty: 1, perModule: 2, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.625, od: 1.3125, thickness: 0.0625 } },
                     { id: 'r-lock', type: 'lockWasher', label: '5/16" Split Lock Washer', axis: 'right', seq: 3, qty: 1, perModule: 2, cost: 0.06, posAssembled: 0, posExploded: 0, crossOffset: 0, params: lockParams() },
                     { id: 'r-bolt', type: 'bolt', label: 'Inner V-Beam Bolt (8x60mm button)', axis: 'right', seq: 4, qty: 1, perModule: 2, cost: 0.55, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: true,
-                      params: outerVBoltParams() }
+                      params: outerVBoltParams() },
+                    ...hwDefaultHBeamPairParts(),
+                    hwDefaultHBeamGapWasherPart('innerVBeam'),
                 ]
             },
-            hCenter:    { id: 'hCenter', label: 'H-Beam Center Linkage Assembly', detailed: false, explodeGap: 1.4, parts: [] },
-            vCenter:    { id: 'vCenter', label: 'V-Beam Center Assembly', detailed: false, explodeGap: 1.4, parts: [] }
+            hCenter:    { id: 'hCenter', label: 'H-Beam Center Linkage Assembly', detailed: true, explodeGap: 1.4, detailCam: { pitchDeg: 38, distMul: 2.2 }, sandwichPlane: 'vertical', mirrorPairs: [], parts: [...hwDefaultHBeamPairParts(), hwDefaultHBeamGapWasherPart('hCenter')] },
+            vCenter:    { id: 'vCenter', label: 'V-Beam Center Assembly', detailed: true, explodeGap: 1.4, detailCam: { pitchDeg: 14, distMul: 1.9 }, sandwichPlane: 'horizontal', mirrorPairs: [], parts: [] }
         }
     };
+}
+
+function hwEnsureHBeamSandwichAssembly(asm) {
+    if (!HW_HBEAM_SANDWICH_ASSEMBLY_IDS.includes(asm.id)) return;
+    if (!asm.parts) asm.parts = [];
+    if (!asm.sandwichPlane) asm.sandwichPlane = 'vertical';
+
+    // The U-bracket belongs in the UP stack (above the top H-beam) in cylinder mode,
+    // not on the center axis. Relocate legacy center/right brackets once.
+    const bracket = asm.parts.find(p => p.type === 'bracket');
+    if (bracket && (bracket.axis === 'center' || bracket.axis === 'right')) {
+        bracket.axis = 'up';
+        hwRenumberAxis(asm, 'up');
+        if (bracket.axis === 'center') hwRenumberAxis(asm, 'center');
+    }
+
+    const legacyInner = asm.parts.find(p => p.id === 'c-inner-washer');
+    if (legacyInner) {
+        legacyInner.id = `${asm.id}-hbeam-gap-washer`;
+        legacyInner.sharedKey = HW_HBEAM_GAP_WASHER_SHARED_KEY;
+        legacyInner.label = 'H-Beam Gap Washer 1/2"ID 2"OD';
+        legacyInner.axis = 'center';
+        legacyInner.params = {
+            id: 0.5,
+            od: 2.0,
+            thickness: legacyInner.params?.thickness || 0.0625,
+        };
+    }
+
+    hwDefaultHBeamPairParts().forEach(defPart => {
+        if (!asm.parts.some(p => p.id === defPart.id)) {
+            asm.parts.push(JSON.parse(JSON.stringify(defPart)));
+        }
+    });
+
+    if (!asm.parts.some(p => p.sharedKey === HW_HBEAM_GAP_WASHER_SHARED_KEY)) {
+        asm.parts.push(JSON.parse(JSON.stringify(hwDefaultHBeamGapWasherPart(asm.id))));
+    }
+
+    hwRenumberAxis(asm, 'center');
+    hwRenumberAxis(asm, 'up');
+    hwRenumberAxis(asm, 'down');
 }
 
 // Ensure a loaded/legacy state always has a valid hardwareAssemblies shape.
@@ -339,6 +1004,20 @@ function ensureHardwareAssemblies() {
     });
     if (!ha.activeId || !ha.assemblies[ha.activeId]) ha.activeId = 'outerVBeam';
     if (typeof ha.explode !== 'number') ha.explode = 0;
+    if (ha.snap == null) ha.snap = true;
+
+    // Normalize per-assembly flags against defaults: all four assemblies are now
+    // detailed-capable, and each carries a detail-view camera preset.
+    Object.keys(defaults.assemblies).forEach(key => {
+        const asm = ha.assemblies[key];
+        const def = defaults.assemblies[key];
+        if (!asm || !def) return;
+        if (def.detailed && !asm.detailed) asm.detailed = true;
+        if (!asm.detailCam && def.detailCam) asm.detailCam = { ...def.detailCam };
+        if (!asm.sandwichPlane && def.sandwichPlane) asm.sandwichPlane = def.sandwichPlane;
+        if (asm.mirrorPairs == null && def.mirrorPairs) asm.mirrorPairs = JSON.parse(JSON.stringify(def.mirrorPairs));
+        if (asm.mirrorPairs == null && asm.mirror) asm.mirrorPairs = [JSON.parse(JSON.stringify(asm.mirror))];
+    });
 
     // Migrate parts: position fields, bracket hole param, outer V-beam stack beam.
     Object.values(ha.assemblies).forEach(asm => {
@@ -377,15 +1056,6 @@ function ensureHardwareAssemblies() {
             }
         }
         if (asm.id === 'outerVBeam') {
-            const defParts = defaults.assemblies.outerVBeam.parts;
-            ['u-hbeam', 'd-hbeam'].forEach(id => {
-                if (!asm.parts.some(p => p.id === id)) {
-                    const def = defParts.find(p => p.id === id);
-                    if (def) asm.parts.push(JSON.parse(JSON.stringify(def)));
-                }
-            });
-            const cBolt = asm.parts.find(p => p.id === 'c-bolt');
-            if (cBolt && cBolt.params && cBolt.params.headAtInsert == null) cBolt.params.headAtInsert = true;
             const cNut = asm.parts.find(p => p.id === 'c-nut');
             if (cNut && cNut.params && cNut.params.style === 'rivet') {
                 if (cNut.params.od == null) cNut.params.od = 17 * HW_MM_TO_IN;
@@ -393,9 +1063,9 @@ function ensureHardwareAssemblies() {
                 if (cNut.params.flangeOd == null) cNut.params.flangeOd = 18 * HW_MM_TO_IN;
                 if (cNut.params.flangeThickness == null) cNut.params.flangeThickness = HW_MM_TO_IN;
             }
-            hwRenumberAxis(asm, 'up');
-            hwRenumberAxis(asm, 'down');
         }
+        hwEnsureHBeamSandwichAssembly(asm);
+        hwReconcileMirrorParts(asm);
         if (asm.id === 'innerVBeam' && (!asm.parts || !asm.parts.length)) {
             const defParts = defaults.assemblies.innerVBeam.parts;
             if (defParts && defParts.length) {
@@ -403,11 +1073,36 @@ function ensureHardwareAssemblies() {
                 if (asm.detailed == null) asm.detailed = true;
             }
         }
-        // Remove legacy mirrored left-side duplicates (now rendered via mirror flag).
-        if (asm.mirror && asm.mirror.from && asm.mirror.to) {
-            asm.parts = asm.parts.filter(p => !(p.axis === asm.mirror.to && p.id.startsWith('l-')));
-        }
     });
+
+    // One-time migration to the centered sandwich-stack model: clear legacy
+    // posAssembled workarounds (auto-offsets and manual nudges that compensated
+    // for the old layout) on center and sandwich-side parts so the new automatic
+    // centering takes over. Intentional offsets made afterward are preserved.
+    if (!ha.stackModelV2) {
+        Object.values(ha.assemblies).forEach(asm => {
+            (asm.parts || []).forEach(p => {
+                if (p.type === 'bracket') return;
+                const ax = p.axis || '';
+                if (ax === 'center' || hwUsesSandwichAxis(asm, ax)) p.posAssembled = 0;
+            });
+        });
+        ha.stackModelV2 = true;
+    }
+
+    // Center assemblies should not inherit legacy default mirror pairs; clear once.
+    if (!ha.mirrorDefaultsV2) {
+        ['hCenter', 'vCenter'].forEach(id => {
+            const asm = ha.assemblies[id];
+            if (!asm) return;
+            asm.mirrorPairs = [];
+            delete asm.mirror;
+            asm.parts = (asm.parts || []).filter(p => !hwIsMirrorClonePart(p));
+        });
+        ha.mirrorDefaultsV2 = true;
+    }
+
+    hwReconcileSharedParts();
 }
 
 // ---------------------------------------------------------------------------
@@ -469,32 +1164,17 @@ function createHWBoltMesh(p) {
     const group = new THREE.Group();
     const L = Math.max(0.1, p.length || 1);
     const r = Math.max(0.02, (p.diameter || 0.25) / 2);
-    const headAtInsert = !!p.headAtInsert;
     const threadLen = Math.min(L, Math.max(0, p.threadLength || 0));
-
-    if (headAtInsert) {
-        const headH = hwAddHead(group, p, 0);
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 16), hwMaterial('steel'));
-        shaft.position.y = headH + L / 2;
-        group.add(shaft);
-        if (threadLen > 0) {
-            const thread = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.04, threadLen, 16), hwMaterial('thread'));
-            thread.position.y = headH + L - threadLen / 2;
-            group.add(thread);
-        }
-        group.userData.axialLength = headH + L;
-    } else {
-        const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 16), hwMaterial('steel'));
-        shaft.position.y = L / 2;
-        group.add(shaft);
-        if (threadLen > 0) {
-            const thread = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.04, threadLen, 16), hwMaterial('thread'));
-            thread.position.y = threadLen / 2;
-            group.add(thread);
-        }
-        const headH = hwAddHead(group, p, L);
-        group.userData.axialLength = L + (headH || 0);
+    const headH = hwAddHead(group, p, 0);
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(r, r, L, 16), hwMaterial('steel'));
+    shaft.position.y = headH + L / 2;
+    group.add(shaft);
+    if (threadLen > 0) {
+        const thread = new THREE.Mesh(new THREE.CylinderGeometry(r * 1.04, r * 1.04, threadLen, 16), hwMaterial('thread'));
+        thread.position.y = headH + L - threadLen / 2;
+        group.add(thread);
     }
+    group.userData.axialLength = headH + L;
     return group;
 }
 
@@ -853,13 +1533,15 @@ function createHardwarePartMesh(part) {
         case 'beam': g = createHWBeamMesh(part.params); break;
         default: g = new THREE.Group(); g.userData.axialLength = 0.1;
     }
+    if (part.type !== 'bracket' && part.type !== 'beam') hwCenterMeshAxially(g);
     g.userData.partId = part.id;
     return g;
 }
 
 /** Beam rotDeg is applied in part-local space; mirrored axes flip stack direction, so reflect rotDeg about 90° on mirror.to. */
 function hwCreatePartMeshForAxis(part, axisKey, assembly) {
-    if (part.type === 'beam' && assembly && assembly.mirror && axisKey === assembly.mirror.to && part.params) {
+    const mirrorTo = hwGetAssemblyMirrorPairs(assembly).find(p => p.to === axisKey);
+    if (part.type === 'beam' && mirrorTo && part.params) {
         const rotDeg = part.params.rotDeg != null ? part.params.rotDeg : 90;
         const g = createHWBeamMesh(Object.assign({}, part.params, { rotDeg: 180 - rotDeg }));
         g.userData.partId = part.id;
@@ -883,8 +1565,118 @@ const hwDetail = {
     selectedPartId: null,
     dragPartId: null,
     dragCtx: null,
-    pointerDown: null
+    pointerDown: null,
+    // Part view (embedded in main canvas) bookkeeping
+    embedded: false,
+    needsRecenter: false,
+    savedCam: null,
+    originalCanvasParent: null,
+    originalCanvasNext: null,
+    focusGroupUuid: null,
+    embeddedInteractionWired: false,
+    /** When true (default in part view), camera stays head-on on the focused assembly. */
+    lockRadialView: true,
 };
+
+// Move the main WebGL canvas into the hardware modal viewport so the detail
+// editor shows the real structure assembly instead of a separate scene.
+function hwEmbedMainCanvas() {
+    const canvas = document.getElementById('canvas-webgl');
+    const vp = document.querySelector('#hardware-detail-modal .hw-viewport');
+    if (!canvas || !vp || hwDetail.embedded) return;
+    hwDetail.originalCanvasParent = canvas.parentElement;
+    hwDetail.originalCanvasNext = canvas.nextSibling;
+    const placeholder = document.getElementById('hw-detail-canvas');
+    if (placeholder) placeholder.style.display = 'none';
+    vp.appendChild(canvas);
+    hwDetail.embedded = true;
+}
+
+function hwRestoreMainCanvas() {
+    const canvas = document.getElementById('canvas-webgl');
+    if (!canvas || !hwDetail.embedded) return;
+    const parent = hwDetail.originalCanvasParent;
+    if (parent) {
+        const next = hwDetail.originalCanvasNext;
+        if (next && next.parentElement === parent) parent.insertBefore(canvas, next);
+        else parent.appendChild(canvas);
+    }
+    const placeholder = document.getElementById('hw-detail-canvas');
+    if (placeholder) placeholder.style.display = '';
+    hwDetail.originalCanvasParent = null;
+    hwDetail.originalCanvasNext = null;
+    hwDetail.embedded = false;
+}
+
+function hwDetailPointerDown(e) {
+    if (e.button !== 0) return;
+    if (!state.hwDetailMode && !hwDetail.initialized) return;
+    const canvas = hwGetDetailCanvas();
+    if (!canvas || e.target !== canvas) return;
+    const partId = hwRaycastPartId(e);
+    hwDetail.pointerDown = { x: e.clientX, y: e.clientY, partId, moved: false };
+    if (partId) {
+        const assembly = getActiveHardwareAssembly();
+        const part = assembly && assembly.parts.find(p => p.id === partId);
+        if (part && part.type !== 'bracket') {
+            e.stopPropagation();
+            hwDetail.dragPartId = partId;
+            hwDetail.dragCtx = hwGetPartStackContext(part, assembly, hwExplodeFactor());
+            if (hwDetail.controls) hwDetail.controls.enabled = false;
+            canvas.setPointerCapture(e.pointerId);
+        }
+    }
+}
+
+function hwDetailPointerMove(e) {
+    const pd = hwDetail.pointerDown;
+    if (!pd || !hwDetail.dragPartId || !hwDetail.dragCtx) return;
+    if (!pd.moved && (Math.abs(e.clientX - pd.x) > 3 || Math.abs(e.clientY - pd.y) > 3)) pd.moved = true;
+    if (!pd.moved) return;
+    e.stopPropagation();
+    const assembly = getActiveHardwareAssembly();
+    const part = assembly && assembly.parts.find(p => p.id === hwDetail.dragPartId);
+    if (!part) return;
+    const axisPos = hwProjectPointerToAxisPos(e, hwDetail.dragCtx);
+    if (axisPos == null) return;
+    hwSetPartAxisPosFromWorld(part, hwDetail.dragCtx, axisPos);
+    hwRebuildDetailView();
+}
+
+function hwDetailPointerUp(e) {
+    const pd = hwDetail.pointerDown;
+    const canvas = hwGetDetailCanvas();
+    if (hwDetail.controls) hwDetail.controls.enabled = true;
+    if (pd && !pd.moved && pd.partId) {
+        if (hwDetail.selectedPartId !== pd.partId) {
+            hwDetail.selectedPartId = pd.partId;
+            hwRebuildDetailView();
+            renderHardwareEditPanel();
+            const card = document.querySelector('.hw-part-card.selected');
+            if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+    } else if (pd && pd.moved) {
+        renderHardwareEditPanel();
+        hwPersistHardwareConfig();
+        if (typeof updateHUD === 'function') { try { updateHUD(); } catch (err) {} }
+    }
+    hwDetail.dragPartId = null;
+    hwDetail.dragCtx = null;
+    hwDetail.pointerDown = null;
+    if (canvas && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
+}
+
+function hwWireEmbeddedDetailInteraction() {
+    if (hwDetail.embeddedInteractionWired) return;
+    const canvas = document.getElementById('canvas-webgl');
+    if (!canvas) return;
+    hwEnsureDetailRaycaster();
+    canvas.addEventListener('pointerdown', hwDetailPointerDown);
+    canvas.addEventListener('pointermove', hwDetailPointerMove);
+    canvas.addEventListener('pointerup', hwDetailPointerUp);
+    canvas.addEventListener('pointercancel', hwDetailPointerUp);
+    hwDetail.embeddedInteractionWired = true;
+}
 
 function initHardwareDetailScene() {
     if (hwDetail.initialized) return;
@@ -925,64 +1717,10 @@ function initHardwareDetailScene() {
     hwDetail.raycaster = new THREE.Raycaster();
     hwDetail.pointer = new THREE.Vector2();
 
-    canvas.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0 || !hwDetail.assemblyGroup || !hwDetail.camera) return;
-        const partId = hwRaycastPartId(e);
-        hwDetail.pointerDown = { x: e.clientX, y: e.clientY, partId, moved: false };
-        if (partId) {
-            const assembly = getActiveHardwareAssembly();
-            const part = assembly && assembly.parts.find(p => p.id === partId);
-            if (part && part.type !== 'bracket') {
-                hwDetail.dragPartId = partId;
-                hwDetail.dragCtx = hwGetPartStackContext(part, assembly, hwExplodeFactor());
-                if (hwDetail.controls) hwDetail.controls.enabled = false;
-                canvas.setPointerCapture(e.pointerId);
-            }
-        }
-    });
-
-    canvas.addEventListener('pointermove', (e) => {
-        const pd = hwDetail.pointerDown;
-        if (!pd || !hwDetail.dragPartId || !hwDetail.dragCtx) return;
-        if (!pd.moved && (Math.abs(e.clientX - pd.x) > 3 || Math.abs(e.clientY - pd.y) > 3)) pd.moved = true;
-        if (!pd.moved) return;
-        const assembly = getActiveHardwareAssembly();
-        const part = assembly && assembly.parts.find(p => p.id === hwDetail.dragPartId);
-        if (!part) return;
-        const axisPos = hwProjectPointerToAxisPos(e, hwDetail.dragCtx);
-        if (axisPos == null) return;
-        hwSetPartAxisPosFromWorld(part, hwDetail.dragCtx, axisPos);
-        buildHardwareAssemblyScene();
-    });
-
-    canvas.addEventListener('pointerup', (e) => {
-        const pd = hwDetail.pointerDown;
-        if (hwDetail.controls) hwDetail.controls.enabled = true;
-        if (pd && !pd.moved && pd.partId) {
-            if (hwDetail.selectedPartId !== pd.partId) {
-                hwDetail.selectedPartId = pd.partId;
-                buildHardwareAssemblyScene();
-                renderHardwareEditPanel();
-                const card = document.querySelector('.hw-part-card.selected');
-                if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-            }
-        } else if (pd && pd.moved) {
-            renderHardwareEditPanel();
-            if (typeof updateHUD === 'function') { try { updateHUD(); } catch (err) {} }
-        }
-        hwDetail.dragPartId = null;
-        hwDetail.dragCtx = null;
-        hwDetail.pointerDown = null;
-        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    });
-
-    canvas.addEventListener('pointercancel', (e) => {
-        if (hwDetail.controls) hwDetail.controls.enabled = true;
-        hwDetail.dragPartId = null;
-        hwDetail.dragCtx = null;
-        hwDetail.pointerDown = null;
-        if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    });
+    canvas.addEventListener('pointerdown', hwDetailPointerDown);
+    canvas.addEventListener('pointermove', hwDetailPointerMove);
+    canvas.addEventListener('pointerup', hwDetailPointerUp);
+    canvas.addEventListener('pointercancel', hwDetailPointerUp);
 
     hwDetail.initialized = true;
 
@@ -1012,18 +1750,39 @@ function getActiveHardwareAssembly() {
     return ha.assemblies[ha.activeId];
 }
 
-function hwUseFullDetailAssemblies() {
-    if (!state.showHardwareFullDetail) return false;
+// A detailed assembly emits placements when the main "full detail" toggle is on
+// (and it has parts), or whenever part view is open (so even an empty assembly can
+// be framed and built in the editor).
+function hwAssemblyEnabled(assemblyId) {
     ensureHardwareAssemblies();
-    const asm = state.hardwareAssemblies.assemblies.outerVBeam;
-    return !!(asm && asm.detailed && asm.parts && asm.parts.length);
+    const asm = state.hardwareAssemblies.assemblies[assemblyId];
+    if (!asm || !asm.detailed) return false;
+    if (state.hwDetailMode) return true;
+    if (state.showHardwareFullDetail) return !!(asm.parts && asm.parts.length);
+    return false;
+}
+
+function hwUseFullDetailAssemblies() {
+    return hwAssemblyEnabled('outerVBeam');
 }
 
 function hwUseInnerDetailAssemblies() {
-    if (!state.showHardwareFullDetail) return false;
+    return hwAssemblyEnabled('innerVBeam');
+}
+
+// True when any detailed assembly (V or center) wants placements this build — used
+// to keep the solver's bracket/bolt block alive even with brackets/bolts toggled off.
+function hwAnyAssemblyEnabled() {
     ensureHardwareAssemblies();
-    const asm = state.hardwareAssemblies.assemblies.innerVBeam;
-    return !!(asm && asm.detailed && asm.parts && asm.parts.length);
+    return Object.keys(state.hardwareAssemblies.assemblies).some(id => hwAssemblyEnabled(id));
+}
+
+// True when an enabled assembly actually carries hardware (so the matching simple
+// bolt/bracket can be suppressed to avoid drawing both).
+function hwAssemblyHasParts(assemblyId) {
+    if (!hwAssemblyEnabled(assemblyId)) return false;
+    const asm = state.hardwareAssemblies.assemblies[assemblyId];
+    return !!(asm && asm.parts && asm.parts.length);
 }
 
 function hwGetAssemblyById(assemblyId) {
@@ -1040,7 +1799,9 @@ function hwGetInnerVBeamAssembly() {
 }
 
 function hwAddAssemblyPlacement(placements, assemblyId, bracketData, vBoltDir, vBoltPivot) {
-    const pivotRole = assemblyId === 'innerVBeam' ? 'inner' : 'outer';
+    const pivotRole = assemblyId === 'innerVBeam' ? 'inner'
+        : (assemblyId === 'vCenter' || assemblyId === 'hCenter') ? 'center'
+        : 'outer';
     placements.push({
         assemblyId,
         pivotRole,
@@ -1150,9 +1911,10 @@ function buildHardwareAssemblyDebugSnapshot(data, structureCenter) {
             const plBracket = plAsm && plAsm.parts.find(p => p.type === 'bracket');
             const plBracketHoleY = plBracket ? hwGetBracketHoleY(plBracket) : 0;
             const pivotRole = pl.pivotRole || (pl.assemblyId === 'innerVBeam' ? 'inner' : 'outer');
-            const flipStackAxis = pl.assemblyId === 'innerVBeam'
-                ? (pivotRole === 'inner') !== !!state.vStackReverse
-                : pl.isBottom !== !!state.vStackReverse;
+            let flipStackAxis;
+            if (pivotRole === 'center') flipStackAxis = false;
+            else if (pl.assemblyId === 'innerVBeam') flipStackAxis = (pivotRole === 'inner') !== !!state.vStackReverse;
+            else flipStackAxis = pl.isBottom !== !!state.vStackReverse;
             const xf = hwComputeAssemblyTransform(pl);
             const quat = xf.quaternion;
             const toWorld = (local) => {
@@ -1415,66 +2177,48 @@ function buildHardwareAssemblyGroup(assembly, options = {}) {
         group.add(mesh);
     });
 
-    const byAxis = {};
+    // renderAxis -> partsAxis (mirror targets pull parts from their source axis)
+    const axesToRender = new Map();
     assembly.parts.filter(p => p.type !== 'bracket' && shouldIncludePart(p)).forEach(part => {
         const ax = part.axis || 'right';
-        (byAxis[ax] = byAxis[ax] || []).push(part);
+        if (!axesToRender.has(ax)) axesToRender.set(ax, ax);
+    });
+    hwGetAssemblyMirrorPairs(assembly).forEach(pair => {
+        if (!axesToRender.has(pair.from) || axesToRender.has(pair.to)) return;
+        const hasPhysicalClones = assembly.parts.some(p =>
+            p.type !== 'bracket' && (p.axis || 'right') === pair.to && hwIsMirrorClonePart(p)
+        );
+        if (hasPhysicalClones) return;
+        if (hwAssemblyUsesVirtualMirror(assembly, pair)) {
+            axesToRender.set(pair.to, pair.from);
+        }
     });
 
-    if (assembly.mirror && byAxis[assembly.mirror.from] && !byAxis[assembly.mirror.to]) {
-        byAxis[assembly.mirror.to] = byAxis[assembly.mirror.from];
-    }
+    const layoutOpts = {
+        bracketPart,
+        bracketHoleY,
+        explode,
+        gap,
+        selectedPartId,
+        flipEnd: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI),
+        applySelection,
+        shouldRenderPart: shouldIncludePart,
+    };
 
-    Object.keys(byAxis).forEach(axisKey => {
-        const dir = HW_AXIS_DIRS[axisKey] || HW_AXIS_DIRS.right;
-        const dirVec = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-        const cross = HW_AXIS_CROSS[axisKey] || HW_AXIS_CROSS.right;
-        const crossVec = new THREE.Vector3(cross.x, cross.y, cross.z).normalize();
-        const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dirVec);
-        const flipEnd = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI);
-        const parts = byAxis[axisKey].slice().sort((a, b) => (a.seq || 0) - (b.seq || 0));
-
-        const stackOrigin = hwGetBracketStackOrigin(bracketPart, axisKey);
-        let stackPos = stackOrigin;
-        let rank = 0;
-
-        parts.forEach(part => {
-            const qty = Math.max(1, part.qty || 1);
-            const posAsm = part.posAssembled || 0;
-            let crossPos = part.crossOffset || 0;
-            if (HW_HORIZONTAL_AXES.indexOf(axisKey) >= 0 && bracketPart) {
-                crossPos += bracketHoleY;
-            }
-
-            const partRank = rank;
-            const partAssembledBase = stackPos;
-            const len = hwGetPartAxialLength(part);
-            for (let c = 0; c < qty; c++) {
-                const mesh = hwCreatePartMeshForAxis(part, axisKey, assembly);
-                const assembledPos = hwQtyCopyAssembledPos(partAssembledBase, posAsm, len, c);
-                const explodedPos = qty > 1
-                    ? hwPartCopyExplodedPos(part, stackOrigin, partRank, gap, c)
-                    : hwExplodedAxisPos(part, stackOrigin, partRank, gap);
-                const axisPos = (1 - explode) * assembledPos + explode * explodedPos;
-                const worldPos = new THREE.Vector3();
-                worldPos.addScaledVector(dirVec, axisPos);
-                worldPos.addScaledVector(crossVec, crossPos);
-                mesh.position.copy(worldPos);
-                mesh.quaternion.copy(quat);
-                if (part.flipAxis) mesh.quaternion.multiply(flipEnd);
-                hwTagPartMesh(mesh, part);
-                applySelection(mesh, part);
-                group.add(mesh);
-            }
-            stackPos = partAssembledBase + hwQtyAssembledSpan(part) + 0.04;
-            rank = partRank + 1;
-        });
+    axesToRender.forEach((partsAxis, renderAxis) => {
+        hwLayoutAxisParts(group, renderAxis, partsAxis, assembly, layoutOpts);
     });
 
     return group;
 }
 
 function buildHardwareAssemblyScene() {
+    // Embedded part view: the main render loop draws the assembly in-structure.
+    if (state.hwDetailMode) {
+        hwPersistHardwareConfig();
+        if (typeof requestRender === 'function') requestRender();
+        return;
+    }
     if (!hwDetail.initialized) return;
     const group = hwDetail.assemblyGroup;
     clearGroup(group);
@@ -1597,8 +2341,7 @@ function hwPresetSignature(part) {
         part.cost || 0,
         JSON.stringify(p),
         part.flipAxis ? 1 : 0,
-        p.holeAlign || '',
-        p.headAtInsert ? 1 : 0
+        p.holeAlign || ''
     ].join('|');
 }
 
@@ -1606,7 +2349,6 @@ function hwExtractPartExtras(part) {
     const extras = {};
     if (part.flipAxis) extras.flipAxis = true;
     if (part.params && part.params.holeAlign) extras.holeAlign = part.params.holeAlign;
-    if (part.params && part.params.headAtInsert != null) extras.headAtInsert = part.params.headAtInsert;
     if (part.type === 'beam' && part.params && part.params.syncStructure != null) extras.syncStructure = part.params.syncStructure;
     return extras;
 }
@@ -1729,7 +2471,6 @@ function hwApplyPresetToPart(part, preset) {
     const extras = preset.extras || {};
     if (extras.flipAxis != null) part.flipAxis = !!extras.flipAxis;
     if (extras.holeAlign != null && part.params) part.params.holeAlign = extras.holeAlign;
-    if (extras.headAtInsert != null && part.params) part.params.headAtInsert = extras.headAtInsert;
     if (part.type === 'beam' && extras.syncStructure != null && part.params) part.params.syncStructure = extras.syncStructure;
     if (part.type === 'beam' && part.params && part.params.syncStructure !== 'hBeam' && part.params.syncStructure !== false) {
         part.params.syncStructure = false;
@@ -1759,7 +2500,6 @@ function hwLinkPartsToKnownPresets() {
                 flipAxis: preset.extras && preset.extras.flipAxis
             };
             if (preset.extras && preset.extras.holeAlign) fakePart.params.holeAlign = preset.extras.holeAlign;
-            if (preset.extras && preset.extras.headAtInsert != null) fakePart.params.headAtInsert = preset.extras.headAtInsert;
             signatureToPreset.set(hwPresetSignature(fakePart), preset);
         });
     });
@@ -1909,22 +2649,47 @@ function hwAppendPresetRow(card, part) {
     card.appendChild(row);
 }
 
-const hwPersistConfigDebounced = debounce(() => {
+/** Deep-clone hardware assemblies after normalization — used by config export/autosave. */
+function serializeHardwareAssembliesForConfig() {
+    ensureHardwareAssemblies();
+    return JSON.parse(JSON.stringify(state.hardwareAssemblies || {}));
+}
+
+let hwPersistTimeoutId = null;
+
+function hwFlushHardwareConfigSync() {
+    if (hwPersistTimeoutId != null) {
+        clearTimeout(hwPersistTimeoutId);
+        hwPersistTimeoutId = null;
+    }
     try {
-        localStorage.setItem('linkageLab_config', JSON.stringify(getConfigSnapshot()));
+        const snapshot = getConfigSnapshot();
+        localStorage.setItem('linkageLab_config', JSON.stringify(snapshot));
+        patchProjectDocumentLinkageSlice(extractLinkageSliceFromConfig(snapshot));
     } catch (e) {
         console.warn('[HW] Failed to persist hardware config:', e);
     }
-}, 1500);
+}
 
 function hwPersistHardwareConfig() {
-    hwPersistConfigDebounced();
+    if (hwPersistTimeoutId != null) clearTimeout(hwPersistTimeoutId);
+    hwPersistTimeoutId = setTimeout(hwFlushHardwareConfigSync, 800);
 }
+
+function hwInstallHardwarePersistFlush() {
+    if (hwInstallHardwarePersistFlush.installed) return;
+    hwInstallHardwarePersistFlush.installed = true;
+    window.addEventListener('pagehide', hwFlushHardwareConfigSync);
+    window.addEventListener('beforeunload', hwFlushHardwareConfigSync);
+}
+hwInstallHardwarePersistFlush.installed = false;
 
 function hwRefreshAll() {
     buildHardwareAssemblyScene();
     renderHardwareEditPanel();
     if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+    if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
     saveStateToHistory();
 }
 
@@ -1942,10 +2707,25 @@ function renderHardwareEditPanel() {
         (byAxis[ax] = byAxis[ax] || []).push({ part, idx });
     });
 
-    const mirror = assembly.mirror;
-    const axisOrder = ['center', 'right', 'left', 'up', 'down', 'front', 'back'];
-    const axisLabels = { center: 'Bracket / Center', right: 'Right Axis', left: 'Left Axis', up: 'Up Axis', down: 'Down (Center) Axis', front: 'Front Axis', back: 'Back Axis' };
-    if (mirror && mirror.from === 'right' && mirror.to === 'left') axisLabels.right = 'Right Axis (mirrored to Left)';
+    // List stacks top-to-bottom around the center slot so the panel mirrors the
+    // physical layout: UP parts above the center washer, DOWN parts below it.
+    const plane = assembly.sandwichPlane || (assembly.id === 'vCenter' ? 'horizontal' : 'vertical');
+    const axisOrder = plane === 'horizontal'
+        ? ['left', 'center', 'right', 'up', 'down', 'front', 'back']
+        : ['up', 'center', 'down', 'right', 'left', 'front', 'back'];
+    const axisLabels = {
+        center: 'Center (between beams · sets stack gap)',
+        right: 'Right (+ from center)',
+        left: 'Left (− from center)',
+        up: 'Up (above center)',
+        down: 'Down (below center)',
+        front: 'Front Axis',
+        back: 'Back Axis',
+    };
+    hwGetAssemblyMirrorPairs(assembly).forEach(pair => {
+        if (pair.from === 'right' && pair.to === 'left') axisLabels.right = 'Right (+ from center, mirrored to Left)';
+        if (pair.from === 'up' && pair.to === 'down') axisLabels.up = 'Up (above center, mirrored to Down)';
+    });
 
     axisOrder.forEach(axisKey => {
         if (!byAxis[axisKey]) return;
@@ -1979,7 +2759,8 @@ function buildHardwarePartCard(part) {
 
     // Drag-and-drop reordering via grip handle (brackets are fixed at center).
     const isBracket = part.type === 'bracket';
-    if (!isBracket) {
+    const isMirrorClone = hwIsMirrorClonePart(part);
+    if (!isBracket && !isMirrorClone) {
         card.addEventListener('dragover', (e) => {
             if (!hwDrag.id || hwDrag.id === part.id) return;
             e.preventDefault();
@@ -2002,7 +2783,7 @@ function buildHardwarePartCard(part) {
 
     const head = document.createElement('div');
     head.className = 'hw-part-head';
-    if (!isBracket) {
+    if (!isBracket && !isMirrorClone) {
         const grip = document.createElement('span');
         grip.className = 'hw-part-grip';
         grip.textContent = '⠿';
@@ -2027,6 +2808,20 @@ function buildHardwarePartCard(part) {
         ? 'Rivet Nut'
         : (HW_TYPE_LABELS[part.type] || part.type);
     head.appendChild(typeSpan);
+    if (part.sharedKey === HW_HBEAM_GAP_WASHER_SHARED_KEY) {
+        const sharedTag = document.createElement('span');
+        sharedTag.className = 'hw-part-shared-tag';
+        sharedTag.title = 'Synced across Outer V, Inner V, and H-Center assemblies';
+        sharedTag.textContent = 'shared';
+        head.appendChild(sharedTag);
+    }
+    if (hwIsMirrorClonePart(part)) {
+        const mirrorTag = document.createElement('span');
+        mirrorTag.className = 'hw-part-mirror-tag';
+        mirrorTag.title = 'Mirrored copy — edits track the source part on the opposite stack';
+        mirrorTag.textContent = 'mirrored';
+        head.appendChild(mirrorTag);
+    }
     const labelInput = document.createElement('input');
     labelInput.type = 'text';
     labelInput.className = 'hw-part-label';
@@ -2077,7 +2872,13 @@ function buildHardwarePartCard(part) {
             part.params[f.key] = val;
             if (part.type === 'beam') part.params.syncStructure = false;
             if (decimals != null) inp.value = Number(val).toFixed(decimals);
+            hwSyncSharedPartFrom(part);
+            hwSyncMirrorClonesFromPart(part);
             buildHardwareAssemblyScene();
+            if (part.sharedKey) {
+                if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+                hwPersistHardwareConfig();
+            }
         });
         cell.appendChild(inp);
         grid.appendChild(cell);
@@ -2123,21 +2924,6 @@ function buildHardwarePartCard(part) {
         card.appendChild(syncRow);
     }
 
-    if (part.type === 'bolt') {
-        const headRow = document.createElement('label');
-        headRow.className = 'hw-param hw-check-row';
-        const headChk = document.createElement('input');
-        headChk.type = 'checkbox';
-        headChk.checked = !!part.params.headAtInsert;
-        headChk.onchange = () => { part.params.headAtInsert = headChk.checked; buildHardwareAssemblyScene(); };
-        headRow.appendChild(headChk);
-        const headLbl = document.createElement('span');
-        headLbl.className = 'hw-check-label';
-        headLbl.textContent = 'Head at insert end (toward bracket)';
-        headRow.appendChild(headLbl);
-        card.appendChild(headRow);
-    }
-
     // Position along insert axis (non-bracket parts)
     if (!isBracket) {
         const posGrid = document.createElement('div');
@@ -2154,8 +2940,30 @@ function buildHardwarePartCard(part) {
             inp.type = 'number';
             inp.step = '0.01';
             inp.value = (part[f.key] != null ? part[f.key] : 0);
-            inp.title = f.key === 'crossOffset' ? 'Offset perpendicular to insert axis (added to auto hole alignment on horizontal axes)' : '';
-            hwBindNumberInput(inp, (val) => { part[f.key] = val; buildHardwareAssemblyScene(); });
+            inp.title = f.key === 'posAssembled'
+                ? (hwUsesSandwichAxis(getActiveHardwareAssembly(), part.axis || 'right')
+                    ? 'Offset from sandwich center (0) along this axis; coupled beams on up/down or left/right move together'
+                    : 'Offset along the stack from the preceding part; snaps flush to neighbors when Snap is on')
+                : (f.key === 'crossOffset' ? 'Offset perpendicular to insert axis (added to auto hole alignment on horizontal axes)' : '');
+            hwBindNumberInput(inp, (val) => {
+                if (f.key === 'posAssembled') {
+                    const assembly = getActiveHardwareAssembly();
+                    if (assembly) hwApplyPartAssembledPos(part, assembly, val);
+                    else part[f.key] = val;
+                    hwSyncMirrorClonesFromPart(part);
+                    buildHardwareAssemblyScene();
+                    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+                    if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
+                    if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
+                    hwPersistHardwareConfig();
+                } else {
+                    part[f.key] = val;
+                    buildHardwareAssemblyScene();
+                }
+            });
+            if (f.key === 'posAssembled') {
+                inp.addEventListener('change', () => saveStateToHistory());
+            }
             cell.appendChild(inp);
             posGrid.appendChild(cell);
         });
@@ -2184,11 +2992,26 @@ function buildHardwarePartCard(part) {
         const inp = document.createElement('input');
         inp.type = 'number';
         inp.step = step;
+        if (key === 'qty') {
+            inp.min = '1';
+            inp.step = '1';
+        }
         inp.value = (part[key] != null ? part[key] : 0);
         hwBindNumberInput(inp, (val) => {
-            part[key] = val;
-            if (key === 'qty') buildHardwareAssemblyScene();
-            else if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
+            const nextVal = key === 'qty'
+                ? Math.max(1, Math.round(Number(val) || 1))
+                : val;
+            part[key] = nextVal;
+            if (key === 'qty') {
+                inp.value = String(nextVal);
+                if (part.sharedKey) hwSyncSharedPartFrom(part);
+                hwSyncMirrorClonesFromPart(part);
+                if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+                hwRebuildDetailView();
+                if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
+                if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
+                hwPersistHardwareConfig();
+            } else if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
         });
         cell.appendChild(inp);
         return cell;
@@ -2284,8 +3107,8 @@ function hwAddPart() {
     const selectValue = document.getElementById('hw-add-type').value;
     const resolved = hwResolveAddPartType(selectValue);
     const type = resolved.type;
-    // Brackets always live on the center axis (rendered at origin, not exploded).
-    const axis = (type === 'bracket') ? 'center' : document.getElementById('hw-add-axis').value;
+    // Every part (brackets included) is added to the currently-selected stack axis.
+    const axis = document.getElementById('hw-add-axis').value || 'right';
     const maxSeq = assembly.parts.filter(p => p.axis === axis).reduce((m, p) => Math.max(m, p.seq || 0), 0);
     const id = 'part-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     assembly.parts.push(Object.assign({
@@ -2338,7 +3161,7 @@ function hwGetQtyExplodeGap(part) {
 }
 
 function hwQtyAssembledSpan(part) {
-    return hwGetPartAxialLength(part) * Math.max(1, part.qty || 1);
+    return hwGetPartAxialLength(part) * hwPartQty(part);
 }
 
 function hwQtyCopyAssembledPos(partAssembledBase, posAsm, len, copyIndex) {
@@ -2357,8 +3180,94 @@ function hwExplodeFactor() {
 
 let hwDetailControlsWired = false;
 
+// Deep-copy the hardware parts (and layout config) from one assembly into another so
+// similar assemblies (e.g. V-outer → V-inner) don't have to be rebuilt by hand.
+function hwCopyPartsFromAssembly(sourceId, targetId) {
+    ensureHardwareAssemblies();
+    const asms = state.hardwareAssemblies.assemblies;
+    const source = asms[sourceId];
+    const target = asms[targetId];
+    if (!source || !target) return false;
+    if (sourceId === targetId) {
+        if (typeof showToast === 'function') showToast('Pick a different source assembly to copy from.');
+        return false;
+    }
+    if (!source.parts || !source.parts.length) {
+        if (typeof showToast === 'function') showToast(`"${source.label || sourceId}" has no hardware to copy.`);
+        return false;
+    }
+    if (target.parts && target.parts.length &&
+        typeof confirm === 'function' &&
+        !confirm(`Replace all hardware in "${target.label || targetId}" with a copy from "${source.label || sourceId}"?`)) {
+        return false;
+    }
+    target.parts = JSON.parse(JSON.stringify(source.parts));
+    target.detailed = true;
+    target.explodeGap = source.explodeGap || target.explodeGap || 1.4;
+    if (source.mirrorPairs) target.mirrorPairs = JSON.parse(JSON.stringify(source.mirrorPairs));
+    else if (source.mirror) target.mirrorPairs = [JSON.parse(JSON.stringify(source.mirror))];
+    else delete target.mirrorPairs;
+    if (target.mirrorPairs?.length) target.mirror = { ...target.mirrorPairs[0] };
+    else delete target.mirror;
+    hwDetail.selectedPartId = null;
+    hwDetail.needsRecenter = true;
+    if (typeof showToast === 'function') showToast(`Copied hardware from "${source.label || sourceId}".`);
+    return true;
+}
+
+// UI entry: copy from the dropdown source into the currently-edited assembly.
+function hwCopyHardwareFromSelected() {
+    const sel = document.getElementById('hw-copy-source');
+    if (!sel) return;
+    ensureHardwareAssemblies();
+    const targetId = state.hardwareAssemblies.activeId;
+    if (!hwCopyPartsFromAssembly(sel.value, targetId)) return;
+    // Parts changed → solver suppression / detailed render must regenerate.
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+    hwPersistHardwareConfig();
+    hwRebuildDetailView();
+    renderHardwareEditPanel();
+}
+
+// Refresh the detail preview: in embedded part view the main render loop draws it;
+// otherwise fall back to the legacy standalone editor scene.
+function hwRebuildDetailView() {
+    if (state.hwDetailMode) {
+        if (typeof requestRender === 'function') requestRender();
+    } else {
+        buildHardwareAssemblyScene();
+    }
+}
+
+function hwSyncMirrorControlsFromAssembly() {
+    const asm = getActiveHardwareAssembly();
+    const pairs = hwGetAssemblyMirrorPairs(asm);
+    const rl = document.getElementById('hw-mirror-right-left');
+    const ud = document.getElementById('hw-mirror-up-down');
+    if (rl) rl.checked = pairs.some(p => p.from === 'right' && p.to === 'left');
+    if (ud) ud.checked = pairs.some(p => p.from === 'up' && p.to === 'down');
+}
+
+function hwApplyMirrorControlsToAssembly() {
+    ensureHardwareAssemblies();
+    const asm = getActiveHardwareAssembly();
+    if (!asm) return;
+    const prevPairs = hwGetAssemblyMirrorPairs(asm);
+    const nextPairs = [];
+    if (document.getElementById('hw-mirror-right-left')?.checked) nextPairs.push({ from: 'right', to: 'left' });
+    if (document.getElementById('hw-mirror-up-down')?.checked) nextPairs.push({ from: 'up', to: 'down' });
+    hwApplyMirrorPairChanges(asm, prevPairs, nextPairs);
+    asm.mirrorPairs = nextPairs;
+    if (nextPairs.length) asm.mirror = { ...nextPairs[0] };
+    else delete asm.mirror;
+    hwDetail.needsRecenter = true;
+    hwRefreshAll();
+    hwPersistHardwareConfig();
+}
+
 function wireHardwareDetailControls() {
     if (hwDetailControlsWired) return;
+    hwInstallHardwarePersistFlush();
 
     const sel = document.getElementById('hw-assembly-select');
     if (sel) {
@@ -2366,11 +3275,18 @@ function wireHardwareDetailControls() {
             ensureHardwareAssemblies();
             state.hardwareAssemblies.activeId = sel.value;
             hwDetail.selectedPartId = null;
-            buildHardwareAssemblyScene();
+            hwDetail.needsRecenter = true; // reframe camera on the newly selected assembly
+            hwRebuildDetailView();
             renderHardwareEditPanel();
+            hwSyncMirrorControlsFromAssembly();
             hwPersistHardwareConfig();
         };
     }
+
+    ['hw-mirror-right-left', 'hw-mirror-up-down'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', hwApplyMirrorControlsToAssembly);
+    });
 
     const sl = document.getElementById('hw-explode-slider');
     if (sl) {
@@ -2379,10 +3295,37 @@ function wireHardwareDetailControls() {
             state.hardwareAssemblies.explode = (parseFloat(sl.value) || 0) / 100;
             const v = document.getElementById('hw-explode-value');
             if (v) v.textContent = Math.round(state.hardwareAssemblies.explode * 100) + '%';
-            buildHardwareAssemblyScene();
+            hwRebuildDetailView();
         };
         sl.addEventListener('input', onExplodeInput);
-        sl.addEventListener('change', onExplodeInput);
+        sl.addEventListener('change', () => {
+            onExplodeInput();
+            hwPersistHardwareConfig();
+        });
+    }
+
+    const foldSl = document.getElementById('hw-fold-slider');
+    if (foldSl) {
+        const minDeg = radToDeg(getEffectiveMinFoldAngle());
+        const maxDeg = radToDeg(MAX_FOLD_ANGLE);
+        foldSl.min = String(minDeg);
+        foldSl.max = String(maxDeg);
+        const onFoldInput = () => {
+            const deg = parseFloat(foldSl.value) || minDeg;
+            state.foldAngle = Math.max(getEffectiveMinFoldAngle(), Math.min(MAX_FOLD_ANGLE, degToRad(deg)));
+            const foldVal = document.getElementById('hw-fold-value');
+            if (foldVal) foldVal.textContent = radToDeg(state.foldAngle).toFixed(1) + '°';
+            hwDetail.lockRadialView = true;
+            if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+            if (typeof syncUI === 'function') syncUI('foldAngle');
+            hwRebuildDetailView();
+        };
+        foldSl.addEventListener('input', onFoldInput);
+        foldSl.addEventListener('change', () => {
+            onFoldInput();
+            if (typeof saveStateToHistory === 'function') saveStateToHistory();
+            if (typeof autoSave === 'function') autoSave();
+        });
     }
 
     hwDetailControlsWired = true;
@@ -2403,16 +3346,32 @@ function openHardwareDetail() {
     if (sl) sl.value = Math.round((state.hardwareAssemblies.explode || 0) * 100);
     const slv = document.getElementById('hw-explode-value');
     if (slv) slv.textContent = Math.round((state.hardwareAssemblies.explode || 0) * 100) + '%';
+    const foldSl = document.getElementById('hw-fold-slider');
+    if (foldSl) {
+        foldSl.value = radToDeg(state.foldAngle).toFixed(1);
+        const foldVal = document.getElementById('hw-fold-value');
+        if (foldVal) foldVal.textContent = radToDeg(state.foldAngle).toFixed(1) + '°';
+    }
 
-    initHardwareDetailScene();
+    // Embedded part view: reparent the main canvas, frame the assembly head-on,
+    // and drive everything through the main render loop (no separate scene).
+    state.hwDetailMode = true;
+    hwDetail.needsRecenter = true;
+    hwDetail.lockRadialView = true;
+    hwDetail.savedCam = { ...state.cam };
+    hwEmbedMainCanvas();
+    hwWireEmbeddedDetailInteraction();
+    hwSyncMirrorControlsFromAssembly();
+    // Force the solver to (re)emit detailed placements for the focus instance.
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+
     hwLoadPresetCatalog().then(() => {
         hwLinkPartsToKnownPresets();
         const assembly = getActiveHardwareAssembly();
         if (assembly) (assembly.parts || []).forEach(p => hwMaybeAutoApplyPreset(p));
+        renderHardwareEditPanel();
         requestAnimationFrame(() => {
-            resizeHardwareDetail();
-            buildHardwareAssemblyScene();
-            renderHardwareEditPanel();
+            if (typeof requestRender === 'function') requestRender();
         });
     });
 }
@@ -2421,11 +3380,17 @@ function closeHardwareDetail() {
     const modal = document.getElementById('hardware-detail-modal');
     if (modal) modal.classList.remove('visible');
     document.body.style.overflow = '';
-    try {
-        localStorage.setItem('linkageLab_config', JSON.stringify(getConfigSnapshot()));
-    } catch (e) {
-        console.warn('[HW] Failed to persist hardware config on close:', e);
-    }
+
+    // Restore the main canvas + camera and re-render the structure normally.
+    state.hwDetailMode = false;
+    hwDetail.focusGroupUuid = null;
+    hwRestoreMainCanvas();
+    if (hwDetail.savedCam) { state.cam = hwDetail.savedCam; hwDetail.savedCam = null; }
+    // Revert detailed placements to whatever the main toggle dictates.
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+    if (typeof requestRender === 'function') requestRender();
+
+    hwFlushHardwareConfigSync();
 }
 
 // ---------------------------------------------------------------------------
@@ -2466,6 +3431,9 @@ const _moduleExports = {
     hwAxisPosFromPart,
     hwSetPartAxisPosFromWorld,
     hwProjectPointerToAxisPos,
+    hwApplyPartAssembledPos,
+    hwSnapPartAssembledPos,
+    hwIsSnapActive,
     hwRaycastPartId,
     hwGetBracketHoleY,
     hwGetBracketSideHoleLocal,
@@ -2496,8 +3464,17 @@ const _moduleExports = {
     initHardwareDetailScene,
     resizeHardwareDetail,
     getActiveHardwareAssembly,
+    hwAssemblyEnabled,
+    hwAnyAssemblyEnabled,
+    hwAssemblyHasParts,
     hwUseFullDetailAssemblies,
     hwUseInnerDetailAssemblies,
+    hwGetAssemblySandwichGap,
+    hwSumCenterAxisGap,
+    hwGetAssemblyMirrorPairs,
+    hwSyncMirrorControlsFromAssembly,
+    hwApplyMirrorControlsToAssembly,
+    hwGetCenterRenderAxis,
     hwGetAssemblyById,
     hwGetOuterVBeamAssembly,
     hwGetInnerVBeamAssembly,
@@ -2528,6 +3505,8 @@ const _moduleExports = {
     hwSavePartAsPreset,
     hwAppendPresetRow,
     hwPersistHardwareConfig,
+    hwFlushHardwareConfigSync,
+    serializeHardwareAssembliesForConfig,
     hwRefreshAll,
     renderHardwareEditPanel,
     hwBindNumberInput,
@@ -2544,6 +3523,8 @@ const _moduleExports = {
     hwQtyCopyAssembledPos,
     hwPartCopyExplodedPos,
     hwExplodeFactor,
+    hwCopyPartsFromAssembly,
+    hwCopyHardwareFromSelected,
     wireHardwareDetailControls,
     openHardwareDetail,
     closeHardwareDetail,
@@ -2551,6 +3532,8 @@ const _moduleExports = {
     buildHardwareAssemblyDebugSnapshot,
 };
 
+hwInstallHardwarePersistFlush();
+
 bridgeGlobals(_moduleExports, 'hardwareDetail');
 
-export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
+export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwAssemblyEnabled, hwAnyAssemblyEnabled, hwAssemblyHasParts, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblySandwichGap, hwSumCenterAxisGap, hwGetAssemblyMirrorPairs, hwSyncMirrorControlsFromAssembly, hwApplyMirrorControlsToAssembly, hwGetCenterRenderAxis, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwFlushHardwareConfigSync, serializeHardwareAssembliesForConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodedAxisPos, hwIsQtyStackPart, hwGetQtyExplodeGap, hwQtyAssembledSpan, hwQtyCopyAssembledPos, hwPartCopyExplodedPos, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };

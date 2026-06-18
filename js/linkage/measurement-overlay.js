@@ -785,6 +785,18 @@ import { formatNumber } from './math.js';
         addIbcGreenFillLightOnPivot(pivot);
     }
     
+    function tagIbcTankMeshes(tankRoot, tankName) {
+        if (!tankRoot || typeof THREE === 'undefined') return;
+        tankRoot.name = tankName;
+        let tagged = false;
+        tankRoot.traverse((ch) => {
+            if (!tagged && ch.isMesh) {
+                ch.name = tankName;
+                tagged = true;
+            }
+        });
+    }
+    
     function createIbcExportGroup(data, structureCenter) {
         if (typeof THREE === 'undefined') return null;
         const ibc = state.ibc;
@@ -819,7 +831,8 @@ import { formatNumber } from './math.js';
         const template = ibcGlbState.gltf.scene;
         
         const bottom = template.clone(true);
-        bottom.name = 'IBC_Bottom';
+        bottom.name = 'IBC_Tank_0';
+        tagIbcTankMeshes(bottom, 'IBC_Tank_0');
         const topY = layoutBottomIbcTank(bottom, scale);
         bottom.position.y += offA;
         applyIbcInteriorGlow(bottom);
@@ -828,7 +841,8 @@ import { formatNumber } from './math.js';
         
         if (count >= 2) {
             const top = template.clone(true);
-            top.name = 'IBC_Top';
+            top.name = 'IBC_Tank_1';
+            tagIbcTankMeshes(top, 'IBC_Tank_1');
             layoutTopFlippedIbcTank(top, scale, topY + offA, gap);
             top.position.y += offB;
             applyIbcInteriorGlow(top);

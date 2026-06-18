@@ -986,6 +986,38 @@ function computeHwBracketBasis(beamDir, vBoltDir, isBottom, isArch, flipStackAxi
 }
 
 /**
+ * Orientation frame for the V-center assembly at the beam crossing.
+ * Local +X (right/left stack) aligns with the horizontal V-stack center bolt axis;
+ * local +Y is world up. Do not use computeHwBracketBasis here — that derives bolt
+ * axis from the diagonal beam yaw and can be tens of degrees off at the crossing.
+ */
+function computeHwVCenterBasis(vBoltDir) {
+    let x = vNorm(vBoltDir);
+    if (vMag(x) < 1e-4) x = { x: 1, y: 0, z: 0 };
+    let y = { x: 0, y: 1, z: 0 };
+    const xDotY = x.x * y.x + x.y * y.y + x.z * y.z;
+    y = vSub(y, vScale(x, xDotY));
+    if (vMag(y) < 1e-4) y = { x: 0, y: 1, z: 0 };
+    y = vNorm(y);
+    const z = vNorm(vCross(x, y));
+    return { x, y, z };
+}
+
+/**
+ * Orientation frame for the H-center assembly at the ring CTR pivot.
+ * Local +Y (up/down stack) aligns with the vertical H-stack center bolt; local +X
+ * is horizontal radial from the structure center.
+ */
+function computeHwHCenterBasis(radialDir) {
+    const y = { x: 0, y: 1, z: 0 };
+    let x = vNorm(radialDir);
+    if (vMag(x) > 1e-4) x = vNorm({ x: x.x, y: 0, z: x.z });
+    if (vMag(x) < 1e-4) x = { x: 1, y: 0, z: 0 };
+    const z = vNorm(vCross(x, y));
+    return { x, y, z };
+}
+
+/**
  * Horizontal-ring pivot for the outer V-beam hardware assembly.
  *
  * The double outer V-beams cross (Pattern A vs B), so the two outer assemblies sit on
@@ -1061,6 +1093,23 @@ function getCapOuterVBeamRingSpec(isBottom, stackReversed, pivots) {
 }
 
 /**
+ * Horizontal-ring pivot for the single inner V-beam hardware assembly.
+ *
+ * The lone inner beam sits on the opposite radial line from the crossed double outer
+ * beams, and follows the opposite pattern (A vs B). It therefore lands exactly where
+ * the outer assembly would for the opposite stack order — so we reuse the outer rule
+ * with the reverse flag flipped. This keeps "when one is in, the other is out".
+ */
+function getInnerVBeamRingSpec(isBottom, stackReversed, pivots) {
+    return getOuterVBeamRingSpec(isBottom, !stackReversed, pivots);
+}
+
+/** Same opposite-of-outer rule for arch cap uprights. */
+function getCapInnerVBeamRingSpec(isBottom, stackReversed, pivots) {
+    return getCapOuterVBeamRingSpec(isBottom, !stackReversed, pivots);
+}
+
+/**
  * Solves the linkage geometry for a given fold angle
  * Calculates positions of all beams, brackets, and bolts based on state parameters
  * @param {number} foldAngle - Fold angle in radians
@@ -1113,6 +1162,11 @@ function solveLinkage(foldAngle) {
     let hardwareAssemblyPlacements = [];
     let curPos = {x:0, y:0};
     let curRot = 0;
+
+    const structSpacing = (typeof hwResolveStructureSpacing === 'function')
+        ? hwResolveStructureSpacing()
+        : { vStackGap: state.vStackGap || 0, hStackGap: state.hStackGap || 0, bracket: null };
+    const bracketFromAsm = structSpacing.bracket;
     
     // Helper to create washers for a bolt (defined outside module loop for reuse)
     // Washers are positioned FLUSH with the inner beam face (towards stack center)
@@ -1232,7 +1286,7 @@ function solveLinkage(foldAngle) {
             count, width, thick, color, offsetDir,
             moduleIndex, stackType, stackId,
             beamsArray: beams,
-            gap: state.hStackGap
+            gap: structSpacing.hStackGap
         });
     };
 
@@ -1247,11 +1301,11 @@ function solveLinkage(foldAngle) {
         // determines where the pivot point is, which affects the entire structure height.
         const hT = state.hBeamT || 1.5;
         const hStackCount = state.hStackCount || 1;
-        const hStackGap = state.hStackGap || 0;
-        const bracketHeight = state.bracketHeight || 3.0;
-        const holeDiameter = state.bracketHoleDiameter || 0.375;
+        const hStackGap = structSpacing.hStackGap;
+        const bracketHeight = bracketFromAsm?.bracketHeight ?? state.bracketHeight ?? 3.0;
+        const holeDiameter = bracketFromAsm?.bracketHoleDiameter ?? state.bracketHoleDiameter ?? 0.375;
         const holeRadius = holeDiameter / 2;
-        const wallThickness = state.bracketWallThickness || 0.25;
+        const wallThickness = bracketFromAsm?.bracketWallThickness ?? state.bracketWallThickness ?? 0.25;
         
         // Calculate total horizontal stack thickness (stack is centered at Y=0)
         // Stack extends from -hStackThick/2 to +hStackThick/2
@@ -1259,7 +1313,7 @@ function solveLinkage(foldAngle) {
         
         // Hole offset: distance from bracket base (closed end) to hole center
         // Default to center of bracket if not specified
-        const userHoleOffset = state.bracketHoleDistance;
+        const userHoleOffset = bracketFromAsm?.bracketHoleDistance ?? state.bracketHoleDistance;
         const defaultHoleOffset = bracketHeight / 2;
         const holeOffset = (userHoleOffset !== undefined && userHoleOffset !== null) ? userHoleOffset : defaultHoleOffset;
         
@@ -1431,7 +1485,7 @@ function solveLinkage(foldAngle) {
             // All beams pass through the center pivot points, stacked perpendicular to beam direction
             // CRITICAL: Use vW (width) for stack spacing, not vT (thickness)
             // Beams are stacked along their width dimension, not thickness
-            const gap = state.vStackGap;
+            const gap = structSpacing.vStackGap;
             const totalThick = calculateVStackTotalThickness(stackBeamWidths, gap);
             
             // Calculate center pivot line (where stack should be centered)
@@ -1681,7 +1735,7 @@ function solveLinkage(foldAngle) {
         // Place brackets and bolts at pivot points
         // Brackets are 3D boxes that connect horizontal beams to vertical beams
         // Only create brackets/bolts if we have vertical elements (uprights or fixed beams)
-        if((state.showBrackets || state.showBolts) && zHeight > 1) {
+        if((state.showBrackets || state.showBolts || hwAnyAssemblyEnabled()) && zHeight > 1) {
             // The horizontal pivot points where vertical beams connect
             const hPivotBotInner = map(loc.br, 0);  // Bottom ring, inner pivot
             const hPivotBotOuter = map(loc.tr, 0);  // Bottom ring, outer pivot
@@ -1779,10 +1833,10 @@ function solveLinkage(foldAngle) {
                         actualHeight: actualBracketHeight, // From outer scope
                         holeDistance: effectiveHoleOffset, // Distance from closed end to hole center (from outer scope)
                         holeOffset: holeOffset, // User's specified offset (from outer scope)
-                        width: state.bracketWidth || 2.0,
-                        depth: state.bracketDepth || 3.0,
+                        width: bracketFromAsm?.bracketWidth ?? state.bracketWidth ?? 2.0,
+                        depth: bracketFromAsm?.bracketDepth ?? state.bracketDepth ?? 3.0,
                         wallThickness: wallThickness,
-                        innerWidth: state.bracketInnerWidth || 1.5,
+                        innerWidth: bracketFromAsm?.bracketInnerWidth ?? state.bracketInnerWidth ?? 1.5,
                         holeDiameter: holeDiameter,
                         beamDir: beamDir,
                         right: right,
@@ -1825,7 +1879,7 @@ function solveLinkage(foldAngle) {
                         headExtraThickness = 0;
                     }
                     
-                    const stackThickness = calculateVBoltStackBeamWidth(subType) + Math.max(0, beamCount - 1) * (state.vStackGap || 0);
+                    const stackThickness = calculateVBoltStackBeamWidth(subType) + Math.max(0, beamCount - 1) * structSpacing.vStackGap;
                     
                     return {
                         start: vAdd(pos, vScale(dir, -length / 2)),
@@ -1853,7 +1907,7 @@ function solveLinkage(foldAngle) {
                     const boltCenter = {x: xzPos.x, y: (yBottom + yTop) / 2, z: xzPos.z};
                     const length = yTop - yBottom;
                     // Stack thickness for H-stack center bolts
-                    const stackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * (state.hStackGap || 0);
+                    const stackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * structSpacing.hStackGap;
                     return {
                         start: boltStart,
                         end: boltEnd,
@@ -1892,7 +1946,7 @@ function solveLinkage(foldAngle) {
                     const boltCenter = {x: pivotPos.x, y: centerY, z: pivotPos.z};
                     
                     // Stack thickness for H-pivot bolts (same as H-center bolts)
-                    const stackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * (state.hStackGap || 0);
+                    const stackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * structSpacing.hStackGap;
                     
                     return {
                         start: boltStart,
@@ -1912,7 +1966,7 @@ function solveLinkage(foldAngle) {
                     };
             };
             
-            if(state.showBrackets || hwUseFullDetailAssemblies() || hwUseInnerDetailAssemblies()) {
+            if(state.showBrackets || hwUseFullDetailAssemblies() || hwUseInnerDetailAssemblies() || hwAssemblyEnabled('vCenter')) {
                 const stackReversed = !!state.vStackReverse;
                 const ringPivots = {
                     pBotInner, pBotOuter, pTopInner, pTopOuter,
@@ -1921,9 +1975,12 @@ function solveLinkage(foldAngle) {
                 };
                 const outerBotSpec = getOuterVBeamRingSpec(true, stackReversed, ringPivots);
                 const outerTopSpec = getOuterVBeamRingSpec(false, stackReversed, ringPivots);
+                // Inner assembly rides the opposite radial line / pattern from the outer beams.
+                const innerBotSpec = getInnerVBeamRingSpec(true, stackReversed, ringPivots);
+                const innerTopSpec = getInnerVBeamRingSpec(false, stackReversed, ringPivots);
 
-                const innerBotBracket = createBracket(hPivotBotInner, true, patternA_dir, curRot, i);
-                const innerTopBracket = createBracket(hPivotTopInner, false, patternA_dir, curRot, i);
+                const innerBotBracket = createBracket(innerBotSpec.hPivot, true, innerBotSpec.beamDir, curRot, i);
+                const innerTopBracket = createBracket(innerTopSpec.hPivot, false, innerTopSpec.beamDir, curRot, i);
                 const outerBotBracket = createBracket(outerBotSpec.hPivot, true, outerBotSpec.beamDir, curRot, i);
                 const outerTopBracket = createBracket(outerTopSpec.hPivot, false, outerTopSpec.beamDir, curRot, i);
                 if (hwUseFullDetailAssemblies()) {
@@ -1934,11 +1991,26 @@ function solveLinkage(foldAngle) {
                     brackets.push(outerTopBracket);
                 }
                 if (hwUseInnerDetailAssemblies()) {
-                    hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', innerBotBracket, vBoltDir, pBotInner);
-                    hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', innerTopBracket, vBoltDir, pTopInner);
+                    hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', innerBotBracket, vBoltDir, innerBotSpec.vBoltPivot);
+                    hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', innerTopBracket, vBoltDir, innerTopSpec.vBoltPivot);
                 } else if (state.showBrackets) {
                     brackets.push(innerBotBracket);
                     brackets.push(innerTopBracket);
+                }
+
+                // --- V-CENTER assembly: at the V-beam crossing, bolt axis along vBoltDir,
+                // clamping the whole vertical stack. Bracketless; anchored at centerMid.
+                if (hwAssemblyEnabled('vCenter')) {
+                    const vCenterData = {
+                        pos: { x: centerMid.x, y: centerMid.y, z: centerMid.z },
+                        beamDir: { x: vBeamDir.x, y: vBeamDir.y, z: vBeamDir.z },
+                        right: { x: vBoltDir.x, y: vBoltDir.y, z: vBoltDir.z },
+                        isBottom: true,
+                        bottomY: centerMid.y,
+                        moduleIndex: i,
+                        sideHoleY: 0
+                    };
+                    hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'vCenter', vCenterData, vBoltDir, centerMid);
                 }
             }
             
@@ -1969,10 +2041,10 @@ function solveLinkage(foldAngle) {
                     const hPivotRadialOuter = vNorm({x: hPivotBotOuter.x, y: 0, z: hPivotBotOuter.z});
                     if (vMag(hPivotRadialInner) < 0.1) hPivotRadialInner = {x: 1, y: 0, z: 0};
                     if (vMag(hPivotRadialOuter) < 0.1) hPivotRadialOuter = {x: 1, y: 0, z: 0};
-                    washers.push(...createWashersForBolt(hPivotBotInnerBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialInner));
-                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotBotOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
-                    washers.push(...createWashersForBolt(hPivotTopInnerBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialInner));
-                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotTopOuterBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
+                    washers.push(...createWashersForBolt(hPivotBotInnerBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hPivotRadialInner));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotBotOuterBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
+                    washers.push(...createWashersForBolt(hPivotTopInnerBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hPivotRadialInner));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(hPivotTopOuterBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hPivotRadialOuter));
                 }
                 
                 // === VERTICAL MODULE BOLTS (horizontal orientation) ===
@@ -1995,7 +2067,7 @@ function solveLinkage(foldAngle) {
                 
                 // 3. CENTER pivot bolt (horizontal, where ALL beams cross - uses full length)
                 const centerBolt = createHorizontalBolt(centerMid, vBoltDir, vBoltLength, 'center');
-                bolts.push(centerBolt);
+                if (!hwAssemblyHasParts('vCenter')) bolts.push(centerBolt);
                 
                 // V-stack washers for vertical module bolts
                 if (state.vWasherEnabled && state.vStackCount > 1) {
@@ -2009,11 +2081,11 @@ function solveLinkage(foldAngle) {
                     const vWasherBeamSize = (needsSplitVBeamDimensions() && !isVBeamDimensionsLinked())
                         ? getVStackBeamWidths()
                         : state.vBeamW;
-                    washers.push(...createWashersForBolt(botInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    if (!hwUseInnerDetailAssemblies()) washers.push(...createWashersForBolt(topInnerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
-                    washers.push(...createWashersForBolt(centerBolt, state.vStackCount, state.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(botInnerBolt, state.vStackCount, structSpacing.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(botOuterBolt, state.vStackCount, structSpacing.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    if (!hwUseFullDetailAssemblies()) washers.push(...createWashersForBolt(topOuterBolt, state.vStackCount, structSpacing.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    if (!hwUseInnerDetailAssemblies()) washers.push(...createWashersForBolt(topInnerBolt, state.vStackCount, structSpacing.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
+                    washers.push(...createWashersForBolt(centerBolt, state.vStackCount, structSpacing.vStackGap, vWasherBeamSize, vWasherConfig, stackDirNorm));
                 }
                 
                 // 4. CAP UPRIGHT bolts (for first module when cap uprights enabled)
@@ -2068,9 +2140,6 @@ function solveLinkage(foldAngle) {
                     }
                     const capBoltDir = vNorm(capStackDir);
                     
-                    // Bottom ring brackets for cap uprights
-                    const capInnerBotBracket = createBracket(capBotInner, true, capPatternA_dir, curRot, i);
-                    const capInnerTopBracket = createBracket(capTopInner, false, capPatternA_dir, curRot, i);
                     const capRingPivots = {
                         patternA_dir: capPatternA_dir,
                         patternB_dir: capPatternB_dir,
@@ -2085,8 +2154,12 @@ function solveLinkage(foldAngle) {
                     };
                     const capOuterBotSpec = getCapOuterVBeamRingSpec(true, !!state.vStackReverse, capRingPivots);
                     const capOuterTopSpec = getCapOuterVBeamRingSpec(false, !!state.vStackReverse, capRingPivots);
+                    const capInnerBotSpec = getCapInnerVBeamRingSpec(true, !!state.vStackReverse, capRingPivots);
+                    const capInnerTopSpec = getCapInnerVBeamRingSpec(false, !!state.vStackReverse, capRingPivots);
                     const capOuterBotBracket = createBracket(capOuterBotSpec.hPivot, true, capOuterBotSpec.beamDir, curRot, i);
                     const capOuterTopBracket = createBracket(capOuterTopSpec.hPivot, false, capOuterTopSpec.beamDir, curRot, i);
+                    const capInnerBotBracket = createBracket(capInnerBotSpec.hPivot, true, capInnerBotSpec.beamDir, curRot, i);
+                    const capInnerTopBracket = createBracket(capInnerTopSpec.hPivot, false, capInnerTopSpec.beamDir, curRot, i);
                     if (hwUseFullDetailAssemblies()) {
                         hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'outerVBeam', capOuterBotBracket, capBoltDir, capOuterBotSpec.vBoltPivot);
                         hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'outerVBeam', capOuterTopBracket, capBoltDir, capOuterTopSpec.vBoltPivot);
@@ -2095,8 +2168,8 @@ function solveLinkage(foldAngle) {
                         brackets.push(capOuterTopBracket);
                     }
                     if (hwUseInnerDetailAssemblies()) {
-                        hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', capInnerBotBracket, capBoltDir, map(loc.bl, yMin));
-                        hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', capInnerTopBracket, capBoltDir, map(loc.bl, yMax));
+                        hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', capInnerBotBracket, capBoltDir, capInnerBotSpec.vBoltPivot);
+                        hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'innerVBeam', capInnerTopBracket, capBoltDir, capInnerTopSpec.vBoltPivot);
                     } else if (state.showBrackets) {
                         brackets.push(capInnerBotBracket);
                         brackets.push(capInnerTopBracket);
@@ -2106,7 +2179,7 @@ function solveLinkage(foldAngle) {
         
         // === HORIZONTAL MODULE BOLTS (vertical orientation) ===
         // These go through the horizontal beam stacks at the center pivot
-        if(state.showBolts) {
+        if(state.showBolts || hwAssemblyEnabled('hCenter')) {
             // Calculate the actual intersection point of the horizontal X pattern
             // Line 1: from visLoc.bl to visLoc.tr (pattern A)
             // Line 2: from visLoc.br to visLoc.tl (pattern B)
@@ -2129,13 +2202,32 @@ function solveLinkage(foldAngle) {
             // Map to 3D at bottom and top ring heights
             const hCenterBot = map(hCenter2D, 0);
             const hCenterTop = map(hCenter2D, topH);
+
+            // --- H-CENTER assemblies: vertical bolt axis through the H-stack at the
+            // CTR pivot, one per ring. Bracketless; up/down axis runs along the bolt.
+            if (hwAssemblyEnabled('hCenter')) {
+                let hCenterRadialDir = vNorm({ x: hCenterBot.x, y: 0, z: hCenterBot.z });
+                if (vMag(hCenterRadialDir) < 0.1) hCenterRadialDir = { x: 1, y: 0, z: 0 };
+                const vBoltUp = { x: 0, y: 1, z: 0 };
+                const makeHCenterData = (pos) => ({
+                    pos: { x: pos.x, y: pos.y, z: pos.z },
+                    beamDir: { x: hCenterRadialDir.x, y: hCenterRadialDir.y, z: hCenterRadialDir.z },
+                    right: { x: vBoltUp.x, y: vBoltUp.y, z: vBoltUp.z },
+                    isBottom: true,
+                    bottomY: pos.y,
+                    moduleIndex: i,
+                    sideHoleY: 0
+                });
+                hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'hCenter', makeHCenterData(hCenterBot), vBoltUp, hCenterBot);
+                hwAddAssemblyPlacement(hardwareAssemblyPlacements, 'hCenter', makeHCenterData(hCenterTop), vBoltUp, hCenterTop);
+            }
             
             // Use state bolt length (auto-calculated or user-defined)
             const hBoltLength = state.hBoltLength || (state.hStackCount * hT + 1);
             const boltRadius = getBoltRadius();
             
             // Stack thickness for H-center bolts
-            const hCenterStackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * (state.hStackGap || 0);
+            const hCenterStackThickness = state.hStackCount * hT + Math.max(0, state.hStackCount - 1) * structSpacing.hStackGap;
             
             // Bottom horizontal ring center bolt (vertical)
             const hCenterBotBolt = {
@@ -2153,7 +2245,7 @@ function solveLinkage(foldAngle) {
                 headExtraThickness: 0,
                 z: hCenterBot.y
             };
-            bolts.push(hCenterBotBolt);
+            if (state.showBolts && !hwAssemblyHasParts('hCenter')) bolts.push(hCenterBotBolt);
             
             // Top horizontal ring center bolt (vertical)
             const hCenterTopBolt = {
@@ -2171,10 +2263,10 @@ function solveLinkage(foldAngle) {
                 headExtraThickness: 0,
                 z: hCenterTop.y
             };
-            bolts.push(hCenterTopBolt);
+            if (state.showBolts && !hwAssemblyHasParts('hCenter')) bolts.push(hCenterTopBolt);
             
             // H-stack washers for H-center bolts
-            if (state.hWasherEnabled && state.hStackCount > 1) {
+            if (state.showBolts && state.hWasherEnabled && state.hStackCount > 1) {
                 const hWasherConfig = {
                     enabled: state.hWasherEnabled,
                     id: state.hWasherID,
@@ -2185,8 +2277,8 @@ function solveLinkage(foldAngle) {
                 let hCenterRadial = vNorm({x: hCenterBot.x, y: 0, z: hCenterBot.z});
                 if (vMag(hCenterRadial) < 0.1) hCenterRadial = {x: 1, y: 0, z: 0}; // Fallback
                 const hT = state.hBeamT || 1.5;
-                washers.push(...createWashersForBolt(hCenterBotBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hCenterRadial));
-                washers.push(...createWashersForBolt(hCenterTopBolt, state.hStackCount, state.hStackGap, hT, hWasherConfig, hCenterRadial));
+                washers.push(...createWashersForBolt(hCenterBotBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hCenterRadial));
+                washers.push(...createWashersForBolt(hCenterTopBolt, state.hStackCount, structSpacing.hStackGap, hT, hWasherConfig, hCenterRadial));
             }
         }
         
@@ -2209,12 +2301,12 @@ function solveLinkage(foldAngle) {
     // The hole offset determines the pivot point height, which affects structure height
     const calcHT = state.hBeamT || 1.5;
     const calcHStackCount = state.hStackCount || 1;
-    const calcHStackGap = state.hStackGap || 0;
+    const calcHStackGap = structSpacing.hStackGap;
     const calcHStackThick = calcHStackCount * calcHT + (calcHStackCount - 1) * calcHStackGap;
-    const calcBracketHeight = state.bracketHeight || 3.0;
-    const calcHoleDiameter = state.bracketHoleDiameter || 0.375;
-    const calcWallThickness = state.bracketWallThickness || 0.25;
-    const calcUserHoleOffset = state.bracketHoleDistance;
+    const calcBracketHeight = bracketFromAsm?.bracketHeight ?? state.bracketHeight ?? 3.0;
+    const calcHoleDiameter = bracketFromAsm?.bracketHoleDiameter ?? state.bracketHoleDiameter ?? 0.375;
+    const calcWallThickness = bracketFromAsm?.bracketWallThickness ?? state.bracketWallThickness ?? 0.25;
+    const calcUserHoleOffset = bracketFromAsm?.bracketHoleDistance ?? state.bracketHoleDistance;
     const calcDefaultHoleOffset = calcBracketHeight / 2;
     const calcHoleOffset = (calcUserHoleOffset !== undefined && calcUserHoleOffset !== null) ? calcUserHoleOffset : calcDefaultHoleOffset;
     const calcMinHoleOffset = calcWallThickness + (calcHoleDiameter / 2) + 0.1;
@@ -2683,12 +2775,22 @@ function solveLinkage(foldAngle) {
             const boltDir = pl.vBoltDir || pl.right || pl.beamDir;
             const pivotRole = pl.pivotRole || (pl.assemblyId === 'innerVBeam' ? 'inner' : 'outer');
             const stackReversed = !!state.vStackReverse;
-            // Outer assemblies alternate inner/outer radial lines (crossing V-beams); mirror
-            // the hardware stack on the ring that sits on the inner radial line.
-            const flipStackAxis = pl.assemblyId === 'innerVBeam'
-                ? (pivotRole === 'inner') !== stackReversed
-                : pl.isBottom !== stackReversed;
-            pl.frame = computeHwBracketBasis(pl.beamDir, boltDir, pl.isBottom, isArchMode, flipStackAxis);
+            // Center assemblies (V crossing, H-ring center) are symmetric — no stack flip.
+            // V-outer/V-inner mirror the hardware on whichever ring sits on the inner line.
+            let flipStackAxis;
+            if (pivotRole === 'center') flipStackAxis = false;
+            else if (pl.assemblyId === 'innerVBeam') flipStackAxis = (pivotRole === 'inner') !== stackReversed;
+            else flipStackAxis = pl.isBottom !== stackReversed;
+            // Center assemblies use dedicated frames (not bracket yaw from diagonal beamDir).
+            if (pl.assemblyId === 'vCenter') {
+                pl.frame = computeHwVCenterBasis(boltDir);
+            } else if (pl.assemblyId === 'hCenter') {
+                pl.frame = computeHwHCenterBasis(pl.beamDir);
+            } else {
+                // H-ring center bolt is vertical and never tilts, even in arch mode.
+                const archForPl = isArchMode && pl.assemblyId !== 'hCenter';
+                pl.frame = computeHwBracketBasis(pl.beamDir, boltDir, pl.isBottom, archForPl, flipStackAxis);
+            }
         }
     });
 

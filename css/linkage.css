@@ -1402,7 +1402,13 @@ input.error {
     flex: 1;
     accent-color: var(--clr-primary);
 }
-#hw-explode-value {
+.hw-fold-field { flex: 1; max-width: 360px; }
+.hw-fold-field input[type="range"] {
+    flex: 1;
+    accent-color: var(--clr-primary);
+}
+#hw-explode-value,
+#hw-fold-value {
     min-width: 38px;
     text-align: right;
     font-family: var(--font-mono);
@@ -1481,6 +1487,27 @@ input.error {
     border-radius: var(--radius-sm);
     padding: 6px 8px;
     font-size: 0.78rem;
+}
+
+.hw-copy-toolbar,
+.hw-mirror-toolbar {
+    align-items: center;
+}
+
+.hw-mirror-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    margin-right: 10px;
+    cursor: pointer;
+}
+
+.hw-copy-label {
+    font-size: 0.72rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
 }
 
 .hw-add-btn {
@@ -1563,6 +1590,28 @@ input.error {
     padding: 2px 7px;
     border-radius: var(--radius-sm);
     font-weight: 700;
+    white-space: nowrap;
+}
+
+.hw-part-shared-tag {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--clr-muted, #888);
+    border: 1px dashed rgba(var(--clr-primary-rgb), 0.35);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    white-space: nowrap;
+}
+
+.hw-part-mirror-tag {
+    font-size: 0.58rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--clr-muted, #888);
+    border: 1px dashed rgba(var(--clr-accent-rgb, 120, 180, 255), 0.45);
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
     white-space: nowrap;
 }
 

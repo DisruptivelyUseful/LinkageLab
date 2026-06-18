@@ -278,11 +278,12 @@ function updateMainCamera(structureCenter = null) {
         sc.z
     );
     
-    // Update aspect ratio
-    const viewport = document.getElementById('viewport');
-    if (viewport && threeRenderer.mainCamera) {
-        const aspect = viewport.clientWidth / viewport.clientHeight;
-        threeRenderer.mainCamera.aspect = aspect;
+    // Update aspect ratio from the canvas's current container (the canvas is
+    // reparented into the hardware modal viewport in part view).
+    const mainWebGLCanvas = document.getElementById('canvas-webgl');
+    const sizeEl = (mainWebGLCanvas && mainWebGLCanvas.parentElement) || document.getElementById('viewport');
+    if (sizeEl && sizeEl.clientWidth > 0 && sizeEl.clientHeight > 0 && threeRenderer.mainCamera) {
+        threeRenderer.mainCamera.aspect = sizeEl.clientWidth / sizeEl.clientHeight;
         threeRenderer.mainCamera.updateProjectionMatrix();
     }
 }

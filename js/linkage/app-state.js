@@ -181,6 +181,10 @@ export const state = {
     light: {x: 0.4, y: -0.8, z: 0.5},
     cam: { yaw: 0.4, pitch: 0.14, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 },
     view: { w: 0, h: 0, splitX: 0.7, orthoScale: 4.0 },
+
+    // Hardware detail "part view": main canvas reparented into the modal,
+    // framing a single real assembly instance head-on (explode + transparent beams).
+    hwDetailMode: false,
     
     // Sun position for lighting simulation
     sunAzimuth: 135,    // Degrees from north (0=N, 90=E, 180=S, 270=W) - default: SE

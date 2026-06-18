@@ -9,6 +9,7 @@ import {
     loadProject,
     saveProject,
 } from '../core/project-export.js';
+import { exportGameBundleFile } from '../core/export-game-bundle.js';
 import { publishCircuitExport, resolveCircuitExport } from '../solar/circuit-export.js';
 
 const TOPBAR_PARTIALS = Object.freeze({
@@ -96,6 +97,15 @@ export function bindSolarTopbar(root = document, options = {}) {
 
     bindOnce(root.querySelector('#btn-solar-export-top'), (btn) => {
         btn.addEventListener('click', () => exportProjectFile());
+    });
+
+    bindOnce(root.querySelector('#btn-export-godot'), (btn) => {
+        btn.addEventListener('click', () => {
+            exportGameBundleFile().catch((err) => {
+                console.error('[topbar] game bundle export failed:', err);
+                showToast(`Export failed: ${err.message}`, 'error');
+            });
+        });
     });
 
     bindOnce(root.querySelector('#btn-solar-import-top'), (btn) => {

@@ -6,7 +6,7 @@ import { debounce, radToDeg } from './math.js';
 import { showToast } from '../core/feedback.js';
 import { VALIDATION_RULES } from './validation.js';
 import { applyConfig, getConfigSnapshot, updatePresetSelect } from './config-persistence.js';
-import { resolveProjectDocument } from '../core/project-store.js';
+import { linkageConfigFromProject, mergeLinkageConfig, resolveProjectDocument, patchProjectDocumentLinkageSlice, extractLinkageSliceFromConfig } from '../core/project-store.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { saveStateToHistory } from './history.js';
 import { syncUI } from './state-sync.js';
@@ -47,34 +47,26 @@ import { initViewportInput } from './viewport-input.js';
         // Initialize solar panel arch mode UI
         updateArchWallFacesUI();
         
-        // Load configuration: unified project document first, then legacy autosave, then default JSON
+        // Load configuration: merge project document with linkageLab_config autosave.
+        // Hardware-only patches to linkageLabProject must not wipe panels/structure on reload.
         let configApplied = false;
         const projectDoc = resolveProjectDocument();
-        if (projectDoc && (projectDoc.foldAngle !== undefined || projectDoc.structure || projectDoc.linkage)) {
-            try {
-                applyConfig(projectDoc.linkage || projectDoc);
-                configApplied = true;
-            } catch (e) {
-                console.warn('Error loading project document config:', e);
-            }
+        const fromProject = projectDoc ? linkageConfigFromProject(projectDoc) : null;
+        let fromLegacy = null;
+        try {
+            const legacySaved = localStorage.getItem('linkageLab_config');
+            if (legacySaved) fromLegacy = JSON.parse(legacySaved);
+        } catch (e) {
+            console.warn('Error parsing linkageLab_config:', e);
         }
 
-        const saved = !configApplied ? localStorage.getItem('linkageLab_config') : null;
-        if (saved) {
+        const configToApply = mergeLinkageConfig(fromProject, fromLegacy);
+        if (configToApply && (fromProject || fromLegacy)) {
             try {
-                const config = JSON.parse(saved);
-                // Validate config before applying - check for obviously bad values
-                if (config && typeof config === 'object') {
-                    applyConfig(config);
-                    configApplied = true;
-                } else {
-                    console.warn('Invalid config format, skipping load');
-                    localStorage.removeItem('linkageLab_config');
-                }
+                applyConfig(configToApply);
+                configApplied = true;
             } catch (e) {
-                console.error('Error loading saved config:', e);
-                // Clear corrupted config
-                localStorage.removeItem('linkageLab_config');
+                console.warn('Error loading merged config:', e);
             }
         }
 
@@ -150,17 +142,17 @@ import { initViewportInput } from './viewport-input.js';
         // Initial render
         requestRender();
         scheduleLinkageViewportRefresh();
+        if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
         
         // View labels are now in the right panel HTML
         
         // Auto-save on changes (heavily debounced to avoid lag during animations)
         // Only saves when user stops interacting for a while
         const autoSave = debounce(() => {
-            // Save without showing toast to reduce overhead
             const config = getConfigSnapshot();
             localStorage.setItem('linkageLab_config', JSON.stringify(config));
-            // No toast notification for autosave to reduce overhead
-        }, 8000); // 8 seconds - only saves after user stops interacting
+            patchProjectDocumentLinkageSlice(extractLinkageSliceFromConfig(config));
+        }, 8000);
         
         // Add auto-save listener (only for number inputs, not sliders during drag)
         // Sliders are already handled by updateState which is debounced

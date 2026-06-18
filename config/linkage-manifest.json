@@ -35,6 +35,7 @@
     { "path": "js/linkage/geometry-classes.js", "format": "esm" },
     { "path": "js/linkage/config-persistence.js", "format": "esm" },
     { "path": "js/linkage/hardware-detail.js", "format": "esm" },
+    { "path": "js/linkage/hw-structure-spacing.js", "format": "esm" },
     { "path": "js/linkage/app-state.js", "format": "esm" },
     { "path": "js/linkage/solver.js", "format": "esm" },
     { "path": "js/linkage/collision.js", "format": "esm" },

@@ -1756,7 +1756,9 @@ import { showToast } from '../core/feedback.js';
     function getSupportBeamPlaneY(frame, cfg) {
         const hT = state.hBeamT || 1.5;
         const hStackCount = state.hStackCount || 1;
-        const hStackGap = state.hStackGap || 0;
+        const hStackGap = (typeof globalThis.hwGetEffectiveHStackGap === 'function')
+            ? globalThis.hwGetEffectiveHStackGap()
+            : (state.hStackGap || 0);
         const hStackThick = hStackCount * hT + Math.max(0, hStackCount - 1) * hStackGap;
         const beamY = (frame.topBeam.p1.y + frame.topBeam.p2.y) * 0.5;
         const beamThick = cfg.thickness || 3.5;
@@ -2564,7 +2566,9 @@ import { showToast } from '../core/feedback.js';
     function computeRcpAnchorPosition(topBeam, targetX, targetZ, cfg, vertSign) {
         const hT = state.hBeamT || 1.5;
         const hStackCount = state.hStackCount || 1;
-        const hStackGap = state.hStackGap || 0;
+        const hStackGap = (typeof globalThis.hwGetEffectiveHStackGap === 'function')
+            ? globalThis.hwGetEffectiveHStackGap()
+            : (state.hStackGap || 0);
         const hStackThick = hStackCount * hT + Math.max(0, hStackCount - 1) * hStackGap;
         const rcpT = cfg.parallelThickness || 1.5;
         const rcpOffsetV = cfg.parallelOffsetV || 0;
@@ -3413,7 +3417,9 @@ import { showToast } from '../core/feedback.js';
         const boltRadius = getBoltRadius();
         const hT = state.hBeamT || 1.5;
         const hStackCount = state.hStackCount || 1;
-        const hStackGap = state.hStackGap || 0;
+        const hStackGap = (typeof globalThis.hwGetEffectiveHStackGap === 'function')
+            ? globalThis.hwGetEffectiveHStackGap()
+            : (state.hStackGap || 0);
         const hStackThick = hStackCount * hT + Math.max(0, hStackCount - 1) * hStackGap;
         const hBoltLen = state.hPivotBoltLength || (typeof calculateHPivotBoltLength === 'function' ? calculateHPivotBoltLength() : 3);
     

@@ -68,6 +68,9 @@ function computeGeometryHash() {
         state.showBrackets,
         state.showBolts,
         state.showHardwareFullDetail,
+        state.showHardwareFullDetail && typeof globalThis.serializeHardwareAssembliesForConfig === 'function'
+            ? JSON.stringify(globalThis.serializeHardwareAssembliesForConfig())
+            : '',
         state.foldAngle.toFixed(6),
         state.orientation
     ];

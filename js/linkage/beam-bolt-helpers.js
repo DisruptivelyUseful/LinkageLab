@@ -8,6 +8,18 @@ import { bridgeGlobals } from './global-bridge.js';
 function getBoltRadius() {
         return (state.boltDiameter || 0.375) / 2;
     }
+
+    function getEffectiveVStackGap() {
+        return (typeof globalThis.hwGetEffectiveVStackGap === 'function')
+            ? globalThis.hwGetEffectiveVStackGap()
+            : (state.vStackGap || 0);
+    }
+
+    function getEffectiveHStackGap() {
+        return (typeof globalThis.hwGetEffectiveHStackGap === 'function')
+            ? globalThis.hwGetEffectiveHStackGap()
+            : (state.hStackGap || 0);
+    }
     
     /** Format bolt diameter as fraction string */
     function formatBoltDiameter(diameter) {
@@ -80,7 +92,7 @@ function getBoltRadius() {
     /** Total stack thickness including gaps */
     function calculateVStackTotalThickness(widths = null, gap = null) {
         const count = state.vStackCount || 3;
-        const stackGap = gap !== null ? gap : (state.vStackGap || 0);
+        const stackGap = gap !== null ? gap : getEffectiveVStackGap();
         if (!widths) {
             if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
                 const vW = state.vBeamW;
@@ -96,7 +108,7 @@ function getBoltRadius() {
     /** Center offset of a beam within the vertical stack */
     function getVStackBeamCenterOffset(stackIndex, widths = null) {
         const count = state.vStackCount || 3;
-        const gap = state.vStackGap || 0;
+        const gap = getEffectiveVStackGap();
         if (!widths) {
             if (!needsSplitVBeamDimensions() || isVBeamDimensionsLinked()) {
                 const vW = state.vBeamW;
@@ -226,7 +238,7 @@ function getBoltRadius() {
     /** Calculate auto bolt length for vertical stack (full stack - used for even stacks or center bolt) */
     function calculateVStackBoltLength() {
         const stackCount = state.vStackCount || 3;
-        const stackGap = state.vStackGap || 0;
+        const stackGap = getEffectiveVStackGap();
         const totalBeamWidth = (needsSplitVBeamDimensions() && !isVBeamDimensionsLinked())
             ? calculateTotalVBeamWidth()
             : stackCount * (state.vBeamW || 1.5);
@@ -237,7 +249,7 @@ function getBoltRadius() {
     /** Calculate inner bolt length for V-stack (holds more beams at inner brackets) */
     function calculateVStackInnerBoltLength() {
         const stackCount = state.vStackCount || 3;
-        const stackGap = state.vStackGap || 0;
+        const stackGap = getEffectiveVStackGap();
         const innerBeamCount = Math.ceil(stackCount / 2);
         const totalBeamWidth = calculateVBoltStackBeamWidth('inner');
         return totalBeamWidth + (Math.max(0, stackGap)) + 1;
@@ -246,7 +258,7 @@ function getBoltRadius() {
     /** Calculate outer bolt length for V-stack (holds fewer beams at outer brackets) */
     function calculateVStackOuterBoltLength() {
         const stackCount = state.vStackCount || 3;
-        const stackGap = state.vStackGap || 0;
+        const stackGap = getEffectiveVStackGap();
         const totalBeamWidth = calculateVBoltStackBeamWidth('outer');
         return totalBeamWidth + (Math.max(0, stackGap)) + 1;
     }
@@ -255,7 +267,7 @@ function getBoltRadius() {
     function calculateHStackBoltLength() {
         const stackCount = state.hStackCount || 2;
         const beamThickness = state.hBeamT || 1.5;
-        const stackGap = state.hStackGap || 0;
+        const stackGap = getEffectiveHStackGap();
         // Total thickness + extra for head/nut
         return (stackCount * beamThickness) + (Math.max(0, stackGap) * 2) + 1;
     }
@@ -264,8 +276,9 @@ function getBoltRadius() {
     function calculateHPivotBoltLength() {
         const stackCount = state.hStackCount || 2;
         const beamThickness = state.hBeamT || 1.5;
-        const stackGap = state.hStackGap || 0;
-        const bracketWallThickness = state.bracketWallThickness || 0.25;
+        const stackGap = getEffectiveHStackGap();
+        const bracketWallThickness = globalThis.hwGetEffectiveBracketParams?.()?.bracketWallThickness
+            ?? state.bracketWallThickness ?? 0.25;
         // Through H-beam stack + bracket wall + extra for head/nut
         const hStackTotal = (stackCount * beamThickness) + (Math.max(0, stackGap) * (stackCount - 1));
         return hStackTotal + bracketWallThickness + 1;

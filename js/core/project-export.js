@@ -15,6 +15,7 @@ import {
     PROJECT_SCHEMA_VERSION,
     PROJECT_STORAGE_KEY,
     initProjectStore,
+    linkageConfigFromProject,
     normalizeProjectDocument,
     publishProjectDocument,
     resolveProjectDocument,
@@ -152,7 +153,7 @@ export function applyProjectImport(rawProject) {
         || project.linkage;
     if (linkageTrigger && typeof globalThis.applyConfig === 'function') {
         try {
-            globalThis.applyConfig(project.linkage || project);
+            globalThis.applyConfig(linkageConfigFromProject(project));
         } catch (err) {
             console.warn('[project-export] linkage apply failed:', err);
         }

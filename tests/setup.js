@@ -11,3 +11,14 @@ import '../js/linkage/collision.js';
 
 globalThis.state = createTestState();
 globalThis.ibcStackLayoutCacheKey = '';
+
+globalThis.hwAssemblyEnabled = () => false;
+globalThis.hwUseFullDetailAssemblies = () => false;
+globalThis.hwUseInnerDetailAssemblies = () => false;
+globalThis.hwAssemblyHasParts = () => false;
+globalThis.hwAddAssemblyPlacement = () => {};
+globalThis.hwResolveStructureSpacing = () => ({
+    vStackGap: globalThis.state?.vStackGap || 0,
+    hStackGap: globalThis.state?.hStackGap || 0,
+    bracket: null,
+});

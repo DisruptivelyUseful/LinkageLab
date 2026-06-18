@@ -16,6 +16,7 @@ import {
     loadProject,
     saveProject,
 } from '../core/project-export.js';
+import { exportGameBundleFile } from '../core/export-game-bundle.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -678,6 +679,7 @@ import {
         document.getElementById('chk-hw-full-detail').onchange = e => {
             state.showHardwareFullDetail = e.target.checked;
             invalidateGeometryCache();
+            if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
             requestRender();
         };
         
@@ -1514,13 +1516,28 @@ import {
             showGLTFExportDialog();
         };
         
+        const btnExportGodot = document.getElementById('btn-export-godot');
+        if (btnExportGodot) {
+            btnExportGodot.onclick = () => {
+                exportGameBundleFile().catch((err) => {
+                    console.error('[ui-bindings] game bundle export failed:', err);
+                    showToast(`Export failed: ${err.message}`, 'error');
+                });
+            };
+        }
+        
         document.getElementById('btn-build-guide-top').onclick = showBuildGuide;
         
         // Hardware Assembly Detail wiring
         (function wireHardwareDetail() {
             const btn = document.getElementById('btn-hardware-detail-top');
             if (btn) btn.onclick = openHardwareDetail;
-            window.addEventListener('resize', () => { if (document.getElementById('hardware-detail-modal')?.classList.contains('visible')) resizeHardwareDetail(); });
+            window.addEventListener('resize', () => {
+                if (!document.getElementById('hardware-detail-modal')?.classList.contains('visible')) return;
+                // Embedded part view re-sizes via the main render loop; legacy scene uses resizeHardwareDetail.
+                if (state.hwDetailMode) requestRender();
+                else resizeHardwareDetail();
+            });
             document.addEventListener('click', (e) => { if (e.target.id === 'hardware-detail-modal') closeHardwareDetail(); });
             document.addEventListener('keydown', (e) => {
                 if (e.key === 'Escape' && document.getElementById('hardware-detail-modal')?.classList.contains('visible')) closeHardwareDetail();

@@ -141,11 +141,13 @@ import { syncUI } from './state-sync.js';
             if (s.vStackReverse !== undefined) state.vStackReverse = s.vStackReverse;
         }
         
-        // Hardware assembly detail
+        // Hardware assembly detail (deep clone so loaded JSON cannot mutate live state)
         if (config.hardwareAssemblies && typeof config.hardwareAssemblies === 'object') {
-            state.hardwareAssemblies = config.hardwareAssemblies;
+            state.hardwareAssemblies = JSON.parse(JSON.stringify(config.hardwareAssemblies));
         }
-        ensureHardwareAssemblies();
+        if (typeof globalThis.ensureHardwareAssemblies === 'function') {
+            globalThis.ensureHardwareAssemblies();
+        }
     
         // Mode configuration
         if (config.mode) {
@@ -456,7 +458,9 @@ import { syncUI } from './state-sync.js';
             },
             
             // Hardware assembly detail (parametric editable hardware stacks)
-            hardwareAssemblies: JSON.parse(JSON.stringify(state.hardwareAssemblies || {})),
+            hardwareAssemblies: (typeof globalThis.serializeHardwareAssembliesForConfig === 'function'
+                ? globalThis.serializeHardwareAssembliesForConfig()
+                : JSON.parse(JSON.stringify(state.hardwareAssemblies || {}))),
     
             // Fold angle in degrees
             foldAngle: radToDeg(state.foldAngle),
