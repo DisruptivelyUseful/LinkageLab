@@ -5,7 +5,7 @@ import { LINKAGE_BUILD_ID } from './constants.js';
 import { debounce, radToDeg } from './math.js';
 import { showToast } from '../core/feedback.js';
 import { VALIDATION_RULES } from './validation.js';
-import { applyConfig, getConfigSnapshot, updatePresetSelect } from './config-persistence.js';
+import { applyConfig, getConfigSnapshot, updatePresetSelect, DEFAULT_LINKAGE_CONFIG_FILE } from './config-persistence.js';
 import { linkageConfigFromProject, mergeLinkageConfig, resolveProjectDocument, patchProjectDocumentLinkageSlice, extractLinkageSliceFromConfig } from '../core/project-store.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { saveStateToHistory } from './history.js';
@@ -71,19 +71,19 @@ import { initViewportInput } from './viewport-input.js';
         }
 
         if (!configApplied) {
-            // No localStorage - load default config from JSON file
-            fetch('configs/starshade-default.json')
+            // No localStorage — load SOAK 2026 built-in preset for new users
+            fetch(`configs/${DEFAULT_LINKAGE_CONFIG_FILE}`)
                 .then(response => {
                     if (!response.ok) throw new Error('Default config not found');
                     return response.json();
                 })
                 .then(config => {
-                    console.log('Loading default configuration from configs/starshade-default.json...');
+                    console.log(`Loading default configuration from configs/${DEFAULT_LINKAGE_CONFIG_FILE}...`);
                     applyConfig(config);
                     requestRender();
                 })
                 .catch(e => {
-                    console.log('No default config found at configs/starshade-default.json, using hardcoded defaults');
+                    console.log(`No default config found at configs/${DEFAULT_LINKAGE_CONFIG_FILE}, using hardcoded defaults`);
                 });
         }
         

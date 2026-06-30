@@ -25,6 +25,9 @@ import { syncUI } from './state-sync.js';
 // ============================================================================
 // SAVE/LOAD & PRESETS
 // ============================================================================
+
+/** Built-in config loaded on first visit when no saved project/localStorage state exists. */
+export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 actual.json';
     
     /** List of configuration keys that are saved/loaded */
     const CONFIG_KEYS = [

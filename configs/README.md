@@ -11,17 +11,11 @@ Manifest for the **Presets** dropdown in the LinkageLab Designer sidebar. Lists 
 
 To add a new built-in preset: export a config from the designer, save it here, and add an entry to `presets.json`.
 
-### `starshade-default.json`
-Default configuration for the LinkageLab Designer (`index.html`). This should include:
-- Complete structure configuration (modules, beam lengths, etc.)
-- Solar panel configuration (enabled with proper settings)
-- Any other default settings you want new users to see
+### `StarShade 8m Cylinder 18p - soak 26 actual.json`
+Default configuration for **new users** (first visit with no localStorage). This is the **StarShade V1 - SOAK 2026** real-world tested design, including reciprocal beam positions, hardware part details, and rotation fixes. It is loaded automatically when no saved project or `linkageLab_config` exists.
 
-**To create this file:**
-1. Open LinkageLab Designer and configure it with your desired default settings
-2. Enable solar panels and configure them properly
-3. Click the Export button to save the configuration
-4. Save the exported JSON file as `starshade-default.json` in this directory
+### `starshade-default.json`
+Legacy default preset (still available in the Presets dropdown as "StarShade Default — 8-mod Cylinder, 18 Panels (3960W)").
 
 ### `simulator-default.json`
 Default configuration for the Solar Simulator (unified app `#/solar/simulate`). This should include:
@@ -39,7 +33,7 @@ Default configuration for the Solar Simulator (unified app `#/solar/simulate`). 
 
 ## How It Works
 
-- **LinkageLab Designer**: On first load (no localStorage), it will attempt to load `configs/starshade-default.json`
+- **LinkageLab Designer**: On first load (no localStorage), it loads `configs/StarShade 8m Cylinder 18p - soak 26 actual.json` (SOAK 2026 preset)
 - **Solar Simulator**: On first load (no localStorage), it will attempt to load `configs/simulator-default.json`
 - **Presets dropdown**: On every load, the designer fetches `configs/presets.json` and populates the "Built-in Presets" optgroup. User-saved presets appear below in a separate "My Presets" optgroup.
 
