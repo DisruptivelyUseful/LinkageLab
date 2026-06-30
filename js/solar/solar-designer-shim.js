@@ -8,7 +8,9 @@
 export function installSolarDesignerShim() {
     globalThis.SolarDesigner = {
         isInitialized() {
-            return Boolean(globalThis.__simulatorBootComplete);
+            if (!globalThis.__simulatorBootComplete) return false;
+            if (globalThis.__simulatorDefaultConfigPending) return false;
+            return true;
         },
 
         getItems() {

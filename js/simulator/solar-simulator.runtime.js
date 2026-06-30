@@ -24128,6 +24128,7 @@
         function bootSimulatorApplication() {
             if (globalThis.__simulatorBootComplete) return;
             globalThis.__simulatorBootComplete = true;
+            globalThis.__simulatorDefaultConfigPending = true;
 
             updateSvgDimensions();
             populateLibraries(); // Enable library for adding components
@@ -24371,6 +24372,10 @@
                 }
             }
             
+            if (skipDefaultSetup) {
+                globalThis.__simulatorDefaultConfigPending = false;
+            }
+
             if (!skipDefaultSetup) {
                 let configLoaded = false;
                 let attemptingDefaultLoad = false;
@@ -24402,9 +24407,13 @@
                     const projectRaw = localStorage.getItem('linkageLabProject');
                     if (projectRaw && typeof globalThis.applySimulatorProjectImport === 'function') {
                         try {
-                            globalThis.applySimulatorProjectImport(JSON.parse(projectRaw));
-                            console.log('Loaded unified project document from localStorage');
-                            configLoaded = true;
+                            const project = JSON.parse(projectRaw);
+                            const circuitItems = project?.circuit?.items;
+                            if (Array.isArray(circuitItems) && circuitItems.length > 0) {
+                                globalThis.applySimulatorProjectImport(project);
+                                console.log('Loaded unified project document from localStorage');
+                                configLoaded = true;
+                            }
                         } catch (e) {
                             console.error('Failed to load unified project document:', e);
                         }
@@ -24417,8 +24426,10 @@
                         try {
                             const config = JSON.parse(savedUnifiedConfig);
                             applyUnifiedConfig(config);
-                            console.log('Loaded saved unified config from localStorage');
-                            configLoaded = true;
+                            if (allItems.length > 0) {
+                                console.log('Loaded saved unified config from localStorage');
+                                configLoaded = true;
+                            }
                         } catch (e) {
                             console.error('Failed to load saved unified config:', e);
                         }
@@ -24426,7 +24437,9 @@
                 }
                 
                 // If no localStorage config, try to load default config from JSON file (async)
-                if (!configLoaded) {
+                if (configLoaded) {
+                    globalThis.__simulatorDefaultConfigPending = false;
+                } else {
                     attemptingDefaultLoad = true;
                     fetch('configs/simulator-default.json')
                         .then(response => {
@@ -24437,6 +24450,7 @@
                             if (allItems.length > 0) {
                                 console.log('Skipping default config — circuit already populated');
                                 attemptingDefaultLoad = false;
+                                globalThis.__simulatorDefaultConfigPending = false;
                                 return;
                             }
                             console.log('Loading default configuration from configs/simulator-default.json...');
@@ -24444,6 +24458,7 @@
                             render();
                             configLoaded = true;
                             attemptingDefaultLoad = false;
+                            globalThis.__simulatorDefaultConfigPending = false;
                             if (!tutorialCompleted && allItems.length > 0) {
                                 setTimeout(() => startTutorial(), 800);
                             }
@@ -24451,6 +24466,7 @@
                         .catch(e => {
                             console.log('No default config found at configs/simulator-default.json');
                             attemptingDefaultLoad = false;
+                            globalThis.__simulatorDefaultConfigPending = false;
                             if (!configLoaded && allItems.length === 0) {
                                 setupDefaultLayout();
                                 configLoaded = true;
@@ -24495,6 +24511,7 @@
                         
                         render();
                         configLoaded = true;
+                        globalThis.__simulatorDefaultConfigPending = false;
                         // Don't remove state - keep it for future returns
                     } catch (e) {
                         console.error('Failed to restore builder state:', e);

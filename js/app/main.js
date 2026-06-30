@@ -162,6 +162,7 @@ async function main() {
 
         if (mode === APP_MODES.LINKAGE) {
             scheduleLinkageViewportRefresh();
+            document.getElementById('incidentReportOverlay')?.classList.remove('visible');
         }
 
         if (mode === APP_MODES.SOLAR_DESIGN) {
