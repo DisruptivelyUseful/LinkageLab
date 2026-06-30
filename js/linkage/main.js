@@ -182,31 +182,43 @@ import { initViewportInput } from './viewport-input.js';
                     return;
                 }
         
-                // Preserve inline width if present
+                // Preserve inline width if present, otherwise honor CSS-sized topbar inputs
                 const inlineWidth = input.style.width;
+                let wrapperWidth = inlineWidth;
+                if (!wrapperWidth && input.classList.contains('topbar-fold-input')) {
+                    wrapperWidth = getComputedStyle(input).width;
+                }
                 
                 // Determine button width based on input width
                 // Smaller inputs get smaller buttons
                 let buttonWidth = 50; // Default
-                if (inlineWidth) {
-                    const widthMatch = inlineWidth.match(/(\d+)px/);
+                const widthSource = wrapperWidth || inlineWidth;
+                if (widthSource) {
+                    const widthMatch = String(widthSource).match(/([\d.]+)(px|em|rem|ch)?/);
                     if (widthMatch) {
-                        const widthValue = parseInt(widthMatch[1]);
-                        if (widthValue <= 60) {
+                        const widthValue = parseFloat(widthMatch[1]);
+                        const unit = widthMatch[2] || 'px';
+                        const widthPx = unit === 'em' || unit === 'rem'
+                            ? widthValue * parseFloat(getComputedStyle(input).fontSize)
+                            : widthValue;
+                        if (widthPx <= 60) {
                             buttonWidth = 24; // Very compact
-                        } else if (widthValue <= 80) {
+                        } else if (widthPx <= 90) {
                             buttonWidth = 28; // Compact
                         } else {
                             buttonWidth = 50; // Normal
                         }
                     }
                 }
+                if (input.classList.contains('topbar-fold-input')) {
+                    buttonWidth = 28;
+                }
                 
                 // Create wrapper
                 const wrapper = document.createElement('div');
                 wrapper.className = 'number-spin-wrapper';
-                if (inlineWidth) {
-                    wrapper.style.width = inlineWidth;
+                if (wrapperWidth) {
+                    wrapper.style.width = wrapperWidth;
                     // Input should be full width, padding-right will prevent text from going under buttons
                     input.style.width = '100%';
                     input.style.paddingRight = buttonWidth + 'px';

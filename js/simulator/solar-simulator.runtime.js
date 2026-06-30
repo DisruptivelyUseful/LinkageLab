@@ -691,6 +691,25 @@
         let currentMode = 'simulate'; // 'build', 'live', or 'simulate' - simulator always runs in simulate mode
         let circuitEditEnabled = true; // Inline canvas editing (wires, components, waypoints) while simulating
 
+        // Embedded unified app has no 3D/2D view-mode toggle in its DOM, so the schematic
+        // SVG would be permanently hidden if a saved '3d' preference were restored. Force 2D there.
+        const IS_EMBEDDED_CANVAS = (() => {
+            try {
+                return document.body.classList.contains('simulator-embedded');
+            } catch (e) {
+                return false;
+            }
+        })();
+
+        function resolveInitialViewMode() {
+            if (IS_EMBEDDED_CANVAS || PREFER_LITE_CANVAS) return '2d';
+            const savedViewMode = localStorage.getItem('circuit3d_viewMode');
+            if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
+                return savedViewMode;
+            }
+            return '2d';
+        }
+
         // Touch / iPad: lighter canvas defaults; wire animations only disabled for coarse touch or reduced motion
         const PREFER_LITE_CANVAS = (() => {
             try {
@@ -4988,10 +5007,6 @@
             }
             
             // In split mode, SVG is already rendering on top of 3D, no overlay needed
-            
-            if (!_initialRenderDone && allItems.length === 0) {
-                _initialRenderDone = true;
-            }
 
             const summaryEl = document.getElementById('sim-topbar-summary');
             if (summaryEl) {
@@ -23554,13 +23569,7 @@
                     }
                     
                     // Default 2D on touch devices; restore saved preference on desktop
-                    let initialViewMode = '2d';
-                    if (!PREFER_LITE_CANVAS) {
-                        const savedViewMode = localStorage.getItem('circuit3d_viewMode');
-                        if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
-                            initialViewMode = savedViewMode;
-                        }
-                    }
+                    const initialViewMode = resolveInitialViewMode();
                     scene3D.setViewMode(initialViewMode);
                     const viewModeSelect = document.getElementById('viewModeSelect');
                     if (viewModeSelect) viewModeSelect.value = initialViewMode;
@@ -23699,13 +23708,7 @@
                     }
                 });
                 
-                let initialMode = '2d';
-                if (!PREFER_LITE_CANVAS) {
-                    const savedViewMode = localStorage.getItem('circuit3d_viewMode');
-                    if (savedViewMode && ['2d', '3d', 'split'].includes(savedViewMode)) {
-                        initialMode = savedViewMode;
-                    }
-                }
+                const initialMode = resolveInitialViewMode();
                 viewModeSelect.value = initialMode;
                 if (scene3D) scene3D.setViewMode(initialMode);
                 applyCanvasViewModeStyles(initialMode);
@@ -24042,6 +24045,8 @@
                 requestAnimationFrame(() => {
                     requestAnimationFrame(() => fitViewToContent({ immediate: true }));
                 });
+            } else {
+                ensureViewportShowsContent();
             }
             if (typeof updateScores === 'function') {
                 updateScores();
@@ -24050,13 +24055,35 @@
             return true;
         }
 
+        /** Refit or enable culling only when the current zoom viewport actually covers items. */
+        function ensureViewportShowsContent() {
+            requestAnimationFrame(() => {
+                updateSvgDimensions();
+                if (allItems.length === 0) return;
+
+                const wasDone = _initialRenderDone;
+                _initialRenderDone = true;
+                const visibleCount = getVisibleItems().length;
+                _initialRenderDone = wasDone;
+
+                if (visibleCount === 0) {
+                    fitViewToContent({ immediate: true });
+                } else if (!wasDone) {
+                    _initialRenderDone = true;
+                    render();
+                }
+            });
+        }
+
         globalThis.applySimulatorCircuitImport = importCircuitFromDesignerExport;
+        globalThis.ensureSimulatorCanvasVisible = ensureViewportShowsContent;
         globalThis.setSolarCanvasMode = applySolarCanvasMode;
         globalThis.getSimulatorCircuitItems = () => allItems;
         globalThis.getSimulatorCircuitConnections = () => connections;
         globalThis.removeSimulatorPanels = removeAllPanels;
         globalThis.syncPanelsFromLinkage = syncPanelsFromLinkage;
         globalThis.requestSimulatorRender = () => render();
+        globalThis.updateSvgDimensions = updateSvgDimensions;
         globalThis.updateSimulatorScores = () => updateScores();
         globalThis.saveSimulatorCircuitToStore = function saveSimulatorCircuitToStore() {
             if (typeof globalThis.CircuitStore?.saveFromDesignerConfig !== 'function') return;

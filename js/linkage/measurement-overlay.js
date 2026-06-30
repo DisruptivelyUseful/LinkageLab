@@ -1,9 +1,13 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
-import { unitConverter } from '../core/unit-converter.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { formatNumber } from './math.js';
+
+const unitConverter = globalThis.unitConverter;
+if (!unitConverter) {
+    throw new Error('unitConverter must be initialized before measurement-overlay (load js/core/unit-converter.js first)');
+}
 
     // MEASUREMENT TOOLS
     // ============================================================================

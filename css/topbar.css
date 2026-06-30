@@ -374,9 +374,21 @@
 }
 
 .topbar-fold-input {
-    width: 75px;
+    width: 7.5em;
+    min-width: 7.5em;
+    max-width: none;
+    flex: 0 0 auto;
     font-size: 0.85rem;
     font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+/* Spin-button wrapper inherits the same fixed width so flex layout cannot crush the value */
+.topbar-center .number-spin-wrapper:has(.topbar-fold-input) {
+    width: 7.5em;
+    min-width: 7.5em;
+    flex: 0 0 auto;
 }
 
 .topbar-deg {

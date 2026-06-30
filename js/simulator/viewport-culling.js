@@ -31,7 +31,9 @@ export function createViewportCulling(ctx) {
             };
             const buffer = 200 / transform.k;
 
-            return ctx.getAllItems().filter((item) => {
+            const allItems = ctx.getAllItems();
+            const filtered = allItems.filter((item) => {
+                if (!Number.isFinite(item.x) || !Number.isFinite(item.y)) return true;
                 const itemRight = item.x + (item.width || 100);
                 const itemBottom = item.y + (item.height || 100);
                 return itemRight >= viewport.x - buffer
@@ -39,6 +41,13 @@ export function createViewportCulling(ctx) {
                     && itemBottom >= viewport.y - buffer
                     && item.y <= viewport.y + viewport.height + buffer;
             });
+
+            // Degenerate viewport guard: never cull everything when items exist.
+            if (filtered.length === 0 && allItems.length > 0) {
+                return allItems;
+            }
+
+            return filtered;
         } catch (err) {
             return ctx.getAllItems();
         }

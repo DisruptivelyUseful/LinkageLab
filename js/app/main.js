@@ -175,6 +175,10 @@ async function main() {
                     onReload: (data) => refreshSolarCanvasFromCircuit(data),
                 });
             }
+            requestAnimationFrame(() => {
+                globalThis.updateSvgDimensions?.();
+                globalThis.ensureSimulatorCanvasVisible?.();
+            });
         }
 
         if (mode === APP_MODES.SOLAR_SIMULATE) {
@@ -185,6 +189,10 @@ async function main() {
                 });
                 updateSolarTopbarSummary(solarView, resolveCircuitExport());
             }
+            requestAnimationFrame(() => {
+                globalThis.updateSvgDimensions?.();
+                globalThis.ensureSimulatorCanvasVisible?.();
+            });
         }
 
         syncDocumentModeButtons(mode);
