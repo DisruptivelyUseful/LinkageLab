@@ -170,9 +170,19 @@ function viewportAspect() {
  * The view a step should end up in: its saved view, or an auto-framed view of
  * its targets, or the current camera when it has neither.
  */
-function resolveStepView(step, data) {
+function resolveStepView(step, data, ctx = null) {
     if (step && step.view) return normalizeView(step.view);
     const live = captureView(state.cam, null, null);
+    // Bench-stage steps frame the workbench, not the assembly
+    if (ctx) {
+        const d = driverFor(step);
+        const bb = d.bounds ? d.bounds(ctx) : null;
+        if (bb) {
+            const v = autoFrameView(bb, { fovDeg: 45, aspect: viewportAspect(), yaw: 0.55, pitch: 0.6, anchor: null, foldAngleDeg: null, padding: 1.15 });
+            v.__targetPoint = bb.center;
+            return v;
+        }
+    }
     if (step && step.targets && step.targets.length) {
         const b = targetsBounds(step.targets, data);
         if (b) {
@@ -270,6 +280,7 @@ function exitPlayback() {
     engine.fromView = engine.toView = null;
     engine.ctx = null;
     engine.visibility = null;
+    restoreSceneAfterPlayback();
     invalidateGeometryCache();
     requestRender();
     emit('exit');
@@ -323,9 +334,9 @@ function goToStep(index, { immediate = false, autoplay = null } = {}) {
 
     engine.fromView = liveView();
     engine.fromTarget = currentTargetPoint(data);
-    engine.toView = resolveStepView(step, data);
-    engine.toTarget = engine.toView.__targetPoint || resolveViewTarget(engine.toView, data);
     engine.ctx = buildContext(step, data);
+    engine.toView = resolveStepView(step, data, engine.ctx);
+    engine.toTarget = engine.toView.__targetPoint || resolveViewTarget(engine.toView, data);
     engine.visibility = null;
 
     if (immediate || !step.transitionMs) {
@@ -595,21 +606,36 @@ function applyBuildStepScene(data, sc) {
     const bench = step.stage === 'bench';
     if (threeRenderer.structureGroup) threeRenderer.structureGroup.visible = !bench;
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = !bench;
+    if (threeRenderer.gridHelper && bench) threeRenderer.gridHelper.visible = false;
+    if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = !bench;
+    if (threeRenderer.benchGroup && !bench) threeRenderer.benchGroup.visible = false;
+    if (!bench) pb.benchSummary = '';
 
-    // Keep the op context in sync with the rebuilt meshes
+    // Keep the op context in sync with the rebuilt meshes, then re-apply the
+    // current op progress so a mid-op rebuild does not snap parts back.
     if (engine.ctx && engine.ctx.step === step) {
         engine.ctx.data = data;
         engine.ctx.parts = parts;
         engine.ctx.structureCenter = sc || structureCenterOf(data);
         const d = driverFor(step);
         if (d.stage) { try { d.stage(engine.ctx); } catch (e) { console.warn('[BuildSteps] op stage failed:', e); } }
+        if (d.update && (pb.phase === 'op' || pb.phase === 'hold' || pb.phase === 'done')) {
+            const t = pb.phase === 'op' ? pb.t : 1;
+            try { d.update(engine.ctx, t); } catch (e) { console.warn('[BuildSteps] op update failed:', e); }
+        } else if (d.update && pb.phase === 'transition') {
+            try { d.update(engine.ctx, 0); } catch (e) { console.warn('[BuildSteps] op update failed:', e); }
+        }
     }
+    emit('staged');
 }
 
 /** Restores structure visibility when playback is off (called on normal renders). */
 function restoreSceneAfterPlayback() {
     if (threeRenderer.structureGroup) threeRenderer.structureGroup.visible = true;
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = true;
+    if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = true;
+    if (threeRenderer.benchGroup) threeRenderer.benchGroup.visible = false;
+    if (state.buildPlayback) state.buildPlayback.benchSummary = '';
 }
 
 // ---------------------------------------------------------------------------
@@ -634,7 +660,8 @@ function autoFrameStep(step) {
 /** Moves the live camera to a step's view (used by "Go to view" and thumbnails). */
 function showStepView(step) {
     const data = currentData();
-    const view = resolveStepView(step, data);
+    const ctx = (engine.ctx && engine.ctx.step === step) ? engine.ctx : buildContext(step, data);
+    const view = resolveStepView(step, data, ctx);
     const target = view.__targetPoint || resolveViewTarget(view, data);
     applyFoldDeg(view.foldAngleDeg);
     applyCameraView(view, target);
@@ -667,6 +694,8 @@ const _moduleExports = {
     showStepView,
     resolveStepView,
     targetsBounds,
+    forEachPartMesh,
+    meshPartKey,
 };
 
 bridgeGlobals(_moduleExports, 'buildStepsAnim');
@@ -693,4 +722,6 @@ export {
     showStepView,
     resolveStepView,
     targetsBounds,
+    forEachPartMesh,
+    meshPartKey,
 };

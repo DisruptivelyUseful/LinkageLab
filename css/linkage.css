@@ -1896,3 +1896,5 @@ input.error {
 .bs-tr-pos { font-family: var(--font-mono); font-size: 0.68rem; color: var(--text-data); min-width: 48px; text-align: center; }
 .bs-tr-label { display: flex; align-items: center; gap: 4px; font-size: 0.65rem; color: var(--text-secondary); }
 .bs-tr-speed { background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-light); border-radius: var(--radius-sm); font-size: 0.65rem; padding: 3px 4px; }
+#viewport.bs-picking canvas#canvas-webgl { cursor: crosshair; }
+.bs-btn.active { background: rgba(var(--clr-primary-rgb), 0.2); border-color: var(--clr-primary); }

@@ -136,4 +136,76 @@ test.describe('Build steps', () => {
         expect(restored.target).toBeNull();
         expect(restored.hidden).toBe(0);
     });
+
+    test('auto-generate builds a full sequence with bench, place and pick support', async ({ page }) => {
+        await openApp(page);
+        page.on('dialog', (d) => d.accept());
+
+        await page.click('#bs-btn-auto');
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildSteps.steps.length)).toBeGreaterThan(10);
+        const kinds = await page.evaluate(() => globalThis.state.buildSteps.steps.map((s) => s.kind));
+        expect(kinds[0]).toBe('cut');
+        expect(kinds).toContain('drill');
+        expect(kinds).toContain('place');
+        expect(kinds).toContain('fasten');
+        expect(kinds.indexOf('place')).toBeGreaterThan(kinds.lastIndexOf('drill'));
+
+        // Cut step shows the workbench instead of the structure
+        await page.click('#bs-btn-mode');
+        await expect(page.locator('#build-steps-bar')).toBeVisible();
+        await expect.poll(() => page.evaluate(() => ({
+            bench: globalThis.threeRenderer.benchGroup ? globalThis.threeRenderer.benchGroup.children.length : 0,
+            benchVisible: !!(globalThis.threeRenderer.benchGroup && globalThis.threeRenderer.benchGroup.visible),
+            structure: globalThis.threeRenderer.structureGroup.visible,
+        }))).toEqual(expect.objectContaining({ benchVisible: true, structure: false }));
+        await expect(page.locator('#bs-caption-notes')).toContainText('×');
+
+        // A place step moves its parts in from the approach offset
+        const placeIdx = kinds.indexOf('place');
+        await page.evaluate((i) => globalThis.goToStep(i, { immediate: true }), placeIdx);
+        await page.waitForTimeout(600); // let the scene rebuild for the new step
+        const moved = await page.evaluate(() => {
+            globalThis.stepFrame(0);
+            const find = () => globalThis.threeRenderer.beamGroup.children.find((m) => m.visible && m.userData.beam && m.userData.beam.stackType === 'horizontal-bottom' && m.userData.beam.moduleIndex === 0);
+            const before = find().position.y;
+            globalThis.state.buildPlayback.playing = true;
+            for (let k = 0; k < 40; k++) globalThis.stepFrame(100);
+            globalThis.state.buildPlayback.playing = false;
+            const after = find().position.y;
+            return { before, after, structure: globalThis.threeRenderer.structureGroup.visible, bench: globalThis.threeRenderer.benchGroup.visible };
+        });
+        expect(moved.structure).toBe(true);
+        expect(moved.bench).toBe(false);
+        expect(Math.abs(moved.before - moved.after)).toBeGreaterThan(5);
+
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#build-steps-bar')).toBeHidden();
+
+        // Pick in 3D adds whatever is under the cursor to the selected step
+        await page.evaluate(() => {
+            const s = globalThis.state.buildSteps.steps[0];
+            s.targets = [];
+            globalThis.refreshBuildStepsUI();
+            globalThis.selectBuildStep(s.id);
+        });
+        // Playback left the camera framed on one module; reset it so the center hits the structure
+        await page.evaluate(() => document.getElementById('btn-fit').click());
+        await page.waitForTimeout(400);
+        await page.click('#bs-pick-3d');
+        await expect(page.locator('#viewport')).toHaveClass(/bs-picking/);
+        // Click where a bottom H-beam projects on screen (the viewport center holds the IBC tank reference)
+        const pt = await page.evaluate(() => {
+            const mesh = globalThis.threeRenderer.beamGroup.children.find((m) => m.visible && m.userData.beam && m.userData.beam.stackType === 'horizontal-bottom');
+            const v = new THREE.Vector3();
+            mesh.getWorldPosition(v);
+            v.project(globalThis.threeRenderer.mainCamera);
+            const r = document.getElementById('canvas-webgl').getBoundingClientRect();
+            return { x: r.left + ((v.x + 1) / 2) * r.width, y: r.top + ((1 - v.y) / 2) * r.height };
+        });
+        await page.mouse.click(pt.x, pt.y);
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildSteps.steps[0].targets.length)).toBe(1);
+        expect(await page.evaluate(() => globalThis.state.buildSteps.steps[0].targets[0].kind)).toBe('beam');
+        await page.keyboard.press('Escape');
+        await expect(page.locator('#viewport')).not.toHaveClass(/bs-picking/);
+    });
 });

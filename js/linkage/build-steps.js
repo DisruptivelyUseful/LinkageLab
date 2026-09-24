@@ -14,7 +14,7 @@
 // the editor in build-steps-ui.js.
 
 import { bridgeGlobals } from './global-bridge.js';
-import { collectParts, matchSelector, partsBounds, selectorLabel } from './part-keys.js';
+import { collectParts, matchSelector, partKey, partsBounds, resolveTargets, selectorForPart, selectorLabel } from './part-keys.js';
 
 export const BUILD_STEPS_VERSION = 1;
 
@@ -369,6 +369,264 @@ export function stepTargetBounds(step, data, parts = null) {
     return partsBounds(items);
 }
 
+// ---------------------------------------------------------------------------
+// Workbench planning (cut / drill steps)
+// ---------------------------------------------------------------------------
+
+/** Common lumber stock lengths in inches (8, 10, 12, 16 ft). */
+export const STOCK_LENGTHS_IN = [96, 120, 144, 192];
+
+export function roundTo(v, step = 1 / 16) {
+    return Math.round(v / step) * step;
+}
+
+export function beamLengthIn(beam) {
+    if (!beam || !beam.p1 || !beam.p2) return 0;
+    const dx = beam.p2.x - beam.p1.x, dy = beam.p2.y - beam.p1.y, dz = beam.p2.z - beam.p1.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+}
+
+/** Smallest standard stock length that fits, or the next foot up for long beams. */
+export function stockLengthFor(lengthIn, explicit = null) {
+    if (explicit && Number.isFinite(Number(explicit)) && Number(explicit) > 0) return Number(explicit);
+    const fit = STOCK_LENGTHS_IN.find(s => s >= lengthIn - 1e-6);
+    if (fit) return fit;
+    return Math.ceil(lengthIn / 12) * 12;
+}
+
+/**
+ * Groups beams that are physically identical (rounded length x width x thickness).
+ * @returns {Array<{key:string, length:number, w:number, t:number, count:number, beams:Array, rep:Object, stackTypes:string[]}>}
+ */
+export function groupBeamsForBench(beams) {
+    const groups = new Map();
+    for (const beam of beams || []) {
+        if (!beam) continue;
+        const length = roundTo(beamLengthIn(beam));
+        const w = roundTo(beam.w || 0), t = roundTo(beam.t || 0);
+        const key = `${length.toFixed(4)}x${w.toFixed(4)}x${t.toFixed(4)}`;
+        let g = groups.get(key);
+        if (!g) { g = { key, length, w, t, count: 0, beams: [], rep: beam, stackTypes: [] }; groups.set(key, g); }
+        g.count += 1;
+        g.beams.push(beam);
+        if (beam.stackType && !g.stackTypes.includes(beam.stackType)) g.stackTypes.push(beam.stackType);
+    }
+    return [...groups.values()].sort((a, b) => b.length - a.length || b.w - a.w || b.t - a.t);
+}
+
+/**
+ * Lays bench groups out side by side along +X (one row per group, rows spaced in Z).
+ * Beams rest on the plane y = 0.
+ * @param {Array} groups - from groupBeamsForBench
+ * @param {{stock?: boolean, stockLengthIn?: number|null, gapIn?: number}} opts - stock: show raw stock length (cut steps)
+ * @returns {{items:Array, bounds:Object|null, plane:{x:number,z:number,length:number,width:number}|null}}
+ */
+export function planBench(groups, opts = {}) {
+    const items = [];
+    const gap = opts.gapIn !== undefined ? opts.gapIn : 6;
+    let z = 0;
+    let maxLen = 0;
+    for (const g of groups || []) {
+        const beamLen = g.length;
+        const stockLen = opts.stock ? stockLengthFor(beamLen, opts.stockLengthIn) : beamLen;
+        const w = g.w || 1.5, t = g.t || 1.5;
+        // Beams lie flat: width across Z, thickness up Y
+        const item = {
+            group: g,
+            x0: 0,
+            y: t / 2,
+            z: z + w / 2,
+            w, t,
+            beamLength: beamLen,
+            stockLength: Math.max(stockLen, beamLen),
+            cutAt: beamLen,
+            offcut: Math.max(0, stockLen - beamLen),
+        };
+        items.push(item);
+        z += w + gap;
+        maxLen = Math.max(maxLen, item.stockLength);
+    }
+    if (!items.length) return { items, bounds: null, plane: null };
+    const depth = z - gap;
+    const margin = 8;
+    const bounds = {
+        min: { x: -margin, y: 0, z: -margin },
+        max: { x: maxLen + margin, y: Math.max(...items.map(i => i.t)) + margin, z: depth + margin },
+    };
+    bounds.center = { x: (bounds.min.x + bounds.max.x) / 2, y: 0, z: (bounds.min.z + bounds.max.z) / 2 };
+    const dx = bounds.max.x - bounds.min.x, dz = bounds.max.z - bounds.min.z;
+    bounds.radius = Math.max(4, Math.sqrt(dx * dx + dz * dz) / 2);
+    return { items, bounds, plane: { x: maxLen / 2, z: depth / 2, length: maxLen + 2 * margin, width: depth + 2 * margin } };
+}
+
+/** Human readable bench summary, e.g. "3 × Top H-beam · 96.0 in". */
+export function benchSummary(groups, opts = {}) {
+    return (groups || []).map(g => {
+        const stock = opts.stock ? ` from ${stockLengthFor(g.length, opts.stockLengthIn).toFixed(0)} in stock` : '';
+        return `${g.count} × ${g.stackTypes.map(stackTypeLabel).join('/') || 'beam'} · ${g.length.toFixed(1)} in${stock}`;
+    }).join('\n');
+}
+
+const STACK_TYPE_SHORT = {
+    'horizontal-bottom': 'bottom H-beam', 'horizontal-top': 'top H-beam', 'vertical': 'V-beam', 'vertical-cap': 'cap V-beam',
+    'fixed-beam': 'fixed beam', 'fixed-beam-cap': 'cap fixed beam', 'support-beam': 'radial support beam', 'support-beam-reciprocal': 'reciprocal beam',
+};
+export function stackTypeLabel(stackType) {
+    return STACK_TYPE_SHORT[stackType] || stackType || 'beam';
+}
+
+// ---------------------------------------------------------------------------
+// Auto-generation of a default build sequence
+// ---------------------------------------------------------------------------
+
+function fmtIn(v) {
+    return `${(Math.round(v * 16) / 16).toFixed(2).replace(/\.?0+$/, '')} in`;
+}
+
+/**
+ * Finds the coarsest selectors that match exactly the given beams (by key),
+ * falling back to exact per-beam selectors.
+ */
+function selectorsForBeamSet(beams, data, parts) {
+    const wanted = new Set(beams.map(b => partKey(b, 'beam')));
+    const covered = new Set();
+    const out = [];
+    const tryAdd = (sel) => {
+        const res = resolveTargets(data, [sel], parts);
+        if (!res.items.length) return false;
+        if (!res.items.every(r => wanted.has(r.key))) return false;
+        if (res.items.every(r => covered.has(r.key))) return false;
+        res.items.forEach(r => covered.add(r.key));
+        out.push(sel);
+        return true;
+    };
+    const stackTypes = [...new Set(beams.map(b => b.stackType))];
+    for (const st of stackTypes) {
+        if (tryAdd({ kind: 'beam', stackType: st })) continue;
+        const layers = [...new Set(beams.filter(b => b.stackType === st).map(b => b.layerIndex || 0))].sort((a, b) => a - b);
+        for (const L of layers) {
+            if (tryAdd({ kind: 'beam', stackType: st, layerIndex: L })) continue;
+            const pats = [...new Set(beams.filter(b => b.stackType === st && (b.layerIndex || 0) === L).map(b => b.patternId || null))];
+            for (const pat of pats) {
+                if (pat && tryAdd({ kind: 'beam', stackType: st, layerIndex: L, patternId: pat })) continue;
+                beams.filter(b => b.stackType === st && (b.layerIndex || 0) === L && (b.patternId || null) === pat)
+                    .forEach(b => { if (!covered.has(partKey(b, 'beam'))) { covered.add(partKey(b, 'beam')); out.push(selectorForPart(b, 'beam')); } });
+            }
+        }
+    }
+    return out;
+}
+
+function holeSignature(holes) {
+    return holes
+        .map(h => `${h.through}:${roundTo(h.posL).toFixed(4)}:${roundTo(h.through === 'W' ? h.posT : h.posW).toFixed(4)}:${roundTo(h.radius, 1 / 64).toFixed(4)}`)
+        .sort()
+        .join('|');
+}
+
+/**
+ * Generates a complete default fabrication + assembly sequence.
+ *
+ * @param {Object} data - geometry solved with bolts on, at the deployed angle
+ * @param {Object} opts
+ * @param {number} opts.modules
+ * @param {boolean} [opts.useFixedBeams]
+ * @param {boolean} [opts.archCapUprights]
+ * @param {number|null} [opts.foldedAngleDeg] - pose for module assembly steps
+ * @param {number|null} [opts.deployedAngleDeg] - pose for the deploy step
+ * @param {(beam:Object, bolts:Array) => Array} [opts.intersectionsFor] - hole finder (getBeamBoltIntersections)
+ * @param {number} [opts.stockLengthIn] - forced stock length
+ * @returns {Array} steps
+ */
+export function generateDefaultBuildSteps(data, opts = {}) {
+    const steps = [];
+    const parts = collectParts(data);
+    const beams = (data && data.beams) || [];
+    const bolts = (data && data.bolts) || [];
+    const modules = Math.max(1, opts.modules || 1);
+    const folded = opts.foldedAngleDeg === undefined ? null : opts.foldedAngleDeg;
+    const deployed = opts.deployedAngleDeg === undefined ? null : opts.deployedAngleDeg;
+    const has = (sel) => resolveTargets(data, [sel], parts).items.length > 0;
+    const mk = (kind, partial) => steps.push(createStep(kind, partial));
+
+    // 1. Cut: one step per identical beam group
+    const groups = groupBeamsForBench(beams);
+    for (const g of groups) {
+        const stock = stockLengthFor(g.length, opts.stockLengthIn);
+        const labels = g.stackTypes.map(stackTypeLabel).join(' / ');
+        mk('cut', {
+            title: `Cut ${g.count} × ${labels} to ${fmtIn(g.length)}`,
+            notes: `${g.count} pieces of ${fmtIn(g.w)} × ${fmtIn(g.t)} stock, ${fmtIn(g.length)} long${stock > g.length + 1e-6 ? ` (from ${fmtIn(stock)} stock, ${fmtIn(stock - g.length)} offcut)` : ''}.`,
+            targets: selectorsForBeamSet(g.beams, data, parts),
+            op: { stockLengthIn: opts.stockLengthIn || null, kerfIn: 0.125 },
+        });
+    }
+
+    // 2. Drill: one step per distinct hole pattern
+    if (typeof opts.intersectionsFor === 'function' && bolts.length) {
+        const patterns = new Map();
+        for (const beam of beams) {
+            const holes = opts.intersectionsFor(beam, bolts) || [];
+            if (!holes.length) continue;
+            const len = roundTo(beamLengthIn(beam));
+            const sig = `${len.toFixed(4)}x${roundTo(beam.w || 0).toFixed(4)}x${roundTo(beam.t || 0).toFixed(4)}#${holeSignature(holes)}`;
+            let p = patterns.get(sig);
+            if (!p) { p = { beams: [], holes, len, rep: beam }; patterns.set(sig, p); }
+            p.beams.push(beam);
+        }
+        const list = [...patterns.values()].sort((a, b) => b.beams.length - a.beams.length || b.len - a.len);
+        for (const p of list) {
+            const stackTypes = [...new Set(p.beams.map(b => b.stackType))].map(stackTypeLabel).join(' / ');
+            const positions = p.holes.map(h => h.posL + p.len / 2).sort((a, b) => a - b);
+            const dia = p.holes.length ? Math.max(...p.holes.map(h => h.radius * 2)) : 0;
+            const through = [...new Set(p.holes.map(h => (h.through === 'W' ? 'width' : 'thickness')))].join(' and ');
+            mk('drill', {
+                title: `Drill ${p.beams.length} × ${stackTypes} (${p.holes.length} hole${p.holes.length === 1 ? '' : 's'})`,
+                notes: `Holes from the left end: ${positions.map(fmtIn).join(', ')}. Ø ${fmtIn(dia)} through the ${through}.`,
+                targets: selectorsForBeamSet(p.beams, data, parts),
+                op: { bitDiameterIn: dia || null, holes: 'auto' },
+            });
+        }
+    }
+
+    // 3. Module by module (folded pose)
+    const view = (fold) => (fold === null || fold === undefined ? null : { yaw: 0.6, pitch: 0.35, dist: 600, anchor: null, foldAngleDeg: fold });
+    for (let i = 0; i < modules; i++) {
+        const m = `Module ${i + 1}`;
+        const pushIf = (kind, title, notes, sels, extra = {}) => {
+            const targets = sels.filter(has);
+            if (!targets.length) return;
+            mk(kind, { title, notes, targets, view: null, ...extra });
+        };
+        pushIf('place', `${m}: set bottom H-beams`, 'Stack the bottom horizontal beams with their washers between layers.', [{ kind: 'beam', stackType: 'horizontal-bottom', moduleIndex: i }], { op: { approach: 'above', travelIn: 24 } });
+        const upright = opts.useFixedBeams
+            ? [{ kind: 'beam', stackType: 'fixed-beam', moduleIndex: i }, { kind: 'beam', stackType: 'fixed-beam-cap', moduleIndex: i }]
+            : [{ kind: 'beam', stackType: 'vertical', moduleIndex: i }, { kind: 'beam', stackType: 'vertical-cap', moduleIndex: i }];
+        pushIf('place', `${m}: stand the uprights`, opts.useFixedBeams ? 'Stand the fixed uprights on the bottom ring.' : 'Cross the V-beams in their A/B pattern and align the pivot holes.', upright, { op: { approach: 'radial', travelIn: 30 } });
+        pushIf('place', `${m}: fit the brackets`, 'Seat the U-brackets on the beam stack with the hole aligned to the pivot.', [{ kind: 'bracket', moduleIndex: i }, { kind: 'placement', moduleIndex: i, ring: ['bottom', 'top'] }], { op: { approach: 'above', travelIn: 12 } });
+        pushIf('fasten', `${m}: bolt the bottom pivots`, 'Insert the bottom pivot bolts through the brackets and beams; snug, do not fully torque yet.', [{ kind: 'joint', moduleIndex: i, ring: 'bottom' }, { kind: 'joint', moduleIndex: i, ring: 'center' }]);
+        pushIf('place', `${m}: set top H-beams`, 'Lower the top horizontal beams onto the upright brackets.', [{ kind: 'beam', stackType: 'horizontal-top', moduleIndex: i }], { op: { approach: 'above', travelIn: 24 } });
+        pushIf('fasten', `${m}: bolt the top pivots`, 'Insert the top pivot bolts and torque all pivots on this module.', [{ kind: 'joint', moduleIndex: i, ring: 'top' }]);
+    }
+    // Module steps share the folded pose
+    steps.forEach(s => { if (s.stage === 'assembly' && !s.view) s.view = view(folded); });
+
+    // 4. Deploy, then support beams, reciprocal bolts, panels (deployed pose)
+    const support = has({ kind: 'beam', stackType: 'support-beam' });
+    const rcp = has({ kind: 'beam', stackType: 'support-beam-reciprocal' });
+    const rcpBolts = has({ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] });
+    const panels = has({ kind: 'panel' });
+    if (deployed !== null || support || rcp || panels) {
+        mk('view', { title: 'Deploy the structure', notes: 'Open the scissor ring to its deployed angle before adding the roof.', targets: [], view: view(deployed), transitionMs: 2500, durationMs: 800 });
+    }
+    if (support) mk('place', { title: 'Install radial support beams', notes: 'Lay the radial support beams across the top ring.', targets: [{ kind: 'beam', stackType: 'support-beam' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
+    if (rcp) mk('place', { title: 'Install reciprocal beams', notes: 'Weave the reciprocal beams over/under each other and onto the ring anchors.', targets: [{ kind: 'beam', stackType: 'support-beam-reciprocal' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
+    if (rcpBolts) mk('fasten', { title: 'Bolt the reciprocal beams', notes: 'Through-bolt each crossing and anchor.', targets: [{ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] }], view: view(deployed) });
+    if (panels) mk('place', { title: 'Mount the solar panels', notes: 'Lift each panel onto the support beams and clamp it down.', targets: [{ kind: 'panel' }], view: view(deployed), op: { approach: 'above', travelIn: 30 } });
+
+    return steps;
+}
+
 /** One-line summary for the step list. */
 export function stepSummary(step) {
     if (!step) return '';
@@ -413,6 +671,15 @@ const _moduleExports = {
     stepTargetBounds,
     stepSummary,
     totalDurationMs,
+    STOCK_LENGTHS_IN,
+    roundTo,
+    beamLengthIn,
+    stockLengthFor,
+    groupBeamsForBench,
+    planBench,
+    benchSummary,
+    stackTypeLabel,
+    generateDefaultBuildSteps,
 };
 
 bridgeGlobals(_moduleExports, 'buildSteps');

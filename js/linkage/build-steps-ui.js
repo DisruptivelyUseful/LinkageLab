@@ -17,7 +17,10 @@ import { saveStateToHistory } from './history.js';
 import { requestRender } from './render-app.js';
 import { invalidateGeometryCache } from './cache.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
-import { collectParts, resolveTargets, selectorLabel } from './part-keys.js';
+import { collectParts, groupSelectorForPart, partKind, resolveTargets, selectorForPart, selectorLabel } from './part-keys.js';
+import { threeRenderer } from './renderer-3d.js';
+import { getStructureFoldedAngle, getStructureDeployedAngle } from './geometry-classes.js';
+import { getBeamBoltIntersections } from './renderer-3d.js';
 import {
     STEP_KINDS,
     STEP_KIND_META,
@@ -25,6 +28,7 @@ import {
     createDefaultBuildSteps,
     createStep,
     duplicateStep,
+    generateDefaultBuildSteps,
     getStepById,
     moveStep,
     removeStep,
@@ -53,6 +57,7 @@ import {
 const ui = {
     selectedId: null,
     drag: { id: null, overId: null, after: false },
+    pick: { active: false, stepId: null, downX: 0, downY: 0, raycaster: null, pointer: null },
     els: {},
 };
 
@@ -275,6 +280,7 @@ function pickerHtml() {
                 <option value="*">Everything</option>
             </select>
             <button id="bs-pick-add" class="bs-btn" title="Add this target to the step">Add</button>
+            <button id="bs-pick-3d" class="bs-btn" title="Click parts in the 3D view to add them (Shift+click adds the whole stack / joint). Escape or click again to stop.">🎯 Pick in 3D</button>
         </div>
         <div class="bs-picker-row" id="bs-pick-fields"></div>
     </div>`;
@@ -422,6 +428,8 @@ function renderEditor() {
     });
     el('bs-pick-kind').addEventListener('change', renderPickerFields);
     renderPickerFields();
+    el('bs-pick-3d').addEventListener('click', () => togglePick(step.id));
+    el('bs-pick-3d').classList.toggle('active', ui.pick.active && ui.pick.stepId === step.id);
     el('bs-pick-add').addEventListener('click', () => {
         const sel = selectorFromPicker();
         step.targets.push(sel);
@@ -520,8 +528,10 @@ function updateCaption() {
     if (!step) { t.textContent = ''; n.textContent = ''; i.textContent = ''; return; }
     i.textContent = `Step ${pb.stepIndex + 1}`;
     t.textContent = step.title;
-    n.textContent = step.notes || '';
-    n.style.display = step.notes ? 'block' : 'none';
+    const bench = pb.benchSummary ? `${pb.benchSummary}` : '';
+    const text = [bench, step.notes || ''].filter(Boolean).join('\n');
+    n.textContent = text;
+    n.style.display = text ? 'block' : 'none';
 }
 
 function bindTransport() {
@@ -571,11 +581,141 @@ function bindToolbar() {
         changed({ rerenderEditor: true });
     });
     on('bs-btn-auto', 'click', () => {
-        if (typeof globalThis.generateDefaultBuildSteps === 'function') {
-            globalThis.generateDefaultBuildSteps();
-            changed({ rerenderEditor: true });
-        }
+        const bs = buildSteps();
+        if (bs.steps.length && !window.confirm(`Replace the ${bs.steps.length} existing step${bs.steps.length === 1 ? '' : 's'} with a generated sequence?`)) return;
+        const steps = autoGenerateSteps();
+        if (!steps.length) { showToast('Nothing to generate for this design', 'warning'); return; }
+        if (playback().active) exitPlayback();
+        bs.steps = steps;
+        ui.selectedId = steps[0].id;
+        changed({ rerenderEditor: true });
+        showToast(`Generated ${steps.length} build steps`, 'success');
     });
+}
+
+/**
+ * Solves the design deployed with bolts on (so holes and support beams exist)
+ * and derives the default sequence from it.
+ */
+function autoGenerateSteps() {
+    // Solve with legacy bolts (Full Detail replaces pivot bolts with placements)
+    // to find every hole; then solve again as configured for the real part list.
+    const prev = { bolts: state.showBolts, full: state.showHardwareFullDetail, mode: state.hwDetailMode };
+    let data;
+    let drillBolts;
+    try {
+        const deployedRad = getStructureDeployedAngle();
+        state.showBolts = true;
+        state.showHardwareFullDetail = false;
+        state.hwDetailMode = false;
+        drillBolts = buildLinkageGeometry({ useCache: false, foldAngle: deployedRad, includePanels: false }).bolts || [];
+        state.showHardwareFullDetail = prev.full;
+        state.hwDetailMode = prev.mode;
+        data = buildLinkageGeometry({ useCache: false, foldAngle: deployedRad });
+    } finally {
+        state.showBolts = prev.bolts;
+        state.showHardwareFullDetail = prev.full;
+        state.hwDetailMode = prev.mode;
+    }
+    const intersectionsFor = (beam) => getBeamBoltIntersections(beam, drillBolts);
+    const folded = radToDeg(getStructureFoldedAngle());
+    const deployed = radToDeg(getStructureDeployedAngle());
+    return generateDefaultBuildSteps(data, {
+        modules: state.modules,
+        useFixedBeams: !!state.useFixedBeams,
+        archCapUprights: !!state.archCapUprights,
+        foldedAngleDeg: Number.isFinite(folded) ? folded : null,
+        deployedAngleDeg: Number.isFinite(deployed) ? deployed : null,
+        intersectionsFor,
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Pick in 3D
+// ---------------------------------------------------------------------------
+
+function setPickActive(active, stepId = null) {
+    ui.pick.active = active;
+    ui.pick.stepId = active ? stepId : null;
+    const vp = el('viewport');
+    if (vp) vp.classList.toggle('bs-picking', active);
+    const btn = el('bs-pick-3d');
+    if (btn) btn.classList.toggle('active', active);
+    if (active) showToast('Click a part in the 3D view to add it (Shift = whole group). Esc to stop.', 'info', 2500);
+}
+
+function togglePick(stepId) {
+    if (ui.pick.active && ui.pick.stepId === stepId) setPickActive(false);
+    else setPickActive(true, stepId);
+}
+
+/** Walks up from a raycast hit to the object that carries part identity. */
+function partObjectFromHit(object) {
+    let o = object;
+    while (o) {
+        const ud = o.userData || {};
+        if (ud.beam) return { kind: 'beam', obj: ud.beam };
+        if (ud.bolt) return { kind: 'bolt', obj: ud.bolt };
+        if (ud.washer) return { kind: 'washer', obj: ud.washer };
+        if (ud.bracket) return { kind: 'bracket', obj: ud.bracket };
+        if (ud.placement) return { kind: 'placement', obj: ud.placement };
+        if (ud.panel) return { kind: 'panel', obj: ud.panel };
+        o = o.parent;
+    }
+    return null;
+}
+
+function isHierarchyVisible(object) {
+    let o = object;
+    while (o) { if (o.visible === false) return false; o = o.parent; }
+    return true;
+}
+
+function pickAt(clientX, clientY, shift) {
+    if (typeof THREE === 'undefined' || !threeRenderer || !threeRenderer.mainCamera) return null;
+    const canvas = el('canvas-webgl');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    if (!ui.pick.raycaster) { ui.pick.raycaster = new THREE.Raycaster(); ui.pick.pointer = new THREE.Vector2(); }
+    ui.pick.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    ui.pick.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    ui.pick.raycaster.setFromCamera(ui.pick.pointer, threeRenderer.mainCamera);
+    const roots = [threeRenderer.structureGroup, threeRenderer.panelGroup].filter(Boolean);
+    const hits = ui.pick.raycaster.intersectObjects(roots, true);
+    for (const hit of hits) {
+        if (!isHierarchyVisible(hit.object)) continue;
+        const part = partObjectFromHit(hit.object);
+        if (!part) continue;
+        const sel = shift ? groupSelectorForPart(part.obj, part.kind) : selectorForPart(part.obj, part.kind);
+        return sel;
+    }
+    return null;
+}
+
+function bindPick() {
+    const canvas = el('canvas-webgl');
+    if (!canvas) return;
+    canvas.addEventListener('mousedown', (e) => { ui.pick.downX = e.clientX; ui.pick.downY = e.clientY; });
+    canvas.addEventListener('mouseup', (e) => {
+        if (!ui.pick.active || e.button !== 0) return;
+        if (Math.hypot(e.clientX - ui.pick.downX, e.clientY - ui.pick.downY) > 4) return; // it was an orbit drag
+        const step = getStepById(buildSteps(), ui.pick.stepId);
+        if (!step) { setPickActive(false); return; }
+        const sel = pickAt(e.clientX, e.clientY, e.shiftKey);
+        if (!sel) { showToast('No part under the cursor', 'warning', 1200); return; }
+        const dup = step.targets.some(t => JSON.stringify(t) === JSON.stringify(sel));
+        if (dup) { showToast('Already in this step', 'info', 1200); return; }
+        step.targets.push(sel);
+        showToast(`Added ${selectorLabel(sel)}`, 'success', 1500);
+        changed({ rerenderEditor: true });
+        // keep picking; the editor re-render resets the button state
+        const btn = el('bs-pick-3d');
+        if (btn) btn.classList.add('active');
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && ui.pick.active) { setPickActive(false); e.stopPropagation(); }
+    }, true);
 }
 
 function refreshAll() {
@@ -584,7 +724,7 @@ function refreshAll() {
     renderChips();
     updateTransport();
     const auto = el('bs-btn-auto');
-    if (auto) auto.disabled = typeof globalThis.generateDefaultBuildSteps !== 'function';
+    if (auto) auto.disabled = false;
 }
 
 function initBuildStepsUI() {
@@ -592,6 +732,7 @@ function initBuildStepsUI() {
     initBuildStepsUI.done = true;
     bindToolbar();
     bindTransport();
+    bindPick();
     onPlaybackChange((reason) => {
         if (reason === 'frame') { updateTransport(); return; }
         renderChips();
@@ -608,6 +749,8 @@ const _moduleExports = {
     initBuildStepsUI,
     refreshBuildStepsUI: refreshAll,
     selectBuildStep: selectStep,
+    pickBuildTargetAt: pickAt,
+    autoGenerateBuildSteps: autoGenerateSteps,
 };
 
 bridgeGlobals(_moduleExports, 'buildStepsUi');

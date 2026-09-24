@@ -452,6 +452,7 @@ export function selectorLabel(sel) {
     else if (kind === 'joint') parts.push('Joint');
     else if (kind === 'placement') parts.push(`${sel.assemblyId || 'Hardware'} assembly`);
     else if (kind === 'hwpart') parts.push(`${sel.partId || 'part'} (${sel.assemblyId || 'assembly'})`);
+    else if (kind === 'panel') parts.push(sel.index !== undefined && sel.index !== '*' ? `Solar panel ${sel.index + 1}` : 'Solar panels');
     else parts.push(kind === '*' ? 'All parts' : kind.charAt(0).toUpperCase() + kind.slice(1) + 's');
     if (sel.ring && sel.ring !== '*') parts.push(sel.ring);
     if (sel.role && sel.role !== '*') parts.push(sel.role);
