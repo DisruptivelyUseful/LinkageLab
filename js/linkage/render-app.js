@@ -14,12 +14,9 @@ import {
     needsSplitVBolts,
 } from './beam-bolt-helpers.js';
 import {
-    calculateActuatorStroke,
     calculateBeamCostByVolume,
-    calculateRequiredActuatorForce,
     getRefPricePerCubicInch,
 } from './solver.js';
-import { calculateJointPositions } from './joint-kinematics.js';
 import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
 
     // ============================================================================
@@ -157,41 +154,6 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
                 drawGrid3D(ctx, w / 2, h / 2, mainViewCenter);
                 drawScene(ctx, data, '3d', w / 2, h / 2, w, h, null, mainViewCenter);
                 
-                // Also draw top and side views using 2D fallback
-                const topCanvas = document.getElementById('canvas-top');
-                const topWebGL = document.getElementById('canvas-top-webgl');
-                const sideCanvas = document.getElementById('canvas-side');
-                const sideWebGL = document.getElementById('canvas-side-webgl');
-                
-                // Hide WebGL canvases, show 2D canvases
-                if (topWebGL) topWebGL.style.display = 'none';
-                if (sideWebGL) sideWebGL.style.display = 'none';
-                
-                if (topCanvas) {
-                    topCanvas.style.display = 'block';
-                    topCanvas.style.zIndex = '1';
-                    const topCtx = topCanvas.getContext('2d');
-                    const tw = topCanvas.parentElement.clientWidth;
-                    const th = topCanvas.parentElement.clientHeight;
-                    topCanvas.width = tw;
-                    topCanvas.height = th;
-                    topCtx.fillStyle = '#192734';
-                    topCtx.fillRect(0, 0, tw, th);
-                    drawScene(topCtx, data, 'top', tw / 2, th / 2, tw, th, null, currentCenter);
-                }
-                
-                if (sideCanvas) {
-                    sideCanvas.style.display = 'block';
-                    sideCanvas.style.zIndex = '1';
-                    const sideCtx = sideCanvas.getContext('2d');
-                    const sw = sideCanvas.parentElement.clientWidth;
-                    const sh = sideCanvas.parentElement.clientHeight;
-                    sideCanvas.width = sw;
-                    sideCanvas.height = sh;
-                    sideCtx.fillStyle = '#192734';
-                    sideCtx.fillRect(0, 0, sw, sh);
-                    drawScene(sideCtx, data, 'side', sw / 2, sh / 2, sw, sh, null, currentCenter);
-                }
             }
     
             // Remove old 2D measurement overlay if present
@@ -577,6 +539,7 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         // Calculate total cost (structure includes washers and support BOM)
         const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + solarCost;
         uiStats.bt.innerText = formatNumber(totalCost, 2);
+        if (uiStats.costTotalChip) uiStats.costTotalChip.innerText = '$' + formatNumber(totalCost, 2);
     
         // Calculate structure weight (lbs) based on volume and density
         // Volume = width × thickness × length (all in inches)
@@ -704,34 +667,6 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         // Update stats panel (top section)
         uiStats.h.innerText = unitConverter.formatInchesAsLargeUnit(data.maxHeight, 2);
         uiStats.d.innerText = unitConverter.formatInchesAsLargeUnit(data.maxRad * 2, 2);
-        
-        // Calculate actuator stroke length (for internal use, not displayed in HUD anymore)
-        const actuatorInfo = calculateActuatorStroke();
-        
-        // Calculate center of mass and actuator requirements
-        // For actuator analysis, exclude solar panels (they're added after unfolding)
-        const com = calculateCenterOfMass(data, state.foldAngle, false);
-        const comHeightFt = unitConverter.inchesToFeet(com.y);
-        
-        // Calculate actuator force requirement at current fold angle
-        // Use the pivot span positions for force calculation
-        const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
-        const jointResult = calculateJointPositions(state.foldAngle, {
-            hActiveIn: hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const loc = jointResult.joints;
-        const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
-        
-        // Calculate force at pivot positions (inner-outer pivot)
-        const pivotPos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
-        const pivotPos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
-        const forceResult = calculateRequiredActuatorForce(pivotPos1, pivotPos2, state.foldAngle, data);
-        
-        // Note: Actuator stats (stroke, CoM height, force) are now only shown in the actuator analysis section
-        // These calculations are kept for internal use but not displayed in the main HUD
         
         // Update weight in stats panel (top section)
         uiStats.weightStructure.innerText = unitConverter.formatWeightWithUnit(structureWeight);

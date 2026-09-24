@@ -34,3 +34,9 @@ Confirmed safe to remove after Phase 13 verification. **Do not delete until e2e 
 | Inline `createPanel` etc. in `solar-designer.js` | `js/circuit/node-factory.js` |
 | Inline wire path math in both files | `js/circuit/wire-renderer.js` |
 | Inline `calculatePowerFlow` in designer | `js/circuit/power-flow.js` |
+
+## Right panel removed (UI refactor)
+
+| File | Status |
+|------|--------|
+| `partials/linkage-workspace-hud.html` | **Deleted**. The Top/Side ortho views are gone (three extra WebGL renderers); the BOM and weight tables now live in the `#bom-drawer` inside `partials/linkage-workspace-viewport.html`, and the live stats are chips in `#viewport-hud`. Element IDs (`bom-*`, `stat-*`) are unchanged. |

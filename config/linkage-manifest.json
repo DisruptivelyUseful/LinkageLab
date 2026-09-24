@@ -1,4 +1,4 @@
-﻿{
+{
   "cdn": [
     "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js",
     "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js",
@@ -19,7 +19,6 @@
     { "path": "partials/linkage-controls-build-steps.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-support.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-workspace-viewport.html", "mount": "#linkage-app-mount" },
-    { "path": "partials/linkage-workspace-hud.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-modal-hardware.html", "mount": "body", "method": "beforeend" },
     { "path": "partials/linkage-modal-build-guide.html", "mount": "body", "method": "beforeend" }
   ],

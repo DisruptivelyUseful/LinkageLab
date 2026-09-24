@@ -1,4 +1,4 @@
-﻿// ============================================================================ (ES module)
+// ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
 import { state } from './app-state.js';
@@ -51,7 +51,7 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
         if (tagName === 'INPUT' || tagName === 'SELECT' || tagName === 'TEXTAREA' || tagName === 'BUTTON') {
             return true;
         }
-        if (el.closest('.input-wrap') || el.closest('#sidebar') || el.closest('#right-panel')) {
+        if (el.closest('.input-wrap') || el.closest('#sidebar') || el.closest('#bom-drawer') || el.closest('#viewport-hud')) {
             return true;
         }
         if (el.closest('#build-steps-bar') || el.closest('#bs-caption')) {
@@ -232,10 +232,10 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
 
     function initViewportInput() {
         const sidebar = document.getElementById('sidebar');
-        const rightPanel = document.getElementById('right-panel');
+        const bomDrawer = document.getElementById('bom-drawer');
         ['mousedown', 'mousemove', 'mouseup', 'wheel', 'touchstart', 'touchmove', 'touchend', 'touchcancel'].forEach(eventType => {
             sidebar?.addEventListener(eventType, e => e.stopPropagation(), true);
-            rightPanel?.addEventListener(eventType, e => e.stopPropagation(), true);
+            bomDrawer?.addEventListener(eventType, e => e.stopPropagation(), true);
         });
 
         const viewportElement = document.getElementById('viewport');

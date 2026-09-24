@@ -55,6 +55,7 @@ const uiStats = {
     bSolarSubtotal: document.getElementById('bom-solar-subtotal'),
     bSolarSubtotalRow: document.getElementById('bom-solar-subtotal-row'),
     bt: document.getElementById('bom-total'),
+    costTotalChip: document.getElementById('stat-cost-total'),
     // Weight display elements
     weightStructure: document.getElementById('stat-weight-structure'),
     weightSystem: document.getElementById('stat-weight-system'),

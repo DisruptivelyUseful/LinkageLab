@@ -28,8 +28,6 @@ import { initBuildStepsUI } from './build-steps-ui.js';
         // Add ARIA labels for accessibility
         document.getElementById('canvas').setAttribute('role', 'img');
         document.getElementById('canvas').setAttribute('aria-label', '3D linkage structure visualization');
-        document.getElementById('hud-panel').setAttribute('role', 'region');
-        document.getElementById('hud-panel').setAttribute('aria-label', 'Structure statistics and bill of materials');
         
         // Add tooltips to inputs
         Object.keys(idMap).forEach(k => {

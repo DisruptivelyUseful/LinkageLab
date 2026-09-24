@@ -15,14 +15,8 @@ import { clearMeshStructureCache } from './cache.js';
  */
 const threeRenderer = {
     main: null,      // WebGLRenderer for main 3D view
-    top: null,       // WebGLRenderer for top view  
-    side: null,      // WebGLRenderer for side view
     mainScene: null,
-    topScene: null,
-    sideScene: null,
     mainCamera: null,
-    topCamera: null,
-    sideCamera: null,
     initialized: false,
     meshCache: new Map(),  // Cache meshes to avoid recreation
     beamGroup: null,       // Group for beam meshes
@@ -113,39 +107,6 @@ function initThreeJS() {
         threeRenderer.main.shadowMap.enabled = true;
         threeRenderer.main.shadowMap.type = THREE.PCFSoftShadowMap;
         
-        // Create WebGL renderer for top view
-        const topWebGLCanvas = document.getElementById('canvas-top-webgl');
-        const topSection = document.getElementById('top-view-section');
-        if (topWebGLCanvas && topSection) {
-            topWebGLCanvas.width = topSection.clientWidth;
-            topWebGLCanvas.height = topSection.clientHeight;
-            threeRenderer.top = new THREE.WebGLRenderer({
-                canvas: topWebGLCanvas,
-                antialias: true,
-                alpha: false,
-                logarithmicDepthBuffer: true
-            });
-            threeRenderer.top.setPixelRatio(window.devicePixelRatio);
-            threeRenderer.top.setClearColor(0x192734);
-            threeRenderer.top.sortObjects = true;
-        }
-        
-        // Create WebGL renderer for side view
-        const sideWebGLCanvas = document.getElementById('canvas-side-webgl');
-        const sideSection = document.getElementById('side-view-section');
-        if (sideWebGLCanvas && sideSection) {
-            sideWebGLCanvas.width = sideSection.clientWidth;
-            sideWebGLCanvas.height = sideSection.clientHeight;
-            threeRenderer.side = new THREE.WebGLRenderer({
-                canvas: sideWebGLCanvas,
-                antialias: true,
-                alpha: false,
-                logarithmicDepthBuffer: true
-            });
-            threeRenderer.side.setPixelRatio(window.devicePixelRatio);
-            threeRenderer.side.setClearColor(0x192734);
-            threeRenderer.side.sortObjects = true;
-        }
     } catch (e) {
         console.error('Failed to create WebGL renderers:', e);
         return;
@@ -154,12 +115,6 @@ function initThreeJS() {
     // Create scenes with background colors
     threeRenderer.mainScene = new THREE.Scene();
     threeRenderer.mainScene.background = new THREE.Color(0x15202b);
-    
-    threeRenderer.topScene = new THREE.Scene();
-    threeRenderer.topScene.background = new THREE.Color(0x192734);
-    
-    threeRenderer.sideScene = new THREE.Scene();
-    threeRenderer.sideScene.background = new THREE.Color(0x192734);
     
     // Create object groups for organization
     threeRenderer.beamGroup = new THREE.Group();
@@ -202,29 +157,8 @@ function initThreeJS() {
     threeRenderer.mainScene.add(threeRenderer.humanScaleGroup);
     threeRenderer.mainScene.add(threeRenderer.measurementGroup);
     
-    // Create wrapper groups for ortho scenes (structure rotation for beams/brackets/bolts only)
-    threeRenderer.topStructureGroup = new THREE.Group();
-    threeRenderer.topStructureGroup.add(new THREE.Group()); // beams
-    threeRenderer.topStructureGroup.add(new THREE.Group()); // brackets
-    threeRenderer.topStructureGroup.add(new THREE.Group()); // bolts
-    threeRenderer.topScene.add(threeRenderer.topStructureGroup);
-    
-    threeRenderer.topPanelGroup = new THREE.Group();
-    threeRenderer.topScene.add(threeRenderer.topPanelGroup);
-    
-    threeRenderer.sideStructureGroup = new THREE.Group();
-    threeRenderer.sideStructureGroup.add(new THREE.Group()); // beams
-    threeRenderer.sideStructureGroup.add(new THREE.Group()); // brackets
-    threeRenderer.sideStructureGroup.add(new THREE.Group()); // bolts
-    threeRenderer.sideScene.add(threeRenderer.sideStructureGroup);
-    
-    threeRenderer.sidePanelGroup = new THREE.Group();
-    threeRenderer.sideScene.add(threeRenderer.sidePanelGroup);
-    
     // Setup cameras
     createMainCamera();
-    createTopCamera();
-    createSideCamera();
     
     // Setup lighting
     setupThreeJSLighting();
@@ -291,134 +225,6 @@ function updateMainCamera(structureCenter = null) {
 }
 
 /**
- * Creates the orthographic camera for top view
- */
-function createTopCamera() {
-    const topSection = document.getElementById('top-view-section');
-    if (!topSection) return;
-    const topCanvas = topSection; // Use section for dimensions
-    
-    const w = topCanvas.clientWidth;
-    const h = topCanvas.clientHeight;
-    const frustumSize = 500;
-    const aspect = w / h;
-    
-    threeRenderer.topCamera = new THREE.OrthographicCamera(
-        -frustumSize * aspect / 2,
-        frustumSize * aspect / 2,
-        frustumSize / 2,
-        -frustumSize / 2,
-        1,      // Near plane - better depth precision
-        3000    // Far plane - sufficient for structure
-    );
-    threeRenderer.topCamera.position.set(0, 1000, 0);
-    threeRenderer.topCamera.lookAt(0, 0, 0);
-    threeRenderer.topCamera.up.set(0, 0, -1); // Z is forward in top view
-}
-
-/**
- * Updates the top camera based on structure bounds
- */
-function updateTopCamera(data, structureCenter = null) {
-    const topSection = document.getElementById('top-view-section');
-    if (!topSection || !threeRenderer.topCamera) return;
-    
-    const sc = structureCenter || { x: 0, y: 0, z: 0 };
-    const w = topSection.clientWidth;
-    const h = topSection.clientHeight;
-    
-    // Calculate bounding box
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    if (data.beams) {
-        data.beams.forEach(beam => {
-            beam.corners.forEach(c => {
-                minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x);
-                minZ = Math.min(minZ, c.z); maxZ = Math.max(maxZ, c.z);
-            });
-        });
-    }
-    
-    const width = maxX - minX || 100;
-    const depth = maxZ - minZ || 100;
-    const padding = 1.2;
-    
-    const frustumWidth = Math.max(width, depth * (w / h)) * padding;
-    const frustumHeight = frustumWidth * (h / w);
-    
-    threeRenderer.topCamera.left = -frustumWidth / 2;
-    threeRenderer.topCamera.right = frustumWidth / 2;
-    threeRenderer.topCamera.top = frustumHeight / 2;
-    threeRenderer.topCamera.bottom = -frustumHeight / 2;
-    
-    threeRenderer.topCamera.position.set(sc.x, 1000, sc.z);
-    threeRenderer.topCamera.lookAt(sc.x, 0, sc.z);
-    threeRenderer.topCamera.updateProjectionMatrix();
-}
-
-/**
- * Creates the orthographic camera for side view
- */
-function createSideCamera() {
-    const sideSection = document.getElementById('side-view-section');
-    if (!sideSection) return;
-    
-    const w = sideSection.clientWidth;
-    const h = sideSection.clientHeight;
-    const frustumSize = 500;
-    const aspect = w / h;
-    
-    threeRenderer.sideCamera = new THREE.OrthographicCamera(
-        -frustumSize * aspect / 2,
-        frustumSize * aspect / 2,
-        frustumSize / 2,
-        -frustumSize / 2,
-        1,      // Near plane - better depth precision
-        3000    // Far plane - sufficient for structure
-    );
-    threeRenderer.sideCamera.position.set(0, 0, 1000);
-    threeRenderer.sideCamera.lookAt(0, 0, 0);
-}
-
-/**
- * Updates the side camera based on structure bounds
- */
-function updateSideCamera(data, structureCenter = null) {
-    const sideSection = document.getElementById('side-view-section');
-    if (!sideSection || !threeRenderer.sideCamera) return;
-    
-    const sc = structureCenter || { x: 0, y: 0, z: 0 };
-    const w = sideSection.clientWidth;
-    const h = sideSection.clientHeight;
-    
-    // Calculate bounding box
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    if (data.beams) {
-        data.beams.forEach(beam => {
-            beam.corners.forEach(c => {
-                minX = Math.min(minX, c.x); maxX = Math.max(maxX, c.x);
-                minY = Math.min(minY, c.y); maxY = Math.max(maxY, c.y);
-            });
-        });
-    }
-    
-    const width = maxX - minX || 100;
-    const height = maxY - minY || 100;
-    const padding = 1.2;
-    
-    const frustumWidth = Math.max(width, height * (w / h)) * padding;
-    const frustumHeight = frustumWidth * (h / w);
-    
-    threeRenderer.sideCamera.left = -frustumWidth / 2;
-    threeRenderer.sideCamera.right = frustumWidth / 2;
-    threeRenderer.sideCamera.top = frustumHeight / 2;
-    threeRenderer.sideCamera.bottom = -frustumHeight / 2;
-    
-    threeRenderer.sideCamera.position.set(sc.x, sc.y, 1000);
-    threeRenderer.sideCamera.lookAt(sc.x, sc.y, 0);
-    threeRenderer.sideCamera.updateProjectionMatrix();
-}
-
-/**
  * Sets up lighting for all Three.js scenes
  */
 function setupThreeJSLighting() {
@@ -452,12 +258,6 @@ function setupThreeJSLighting() {
     threeRenderer.mainScene.add(fillLight);
     threeRenderer.mainScene.add(ambientLight);
     threeRenderer.mainScene.add(hemiLight);
-    
-    // Orthographic views get flat, even lighting
-    threeRenderer.topScene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    threeRenderer.topScene.add(new THREE.DirectionalLight(0xffffff, 0.5));
-    threeRenderer.sideScene.add(new THREE.AmbientLight(0xffffff, 1.2));
-    threeRenderer.sideScene.add(new THREE.DirectionalLight(0xffffff, 0.5));
 }
 
 /**
@@ -1910,10 +1710,6 @@ const _moduleExports = {
     initThreeJS,
     createMainCamera,
     updateMainCamera,
-    createTopCamera,
-    updateTopCamera,
-    createSideCamera,
-    updateSideCamera,
     setupThreeJSLighting,
     updateSunPosition,
     updateGroundPlane,
@@ -1939,4 +1735,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'renderer3d');
 
-export { threeRenderer, ibcGlbState, getCachedMaterial, getCachedGeometry, invalidateMeshCaches, initThreeJS, createMainCamera, updateMainCamera, createTopCamera, updateTopCamera, createSideCamera, updateSideCamera, setupThreeJSLighting, updateSunPosition, updateGroundPlane, updateGridVisibility, updateGridPosition, rgbToThreeColor, getBeamBoltIntersections, buildBeamMeshWithHoles, createBeamMesh, createPanelMesh, createBracketMesh, createBoltMesh, createWasherMesh, clearGroup, ibcStackLayoutCacheKey };
+export { threeRenderer, ibcGlbState, getCachedMaterial, getCachedGeometry, invalidateMeshCaches, initThreeJS, createMainCamera, updateMainCamera, setupThreeJSLighting, updateSunPosition, updateGroundPlane, updateGridVisibility, updateGridPosition, rgbToThreeColor, getBeamBoltIntersections, buildBeamMeshWithHoles, createBeamMesh, createPanelMesh, createBracketMesh, createBoltMesh, createWasherMesh, clearGroup, ibcStackLayoutCacheKey };

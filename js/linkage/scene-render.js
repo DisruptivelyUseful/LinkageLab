@@ -238,9 +238,6 @@ import { partKey } from './part-keys.js';
             updateGroundPlane();
 
             // Skip ortho scene mesh rebuilds during animation / build-step playback (major perf win)
-            if (!(state.animation && state.animation.playing) && !(state.buildPlayback && state.buildPlayback.active)) {
-                updateOrthoScenes(data, sc);
-            }
         }
 
         // Build-step playback: stage the assembly (hide future parts, highlight the
@@ -380,110 +377,6 @@ import { partKey } from './part-keys.js';
     }
     
     /**
-     * Updates orthographic scene content (top and side views)
-     */
-    function updateOrthoScenes(data, structureCenter) {
-        const sc = structureCenter || { x: 0, y: 0, z: 0 };
-        const structureRotRad = (state.structureRotation || 0) * Math.PI / 180;
-        const hideLegacyHardware = state.showHardwareFullDetail || state.hwDetailMode === true;
-        const showLegacyBrackets = state.showBrackets && !hideLegacyHardware;
-        const showLegacyBolts = state.showBolts && !hideLegacyHardware;
-        
-        // Apply structure rotation around structure center for ortho views (structure only, not panels)
-        if (threeRenderer.topStructureGroup) {
-            threeRenderer.topStructureGroup.position.set(sc.x, sc.y, sc.z);
-            threeRenderer.topStructureGroup.rotation.y = structureRotRad;
-        }
-        if (threeRenderer.sideStructureGroup) {
-            threeRenderer.sideStructureGroup.position.set(sc.x, sc.y, sc.z);
-            threeRenderer.sideStructureGroup.rotation.y = structureRotRad;
-        }
-        
-        // Panels in separate groups - position but don't rotate with structure
-        if (threeRenderer.topPanelGroup) {
-            threeRenderer.topPanelGroup.position.set(sc.x, sc.y, sc.z);
-            threeRenderer.topPanelGroup.rotation.y = 0;
-        }
-        if (threeRenderer.sidePanelGroup) {
-            threeRenderer.sidePanelGroup.position.set(sc.x, sc.y, sc.z);
-            threeRenderer.sidePanelGroup.rotation.y = 0;
-        }
-        
-        // Helper to offset mesh position by -structureCenter
-        const offsetMesh = (mesh) => {
-            mesh.position.x -= sc.x;
-            mesh.position.y -= sc.y;
-            mesh.position.z -= sc.z;
-            return mesh;
-        };
-        
-        // Get groups from wrapper groups (structure groups now have beams, brackets, bolts)
-        const topBeamGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[0] : null;
-        const topBracketGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[1] : null;
-        const topBoltGroup = threeRenderer.topStructureGroup ? threeRenderer.topStructureGroup.children[2] : null;
-        const sideBeamGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[0] : null;
-        const sideBracketGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[1] : null;
-        const sideBoltGroup = threeRenderer.sideStructureGroup ? threeRenderer.sideStructureGroup.children[2] : null;
-        
-        if (topBeamGroup) clearGroup(topBeamGroup);
-        if (topBracketGroup) clearGroup(topBracketGroup);
-        if (topBoltGroup) clearGroup(topBoltGroup);
-        if (sideBeamGroup) clearGroup(sideBeamGroup);
-        if (sideBracketGroup) clearGroup(sideBracketGroup);
-        if (sideBoltGroup) clearGroup(sideBoltGroup);
-        if (threeRenderer.topPanelGroup) clearGroup(threeRenderer.topPanelGroup);
-        if (threeRenderer.sidePanelGroup) clearGroup(threeRenderer.sidePanelGroup);
-        
-        // Add beams to ortho views
-        if (data.beams) {
-            const orthoBolts = data.bolts || [];
-            data.beams.forEach(beam => {
-                const topMesh = createBeamMesh(beam, false, orthoBolts);
-                const sideMesh = createBeamMesh(beam, false, orthoBolts);
-                offsetMesh(topMesh);
-                offsetMesh(sideMesh);
-                if (topBeamGroup) topBeamGroup.add(topMesh);
-                if (sideBeamGroup) sideBeamGroup.add(sideMesh);
-            });
-        }
-        
-        // Add panels to ortho views (separate from structure rotation)
-        if (data.panels && data.panels.length > 0) {
-            data.panels.forEach(panel => {
-                const topMesh = createPanelMesh(panel);
-                const sideMesh = createPanelMesh(panel);
-                offsetMesh(topMesh);
-                offsetMesh(sideMesh);
-                if (threeRenderer.topPanelGroup) threeRenderer.topPanelGroup.add(topMesh);
-                if (threeRenderer.sidePanelGroup) threeRenderer.sidePanelGroup.add(sideMesh);
-            });
-        }
-        
-        // Add brackets and bolts to ortho views (if enabled)
-        if (showLegacyBrackets && data.brackets) {
-            data.brackets.forEach(bracket => {
-                const topMesh = createBracketMesh(bracket);
-                const sideMesh = createBracketMesh(bracket);
-                offsetMesh(topMesh);
-                offsetMesh(sideMesh);
-                if (topBracketGroup) topBracketGroup.add(topMesh);
-                if (sideBracketGroup) sideBracketGroup.add(sideMesh);
-            });
-        }
-        
-        if (showLegacyBolts && data.bolts) {
-            data.bolts.forEach(bolt => {
-                const topMesh = createBoltMesh(bolt);
-                const sideMesh = createBoltMesh(bolt);
-                offsetMesh(topMesh);
-                offsetMesh(sideMesh);
-                if (topBoltGroup) topBoltGroup.add(topMesh);
-                if (sideBoltGroup) sideBoltGroup.add(sideMesh);
-            });
-        }
-    }
-    
-    /**
      * Renders all Three.js viewports
      */
     function renderThreeJS(data, structureCenter) {
@@ -523,32 +416,6 @@ import { partKey } from './part-keys.js';
             }
         }
         
-        const topWebGLCanvas = document.getElementById('canvas-top-webgl');
-        const top2DCanvas = document.getElementById('canvas-top');
-        const topSection = document.getElementById('top-view-section');
-        if (topWebGLCanvas) topWebGLCanvas.style.display = 'block';
-        if (top2DCanvas) top2DCanvas.style.display = 'none';
-        if (topWebGLCanvas && topSection && threeRenderer.top) {
-            const tw = topSection.clientWidth;
-            const th = topSection.clientHeight;
-            topWebGLCanvas.width = tw;
-            topWebGLCanvas.height = th;
-            threeRenderer.top.setSize(tw, th, false);
-        }
-        
-        const sideWebGLCanvas = document.getElementById('canvas-side-webgl');
-        const side2DCanvas = document.getElementById('canvas-side');
-        const sideSection = document.getElementById('side-view-section');
-        if (sideWebGLCanvas) sideWebGLCanvas.style.display = 'block';
-        if (side2DCanvas) side2DCanvas.style.display = 'none';
-        if (sideWebGLCanvas && sideSection && threeRenderer.side) {
-            const sw = sideSection.clientWidth;
-            const sh = sideSection.clientHeight;
-            sideWebGLCanvas.width = sw;
-            sideWebGLCanvas.height = sh;
-            threeRenderer.side.setSize(sw, sh, false);
-        }
-        
         // Update scenes with structure center for proper rotation pivot
         updateThreeJSScenes(data, structureCenter);
         
@@ -560,25 +427,6 @@ import { partKey } from './part-keys.js';
         updateMainCamera(camCenter);
         updateGridPosition(structureCenter);
         threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
-        
-        // Skip ortho view updates during animation / build-step playback for major perf gain
-        const skipOrtho = (state.animation && state.animation.playing) || (state.buildPlayback && state.buildPlayback.active);
-        
-        if (!skipOrtho) {
-            const topSection = document.getElementById('top-view-section');
-            const sideSection = document.getElementById('side-view-section');
-            const topVisible = topSection && topSection.offsetParent !== null;
-            const sideVisible = sideSection && sideSection.offsetParent !== null;
-            
-            if (topVisible && threeRenderer.top && threeRenderer.topCamera) {
-                updateTopCamera(data, structureCenter);
-                threeRenderer.top.render(threeRenderer.topScene, threeRenderer.topCamera);
-            }
-            if (sideVisible && threeRenderer.side && threeRenderer.sideCamera) {
-                updateSideCamera(data, structureCenter);
-                threeRenderer.side.render(threeRenderer.sideScene, threeRenderer.sideCamera);
-            }
-        }
         
         return true;
     }
@@ -601,11 +449,10 @@ import { partKey } from './part-keys.js';
 const _moduleExports = {
     updateThreeJSScenes,
     renderActuatorLine,
-    updateOrthoScenes,
     renderThreeJS,
     renderFrameOnly,
 };
 
 bridgeGlobals(_moduleExports, 'sceneRender');
 
-export { updateThreeJSScenes, renderActuatorLine, updateOrthoScenes, renderThreeJS, renderFrameOnly };
+export { updateThreeJSScenes, renderActuatorLine, renderThreeJS, renderFrameOnly };

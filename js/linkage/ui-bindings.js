@@ -1716,13 +1716,51 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
         document.getElementById('btn-undo').onclick = undo;
         document.getElementById('btn-redo').onclick = redo;
         
-        // Sidebar toggle
-        document.getElementById('sidebar-toggle').onclick = () => {
+        // Sidebar toggle (state persists across reloads; viewport re-sizes after the slide)
+        (function bindSidebarToggle() {
             const sidebar = document.getElementById('sidebar');
             const toggle = document.getElementById('sidebar-toggle');
-            sidebar.classList.toggle('collapsed');
-            toggle.textContent = sidebar.classList.contains('collapsed') ? '▶' : '◀';
-        };
+            if (!sidebar || !toggle) return;
+            const apply = (collapsed) => {
+                sidebar.classList.toggle('collapsed', collapsed);
+                toggle.textContent = collapsed ? '▶' : '◀';
+                toggle.title = collapsed ? 'Show controls' : 'Hide controls';
+                toggle.setAttribute('aria-expanded', String(!collapsed));
+                setTimeout(requestRender, 300);
+            };
+            let saved = false;
+            try { saved = localStorage.getItem('linkagelab.sidebarCollapsed') === '1'; } catch (e) { /* ignore */ }
+            if (saved) apply(true);
+            toggle.onclick = () => {
+                const collapsed = !sidebar.classList.contains('collapsed');
+                apply(collapsed);
+                try { localStorage.setItem('linkagelab.sidebarCollapsed', collapsed ? '1' : '0'); } catch (e) { /* ignore */ }
+            };
+        })();
+
+        // Bill of materials drawer (viewport bottom)
+        (function bindBomDrawer() {
+            const drawer = document.getElementById('bom-drawer');
+            const btn = document.getElementById('btn-bom-toggle');
+            if (!drawer || !btn) return;
+            const setOpen = (open) => {
+                drawer.classList.toggle('open', open);
+                drawer.setAttribute('aria-hidden', String(!open));
+                btn.setAttribute('aria-expanded', String(open));
+                try { localStorage.setItem('linkagelab.bomDrawerOpen', open ? '1' : '0'); } catch (e) { /* ignore */ }
+            };
+            const isOpen = () => drawer.classList.contains('open');
+            btn.onclick = () => setOpen(!isOpen());
+            document.getElementById('btn-bom-close')?.addEventListener('click', () => setOpen(false));
+            document.querySelectorAll('[data-open-bom]').forEach(el => el.addEventListener('click', () => setOpen(true)));
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && isOpen()) setOpen(false);
+            });
+            let saved = false;
+            try { saved = localStorage.getItem('linkagelab.bomDrawerOpen') === '1'; } catch (e) { /* ignore */ }
+            if (saved) setOpen(true);
+            globalThis.toggleBomDrawer = () => setOpen(!isOpen());
+        })();
         
         // Canvas click handler (reserved for future use)
         canvas.onclick = e => {
