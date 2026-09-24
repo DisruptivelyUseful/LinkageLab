@@ -373,6 +373,7 @@ function viewStatusText(step) {
     if (!step.view) return step.targets && step.targets.length ? 'Auto-frame targets' : 'Keep current camera';
     const v = step.view;
     const fold = v.foldAngleDeg === null || v.foldAngleDeg === undefined ? '' : ` · fold ${v.foldAngleDeg.toFixed(0)}°`;
+    if (v.frame === 'targets') return `Close-up${v.detail !== false ? ' · parts detail view' : ''}${v.radial ? ' · from outside' : ''}${fold}`;
     return `Saved · yaw ${radToDeg(v.yaw).toFixed(0)}° · pitch ${radToDeg(v.pitch).toFixed(0)}° · dist ${v.dist.toFixed(0)}${fold}`;
 }
 
@@ -399,6 +400,7 @@ function opFieldsHtml(step) {
             return `<div class="bs-field-row">
                 <label>Turns <input type="number" id="bs-op-turns" min="0.5" step="0.5" value="${esc(op.turns == null ? 3 : op.turns)}"></label>
                 <label class="bs-check"><input type="checkbox" id="bs-op-allmodules"${op.allModules ? ' checked' : ''}> All modules</label>
+                <label class="bs-check"><input type="checkbox" id="bs-op-sequential"${op.sequential ? ' checked' : ''}> One joint at a time</label>
                 <span class="bs-hint">Targets should be joints or bolts. A nut on the same joint turns with the bolt when present.</span>
             </div>`;
         default:

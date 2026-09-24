@@ -36,6 +36,15 @@ const BOLT_TYPE_LABELS = {
     'rcp-cross': 'Reciprocal cross bolt',
 };
 
+/** Order joints are worked in: pivots with brackets first, then centre links. */
+export const JOINT_ROLE_RANK = { outer: 0, inner: 1, center: 2 };
+export function jointRoleRank(role) {
+    return role in JOINT_ROLE_RANK ? JOINT_ROLE_RANK[role] : 3;
+}
+export function placementRole(pl) {
+    return (pl && (ASSEMBLY_ROLES[pl.assemblyId] || pl.pivotRole)) || '-';
+}
+
 const ASSEMBLY_ROLES = {
     outerVBeam: 'outer',
     innerVBeam: 'inner',

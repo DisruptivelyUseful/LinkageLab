@@ -5,6 +5,8 @@ import { collectParts } from '../js/linkage/part-keys.js';
 import {
     addStep,
     autoFrameView,
+    normalizeView,
+    sequenceProgress,
     captureView,
     computeStepVisibility,
     createDefaultBuildSteps,
@@ -121,6 +123,33 @@ describe('build-steps: views', () => {
         // null fold on one side keeps the other
         const c = captureView({ yaw: 0, pitch: 0, dist: 100, panX: 0, panY: 0 }, null);
         expect(tweenView(a, c, 0.5).foldAngleDeg).toBeCloseTo(90);
+    });
+
+    it('normalizeView keeps the close-up frame mode and drops it otherwise', () => {
+        const close = normalizeView({ yaw: 0.6, pitch: 0.4, dist: 120, foldAngleDeg: 40, frame: 'targets', radial: true, padding: 1.6 });
+        expect(close.frame).toBe('targets');
+        expect(close.radial).toBe(true);
+        expect(close.padding).toBe(1.6);
+        expect(close.foldAngleDeg).toBe(40);
+        expect(close.detail).toBe(true);
+        expect(normalizeView({ frame: 'targets', detail: false }).detail).toBe(false);
+        const wide = normalizeView({ yaw: 0.6, pitch: 0.4, dist: 600, frame: 'bogus' });
+        expect(wide.frame).toBeUndefined();
+        const step = createStep('fasten', { view: { frame: 'targets', foldAngleDeg: 40 } });
+        expect(step.view.frame).toBe('targets');
+        expect(step.view.padding).toBe(1.6);
+        expect(createStep("fasten", { view: { frame: "targets", padding: 1.35 } }).view.padding).toBe(1.35);
+    });
+
+    it('sequenceProgress runs items one after another with overlap', () => {
+        expect(sequenceProgress(0.5, 0, 1)).toBe(0.5);
+        expect(sequenceProgress(0, 0, 3)).toBe(0);
+        expect(sequenceProgress(1, 2, 3)).toBeCloseTo(1);
+        expect(sequenceProgress(0.5, 2, 3)).toBe(0);
+        expect(sequenceProgress(0.5, 0, 3)).toBeCloseTo(1);
+        const mid = sequenceProgress(0.5, 1, 3);
+        expect(mid).toBeGreaterThan(0);
+        expect(mid).toBeLessThan(1);
     });
 
     it('autoFrameView fits the bounding sphere', () => {

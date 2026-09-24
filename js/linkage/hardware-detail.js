@@ -3189,6 +3189,8 @@ function hwPartCopyExplodedPos(part, stackOrigin, partRank, gap, copyIndex) {
 
 function hwExplodeFactor() {
     ensureHardwareAssemblies();
+    // Build-step playback animates parts from their seated positions
+    if (state.buildPlayback && state.buildPlayback.active) return 0;
     const v = state.hardwareAssemblies.explode;
     return typeof v === 'number' && !isNaN(v) ? Math.min(1, Math.max(0, v)) : 0;
 }

@@ -14,7 +14,7 @@
 // the editor in build-steps-ui.js.
 
 import { bridgeGlobals } from './global-bridge.js';
-import { collectParts, matchSelector, partKey, partsBounds, resolveTargets, selectorForPart, selectorLabel } from './part-keys.js';
+import { collectParts, jointKey, matchSelector, partKey, partsBounds, resolveTargets, selectorForPart, selectorLabel } from './part-keys.js';
 
 export const BUILD_STEPS_VERSION = 1;
 
@@ -37,7 +37,7 @@ export function defaultOpForKind(kind) {
         case 'cut':    return { stockLengthIn: null, kerfIn: 0.125 };
         case 'drill':  return { bitDiameterIn: null, holes: 'auto' };
         case 'place':  return { approach: 'above', travelIn: 24, parkOffset: null, from: null, sequential: false };
-        case 'fasten': return { bolt: null, nut: null, turns: 3, allModules: false, axes: null };
+        case 'fasten': return { bolt: null, nut: null, turns: 3, allModules: false, axes: null, sequential: false };
         default:       return {};
     }
 }
@@ -139,6 +139,10 @@ export function normalizeView(v) {
         panY: n(v.panY, 0),
         anchor: v.anchor && typeof v.anchor === 'object' ? cloneSelector(v.anchor) : null,
         foldAngleDeg: v.foldAngleDeg === null || v.foldAngleDeg === undefined ? null : n(v.foldAngleDeg, null),
+        // frame:'targets' = close-up: at playback, frame the step's parts at this
+        // fold angle (yaw/pitch/padding below, radial = look inward from outside the ring)
+        // detail = use the hardware parts detail view when the step targets a detailed assembly
+        ...(v.frame === 'targets' ? { frame: 'targets', radial: !!v.radial, padding: Math.max(1, n(v.padding, 1.6)), detail: v.detail !== false } : {}),
     };
 }
 
@@ -403,6 +407,18 @@ export function tweenView(a, b, t) {
  * @param {{center:{x,y,z}, radius:number}} bounds - from partsBounds
  * @param {Object} opts - { fovDeg, aspect, yaw, pitch, padding, anchor, foldAngleDeg }
  */
+/**
+ * Progress of item i of n when items run one after another with overlapping
+ * windows (overlap = fraction of a window shared with the next item).
+ * @returns {number} 0..1 local progress
+ */
+export function sequenceProgress(t, i, n, overlap = 0.35) {
+    if (n <= 1) return Math.max(0, Math.min(1, t));
+    const win = 1 / (n - (n - 1) * overlap);
+    const start = i * win * (1 - overlap);
+    return Math.max(0, Math.min(1, (t - start) / win));
+}
+
 export function autoFrameView(bounds, opts = {}) {
     const fov = ((opts.fovDeg || 45) * Math.PI) / 180;
     const aspect = opts.aspect || 1.5;
@@ -789,7 +805,12 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     //    bottom ring (+ brackets) -> top ring built beside it as a mirror -> V modules
     //    -> attach V modules to the bottom ring -> lift the top ring on -> secure top brackets.
     const view = (fold) => (fold === null || fold === undefined ? null : { yaw: 0.6, pitch: 0.35, dist: 600, anchor: null, foldAngleDeg: fold });
+    // Hardware steps zoom in on their joint: frame the step's parts from outside the ring
+    // pitch: look down onto vertical (bracket) bolts, side-on at horizontal (pivot) bolts
+    const closeView = (fold, pitch = 0.4) => ({ yaw: 0.6, pitch, dist: 120, anchor: null, foldAngleDeg: fold === undefined ? null : fold, frame: 'targets', radial: true, padding: 1.35, detail: true });
+    const DOWN = 0.75, SIDE = 0.3;
     const hasPlacements = has({ kind: 'placement' });
+    const jointCount = (targets) => new Set(resolveTargets(data, targets, parts).items.map(r => jointKey(r.obj, r.kind)).filter(Boolean)).size;
     const eachModule = (groupKey, fn) => {
         const gid = `auto-${groupKey}`;
         let emitted = 0;
@@ -798,8 +819,14 @@ export function generateDefaultBuildSteps(data, opts = {}) {
             if (!spec) continue;
             const targets = spec.targets.filter(has);
             if (!targets.length) continue;
-            const { kind, title, notes, ...extra } = spec;
-            mk(kind, { title, notes, targets, view: null, groupId: gid, ...extra });
+            const { kind, title, notes, close, ...extra } = spec;
+            if (kind === 'fasten') {
+                // Joint by joint, camera zooming onto each joint in turn
+                const joints = jointCount(targets);
+                extra.op = { ...(extra.op || {}), sequential: true };
+                extra.durationMs = Math.min(12000, 800 + 1800 * Math.max(1, joints));
+            }
+            mk(kind, { title, notes, targets, view: close ? closeView(folded, close) : null, groupId: gid, ...extra });
             emitted += 1;
         }
         return emitted;
@@ -809,17 +836,17 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     // Bottom assembly
     eachModule('bottom-hbeams', (i, m) => ({ kind: 'place', title: `${m}: set bottom H-beams`, notes: 'Stack the bottom horizontal beams with their washers between layers.',
         targets: [{ kind: 'beam', stackType: 'horizontal-bottom', moduleIndex: i }], op: { approach: 'above', travelIn: 24 } }));
-    eachModule('bottom-brackets', (i, m) => ({ kind: 'place', title: `${m}: fit the bottom brackets`, notes: 'Seat the U-brackets on the bottom stack with the hole aligned to the pivot.',
+    eachModule('bottom-brackets', (i, m) => ({ close: DOWN, kind: 'place', title: `${m}: fit the bottom brackets`, notes: 'Seat the U-brackets on the bottom stack with the hole aligned to the pivot.',
         targets: [{ kind: 'bracket', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: { approach: 'above', travelIn: 12 } }));
-    eachModule('bottom-bracket-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the bottom ring pivots and brackets`, notes: 'Bolt the H-beam centre pivot, then bolt each bracket down through the bottom H-beam stack.',
+    eachModule('bottom-bracket-bolts', (i, m) => ({ close: DOWN, kind: 'fasten', title: `${m}: bolt the bottom ring pivots and brackets`, notes: 'Bolt the H-beam centre pivot, then bolt each bracket down through the bottom H-beam stack.',
         targets: [{ kind: 'bolt', boltType: 'hstack', moduleIndex: i, ring: 'bottom' }, { kind: 'bolt', boltType: 'hpivot', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: hasPlacements ? { axes: ['down', 'up'] } : {} }));
 
     // Top assembly, built on the ground beside the bottom ring as a mirror of it
     eachModule('top-hbeams', (i, m) => ({ kind: 'place', title: `${m}: set top H-beams (mirror of the bottom ring)`, notes: 'Build the top ring beside the bottom ring, mirrored, with brackets facing down.',
         targets: [{ kind: 'beam', stackType: 'horizontal-top', moduleIndex: i }], op: { approach: 'above', travelIn: 24, parkOffset: parked } }));
-    eachModule('top-brackets', (i, m) => ({ kind: 'place', title: `${m}: fit the top brackets`, notes: 'Seat the top U-brackets on the top stack, opening downward.',
+    eachModule('top-brackets', (i, m) => ({ close: DOWN, kind: 'place', title: `${m}: fit the top brackets`, notes: 'Seat the top U-brackets on the top stack, opening downward.',
         targets: [{ kind: 'bracket', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: { approach: 'above', travelIn: 12, parkOffset: parked } }));
-    eachModule('top-bracket-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the top ring pivots and brackets`, notes: 'Bolt the top H-beam centre pivot, then bolt each top bracket through the top H-beam stack.',
+    eachModule('top-bracket-bolts', (i, m) => ({ close: DOWN, kind: 'fasten', title: `${m}: bolt the top ring pivots and brackets`, notes: 'Bolt the top H-beam centre pivot, then bolt each top bracket through the top H-beam stack.',
         targets: [{ kind: 'bolt', boltType: 'hstack', moduleIndex: i, ring: 'top' }, { kind: 'bolt', boltType: 'hpivot', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: hasPlacements ? { axes: ['down', 'up'] } : {} }));
 
     // V modules
@@ -828,11 +855,11 @@ export function generateDefaultBuildSteps(data, opts = {}) {
         : [{ kind: 'beam', stackType: 'vertical', moduleIndex: i }, { kind: 'beam', stackType: 'vertical-cap', moduleIndex: i }]);
     eachModule('v-modules', (i, m) => ({ kind: 'place', title: `${m}: assemble the V module`, notes: opts.useFixedBeams ? 'Stand the fixed uprights.' : 'Cross the V-beams in their A/B pattern and align the pivot holes.',
         targets: uprightSel(i), op: { approach: 'radial', travelIn: 30 } }));
-    eachModule('v-center-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the V module centre pivot`, notes: 'Insert the centre pivot bolt through the crossing; snug, not torqued.',
+    eachModule('v-center-bolts', (i, m) => ({ close: SIDE, kind: 'fasten', title: `${m}: bolt the V module centre pivot`, notes: 'Insert the centre pivot bolt through the crossing; snug, not torqued.',
         targets: [{ kind: 'joint', moduleIndex: i, ring: 'center' }] }));
 
     // Attach V modules to the bottom ring
-    eachModule('attach-bottom', (i, m) => ({ kind: 'fasten', title: `${m}: attach the V module to the bottom ring`, notes: 'Slide the V-beam ends into the bottom brackets and insert the pivot bolts.',
+    eachModule('attach-bottom', (i, m) => ({ close: SIDE, kind: 'fasten', title: `${m}: attach the V module to the bottom ring`, notes: 'Slide the V-beam ends into the bottom brackets and insert the pivot bolts.',
         targets: [{ kind: 'bolt', boltType: 'vstack', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: hasPlacements ? { axes: ['right', 'left'] } : {} }));
 
     // Lift the top assembly onto the V modules
@@ -843,7 +870,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     }
 
     // Secure the top brackets to the V modules
-    eachModule('secure-top', (i, m) => ({ kind: 'fasten', title: `${m}: secure the top bracket to the V module`, notes: 'Insert the top pivot bolts and torque every pivot on this module.',
+    eachModule('secure-top', (i, m) => ({ close: SIDE, kind: 'fasten', title: `${m}: secure the top bracket to the V module`, notes: 'Insert the top pivot bolts and torque every pivot on this module.',
         targets: [{ kind: 'bolt', boltType: 'vstack', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: hasPlacements ? { axes: ['right', 'left'] } : {} }));
 
     // Module steps share the assembly pose
@@ -859,7 +886,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     }
     if (support) mk('place', { title: 'Install radial support beams', notes: 'Lay the radial support beams across the top ring.', targets: [{ kind: 'beam', stackType: 'support-beam' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
     if (rcp) mk('place', { title: 'Install reciprocal beams', notes: 'Weave the reciprocal beams over/under each other and onto the ring anchors.', targets: [{ kind: 'beam', stackType: 'support-beam-reciprocal' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
-    if (rcpBolts) mk('fasten', { title: 'Bolt the reciprocal beams', notes: 'Through-bolt each crossing and anchor.', targets: [{ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] }], view: view(deployed) });
+    if (rcpBolts) mk('fasten', { title: 'Bolt the reciprocal beams', notes: 'Through-bolt each crossing and anchor.', targets: [{ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] }], view: closeView(deployed, DOWN) });
     if (panels) {
         const count = resolveTargets(data, [{ kind: 'panel' }], parts).items.length;
         mk('place', { title: 'Mount the solar panels', notes: 'Lift each panel onto the support beams in order and clamp it down.', targets: [{ kind: 'panel' }], view: view(deployed),
@@ -919,6 +946,7 @@ const _moduleExports = {
     stockLengthFor,
     needsCut,
     dedupeHoles,
+    sequenceProgress,
     groupBeamsForBench,
     planBench,
     benchSummary,

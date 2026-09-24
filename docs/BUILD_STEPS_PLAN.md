@@ -127,3 +127,8 @@ Modified: `js/linkage/solver.js` (bolt/washer identity fields), `js/linkage/hard
 ## Round 3: refresh-only test site + merge to main — DONE
 
 GitHub Pages serves `main` (Settings → Pages → Deploy from a branch → `main` / root). The feature branch is fast-forwarded into `main` after each round, so testing is a browser refresh (Ctrl+Shift+R past the 10-minute Pages cache). See the README.
+
+## Round 4: generator fixes and close-ups — DONE
+
+- Auto skips cut steps for beams that already match their stock length, merges duplicate holes from shared pivots, starts the drill over the first hole, and mounts panels one at a time (`op.sequential` on place steps).
+- Hardware steps (fit brackets, every fasten) carry a close-up view (`view.frame = 'targets'`, `detail: true`). With Full Detail hardware on, playback enters the **parts detail view** of the joint (`state.hwDetailMode` without the modal; `state.buildPlayback.detailPlacementKey` picks the placement; `hwExplodeFactor()` is 0 while playing). Fasten steps bolt joint by joint (outer → inner → centre) and the camera follows each joint (`fastenDriver.focus` → `setDetailFocus`). Without detailed hardware the camera frames the parts from outside the ring. Parts of other modules are faded during close-ups.

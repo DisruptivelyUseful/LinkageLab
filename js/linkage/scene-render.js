@@ -2,6 +2,7 @@
 
 import { bridgeGlobals } from './global-bridge.js';
 import { calculateJointPositions } from './joint-kinematics.js';
+import { partKey } from './part-keys.js';
 
     // Radius (inches) around the focused assembly within which structure beams
     // are drawn semi-transparent in hardware detail ("part view") mode so the
@@ -40,7 +41,10 @@ import { calculateJointPositions } from './joint-kinematics.js';
     function hwResolveDetailFocus(data, sc, structureRotRad) {
         if (!state.hwDetailMode || !data.hardwareAssemblyPlacements || !data.hardwareAssemblyPlacements.length) return null;
         const activeId = state.hardwareAssemblies && state.hardwareAssemblies.activeId;
-        const pl = data.hardwareAssemblyPlacements.find(p => p.assemblyId === activeId) || data.hardwareAssemblyPlacements[0];
+        // Build-step playback focuses the placement of the joint being worked on
+        const stepKey = state.buildPlayback && state.buildPlayback.active ? state.buildPlayback.detailPlacementKey : null;
+        const stepPl = stepKey ? data.hardwareAssemblyPlacements.find(p => partKey(p, 'placement') === stepKey) : null;
+        const pl = stepPl || data.hardwareAssemblyPlacements.find(p => p.assemblyId === activeId) || data.hardwareAssemblyPlacements[0];
         const asm = pl && hwGetAssemblyById(pl.assemblyId);
         // Allow framing a detailed-but-empty assembly so the user can build it in place.
         if (!pl || !asm || !asm.detailed) return null;
@@ -241,8 +245,9 @@ import { calculateJointPositions } from './joint-kinematics.js';
 
         // Build-step playback: stage the assembly (hide future parts, highlight the
         // current step's parts, or show the workbench). Runs last so it can override
-        // grid/panel visibility. Global lookup avoids an import cycle.
-        if (state.buildPlayback && state.buildPlayback.active && !detail && typeof globalThis.applyBuildStepScene === 'function') {
+        // grid/panel visibility. Global lookup avoids an import cycle. In the parts
+        // detail view (close-up steps) it also captures the framed camera.
+        if (state.buildPlayback && state.buildPlayback.active && typeof globalThis.applyBuildStepScene === 'function') {
             globalThis.applyBuildStepScene(data, sc);
         }
     }

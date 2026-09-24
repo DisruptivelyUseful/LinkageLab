@@ -22,7 +22,7 @@ import { renderFrameOnly } from './scene-render.js';
 import { invalidateGeometryCache } from './cache.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
 import { syncUI } from './state-sync.js';
-import { collectParts, matchSelector, partKey, partsBounds } from './part-keys.js';
+import { collectParts, matchSelector, partKey, partsBounds, jointRoleRank, placementRole } from './part-keys.js';
 import {
     autoFrameView,
     captureView,
@@ -81,6 +81,14 @@ const engine = {
     listeners: new Set(),
     partsCache: { data: null, parts: null },
     visibility: null,    // last computed visibility map
+    // Hardware parts detail view (close-up steps on detailed assemblies)
+    detailKey: null,           // placement key currently focused, or null
+    awaitingDetailFrame: false,// next scene rebuild frames the focused placement
+    detailSnap: false,         // apply that framing at once instead of tweening to it
+    camBeforeFrame: null,      // camera to restore after the scene framed the placement
+    focusView: null,           // camera the detail view wants ({yaw,pitch,dist})
+    focusTarget: null,         // world look-at point of the focused placement
+    savedLockRadial: null,
 };
 
 function playback() {
@@ -249,7 +257,107 @@ function viewportAspect() {
  * The view a step should end up in: its saved view, or an auto-framed view of
  * its targets, or the current camera when it has neither.
  */
+// ---------------------------------------------------------------------------
+// Hardware parts detail view for close-up steps
+// ---------------------------------------------------------------------------
+
+function hwDetailState() {
+    return globalThis.hwDetail || null;
+}
+
+/** True when the step wants a close-up and the design renders detailed hardware. */
+function stepWantsDetail(step) {
+    return !!(step && step.view && step.view.frame === 'targets' && step.view.detail !== false && state.showHardwareFullDetail);
+}
+
+/** Placement records the step targets whose assembly is detailed, sorted by key. */
+function detailPlacementsFor(ctx) {
+    if (!ctx) return [];
+    const getAsm = globalThis.hwGetAssemblyById;
+    return ctx.targets
+        .filter(rec => rec.kind === 'placement')
+        .filter(rec => { const asm = typeof getAsm === 'function' ? getAsm(rec.obj.assemblyId) : null; return asm && asm.detailed; })
+        // Same work order as the fasten driver: outer pivot, inner pivot, centre link
+        .sort((a, b) => jointRoleRank(placementRole(a.obj)) - jointRoleRank(placementRole(b.obj)) || a.key.localeCompare(b.key));
+}
+
+/** Placement to focus for a step: the first detailed placement it targets, or null. */
+function detailPlacementFor(step, ctx) {
+    if (!stepWantsDetail(step)) return null;
+    const list = detailPlacementsFor(ctx);
+    return list.length ? list[0].key : null;
+}
+
+/**
+ * Enters / leaves the parts detail view on one placement. The next scene
+ * rebuild frames it (hwFrameDetailInstance); applyBuildStepScene captures that
+ * camera as the focus view and either snaps to it or tweens toward it.
+ */
+function setDetailFocus(key, { snap = false } = {}) {
+    const pb = playback();
+    const hd = hwDetailState();
+    if (key === engine.detailKey && !!state.hwDetailMode === !!key) return false;
+    engine.detailKey = key;
+    pb.detailPlacementKey = key;
+    state.hwDetailMode = !!key;
+    if (key) {
+        if (hd) hd.needsRecenter = true;
+        engine.awaitingDetailFrame = true;
+        engine.detailSnap = snap;
+        engine.camBeforeFrame = state.cam ? { ...state.cam } : null;
+    } else {
+        engine.awaitingDetailFrame = false;
+        engine.focusView = null;
+        engine.focusTarget = null;
+        if (threeRenderer) threeRenderer._hwFocusTarget = null;
+    }
+    invalidateGeometryCache();
+    requestRender();
+    return true;
+}
+
+/** Eases the live camera toward the detail view's framing (called every op frame). */
+function followDetailFocus(k) {
+    const fv = engine.focusView;
+    if (!fv || !state.cam) return;
+    const cam = state.cam;
+    let dy = fv.yaw - cam.yaw;
+    while (dy > Math.PI) dy -= 2 * Math.PI;
+    while (dy < -Math.PI) dy += 2 * Math.PI;
+    cam.yaw += dy * k;
+    cam.pitch += (fv.pitch - cam.pitch) * k;
+    cam.dist += (fv.dist - cam.dist) * k;
+    cam.panX += (0 - cam.panX) * k;
+    cam.panY += (0 - cam.panY) * k;
+    const ft = engine.focusTarget;
+    if (ft) {
+        const cur = cam.target || ft;
+        cam.target = { x: cur.x + (ft.x - cur.x) * k, y: cur.y + (ft.y - cur.y) * k, z: cur.z + (ft.z - cur.z) * k };
+        engine.toTarget = cam.target;
+    }
+}
+
+/** Yaw that puts the camera outside the ring, looking inward at a point. */
+function radialYawTo(point, data) {
+    const sc = structureCenterOf(data);
+    const dx = point.x - sc.x, dz = point.z - sc.z;
+    if (dx * dx + dz * dz < 1e-6) return 0.6;
+    return Math.atan2(dx, dz);
+}
+
 function resolveStepView(step, data, ctx = null) {
+    if (step && step.view && step.view.frame === 'targets' && step.targets && step.targets.length) {
+        // Close-up: frame the step's parts at playback time (their position depends on the pose)
+        const sv = normalizeView(step.view);
+        const b = stepFrameBounds(step, steps().indexOf(step), data) || targetsBounds(step.targets, data);
+        if (b) {
+            const yaw = sv.radial ? radialYawTo(b.center, data) : sv.yaw;
+            const v = autoFrameView(b, { fovDeg: 45, aspect: viewportAspect(), yaw, pitch: sv.pitch, anchor: null, foldAngleDeg: sv.foldAngleDeg, padding: sv.padding });
+            v.__targetPoint = b.center;
+            return v;
+        }
+        return sv;
+    }
     if (step && step.view) return normalizeView(step.view);
     const live = captureView(state.cam, null, null);
     // Bench-stage steps frame the workbench, not the assembly
@@ -335,6 +443,9 @@ function enterPlayback(index = null) {
         stopOtherAnimations();
         engine.savedCam = { ...state.cam, target: null };
         engine.savedFoldAngle = state.foldAngle;
+        const hd = hwDetailState();
+        engine.savedLockRadial = hd ? hd.lockRadialView : null;
+        if (hd) hd.lockRadialView = false; // the engine owns the camera; frame only on request
         pb.active = true;
         pb.phase = 'idle';
         pb.t = 0;
@@ -350,6 +461,16 @@ function exitPlayback() {
     if (!pb.active) return;
     pause();
     endCurrentOp();
+    if (engine.detailKey || state.hwDetailMode) {
+        engine.detailKey = null;
+        pb.detailPlacementKey = null;
+        state.hwDetailMode = false;
+        engine.focusView = engine.focusTarget = null;
+        engine.awaitingDetailFrame = false;
+        if (threeRenderer) threeRenderer._hwFocusTarget = null;
+    }
+    const hd = hwDetailState();
+    if (hd && engine.savedLockRadial !== null) { hd.lockRadialView = engine.savedLockRadial; engine.savedLockRadial = null; }
     pb.active = false;
     pb.phase = 'idle';
     pb.t = 0;
@@ -418,6 +539,8 @@ function goToStep(index, { immediate = false, autoplay = null } = {}) {
     engine.toView = resolveStepView(step, data, engine.ctx);
     engine.toTarget = engine.toView.__targetPoint || resolveViewTarget(engine.toView, data);
     engine.visibility = null;
+    // Close-up steps on detailed hardware use the parts detail view of their joint
+    setDetailFocus(detailPlacementFor(step, engine.ctx), { snap: immediate || !step.transitionMs });
 
     if (immediate || !step.transitionMs) {
         const changedFold = applyFoldDeg(engine.toView.foldAngleDeg);
@@ -614,17 +737,31 @@ function runOpFrame(t, { snap = false } = {}) {
     if (d.update) {
         try { rebuild = !!d.update(ctx, t); } catch (e) { console.warn('[BuildSteps] op update failed:', e); }
     }
-    // Let the op steer the look-at point (e.g. follow the drill bit)
+    // Let the op steer the look-at point (e.g. follow the drill bit or the joint being bolted)
+    const k = snap ? 1 : 0.12;
+    let focused = false;
     if (d.focus && state.cam) {
         let p = null;
         try { p = d.focus(ctx, t); } catch (e) { /* ignore */ }
         if (p) {
-            const cur = state.cam.target || p;
-            const k = snap ? 1 : 0.12;
-            state.cam.target = { x: cur.x + (p.x - cur.x) * k, y: cur.y + (p.y - cur.y) * k, z: cur.z + (p.z - cur.z) * k };
-            engine.toTarget = state.cam.target;
+            if (stepWantsDetail(ctx.step) && p.placementKey) {
+                // Parts detail view: switch the focused placement as the sequence moves on
+                setDetailFocus(p.placementKey, { snap });
+                focused = true;
+            } else if (!state.hwDetailMode) {
+                const cur = state.cam.target || p;
+                state.cam.target = { x: cur.x + (p.x - cur.x) * k, y: cur.y + (p.y - cur.y) * k, z: cur.z + (p.z - cur.z) * k };
+                engine.toTarget = state.cam.target;
+                if (p.radius) {
+                    const want = autoFrameView({ radius: p.radius }, { fovDeg: 45, aspect: viewportAspect(), padding: 1.4 }).dist;
+                    state.cam.dist += (want - state.cam.dist) * k;
+                }
+                focused = true;
+            }
         }
     }
+    if (state.hwDetailMode && engine.focusView && !engine.awaitingDetailFrame) followDetailFocus(k);
+    void focused;
     if (rebuild) { invalidateGeometryCache(); requestRender(); }
     else renderFrameOnly();
 }
@@ -644,6 +781,20 @@ function meshPartKey(obj) {
     if (ud.placement) return partKey(ud.placement, 'placement');
     if (ud.panel) return partKey(ud.panel, 'panel');
     return null;
+}
+
+/** Close-up steps fade the parts that are already installed so the joint reads clearly. */
+const GHOST_OPACITY = 0.18;
+function ghostMesh(root) {
+    root.traverse(ch => {
+        if (!ch.isMesh || !ch.material) return;
+        const mat = ch.material.clone();
+        mat.transparent = true;
+        mat.opacity = GHOST_OPACITY;
+        mat.depthWrite = false;
+        ch.material = mat;
+        ch.userData.buildGhosted = true;
+    });
 }
 
 function highlightMesh(root) {
@@ -705,6 +856,10 @@ function applyBuildStepScene(data, sc) {
     });
     engine.displacementOffsets = offsetByKey;
 
+    // Close-up steps fade parts of other modules so the joint being worked on reads clearly
+    const closeup = !!(step.view && step.view.frame === 'targets' && step.targets && step.targets.length);
+    const activeModules = new Set();
+    if (closeup) parts.forEach(rec => { if (vis.status.get(rec.key) === 'active' && rec.obj.moduleIndex !== undefined) activeModules.add(rec.obj.moduleIndex); });
     forEachPartMesh((mesh, key) => {
         const s = vis.status.get(key);
         if (s === 'future') { mesh.visible = false; return; }
@@ -712,7 +867,32 @@ function applyBuildStepScene(data, sc) {
         const off = offsetByKey.get(key);
         if (off) { mesh.position.x += off.x; mesh.position.y += off.y; mesh.position.z += off.z; }
         if (s === 'active') highlightMesh(mesh);
+        else if (closeup && activeModules.size) {
+            const rec = byKey.get(key);
+            if (!rec || rec.obj.moduleIndex === undefined || !activeModules.has(rec.obj.moduleIndex)) ghostMesh(mesh);
+        }
     });
+
+    // Parts detail view: the scene just framed the focused placement (hwFrameDetailInstance)
+    if (state.hwDetailMode && threeRenderer._hwFocusTarget) {
+        engine.focusTarget = { ...threeRenderer._hwFocusTarget };
+        if (engine.awaitingDetailFrame) {
+            engine.awaitingDetailFrame = false;
+            engine.focusView = { yaw: state.cam.yaw, pitch: state.cam.pitch, dist: state.cam.dist };
+            if (engine.detailSnap) {
+                state.cam.panX = 0; state.cam.panY = 0;
+                state.cam.target = { ...engine.focusTarget };
+                engine.toView = { ...engine.toView, ...engine.focusView, panX: 0, panY: 0 };
+            } else if (engine.camBeforeFrame) {
+                // Put the camera back where it was; the transition / op frames ease toward focusView
+                const c = engine.camBeforeFrame;
+                state.cam.yaw = c.yaw; state.cam.pitch = c.pitch; state.cam.dist = c.dist; state.cam.panX = c.panX; state.cam.panY = c.panY;
+                if (pb.phase === 'transition') engine.toView = { ...engine.toView, ...engine.focusView, panX: 0, panY: 0 };
+            }
+            engine.camBeforeFrame = null;
+        }
+        if (pb.phase === 'transition') engine.toTarget = { ...engine.focusTarget };
+    }
 
     // Bench-stage steps hide the structure entirely; the op driver owns the bench
     const bench = step.stage === 'bench';
@@ -815,6 +995,7 @@ const _moduleExports = {
     autoFrameStep,
     showStepView,
     resolveStepView,
+    debugEngine: () => ({ detailKey: engine.detailKey, awaiting: engine.awaitingDetailFrame, snap: engine.detailSnap, focusView: engine.focusView, focusTarget: engine.focusTarget, hwDetailMode: state.hwDetailMode, focusTargetScene: threeRenderer._hwFocusTarget, needsRecenter: (globalThis.hwDetail || {}).needsRecenter, lock: (globalThis.hwDetail || {}).lockRadialView }),
     targetsBounds,
     forEachPartMesh,
     meshPartKey,

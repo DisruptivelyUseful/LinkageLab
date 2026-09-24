@@ -164,6 +164,15 @@ describe('generateDefaultBuildSteps', () => {
         steps.filter(s => s.kind === 'place' && /set top H-beams|fit the top brackets/.test(s.title)).forEach(s => expect(s.op.parkOffset).toEqual({ mode: 'beside', gapIn: 24 }));
         expect(steps[liftIdx].op.from).toBe('parked');
 
+        // Hardware steps (brackets, bolts) are close-ups framed on their parts; beam steps stay wide
+        const closeups = steps.filter(s => s.view && s.view.frame === 'targets');
+        expect(closeups.length).toBeGreaterThanOrEqual(modules * 5);
+        closeups.forEach(s => { expect(s.view.radial).toBe(true); expect(s.view.detail).toBe(true); expect(s.view.foldAngleDeg).toBe(40); expect(s.kind === 'fasten' || /brackets/.test(s.title)).toBe(true); });
+        // Module fasten steps bolt joint by joint, with time for each joint
+        steps.filter(s => s.kind === 'fasten' && s.groupId).forEach(s => { expect(s.op.sequential).toBe(true); expect(s.durationMs).toBeGreaterThanOrEqual(2600); });
+        steps.filter(s => /H-beams|assemble the V module/.test(s.title)).forEach(s => expect(s.view.frame).toBeUndefined());
+        expect(steps.find(s => /fit the bottom brackets/.test(s.title)).view.pitch).toBeCloseTo(0.75);
+        expect(steps.find(s => /V module centre/.test(s.title)).view.pitch).toBeCloseTo(0.3);
         // Assembly steps carry the folded pose, deploy step the deployed pose
         expect(steps.find(s => s.title.startsWith('Module 1')).view.foldAngleDeg).toBe(40);
         const deploy = steps.find(s => s.title === 'Deploy the structure');
