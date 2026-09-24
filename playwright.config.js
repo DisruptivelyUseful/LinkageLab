@@ -27,7 +27,13 @@ export default defineConfig({
     projects: [
         {
             name: 'chromium',
-            use: { ...devices['Desktop Chrome'] },
+            use: {
+                ...devices['Desktop Chrome'],
+                // Local override for environments whose Chromium lives outside the Playwright cache
+                ...(process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE
+                    ? { launchOptions: { executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE } }
+                    : {}),
+            },
         },
     ],
 });
