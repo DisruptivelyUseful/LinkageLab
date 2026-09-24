@@ -2,7 +2,7 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { createTestState } from './helpers/state-fixture.js';
 import { solveLinkage } from '../js/linkage/solver.js';
 import { collectParts, matchSelector, partKey, jointKey } from '../js/linkage/part-keys.js';
-import { generateDefaultBuildSteps, groupBeamsForBench, planBench, stockLengthFor } from '../js/linkage/build-steps.js';
+import { generateDefaultBuildSteps, groupBeamsForBench, planBench, stockLengthFor, needsCut, dedupeHoles, beamLengthIn } from '../js/linkage/build-steps.js';
 
 let getBeamBoltIntersections;
 
@@ -49,6 +49,21 @@ describe('bench planning', () => {
         expect(stockLengthFor(100)).toBe(120);
         expect(stockLengthFor(200)).toBe(204);
         expect(stockLengthFor(50, 72)).toBe(72);
+        expect(needsCut(96, 96)).toBe(false);
+        expect(needsCut(95.99, 96)).toBe(false);
+        expect(needsCut(95, 96)).toBe(true);
+    });
+
+    it('merges holes that land on the same spot', () => {
+        const holes = [
+            { through: 'W', posL: -46.5, posT: 0, posW: 1, radius: 0.25 },
+            { through: 'W', posL: -46.51, posT: 0.01, posW: 1, radius: 0.3125 },
+            { through: 'T', posL: -46.5, posT: 0, posW: 0, radius: 0.25 },
+            { through: 'W', posL: 10, posT: 0, posW: 1, radius: 0.25 },
+        ];
+        const out = dedupeHoles(holes);
+        expect(out.length).toBe(3);
+        expect(out[0].radius).toBe(0.3125);
     });
 
     it('groups identical beams and lays them out in rows', () => {
@@ -72,13 +87,20 @@ describe('generateDefaultBuildSteps', () => {
         expect(steps.length).toBeGreaterThan(10);
 
         const firstIndex = (rec, kind) => steps.findIndex(s => s.kind === kind && matches(rec, s));
+        let needCut = 0;
         for (const rec of parts.filter(p => p.kind === 'beam')) {
             const cut = firstIndex(rec, 'cut');
             const drill = firstIndex(rec, 'drill');
             const place = firstIndex(rec, 'place');
-            expect(cut, `${rec.key} never cut`).toBeGreaterThanOrEqual(0);
             expect(place, `${rec.key} never placed`).toBeGreaterThanOrEqual(0);
-            expect(cut).toBeLessThan(place);
+            const len = beamLengthIn(rec.obj);
+            if (needsCut(len, stockLengthFor(len))) {
+                needCut += 1;
+                expect(cut, `${rec.key} never cut`).toBeGreaterThanOrEqual(0);
+                expect(cut).toBeLessThan(place);
+            } else {
+                expect(cut, `${rec.key} fits its stock but has a cut step`).toBe(-1);
+            }
             if (getBeamBoltIntersections(rec.obj, data.bolts).length) {
                 expect(drill, `${rec.key} never drilled`).toBeGreaterThanOrEqual(0);
                 expect(drill).toBeLessThan(place);
@@ -86,9 +108,18 @@ describe('generateDefaultBuildSteps', () => {
                 expect(drill, `${rec.key} has no holes but a drill step`).toBe(-1);
             }
         }
-        // Each cut/drill step's targets resolve to exactly its group
+        // The fixture has 96 in V-beams (no cut) and 120 in H-beams (cut from 120 in stock: no cut either)
+        // plus whatever else; at least the counts must be consistent
         const cutCounts = steps.filter(s => s.kind === 'cut').map(s => parts.filter(p => p.kind === 'beam' && matches(p, s)).length);
-        expect(cutCounts.reduce((a, b) => a + b, 0)).toBe(data.beams.length);
+        expect(cutCounts.reduce((a, b) => a + b, 0)).toBe(needCut);
+        // Drill steps never list the same hole twice (shared pivots produce two bolts on one spot)
+        for (const s of steps.filter(s => s.kind === 'drill')) {
+            const rec = parts.find(p => p.kind === 'beam' && matches(p, s));
+            const raw = getBeamBoltIntersections(rec.obj, data.bolts);
+            const count = Number(/\((\d+) hole/.exec(s.title)[1]);
+            expect(count).toBe(dedupeHoles(raw).length);
+            expect(count).toBeLessThanOrEqual(raw.length);
+        }
 
         // Fasteners are fastened after the brackets of their ring are placed, and V-stack
         // bolts only after the V module exists (bottom) or the top ring was lifted on (top)
@@ -138,6 +169,25 @@ describe('generateDefaultBuildSteps', () => {
         const deploy = steps.find(s => s.title === 'Deploy the structure');
         expect(deploy.view.foldAngleDeg).toBe(135);
         expect(steps.every(s => s.id && s.title)).toBe(true);
+    });
+
+    it('emits a cut step only when the beam is shorter than its stock, and mounts panels one at a time', () => {
+        const data = solve({ vLengthFt: 7.5, hLengthFt: 9.5 });
+        const steps = generate(data);
+        const lens = new Set(data.beams.map(b => Math.round(beamLengthIn(b) * 16) / 16));
+        const shorter = [...lens].filter(l => needsCut(l, stockLengthFor(l)));
+        expect(shorter.length).toBeGreaterThan(0);
+        expect(steps.filter(s => s.kind === 'cut').length).toBeGreaterThan(0);
+        // Forcing 96 in stock on 96 in beams drops those cuts
+        const fixed = generate(solve(), { stockLengthIn: 96 });
+        expect(fixed.some(s => s.kind === 'cut' && /96 in$/.test(s.title))).toBe(false);
+
+        const panel = (i) => ({ type: 'panel', index: i, center: { x: i * 40, y: 100, z: 0 }, width: 39, length: 65, thickness: 1.5, axisX: { x: 1, y: 0, z: 0 }, axisY: { x: 0, y: 1, z: 0 }, axisZ: { x: 0, y: 0, z: 1 } });
+        const withPanels = generateDefaultBuildSteps({ beams: [], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [panel(0), panel(1), panel(2), panel(3)] }, { modules: 2, deployedAngleDeg: 135 });
+        const mount = withPanels.find(s => s.kind === 'place' && s.targets.some(t => t.kind === 'panel'));
+        expect(mount).toBeTruthy();
+        expect(mount.op.sequential).toBe(true);
+        expect(mount.durationMs).toBe(600 * 4 + 800);
     });
 
     it('is deterministic for the same design', () => {

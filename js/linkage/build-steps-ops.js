@@ -23,7 +23,7 @@ import { Beam3D } from './geometry-classes.js';
 import { WOOD_COLOR } from './constants.js';
 import { clamp } from './math.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
-import { easeInOutCubic, groupBeamsForBench, planBench, benchSummary } from './build-steps.js';
+import { easeInOutCubic, groupBeamsForBench, planBench, benchSummary, dedupeHoles } from './build-steps.js';
 import { registerOpDriver, forEachPartMesh } from './build-steps-anim.js';
 
 // ---------------------------------------------------------------------------
@@ -111,7 +111,7 @@ function boltsForDrilling(ctx) {
  * and the mapped holes sorted along the length.
  */
 function benchHolesFor(rep, bolts) {
-    const real = getBeamBoltIntersections(rep, bolts || []);
+    const real = dedupeHoles(getBeamBoltIntersections(rep, bolts || []));
     const wCount = real.filter(h => h.through === 'W').length;
     const tCount = real.filter(h => h.through === 'T').length;
     const onSide = wCount > tCount; // lay the beam on its side so W holes point up
@@ -390,19 +390,34 @@ const placeDriver = {
                     fade = false;
                 }
             }
-            entries.push({ mesh, seated: mesh.position.clone(), dir, dist, mats: fade ? makeTransparent(mesh) : [] });
+            entries.push({ mesh, key, seated: mesh.position.clone(), dir, dist, mats: fade ? makeTransparent(mesh) : [] });
         });
-        ctx.scratch.place = { entries, travel };
+        // Sequential placement: parts arrive one after another in key order
+        // (panel:0, panel:1, ...) with a slight overlap so the sequence flows.
+        const sequential = !!op.sequential && entries.length > 1;
+        if (sequential) entries.sort((a, b) => a.key.localeCompare(b.key, undefined, { numeric: true }));
+        ctx.scratch.place = { entries, travel, sequential };
     },
     update(ctx, t) {
         const p = ctx.scratch.place;
         if (!p) return false;
-        const e = easeInOutCubic(t);
-        const opacity = 0.25 + 0.75 * e;
-        for (const en of p.entries) {
+        const n = p.entries.length;
+        p.entries.forEach((en, i) => {
+            let u = t;
+            if (p.sequential) {
+                // Each part gets a window; windows overlap by 35% of their width
+                const overlap = 0.35;
+                const win = 1 / (n - (n - 1) * overlap);
+                const start = i * win * (1 - overlap);
+                u = clamp((t - start) / win, 0, 1);
+            }
+            const e = easeInOutCubic(u);
             en.mesh.position.copy(en.seated).addScaledVector(en.dir, en.dist * (1 - e));
+            // Not-yet-started parts stay hidden so the sequence reads left to right
+            en.mesh.visible = !(p.sequential && u <= 0 && t < 1);
+            const opacity = 0.25 + 0.75 * e;
             for (const m of en.mats) m.opacity = opacity;
-        }
+        });
         return false;
     },
     end(ctx) {
@@ -410,6 +425,7 @@ const placeDriver = {
         if (!p) return;
         for (const en of p.entries) {
             en.mesh.position.copy(en.seated);
+            en.mesh.visible = true;
             for (const m of en.mats) { m.opacity = 1; m.transparent = false; }
         }
         ctx.scratch.place = null;
@@ -536,7 +552,8 @@ const drillDriver = {
         const yHover = item.t + 1.5;
         const yBottom = -0.4;
         const prev = idx > 0 ? jobs[idx - 1] : null;
-        const px = prev ? prev.row.item.x0 + prev.row.item.beamLength / 2 + prev.h.posL : hx - 8;
+        // First hole: the drill is already over it (no slide-in from off the beam)
+        const px = prev ? prev.row.item.x0 + prev.row.item.beamLength / 2 + prev.h.posL : hx;
         const pz = prev ? prev.row.item.z + (prev.h.posW || 0) : hz;
         let x = hx, z = hz, y = yHover;
         if (u < 0.15) { const e = easeInOutCubic(u / 0.15); x = px + (hx - px) * e; z = pz + (hz - pz) * e; }

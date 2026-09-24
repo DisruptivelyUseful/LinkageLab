@@ -36,7 +36,7 @@ export function defaultOpForKind(kind) {
     switch (kind) {
         case 'cut':    return { stockLengthIn: null, kerfIn: 0.125 };
         case 'drill':  return { bitDiameterIn: null, holes: 'auto' };
-        case 'place':  return { approach: 'above', travelIn: 24, parkOffset: null, from: null };
+        case 'place':  return { approach: 'above', travelIn: 24, parkOffset: null, from: null, sequential: false };
         case 'fasten': return { bolt: null, nut: null, turns: 3, allModules: false, axes: null };
         default:       return {};
     }
@@ -559,6 +559,11 @@ export function beamLengthIn(beam) {
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
 }
 
+/** True when a beam must be cut from its stock (stock longer than the beam by more than 1/16 in). */
+export function needsCut(beamLengthIn, stockLengthIn) {
+    return stockLengthIn > beamLengthIn + 1 / 16;
+}
+
 /** Smallest standard stock length that fits, or the next foot up for long beams. */
 export function stockLengthFor(lengthIn, explicit = null) {
     if (explicit && Number.isFinite(Number(explicit)) && Number(explicit) > 0) return Number(explicit);
@@ -690,6 +695,23 @@ function selectorsForBeamSet(beams, data, parts) {
     return out;
 }
 
+/**
+ * Merges hole entries that land on the same spot (two bolts sharing one pivot,
+ * e.g. the outer bolt of one module and the inner bolt of the next), keeping
+ * the largest radius. Tolerance 1/16 in.
+ */
+export function dedupeHoles(holes, tol = 1 / 16) {
+    const out = [];
+    for (const h of holes || []) {
+        if (!h) continue;
+        const cross = h.through === 'W' ? h.posT : h.posW;
+        const same = out.find(o => o.through === h.through && Math.abs(o.posL - h.posL) <= tol && Math.abs((o.through === 'W' ? o.posT : o.posW) - cross) <= tol);
+        if (same) { if (h.radius > same.radius) same.radius = h.radius; continue; }
+        out.push({ ...h });
+    }
+    return out;
+}
+
 function holeSignature(holes) {
     return holes
         .map(h => `${h.through}:${roundTo(h.posL).toFixed(4)}:${roundTo(h.through === 'W' ? h.posT : h.posW).toFixed(4)}:${roundTo(h.radius, 1 / 64).toFixed(4)}`)
@@ -726,6 +748,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     const groups = groupBeamsForBench(beams);
     for (const g of groups) {
         const stock = stockLengthFor(g.length, opts.stockLengthIn);
+        if (!needsCut(g.length, stock)) continue; // e.g. 96 in beams from 96 in stock
         const labels = g.stackTypes.map(stackTypeLabel).join(' / ');
         mk('cut', {
             title: `Cut ${g.count} × ${labels} to ${fmtIn(g.length)}`,
@@ -739,7 +762,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     if (typeof opts.intersectionsFor === 'function' && bolts.length) {
         const patterns = new Map();
         for (const beam of beams) {
-            const holes = opts.intersectionsFor(beam, bolts) || [];
+            const holes = dedupeHoles(opts.intersectionsFor(beam, bolts) || []);
             if (!holes.length) continue;
             const len = roundTo(beamLengthIn(beam));
             const sig = `${len.toFixed(4)}x${roundTo(beam.w || 0).toFixed(4)}x${roundTo(beam.t || 0).toFixed(4)}#${holeSignature(holes)}`;
@@ -837,7 +860,11 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     if (support) mk('place', { title: 'Install radial support beams', notes: 'Lay the radial support beams across the top ring.', targets: [{ kind: 'beam', stackType: 'support-beam' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
     if (rcp) mk('place', { title: 'Install reciprocal beams', notes: 'Weave the reciprocal beams over/under each other and onto the ring anchors.', targets: [{ kind: 'beam', stackType: 'support-beam-reciprocal' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
     if (rcpBolts) mk('fasten', { title: 'Bolt the reciprocal beams', notes: 'Through-bolt each crossing and anchor.', targets: [{ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] }], view: view(deployed) });
-    if (panels) mk('place', { title: 'Mount the solar panels', notes: 'Lift each panel onto the support beams and clamp it down.', targets: [{ kind: 'panel' }], view: view(deployed), op: { approach: 'above', travelIn: 30 } });
+    if (panels) {
+        const count = resolveTargets(data, [{ kind: 'panel' }], parts).items.length;
+        mk('place', { title: 'Mount the solar panels', notes: 'Lift each panel onto the support beams in order and clamp it down.', targets: [{ kind: 'panel' }], view: view(deployed),
+            op: { approach: 'above', travelIn: 30, sequential: true }, durationMs: Math.min(12000, Math.max(2000, 600 * count + 800)) });
+    }
 
     return steps;
 }
@@ -890,6 +917,8 @@ const _moduleExports = {
     roundTo,
     beamLengthIn,
     stockLengthFor,
+    needsCut,
+    dedupeHoles,
     groupBeamsForBench,
     planBench,
     benchSummary,

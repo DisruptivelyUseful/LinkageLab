@@ -8,7 +8,7 @@ Open the **Build Steps** group in the left sidebar.
 
 | Control | What it does |
 |---|---|
-| **⚙ Auto** | Generates a complete sequence from the current design: cut steps (one per identical beam group, with stock length and offcut), drill steps (one per hole pattern, hole positions in the notes), then the assembly in shop order — *bottom ring with its brackets and pivot bolts → top ring built beside it as a mirror (parked on the ground) → V modules with their centre bolts → attach the V modules to the bottom ring → lift the top ring onto the V modules → secure the top brackets* — then a deploy step, support beams, reciprocal bolts and solar panels. Each per-module operation is emitted once per module and grouped. Existing steps are replaced after a confirmation. |
+| **⚙ Auto** | Generates a complete sequence from the current design: cut steps (one per identical beam group, with stock length and offcut; a beam that already matches its stock length, e.g. 96 in from 96 in stock, gets no cut step), drill steps (one per hole pattern, hole positions in the notes; two bolts sharing one pivot count as one hole), then the assembly in shop order — *bottom ring with its brackets and pivot bolts → top ring built beside it as a mirror (parked on the ground) → V modules with their centre bolts → attach the V modules to the bottom ring → lift the top ring onto the V modules → secure the top brackets* — then a deploy step, support beams, reciprocal bolts and solar panels. Each per-module operation is emitted once per module and grouped. Existing steps are replaced after a confirmation. |
 | **+ Step** | Adds an empty view step after the selected one. |
 | **▶ Build Mode** | Enters playback: the viewport stages the assembly for the selected step and shows the transport bar. **Space** plays/pauses, **Esc** exits. |
 | **🎬** | Plays the whole sequence once and downloads it as a WebM video. |
@@ -26,7 +26,7 @@ Clicking any member in the list or the transport still plays it normally. The Bu
 - **Parts in this step** — add targets with the picker (beams by stack type / module / layer / pattern, joints by module and ring, bolts, brackets, hardware assemblies, panels) or with **🎯 Pick in 3D** (click parts in the viewport, Shift-click for the whole stack or joint).
 - **Camera view** — **Capture** saves the current camera and fold angle, **Auto-frame** frames the step's parts, **Go to** moves the camera there, **Clear** falls back to auto-framing at playback time.
 - **Transition / Duration** — camera tween time and operation time in milliseconds.
-- Kind-specific fields: stock length and kerf (cut), bit diameter (drill), approach direction and travel (place), turns and *All modules* (fasten).
+- Kind-specific fields: stock length and kerf (cut), bit diameter (drill), approach direction, travel and *One at a time* (place: parts arrive in sequence instead of together, used for the solar panels), turns and *All modules* (fasten).
 - Place steps can *park* their parts: `op.parkOffset = { mode: 'beside' }` seats them on the ground beside the structure (used for the top ring built as a mirror), and a later place step with `op.from = 'parked'` lifts them into position. Fasten steps on hardware assemblies can name the assembly axes to turn (`op.axes`, e.g. `['down','up']` for the bracket-to-ring bolt, `['right','left']` for the V-stack bolts).
 - **Notes / tips** — shown in the caption during playback and in the guide.
 

@@ -393,6 +393,7 @@ function opFieldsHtml(step) {
             return `<div class="bs-field-row">
                 <label>Approach <select id="bs-op-approach" class="bs-select">${optionsHtml([['above', 'From above'], ['radial', 'From outside (radial)'], ['axis', 'Along its axis']], op.approach || 'above')}</select></label>
                 <label>Travel (in) <input type="number" id="bs-op-travel" min="1" step="1" value="${esc(op.travelIn == null ? 24 : op.travelIn)}"></label>
+                <label class="bs-check"><input type="checkbox" id="bs-op-sequential"${op.sequential ? ' checked' : ''}> One at a time</label>
             </div>`;
         case 'fasten':
             return `<div class="bs-field-row">
@@ -515,6 +516,7 @@ function renderEditor() {
     bindOp('bs-op-bit', 'bitDiameterIn', parseFloat);
     bindOp('bs-op-approach', 'approach');
     bindOp('bs-op-travel', 'travelIn', parseFloat);
+    bindOp('bs-op-sequential', 'sequential');
     bindOp('bs-op-turns', 'turns', parseFloat);
     bindOp('bs-op-allmodules', 'allModules');
 }
