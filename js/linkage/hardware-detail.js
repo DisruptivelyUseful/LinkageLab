@@ -490,6 +490,18 @@ function hwLayoutAxisParts(group, renderAxisArg, partsAxisKey, assembly, opts) {
         mesh.quaternion.copy(quat);
         if (part.flipAxis) mesh.quaternion.multiply(flipEnd);
         hwTagPartMesh(mesh, part);
+        // Layout facts for build-step animations (fasten): axis direction and
+        // seated position in assembly-local space, so bolts/nuts can be moved
+        // along their axis without re-deriving the stack layout.
+        mesh.userData.build = {
+            axis: { x: dirVec.x, y: dirVec.y, z: dirVec.z },
+            cross: { x: crossVec.x, y: crossVec.y, z: crossVec.z },
+            axisPos, crossPos, len, copyIndex,
+            flip: !!part.flipAxis,
+            partsAxisKey, renderAxisKey,
+            partType: part.type,
+            nutStyle: part.type === 'nut' ? ((part.params && part.params.style) || 'hex') : null,
+        };
         applySelection(mesh, part);
         group.add(mesh);
     });

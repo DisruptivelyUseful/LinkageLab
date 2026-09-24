@@ -429,7 +429,7 @@ function scrubOp(t) {
         beginOp(true);
     }
     pb.t = clamp(Number(t) || 0, 0, 1);
-    runOpFrame(pb.t);
+    runOpFrame(pb.t, { snap: true });
     emit('scrub');
 }
 
@@ -525,13 +525,24 @@ function easeT(t) {
     return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
 }
 
-function runOpFrame(t) {
+function runOpFrame(t, { snap = false } = {}) {
     const ctx = engine.ctx;
     if (!ctx) { renderFrameOnly(); return; }
     const d = driverFor(ctx.step);
     let rebuild = false;
     if (d.update) {
         try { rebuild = !!d.update(ctx, t); } catch (e) { console.warn('[BuildSteps] op update failed:', e); }
+    }
+    // Let the op steer the look-at point (e.g. follow the drill bit)
+    if (d.focus && state.cam) {
+        let p = null;
+        try { p = d.focus(ctx, t); } catch (e) { /* ignore */ }
+        if (p) {
+            const cur = state.cam.target || p;
+            const k = snap ? 1 : 0.12;
+            state.cam.target = { x: cur.x + (p.x - cur.x) * k, y: cur.y + (p.y - cur.y) * k, z: cur.z + (p.z - cur.z) * k };
+            engine.toTarget = state.cam.target;
+        }
     }
     if (rebuild) { invalidateGeometryCache(); requestRender(); }
     else renderFrameOnly();
@@ -608,6 +619,7 @@ function applyBuildStepScene(data, sc) {
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = !bench;
     if (threeRenderer.gridHelper && bench) threeRenderer.gridHelper.visible = false;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = !bench;
+    if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = false; // reference tank distracts from the build
     if (threeRenderer.benchGroup && !bench) threeRenderer.benchGroup.visible = false;
     if (!bench) pb.benchSummary = '';
 
@@ -634,6 +646,7 @@ function restoreSceneAfterPlayback() {
     if (threeRenderer.structureGroup) threeRenderer.structureGroup.visible = true;
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = true;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = true;
+    if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = true;
     if (threeRenderer.benchGroup) threeRenderer.benchGroup.visible = false;
     if (state.buildPlayback) state.buildPlayback.benchSummary = '';
 }

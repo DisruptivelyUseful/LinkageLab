@@ -54,6 +54,8 @@
     { "path": "js/linkage/render-app.js", "format": "esm" },
     { "path": "js/linkage/build-steps-anim.js", "format": "esm" },
     { "path": "js/linkage/build-steps-ops.js", "format": "esm" },
+    { "path": "js/linkage/build-steps-fasten.js", "format": "esm" },
+    { "path": "js/linkage/build-steps-export.js", "format": "esm" },
     { "path": "js/linkage/viewport-input.js", "format": "esm" },
     { "path": "js/linkage/validation.js", "format": "esm" },
     { "path": "js/linkage/history.js", "format": "esm" },
