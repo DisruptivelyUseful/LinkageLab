@@ -172,40 +172,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
         
         return bestAngle;
     }
-    function selectActuator(index) {
-        if (!state.actuatorRecommendations || index >= state.actuatorRecommendations.length) {
-            state.selectedActuator = null;
-            if (threeRenderer.actuatorLineGroup) {
-                clearGroup(threeRenderer.actuatorLineGroup);
-            }
-            requestRender();
-            return;
-        }
-        
-        state.selectedActuator = state.actuatorRecommendations[index];
-        
-        // Update UI to show selection
-        const items = document.querySelectorAll('.actuator-recommendation-item');
-        items.forEach((item, idx) => {
-            if (idx === index) {
-                item.style.background = 'rgba(0,255,0,0.1)';
-                item.style.borderLeft = '3px solid #00ff00';
-            } else {
-                item.style.background = 'rgba(255,255,255,0.05)';
-                const rec = state.actuatorRecommendations[idx];
-                item.style.borderLeft = `3px solid ${idx === 0 ? '#f39c12' : rec.recommended ? '#2ecc71' : '#e74c3c'}`;
-            }
-        });
-        
-        // Trigger render to show actuator line
-        const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
-        data.structureCenter = data.structureCenter || { x: 0, y: 0, z: 0 };
-        
-        updateThreeJSScenes(data, data.structureCenter);
-        requestRender();
-        
-        showToast(`Selected: ${state.selectedActuator.name}`, 'info');
-    }
     function bindSupportBeamControl(sliderId, numberId, prop, defaults) {
         const sl = document.getElementById(sliderId);
         const nb = document.getElementById(numberId);
@@ -1210,106 +1176,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             requestRender();
         };
         
-        // Actuator analysis button
-        document.getElementById('btn-analyze-actuators').onclick = () => {
-            const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
-            
-            // Get structure center
-            data.structureCenter = data.structureCenter || { x: 0, y: 0, z: 0 };
-            
-            // Find optimal actuator placements
-            const recommendations = findOptimalActuatorPlacements(data, {
-                maxActuators: 5,
-                maxForce: 2000,
-                preferredLocations: 'all'
-            });
-            
-            // Display recommendations
-            const contentEl = document.getElementById('actuator-recommendations-content');
-            if (recommendations.length === 0) {
-                contentEl.innerHTML = '<div style="color: var(--text-muted); padding: 8px; text-align: center;">No suitable actuator placements found</div>';
-                return;
-            }
-            
-            // Store recommendations in state for visualization
-            state.actuatorRecommendations = recommendations;
-            
-            let html = '';
-            recommendations.forEach((rec, idx) => {
-                const statusClass = rec.recommended ? 'style="color: #2ecc71;"' : 'style="color: #e74c3c;"';
-                const statusText = rec.recommended ? '✓ Recommended' : '⚠ High Force';
-                const badge = idx === 0 ? '<span style="background: #f39c12; color: white; padding: 2px 6px; border-radius: 3px; font-size: 0.7rem; margin-left: 6px;">BEST</span>' : '';
-                const isSelected = state.selectedActuator && state.selectedActuator.name === rec.name;
-                const selectedStyle = isSelected ? 'background: rgba(0,255,0,0.1); border-left: 3px solid #00ff00;' : '';
-                
-                html += `
-                    <div class="actuator-recommendation-item" data-actuator-index="${idx}" style="margin-bottom: 12px; padding: 10px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid ${idx === 0 ? '#f39c12' : rec.recommended ? '#2ecc71' : '#e74c3c'}; cursor: pointer; ${selectedStyle}" onclick="selectActuator(${idx})">
-                        <div style="font-weight: 600; margin-bottom: 6px; font-size: 0.85rem;">
-                            ${rec.name}${badge} ${isSelected ? '<span style="color: #00ff00;">●</span>' : ''}
-                        </div>
-                        <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 8px; font-style: italic;">
-                            ${rec.description || ''}
-                        </div>
-                        <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px;">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 4px;">
-                                <div>Force Rating:</div>
-                                <div style="color: white; font-weight: 600;">${unitConverter.formatForceWithUnit(rec.forceRating || rec.maxForce, 0)}</div>
-                                <div>Max Force:</div>
-                                <div style="color: white;">${unitConverter.formatForceWithUnit(rec.maxForce, 0)}</div>
-                                <div>Min Force:</div>
-                                <div style="color: white;">${unitConverter.formatForceWithUnit(rec.minForce, 0)}</div>
-                                <div>Avg Force:</div>
-                                <div style="color: white;">${unitConverter.formatForceWithUnit(rec.avgForce, 0)}</div>
-                                <div>Stroke Length:</div>
-                                <div style="color: white;">${unitConverter.formatDimensionWithUnit(rec.stroke || rec.maxStroke, 1)}</div>
-                                <div>Min Length:</div>
-                                <div style="color: white;">${unitConverter.formatDimensionWithUnit(rec.minStroke, 1)}</div>
-                                <div>Max Length:</div>
-                                <div style="color: white;">${unitConverter.formatDimensionWithUnit(rec.maxStroke, 1)}</div>
-                                <div>Mech. Advantage:</div>
-                                <div style="color: white;">${formatNumber(rec.mechanicalAdvantage, 2)}x</div>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.7rem; margin-top: 6px; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.1);" ${statusClass}>
-                            ${statusText} • Efficiency: ${formatNumber(rec.efficiency, 1)}%
-                        </div>
-                    </div>
-                `;
-            });
-            
-            contentEl.innerHTML = html;
-            
-            showToast(`Found ${recommendations.length} actuator placement option${recommendations.length !== 1 ? 's' : ''}`, 'info');
-        };
-        
-        /**
-         * Selects an actuator recommendation and highlights it in the 3D view
-         * @param {number} index - Index of the actuator recommendation to select
-         */
-        
-        /**
-         * Animates the structure folding/unfolding with actuator simulation
-         * Uses basic physics to smoothly transition between fold angles
-         * @param {number} targetAngle - Target fold angle in radians
-         * @param {number} duration - Animation duration in milliseconds
-         */
-        document.getElementById('btn-actuator-open').onclick = () => {
-            const openAngle = MIN_FOLD_ANGLE;
-            animateActuatorFold(openAngle, 3000);
-            document.getElementById('btn-actuator-stop').style.display = 'block';
-        };
-        
-        document.getElementById('btn-actuator-close').onclick = () => {
-            const closedAngle = getOptimalClosedAngleForAnimation();
-            animateActuatorFold(closedAngle, 3000);
-            document.getElementById('btn-actuator-stop').style.display = 'block';
-        };
-        
-        document.getElementById('btn-actuator-stop').onclick = () => {
-            stopActuatorAnimation();
-            document.getElementById('btn-actuator-stop').style.display = 'none';
-        };
-        
         document.getElementById('btn-arch-reset').onclick = () => {
             state.archFlipVertical = false;
             state.archRotation = 0;
@@ -1716,6 +1582,27 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
         document.getElementById('btn-undo').onclick = undo;
         document.getElementById('btn-redo').onclick = redo;
         
+        // Collapsible sidebar groups: title buttons toggle, state persists per group
+        (function initGroupState() {
+            let saved = {};
+            try { saved = JSON.parse(localStorage.getItem('linkagelab.groups') || '{}') || {}; } catch (e) { saved = {}; }
+            document.querySelectorAll('#sidebar .group').forEach(group => {
+                const title = group.querySelector(':scope > .group-title');
+                if (!title) return;
+                const key = group.dataset.group;
+                if (key && typeof saved[key] === 'boolean') group.classList.toggle('collapsed', saved[key]);
+                const sync = () => title.setAttribute('aria-expanded', String(!group.classList.contains('collapsed')));
+                sync();
+                title.addEventListener('click', () => {
+                    const collapsed = group.classList.toggle('collapsed');
+                    sync();
+                    if (!key) return;
+                    saved[key] = collapsed;
+                    try { localStorage.setItem('linkagelab.groups', JSON.stringify(saved)); } catch (e) { /* ignore */ }
+                });
+            });
+        })();
+
         // Sidebar toggle (state persists across reloads; viewport re-sizes after the slide)
         (function bindSidebarToggle() {
             const sidebar = document.getElementById('sidebar');
@@ -1843,7 +1730,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
 
 const _moduleExports = {
     findOptimalClosedAngle,
-    selectActuator,
     bindSupportBeamControl,
     syncSupportBeamsUIFromState,
     applyRcpKinematicUI,
@@ -1872,4 +1758,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'uiBindings');
 
-export { findOptimalClosedAngle, selectActuator, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, syncTopbarModeButtons, currentAppMode };
+export { findOptimalClosedAngle, bindSupportBeamControl, syncSupportBeamsUIFromState, applyRcpKinematicUI, refreshRcpPivotHoleOptions, saveUnifiedConfig, loadUnifiedConfig, exportUnifiedConfig, importUnifiedConfig, applyUnifiedConfigToModes, loadScriptOnce, ensureSolarDesignerLoaded, switchToLinkageMode, switchToSolarMode, syncPanelsFromLinkageMode, panelConfigChanged, debouncedPanelSync, initUIBindings, syncTopbarModeButtons, currentAppMode };

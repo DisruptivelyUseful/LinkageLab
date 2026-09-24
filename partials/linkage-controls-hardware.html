@@ -1,0 +1,159 @@
+        <div class="group collapsed" data-group="hardware">
+            <button type="button" class="group-title">Hardware</button>
+            <div class="group-content">
+                <div class="subhead">Bracket Dimensions</div>
+                <div class="ctrl-grid-2">
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Width</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-width" min="0.5" max="6" step="0.01" value="2.0"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Depth</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-depth" min="0.5" max="6" step="0.01" value="3.0"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Height</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-height" min="0.5" max="12" step="0.1" value="3.0"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Wall Thickness</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-wall" min="0.05" max="1" step="0.01" value="0.25"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Inner Width</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-inner" min="0.25" max="5" step="0.01" value="1.5"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Hole Position</span><span class="unit">in</span></div>
+                        <div class="input-wrap"><input type="number" id="nb-bracket-hole-distance" min="0.5" max="12" step="0.05" value="1.50"></div>
+                    </div>
+                </div>
+                <div class="hint">Bracket sits flat on the pivot; height = leg length. Hole position is measured from the bracket base (closed end) to the hole center and affects pivot height &amp; structure size.</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Hole Diameter</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <select id="sel-bracket-hole-diameter">
+                            <option value="0.25">1/4"</option>
+                            <option value="0.3125">5/16"</option>
+                            <option value="0.375" selected>3/8"</option>
+                            <option value="0.5">1/2"</option>
+                            <option value="0.625">5/8"</option>
+                            <option value="0.75">3/4"</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Y-Axis Rotation</span><span class="unit">°</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-bracket-z-rotation" min="-180" max="180" step="1" value="0">
+                        <input type="number" id="nb-bracket-z-rotation" min="-180" max="180" step="1" value="0">
+                    </div>
+                </div>
+                <div class="hint">Rotates bracket around vertical axis</div>
+
+                <div class="subhead rule-above">Bolt Configuration</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Bolt Diameter</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <select id="sel-bolt-diameter">
+                            <option value="0.25">1/4"</option>
+                            <option value="0.3125">5/16"</option>
+                            <option value="0.375" selected>3/8"</option>
+                            <option value="0.5">1/2"</option>
+                            <option value="0.625">5/8"</option>
+                            <option value="0.75">3/4"</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- Single V-Stack bolt length (shown when stack is even or <=2) -->
+                <div id="vbolt-single-row" class="ctrl-row">
+                    <div class="ctrl-head"><span>V-Stack Bolt Length</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-vbolt-length" min="1" max="12" step="0.25" value="3">
+                        <label class="chk-label chk-inline"><input type="checkbox" id="chk-vbolt-auto" checked> Auto</label>
+                    </div>
+                </div>
+                <!-- Split V-Stack bolt lengths (shown when stack > 2 and odd) -->
+                <div id="vbolt-split-section" style="display:none;">
+                    <div class="hint hint-accent">V-Stack has inner/outer bolt sizes (odd stack &gt; 2)</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Inner Bolt (Long)</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbolt-inner-length" min="1" max="12" step="0.25" value="3">
+                            <label class="chk-label chk-inline"><input type="checkbox" id="chk-vbolt-inner-auto" checked> Auto</label>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Outer Bolt (Short)</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vbolt-outer-length" min="1" max="12" step="0.25" value="2">
+                            <label class="chk-label chk-inline"><input type="checkbox" id="chk-vbolt-outer-auto" checked> Auto</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>H-Center Bolt Length</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-hbolt-length" min="1" max="12" step="0.25" value="3">
+                        <label class="chk-label chk-inline"><input type="checkbox" id="chk-hbolt-auto" checked> Auto</label>
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>H-Pivot Bolt Length</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="number" id="nb-hpivot-bolt-length" min="1" max="12" step="0.25" value="4">
+                        <label class="chk-label chk-inline"><input type="checkbox" id="chk-hpivot-bolt-auto" checked> Auto</label>
+                    </div>
+                </div>
+                <div class="hint">H-Pivot: bolts at inner/outer horizontal pivots (through beams into brackets)</div>
+                <div id="bolt-auto-info" class="hint"></div>
+
+                <div class="subhead rule-above">Washers</div>
+                <div class="ctrl-row">
+                    <label class="chk-label"><input type="checkbox" id="chk-vwasher-enabled"> Enable V-Stack Washers</label>
+                </div>
+                <div id="vwasher-config" class="sub-block" style="display:none;">
+                    <div class="ctrl-grid-2">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Inner Ø</span><span class="unit">in</span></div>
+                            <div class="input-wrap"><input type="number" id="nb-vwasher-id" min="0.25" max="2" step="0.0625" value="0.4375"></div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Outer Ø</span><span class="unit">in</span></div>
+                            <div class="input-wrap"><input type="number" id="nb-vwasher-od" min="0.5" max="3" step="0.0625" value="1.0"></div>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Thickness</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-vwasher-thickness" min="0" max="1" step="0.01" value="0.0">
+                            <label class="chk-label chk-inline"><input type="checkbox" id="chk-vwasher-auto" checked> Auto</label>
+                        </div>
+                    </div>
+                    <div class="hint">Thickness auto-syncs with V-Stack Gap</div>
+                </div>
+                <div class="ctrl-row">
+                    <label class="chk-label"><input type="checkbox" id="chk-hwasher-enabled"> Enable H-Stack Washers</label>
+                </div>
+                <div id="hwasher-config" class="sub-block" style="display:none;">
+                    <div class="ctrl-grid-2">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Inner Ø</span><span class="unit">in</span></div>
+                            <div class="input-wrap"><input type="number" id="nb-hwasher-id" min="0.25" max="2" step="0.0625" value="0.4375"></div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Outer Ø</span><span class="unit">in</span></div>
+                            <div class="input-wrap"><input type="number" id="nb-hwasher-od" min="0.5" max="3" step="0.0625" value="1.0"></div>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Thickness</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-hwasher-thickness" min="0" max="1" step="0.01" value="0.0">
+                            <label class="chk-label chk-inline"><input type="checkbox" id="chk-hwasher-auto" checked> Auto</label>
+                        </div>
+                    </div>
+                    <div class="hint">Thickness auto-syncs with H-Stack Gap</div>
+                </div>
+            </div>
+        </div>

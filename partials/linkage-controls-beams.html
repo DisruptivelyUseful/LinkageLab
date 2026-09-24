@@ -1,0 +1,93 @@
+        <div class="group" data-group="beams">
+            <button type="button" class="group-title">Beams</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horizontal Beam Length</span><span class="unit">ft</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-len" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-len" min="2" max="24" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Vertical Beam Length</span><span class="unit">ft</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vlen" min="2" max="24" step="0.01">
+                        <input type="number" id="nb-vlen" min="2" max="24" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>Horiz Beam (W × T)</span><span class="unit">in</span></div>
+                    <div class="input-wrap pair">
+                        <input type="number" id="nb-hbeam-w" value="3.50" step="0.01" min="0.5" max="12" title="Width" aria-label="Horizontal beam width">
+                        <span class="x">×</span>
+                        <input type="number" id="nb-hbeam-t" value="1.50" step="0.01" min="0.5" max="12" title="Thickness" aria-label="Horizontal beam thickness">
+                    </div>
+                </div>
+                <div class="ctrl-row" id="vbeam-linked-row">
+                    <div class="ctrl-head">
+                        <span class="head-with-btn">
+                            Vert Beam (W × T)
+                            <button type="button" id="btn-vbeam-dim-link" class="dim-link-btn linked" title="Beam dimensions linked — click to set inner/outer sizes independently" aria-label="Toggle inner/outer beam dimension link" style="display:none;">
+                                <svg class="dim-link-icon dim-link-icon--linked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                                </svg>
+                                <svg class="dim-link-icon dim-link-icon--unlinked" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                                    <path d="M10 13a5 5 0 0 0 7.54.54l1.37-1.37"/>
+                                    <path d="M14 11a5 5 0 0 0-7.54-.54l-1.37 1.37"/>
+                                    <path d="M8 8l8 8"/>
+                                </svg>
+                            </button>
+                        </span>
+                        <span class="unit">in</span>
+                    </div>
+                    <div class="input-wrap pair">
+                        <input type="number" id="nb-vbeam-w" value="1.50" step="0.01" min="0.5" max="12" title="Width" aria-label="Vertical beam width">
+                        <span class="x">×</span>
+                        <input type="number" id="nb-vbeam-t" value="3.50" step="0.01" min="0.5" max="12" title="Thickness" aria-label="Vertical beam thickness">
+                    </div>
+                </div>
+                <div id="vbeam-split-section" style="display:none;">
+                    <div class="hint hint-accent">V-Stack inner/outer beam sizes (unlinked)</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Inner Beam (W × T)</span><span class="unit">in</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-vbeam-inner-w" value="1.50" step="0.01" min="0.5" max="12" title="Inner beam width">
+                            <span class="x">×</span>
+                            <input type="number" id="nb-vbeam-inner-t" value="3.50" step="0.01" min="0.5" max="12" title="Inner beam thickness">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>V-Outer Beam (W × T)</span><span class="unit">in</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-vbeam-outer-w" value="1.50" step="0.01" min="0.5" max="12" title="Outer beam width">
+                            <span class="x">×</span>
+                            <input type="number" id="nb-vbeam-outer-t" value="3.50" step="0.01" min="0.5" max="12" title="Outer beam thickness">
+                        </div>
+                    </div>
+                </div>
+                <div class="subhead rule-above">Pivot Extensions</div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>H-Beam Top Ext</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-off-top" min="0" max="48" step="0.01">
+                        <input type="number" id="nb-off-top" min="0" max="48" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>H-Beam Bot Ext</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-off-bot" min="0" max="48" step="0.01">
+                        <input type="number" id="nb-off-bot" min="0" max="48" step="0.01">
+                    </div>
+                </div>
+                <div class="ctrl-row">
+                    <div class="ctrl-head"><span>V-Beam End Offset</span><span class="unit">in</span></div>
+                    <div class="input-wrap">
+                        <input type="range" id="sl-vert-end" min="0.5" max="12" step="0.01" value="1.5">
+                        <input type="number" id="nb-vert-end" min="0.5" max="24" step="0.01" value="1.5">
+                    </div>
+                </div>
+                <div class="hint">Distance from beam ends to bolt hole centers</div>
+            </div>
+        </div>

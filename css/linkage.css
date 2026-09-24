@@ -419,10 +419,14 @@ body:not(.solar-mode) #right-sidebar {
 
 /* Control row styles */
 .ctrl-row {
-    margin-bottom: 4px;
+    margin-bottom: 3px;
     display: flex;
     flex-direction: column;
     gap: 2px;
+}
+
+.ctrl-row + .ctrl-row {
+    margin-top: 1px;
 }
 
 .ctrl-head {
@@ -449,10 +453,80 @@ body:not(.solar-mode) #right-sidebar {
     color: var(--clr-primary);
 }
 
+/* A heading with no unit span is still the label, not a unit */
+.ctrl-head span:only-child,
+.ctrl-row:hover .ctrl-head span:only-child {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: inherit;
+}
+
 .input-wrap {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
+}
+
+.input-wrap input[type="range"] {
+    flex: 1 1 auto;
+    min-width: 40px;
+    width: auto;
+}
+
+.input-wrap select {
+    flex: 1 1 auto;
+    min-width: 0;
+    padding: 5px 26px 5px 8px;
+    font-size: 0.78rem;
+}
+
+/* Number boxes in the sidebar are a fixed 92px so the slider gets the rest.
+   createSpinButtons() sets an inline padding-right for its arrows; override it. */
+.input-wrap .number-spin-wrapper {
+    flex: 0 0 92px;
+    width: 92px;
+}
+
+.input-wrap .number-spin-wrapper input[type="number"] {
+    padding: 5px 24px 5px 8px !important;
+    font-size: 0.8rem;
+    height: 28px;
+}
+
+.input-wrap .number-spin-buttons {
+    width: 20px;
+}
+
+.input-wrap .number-spin-btn::before {
+    border-left-width: 4px;
+    border-right-width: 4px;
+    border-bottom-width: 5px;
+    border-top-width: 5px;
+}
+
+/* A lone number box (no slider) may use more of the row */
+.input-wrap > .number-spin-wrapper:only-child {
+    flex: 1 1 auto;
+    width: auto;
+    max-width: 150px;
+}
+
+/* W × T pairs share the row */
+.input-wrap.pair .number-spin-wrapper {
+    flex: 1 1 0;
+    width: auto;
+}
+
+.input-wrap .x {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+}
+
+/* Extra-small number boxes (reference beam pricing) */
+.nb-xs {
+    font-size: 0.75rem;
+    padding: 4px 6px;
 }
 
 /* Dimension link/unlink toggle (Photoshop/Godot-style) */
