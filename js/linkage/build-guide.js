@@ -6,6 +6,7 @@ import { exportProjectFile } from '../core/project-export.js';
 import { state } from './app-state.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
+import { STEP_KIND_META, stepSummary } from './build-steps.js';
 
     function computeReciprocalDrillData(data) {
         const result = {
@@ -1014,6 +1015,8 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             </div>
             
             ${buildElectricalGuideSectionHtml()}
+
+            ${buildStepsGuideSectionHtml()}
             
             <div class="guide-notes">
                 <div class="guide-notes-title">📝 Notes</div>
@@ -1046,7 +1049,8 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             renderGuideView('guide-canvas-top', data, 'top');
             renderGuideView('guide-canvas-side', data, 'side');
             renderGuideView('guide-canvas-3d', data, '3d');
-            renderBracketDiagram();
+            try { renderBracketDiagram(); } catch (e) { console.warn('[BuildGuide] bracket diagram failed:', e); }
+            fillGuideStepThumbnails();
         }, 50);
     }
     
@@ -1256,6 +1260,9 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         const innerW = state.bracketInnerWidth || (W - 2 * T); // Inner width
         const holeDia = state.bracketHoleDiameter || 0.375;
         const holeY = state.bracketHoleDistance || (H / 2); // Hole position from base
+        // Dimension formatter (same convention as showBuildGuide; previously undefined here)
+        const diagIsMetric = typeof unitConverter !== 'undefined' && typeof unitConverter.getPreferredUnitSystem === 'function' && unitConverter.getPreferredUnitSystem() === 'metric';
+        const gD = (v, d) => formatNumber(v * (diagIsMetric ? unitConverter.IN_TO_MM : 1), d === undefined ? 2 : d) + (diagIsMetric ? 'mm' : '"');
         
         // Colors
         const bracketFill = '#b0b0b0';
@@ -1615,6 +1622,61 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         });
     }
     
+    /**
+     * HTML card listing the build steps (thumbnails are filled in asynchronously).
+     */
+    function buildStepsGuideSectionHtml() {
+        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        if (!steps.length) return '';
+        const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const items = steps.map((step, i) => {
+            const meta = STEP_KIND_META[step.kind] || STEP_KIND_META.view;
+            const cached = typeof globalThis.getCachedThumbnail === 'function' ? globalThis.getCachedThumbnail(step.id) : null;
+            return `
+                <div class="guide-step" data-step-id="${escapeHtml(step.id)}">
+                    <div class="guide-step-thumb">${cached ? `<img src="${cached}" alt="">` : '<div class="guide-step-thumb-pending">rendering…</div>'}</div>
+                    <div class="guide-step-body">
+                        <div class="guide-step-title"><span class="guide-step-num">${i + 1}</span> ${meta.icon} ${escapeHtml(step.title)}</div>
+                        <div class="guide-step-meta">${escapeHtml(meta.label)} · ${escapeHtml(stepSummary(step))} · ${((step.transitionMs + step.durationMs) / 1000).toFixed(1)} s</div>
+                        ${step.notes ? `<div class="guide-step-notes">${escapeHtml(step.notes)}</div>` : ''}
+                    </div>
+                </div>`;
+        }).join('');
+        return `
+            <div class="guide-card guide-card-wide">
+                <div class="guide-card-header">Assembly Steps <span class="guide-card-sub">${steps.length} steps · <button class="guide-inline-btn" onclick="recordBuildStepsVideo()">🎬 Export video</button></span></div>
+                <div class="guide-card-content guide-steps">${items}</div>
+            </div>`;
+    }
+
+    /** Renders each step in the viewport and drops the images into the open guide. */
+    async function fillGuideStepThumbnails() {
+        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        if (!steps.length || typeof globalThis.captureStepThumbnails !== 'function') return;
+        try {
+            const thumbs = await globalThis.captureStepThumbnails({ maxWidth: 640 });
+            thumbs.forEach(t => {
+                const box = document.querySelector(`.guide-step[data-step-id="${CSS.escape(t.id)}"] .guide-step-thumb`);
+                if (box && t.dataUrl) box.innerHTML = `<img src="${t.dataUrl}" alt="">`;
+            });
+        } catch (e) {
+            console.warn('[BuildGuide] step thumbnails failed:', e);
+        }
+    }
+
+    /** PDF export that first renders any missing step thumbnails. */
+    async function exportGuidePDFAsync() {
+        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        if (steps.length && typeof globalThis.captureStepThumbnails === 'function') {
+            const missing = steps.some(s => !globalThis.getCachedThumbnail(s.id));
+            if (missing) {
+                showToast('Rendering step images for the PDF…', 'info', 2000);
+                try { await globalThis.captureStepThumbnails({ maxWidth: 640 }); } catch (e) { /* export without images */ }
+            }
+        }
+        exportGuidePDF();
+    }
+
     /**
      * Recalculates all BOM totals in the guide when a unit price is edited.
      * Updates line totals, section subtotals, grand total, state, sidebar inputs, and HUD.
@@ -2445,6 +2507,55 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             y += bracketImgH + 6;
         }
     
+        // ---- ASSEMBLY STEPS ----
+        const guideSteps = (state.buildSteps && state.buildSteps.steps) || [];
+        if (guideSteps.length) {
+            checkPageBreak(40);
+            doc.setFillColor(...colors.sectionBg);
+            doc.rect(margin, y, contentW, 7, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.headerText);
+            doc.text(`ASSEMBLY STEPS (${guideSteps.length})`, margin + 4, y + 5);
+            y += 11;
+            const imgW = 58, imgH = 58 * 0.62;
+            const textX = margin + imgW + 5;
+            const textW = contentW - imgW - 5;
+            guideSteps.forEach((step, i) => {
+                const meta = STEP_KIND_META[step.kind] || STEP_KIND_META.view;
+                const thumb = typeof globalThis.getCachedThumbnail === 'function' ? globalThis.getCachedThumbnail(step.id) : null;
+                doc.setFontSize(7);
+                const noteLines = step.notes ? doc.splitTextToSize(step.notes, textW) : [];
+                const summaryLines = doc.splitTextToSize(stepSummary(step), textW);
+                const blockH = Math.max(thumb ? imgH : 0, 6 + summaryLines.length * 3.2 + noteLines.length * 3.2 + 4) + 4;
+                checkPageBreak(blockH);
+                if (thumb) {
+                    try {
+                        doc.addImage(thumb, 'JPEG', margin, y, imgW, imgH);
+                        doc.setDrawColor(...colors.line);
+                        doc.rect(margin, y, imgW, imgH, 'S');
+                    } catch (e) { /* image failed */ }
+                }
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(8.5);
+                doc.setTextColor(...colors.text);
+                doc.text(`${i + 1}. ${step.title}`, textX, y + 4);
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(...colors.muted);
+                let ty = y + 8;
+                doc.text(`${meta.label} · ${(step.transitionMs + step.durationMs) / 1000}s`, textX, ty);
+                ty += 3.2;
+                summaryLines.forEach(line => { doc.text(line, textX, ty); ty += 3.2; });
+                if (noteLines.length) {
+                    doc.setTextColor(...colors.text);
+                    noteLines.forEach(line => { doc.text(line, textX, ty); ty += 3.2; });
+                }
+                y += blockH;
+            });
+            y += 2;
+        }
+
         // ---- NOTES ----
         const notes = [
             'All measurements are from beam end',
@@ -2603,11 +2714,14 @@ const _moduleExports = {
     recalcGuideBOM,
     gatherBOMData,
     exportGuidePDF,
+    exportGuidePDFAsync,
     exportBOMcsv,
     exportBuildGuide,
     initBuildGuideHandlers,
+    buildStepsGuideSectionHtml,
+    fillGuideStepThumbnails,
 };
 
 bridgeGlobals(_moduleExports, 'buildGuide');
 
-export { computeReciprocalDrillData, showBuildGuide, renderGuideView, renderBracketDiagram, drawArrow, closeBuildGuide, exportGuideJSON, recalcGuideBOM, gatherBOMData, exportGuidePDF, exportBOMcsv, exportBuildGuide, initBuildGuideHandlers };
+export { computeReciprocalDrillData, showBuildGuide, renderGuideView, renderBracketDiagram, drawArrow, closeBuildGuide, exportGuideJSON, recalcGuideBOM, gatherBOMData, exportGuidePDF, exportGuidePDFAsync, exportBOMcsv, exportBuildGuide, initBuildGuideHandlers, buildStepsGuideSectionHtml, fillGuideStepThumbnails };

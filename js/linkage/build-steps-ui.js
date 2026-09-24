@@ -580,6 +580,13 @@ function bindToolbar() {
         ui.selectedId = step.id;
         changed({ rerenderEditor: true });
     });
+    on('bs-btn-record', 'click', () => {
+        if (!buildSteps().steps.length) { showToast('Add a step first', 'warning'); return; }
+        if (typeof globalThis.recordBuildStepsVideo === 'function') {
+            showToast('Recording… the sequence plays once and the video downloads when it ends.', 'info', 3000);
+            globalThis.recordBuildStepsVideo();
+        }
+    });
     on('bs-btn-auto', 'click', () => {
         const bs = buildSteps();
         if (bs.steps.length && !window.confirm(`Replace the ${bs.steps.length} existing step${bs.steps.length === 1 ? '' : 's'} with a generated sequence?`)) return;
@@ -620,11 +627,13 @@ function autoGenerateSteps() {
     const intersectionsFor = (beam) => getBeamBoltIntersections(beam, drillBolts);
     const folded = radToDeg(getStructureFoldedAngle());
     const deployed = radToDeg(getStructureDeployedAngle());
+    // Module assembly is shown partly opened: fully folded stacks read as a flat bundle
+    const assemblyPose = (Number.isFinite(folded) && Number.isFinite(deployed)) ? folded + (deployed - folded) * 0.45 : folded;
     return generateDefaultBuildSteps(data, {
         modules: state.modules,
         useFixedBeams: !!state.useFixedBeams,
         archCapUprights: !!state.archCapUprights,
-        foldedAngleDeg: Number.isFinite(folded) ? folded : null,
+        foldedAngleDeg: Number.isFinite(assemblyPose) ? assemblyPose : null,
         deployedAngleDeg: Number.isFinite(deployed) ? deployed : null,
         intersectionsFor,
     });

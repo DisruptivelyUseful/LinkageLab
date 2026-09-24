@@ -104,13 +104,13 @@ Views: auto-frame (null), transition 800 ms, duration by kind.
 
 **Phase 2 — Staging and place**: visibility map + scene hook (assembly stage), place op, auto-frame, `Pick in 3D`, `generateDefaultBuildSteps` (cut/drill groups as placeholders + module assembly steps).
 
-**Phase 3 — Bench fabrication**: bench group, tool meshes, cut op and drill op with hole reveal.
+**Phase 3 — Bench fabrication — DONE**: bench group, saw and drill meshes, cut op (blade traverse, kerf, offcut separation) and drill op (plunge/retract per hole, holes revealed on retract), close-up framing that follows the tool.
 
-**Phase 4 — Fasten**: legacy bolts and hardware-assembly bolt/nut animation, `allModules`, editor bolt/nut selectors.
+**Phase 4 — Fasten — DONE**: legacy bolts and hardware-assembly bolt/nut animation (rivet / welded nuts stay put), `allModules`.
 
-**Phase 5 — Exports**: guide card, PDF section, thumbnails, WebM recorder.
+**Phase 5 — Exports — DONE**: Assembly Steps card in the Build Guide with rendered thumbnails, PDF section, WebM recorder (sidebar 🎬 and guide header buttons).
 
-**Phase 6 — Tests, polish, docs**: e2e smoke, README/hardware docs note, `LINKAGE_BUILD_ID` bump if e2e pattern requires.
+**Phase 6 — Tests, polish, docs — DONE**: e2e spec covers editor, playback, auto-generate, bench, place, pick, guide and PDF; user/developer documentation in `docs/BUILD_STEPS.md`. Also fixed a pre-existing `gD is not defined` error in the bracket diagram of the Build Guide.
 
 ## Files
 

@@ -208,4 +208,32 @@ test.describe('Build steps', () => {
         await page.keyboard.press('Escape');
         await expect(page.locator('#viewport')).not.toHaveClass(/bs-picking/);
     });
+
+    test('build guide lists the steps with thumbnails and exports a PDF', async ({ page }) => {
+        await openApp(page);
+        await page.evaluate(() => {
+            const bs = globalThis.state.buildSteps;
+            bs.steps.length = 0;
+            globalThis.addStep(bs, globalThis.createStep('view', { title: 'Overview', notes: 'Start here.', transitionMs: 100, durationMs: 200 }));
+            globalThis.addStep(bs, globalThis.createStep('cut', { title: 'Cut top beams', targets: [{ kind: 'beam', stackType: 'horizontal-top' }], transitionMs: 100, durationMs: 200 }));
+            globalThis.addStep(bs, globalThis.createStep('place', { title: 'Place bottom ring', targets: [{ kind: 'beam', stackType: 'horizontal-bottom' }], transitionMs: 100, durationMs: 200 }));
+            globalThis.refreshBuildStepsUI();
+        });
+        await page.click('#btn-build-guide-top');
+        await expect(page.locator('#build-guide-modal')).toHaveClass(/visible/);
+        await expect(page.locator('.guide-step')).toHaveCount(3);
+        await expect(page.locator('.guide-step').first()).toContainText('Overview');
+        await expect(page.locator('.guide-step').first()).toContainText('Start here.');
+        await expect.poll(() => page.locator('.guide-step img').count(), { timeout: 60_000 }).toBe(3);
+        // Capturing the thumbnails must leave the viewport as it was
+        const restored = await page.evaluate(() => ({ active: globalThis.state.buildPlayback.active, target: globalThis.state.cam.target }));
+        expect(restored.active).toBe(false);
+        expect(restored.target).toBeNull();
+
+        const [download] = await Promise.all([
+            page.waitForEvent('download', { timeout: 60_000 }),
+            page.evaluate(() => globalThis.exportGuidePDFAsync()),
+        ]);
+        expect(download.suggestedFilename()).toMatch(/LinkageLab_BuildGuide_.*\.pdf$/);
+    });
 });
