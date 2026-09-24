@@ -256,6 +256,7 @@ export function projectDocumentToLegacyUnified(doc) {
         foldAngle: doc.linkage?.foldAngle || doc.foldAngle,
         panels: doc.linkage?.panels || doc.panels,
         costs: doc.linkage?.costs || doc.costs,
+        buildSteps: doc.linkage?.buildSteps || doc.buildSteps,
         summary: doc.summary,
         handoff: doc.handoff,
     };
@@ -269,10 +270,12 @@ export function projectDocumentToLegacyUnified(doc) {
 export function compactProjectForStorage(doc) {
     const hardwareAssemblies = doc.hardwareAssemblies
         || doc.linkage?.hardwareAssemblies;
+    const buildSteps = doc.buildSteps || doc.linkage?.buildSteps;
     const visibility = doc.visibility || doc.linkage?.visibility;
     const linkage = doc.linkage ? {
         ...doc.linkage,
         ...(hardwareAssemblies ? { hardwareAssemblies } : {}),
+        ...(buildSteps ? { buildSteps } : {}),
         ...(visibility ? { visibility } : {}),
     } : undefined;
 
@@ -289,6 +292,7 @@ export function compactProjectForStorage(doc) {
         costs: doc.costs,
         supportBeams: doc.supportBeams,
         hardwareAssemblies,
+        buildSteps,
         visibility,
         circuit: doc.circuit,
         simulation: doc.simulation,
@@ -306,6 +310,7 @@ export const LINKAGE_CONFIG_KEYS = [
     'foldAngle',
     'costs',
     'hardwareAssemblies',
+    'buildSteps',
     'visibility',
     'animationStopAngle',
     'minFoldAngle',
@@ -345,6 +350,7 @@ export function mergeLinkageConfig(primary, supplemental) {
         merged.hardwareAssemblies = supplemental.hardwareAssemblies;
     }
     if (!primary.visibility && supplemental.visibility) merged.visibility = supplemental.visibility;
+    if (!primary.buildSteps && supplemental.buildSteps) merged.buildSteps = supplemental.buildSteps;
     return merged;
 }
 
@@ -357,6 +363,9 @@ export function linkageConfigFromProject(doc) {
     }
     if (!base.visibility && doc.visibility) {
         base.visibility = doc.visibility;
+    }
+    if (!base.buildSteps && doc.buildSteps) {
+        base.buildSteps = doc.buildSteps;
     }
     if (base.structure == null && doc.structure) base.structure = doc.structure;
     if (base.panels == null && doc.panels) base.panels = doc.panels;

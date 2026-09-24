@@ -46,6 +46,7 @@
     { "path": "js/linkage/scene-render.js", "format": "esm" },
     { "path": "js/linkage/cache.js", "format": "esm" },
     { "path": "js/linkage/linkage-geometry.js", "format": "esm" },
+    { "path": "js/linkage/build-steps.js", "format": "esm" },
     { "path": "js/linkage/export-bridge.js", "format": "esm" },
     { "path": "js/linkage/build-guide.js", "format": "esm" },
     { "path": "js/linkage/solar-panel-input.js", "format": "esm" },

@@ -15,7 +15,7 @@ const debouncedSaveHistory = debounce(() => {
     try {
         const stateToSerialize = {};
         for (const key of Object.keys(state)) {
-            if (['light', 'cam', 'view', 'animation', 'measurePoints', 'collisions', 'history', 'historyIndex'].includes(key)) {
+            if (['light', 'cam', 'view', 'animation', 'buildPlayback', 'measurePoints', 'collisions', 'history', 'historyIndex'].includes(key)) {
                 continue;
             }
             stateToSerialize[key] = state[key];
@@ -44,7 +44,7 @@ function undo() {
         state.historyIndex--;
         const prevState = state.history[state.historyIndex];
         Object.keys(prevState).forEach(key => {
-            if (state.hasOwnProperty(key) && key !== 'light' && key !== 'cam' && key !== 'view' && key !== 'animation') {
+            if (state.hasOwnProperty(key) && key !== 'light' && key !== 'cam' && key !== 'view' && key !== 'animation' && key !== 'buildPlayback') {
                 state[key] = prevState[key];
             }
         });
@@ -59,7 +59,7 @@ function redo() {
         state.historyIndex++;
         const nextState = state.history[state.historyIndex];
         Object.keys(nextState).forEach(key => {
-            if (state.hasOwnProperty(key) && key !== 'light' && key !== 'cam' && key !== 'view' && key !== 'animation') {
+            if (state.hasOwnProperty(key) && key !== 'light' && key !== 'cam' && key !== 'view' && key !== 'animation' && key !== 'buildPlayback') {
                 state[key] = nextState[key];
             }
         });

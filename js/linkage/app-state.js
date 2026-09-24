@@ -314,6 +314,10 @@ export const state = {
         archPanelSeparation: 0    // inches - additional offset along slope
     },
     
+    // Build guide steps (persisted with the design) and playback state (never persisted)
+    buildSteps: { version: 1, steps: [] },
+    buildPlayback: { active: false, playing: false, stepIndex: 0, phase: 'idle', t: 0, speed: 1, loop: false, recording: false },
+
     history: [],
     historyIndex: -1
 };

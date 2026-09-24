@@ -12,6 +12,7 @@ import { computeMinFoldAngleVBeamOverlap } from './solver.js';
 import { updateVBeamDimensionUIVisibility } from './beam-bolt-helpers.js';
 import { invalidateGeometryCache } from './cache.js';
 import { saveStateToHistory } from './history.js';
+import { normalizeBuildSteps, serializeBuildStepsForConfig } from './build-steps.js';
 import {
     applyLegacyPanelsSupport,
     applySupportBeamsConfig,
@@ -151,6 +152,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
         if (typeof globalThis.ensureHardwareAssemblies === 'function') {
             globalThis.ensureHardwareAssemblies();
         }
+
+        // Build guide steps: always replace so a loaded design never inherits stale steps
+        state.buildSteps = normalizeBuildSteps(config.buildSteps);
     
         // Mode configuration
         if (config.mode) {
@@ -464,6 +468,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             hardwareAssemblies: (typeof globalThis.serializeHardwareAssembliesForConfig === 'function'
                 ? globalThis.serializeHardwareAssembliesForConfig()
                 : JSON.parse(JSON.stringify(state.hardwareAssemblies || {}))),
+
+            // Build guide steps (undefined when the design has none)
+            buildSteps: serializeBuildStepsForConfig(state.buildSteps),
     
             // Fold angle in degrees
             foldAngle: radToDeg(state.foldAngle),
