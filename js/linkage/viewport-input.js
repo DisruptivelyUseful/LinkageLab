@@ -54,6 +54,9 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
         if (el.closest('.input-wrap') || el.closest('#sidebar') || el.closest('#right-panel')) {
             return true;
         }
+        if (el.closest('#build-steps-bar') || el.closest('#bs-caption')) {
+            return true;
+        }
         return false;
     }
 

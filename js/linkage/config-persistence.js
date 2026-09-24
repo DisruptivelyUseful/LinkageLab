@@ -1128,6 +1128,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 console.warn('Could not restore solar designer state:', e);
             }
         }
+
+        // Let UI modules that mirror config-backed state (e.g. build steps) refresh
+        try { document.dispatchEvent(new CustomEvent('linkage:config-applied', { detail: { updateUI } })); } catch (e) { /* non-DOM environments */ }
     }
     
     /**

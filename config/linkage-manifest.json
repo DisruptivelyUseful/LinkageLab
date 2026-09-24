@@ -16,6 +16,7 @@
     { "path": "partials/linkage-controls-costs.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-reference.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-solar-panels.html", "mount": "#linkage-app-mount" },
+    { "path": "partials/linkage-controls-build-steps.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-controls-support.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-workspace-viewport.html", "mount": "#linkage-app-mount" },
     { "path": "partials/linkage-workspace-hud.html", "mount": "#linkage-app-mount" },
@@ -51,6 +52,7 @@
     { "path": "js/linkage/build-guide.js", "format": "esm" },
     { "path": "js/linkage/solar-panel-input.js", "format": "esm" },
     { "path": "js/linkage/render-app.js", "format": "esm" },
+    { "path": "js/linkage/build-steps-anim.js", "format": "esm" },
     { "path": "js/linkage/viewport-input.js", "format": "esm" },
     { "path": "js/linkage/validation.js", "format": "esm" },
     { "path": "js/linkage/history.js", "format": "esm" },
@@ -59,6 +61,7 @@
     { "path": "js/linkage/ui-bindings.js", "format": "esm" },
     { "path": "js/linkage/dom-setup.js", "format": "esm" },
     { "path": "js/linkage/hardware-ui-init.js", "format": "esm" },
+    { "path": "js/linkage/build-steps-ui.js", "format": "esm" },
     { "path": "js/linkage/main.js", "format": "esm" }
   ]
 }

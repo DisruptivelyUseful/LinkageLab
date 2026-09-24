@@ -252,7 +252,9 @@ function createMainCamera() {
  */
 function updateMainCamera(structureCenter = null) {
     const cam = state.cam;
-    const sc = structureCenter || { x: 0, y: 0, z: 0 };
+    // Build-step playback can pin the orbit/look-at point to a part (cam.target);
+    // otherwise orbit around the structure center as before.
+    const sc = (cam && cam.target) || structureCenter || { x: 0, y: 0, z: 0 };
     
     // Calculate camera position from yaw, pitch, and distance
     const x = cam.dist * Math.sin(cam.yaw) * Math.cos(cam.pitch);

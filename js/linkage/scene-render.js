@@ -164,6 +164,8 @@ import { calculateJointPositions } from './joint-kinematics.js';
             if (!asm || !asm.detailed || !asm.parts || !asm.parts.length) return null;
             const xf = hwComputeAssemblyTransform(placement);
             const instance = buildHardwareAssemblyGroup(asm, opts);
+            instance.userData.placement = placement;
+            instance.userData.type = 'placement';
             instance.position.set(xf.position.x, xf.position.y, xf.position.z);
             instance.quaternion.copy(xf.quaternion);
             instance.traverse(ch => {
@@ -220,6 +222,7 @@ import { calculateJointPositions } from './joint-kinematics.js';
             if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = false;
         } else {
             if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = true;
+            if (threeRenderer.structureGroup) threeRenderer.structureGroup.visible = true;
 
             // Update human scale reference figure
             updateHumanScaleFigure(data, sc);
@@ -230,10 +233,17 @@ import { calculateJointPositions } from './joint-kinematics.js';
             // Update ground plane for shadows
             updateGroundPlane();
 
-            // Skip ortho scene mesh rebuilds during animation (major perf win)
-            if (!(state.animation && state.animation.playing)) {
+            // Skip ortho scene mesh rebuilds during animation / build-step playback (major perf win)
+            if (!(state.animation && state.animation.playing) && !(state.buildPlayback && state.buildPlayback.active)) {
                 updateOrthoScenes(data, sc);
             }
+        }
+
+        // Build-step playback: stage the assembly (hide future parts, highlight the
+        // current step's parts, or show the workbench). Runs last so it can override
+        // grid/panel visibility. Global lookup avoids an import cycle.
+        if (state.buildPlayback && state.buildPlayback.active && !detail && typeof globalThis.applyBuildStepScene === 'function') {
+            globalThis.applyBuildStepScene(data, sc);
         }
     }
 
@@ -541,12 +551,13 @@ import { calculateJointPositions } from './joint-kinematics.js';
         const camCenter = (state.hwDetailMode && threeRenderer._hwFocusTarget)
             ? threeRenderer._hwFocusTarget
             : structureCenter;
+        threeRenderer._lastMainCenter = camCenter;
         updateMainCamera(camCenter);
         updateGridPosition(structureCenter);
         threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
         
-        // Skip ortho view updates during animation for major perf gain
-        const skipOrtho = state.animation && state.animation.playing;
+        // Skip ortho view updates during animation / build-step playback for major perf gain
+        const skipOrtho = (state.animation && state.animation.playing) || (state.buildPlayback && state.buildPlayback.active);
         
         if (!skipOrtho) {
             const topSection = document.getElementById('top-view-section');
@@ -568,13 +579,28 @@ import { calculateJointPositions } from './joint-kinematics.js';
     }
 
 
+    /**
+     * Re-renders the main view with the current camera WITHOUT rebuilding meshes.
+     * Used by build-step playback for camera moves and tool animation frames.
+     * @param {{x:number,y:number,z:number}} [structureCenter] - orbit center; defaults to the last full render's center
+     * @returns {boolean} false when the renderer is not ready
+     */
+    function renderFrameOnly(structureCenter = null) {
+        if (!threeRenderer.initialized || !threeRenderer.main || !threeRenderer.mainScene || !threeRenderer.mainCamera) return false;
+        const center = structureCenter || threeRenderer._lastMainCenter || { x: 0, y: 0, z: 0 };
+        updateMainCamera(center);
+        threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
+        return true;
+    }
+
 const _moduleExports = {
     updateThreeJSScenes,
     renderActuatorLine,
     updateOrthoScenes,
     renderThreeJS,
+    renderFrameOnly,
 };
 
 bridgeGlobals(_moduleExports, 'sceneRender');
 
-export { updateThreeJSScenes, renderActuatorLine, updateOrthoScenes, renderThreeJS };
+export { updateThreeJSScenes, renderActuatorLine, updateOrthoScenes, renderThreeJS, renderFrameOnly };

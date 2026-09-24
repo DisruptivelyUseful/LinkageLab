@@ -471,6 +471,10 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
                     break;
                 case ' ':
                     e.preventDefault();
+                    if (state.buildPlayback && state.buildPlayback.active && typeof globalThis.togglePlay === 'function') {
+                        globalThis.togglePlay();
+                        break;
+                    }
                     if (state.animation.playing) {
                         document.getElementById('btn-anim-pause').click();
                     } else {

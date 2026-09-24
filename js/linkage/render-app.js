@@ -212,7 +212,7 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
     let _lastHudGeometryHash = null;
     
     function updateHUD(data) {
-        const isAnimating = state.animation && state.animation.playing;
+        const isAnimating = (state.animation && state.animation.playing) || (state.buildPlayback && state.buildPlayback.active);
         const currentGeoHash = (typeof getCachedGeometryHash === 'function' ? getCachedGeometryHash() : null) || computeGeometryHash();
         const hudNeedsFullUpdate = !isAnimating || _lastHudGeometryHash !== currentGeoHash;
         _lastHudGeometryHash = currentGeoHash;

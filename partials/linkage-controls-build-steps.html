@@ -1,0 +1,14 @@
+        <!-- Build Steps - step-by-step fabrication / assembly guide -->
+        <div class="group collapsed" id="build-steps-group">
+            <div class="group-title" onclick="this.parentElement.classList.toggle('collapsed')">Build Steps</div>
+            <div class="group-content">
+                <div class="bs-toolbar">
+                    <button id="bs-btn-mode" class="bs-btn bs-btn-primary" title="Enter build-step playback (stages the assembly step by step)">▶ Build Mode</button>
+                    <button id="bs-btn-add" class="bs-btn" title="Add a step after the selected one">+ Step</button>
+                    <button id="bs-btn-auto" class="bs-btn" title="Generate a default fabrication and assembly sequence from this design" disabled>⚙ Auto</button>
+                </div>
+                <div id="bs-step-list" class="bs-step-list" aria-label="Build steps (drag to reorder)"></div>
+                <div id="bs-empty" class="bs-empty">No steps yet. Add a step, or auto-generate a sequence from the design.</div>
+                <div id="bs-editor" class="bs-editor" style="display:none;"></div>
+            </div>
+        </div>

@@ -14,6 +14,7 @@ import { requestRender } from './render-app.js';
 import { initThreeJS } from './renderer-3d.js';
 import { scheduleLinkageViewportRefresh } from './viewport-refresh.js';
 import { initViewportInput } from './viewport-input.js';
+import { initBuildStepsUI } from './build-steps-ui.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -22,6 +23,7 @@ import { initViewportInput } from './viewport-input.js';
         initReferenceInputHandlers();
         initUIBindings();
         initHardwareUI();
+        initBuildStepsUI();
         
         // Add ARIA labels for accessibility
         document.getElementById('canvas').setAttribute('role', 'img');
