@@ -8,6 +8,16 @@
                     <button id="bs-btn-auto" class="bs-btn" title="Generate a default fabrication and assembly sequence from this design">⚙ Auto</button>
                     <button id="bs-btn-record" class="bs-btn" title="Play the whole sequence and download it as a WebM video">🎬</button>
                 </div>
+                <div class="bs-toolbar bs-toolbar-2">
+                    <button id="bs-btn-group" class="bs-btn" title="Group the selected adjacent steps (Ctrl/Shift-click to select several) as one repeated operation" disabled>⧉ Group</button>
+                    <button id="bs-btn-ungroup" class="bs-btn" title="Dissolve the selected group" disabled>Ungroup</button>
+                    <label class="bs-repeat-label" title="How repeated (grouped) steps play back">Repeats
+                        <select id="bs-sel-repeat" class="bs-select">
+                            <option value="skip">First only + “Do this N×”</option>
+                            <option value="fast">Fast-forward the rest</option>
+                        </select>
+                    </label>
+                </div>
                 <div id="bs-step-list" class="bs-step-list" aria-label="Build steps (drag to reorder)"></div>
                 <div id="bs-empty" class="bs-empty">No steps yet. Add a step, or auto-generate a sequence from the design.</div>
                 <div id="bs-editor" class="bs-editor" style="display:none;"></div>

@@ -373,10 +373,24 @@ const placeDriver = {
         const op = ctx.step.op || {};
         const approach = op.approach || 'above';
         const travel = Number.isFinite(Number(op.travelIn)) ? Number(op.travelIn) : 24;
+        const fromParked = op.from === 'parked';
         const entries = [];
         forEachPartMesh((mesh, key) => {
             if (!ctx.targetKeys.has(key)) return;
-            entries.push({ mesh, seated: mesh.position.clone(), dir: approachVector(mesh, approach), mats: makeTransparent(mesh) });
+            let dir = approachVector(mesh, approach);
+            let dist = travel;
+            let fade = true;
+            if (fromParked && typeof ctx.parkedOffsetFor === 'function') {
+                // Lift from where the parts were parked: travel along the park vector, no fade
+                const off = ctx.parkedOffsetFor(key);
+                if (off) {
+                    dir = new THREE.Vector3(off.x, off.y, off.z);
+                    dist = dir.length();
+                    if (dist > 1e-6) dir.divideScalar(dist); else { dir.set(0, 1, 0); dist = 0; }
+                    fade = false;
+                }
+            }
+            entries.push({ mesh, seated: mesh.position.clone(), dir, dist, mats: fade ? makeTransparent(mesh) : [] });
         });
         ctx.scratch.place = { entries, travel };
     },
@@ -384,10 +398,9 @@ const placeDriver = {
         const p = ctx.scratch.place;
         if (!p) return false;
         const e = easeInOutCubic(t);
-        const offset = p.travel * (1 - e);
         const opacity = 0.25 + 0.75 * e;
         for (const en of p.entries) {
-            en.mesh.position.copy(en.seated).addScaledVector(en.dir, offset);
+            en.mesh.position.copy(en.seated).addScaledVector(en.dir, en.dist * (1 - e));
             for (const m of en.mats) m.opacity = opacity;
         }
         return false;

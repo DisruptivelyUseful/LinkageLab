@@ -6,7 +6,7 @@ import { exportProjectFile } from '../core/project-export.js';
 import { state } from './app-state.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
-import { STEP_KIND_META, stepSummary } from './build-steps.js';
+import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.js';
 
     function computeReciprocalDrillData(data) {
         const result = {
@@ -1626,17 +1626,21 @@ import { STEP_KIND_META, stepSummary } from './build-steps.js';
      * HTML card listing the build steps (thumbnails are filled in asynchronously).
      */
     function buildStepsGuideSectionHtml() {
-        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        const allSteps = (state.buildSteps && state.buildSteps.steps) || [];
+        const reps = representativeSteps(allSteps);
+        const steps = reps.map(r => r.step);
         if (!steps.length) return '';
         const escapeHtml = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const items = steps.map((step, i) => {
             const meta = STEP_KIND_META[step.kind] || STEP_KIND_META.view;
             const cached = typeof globalThis.getCachedThumbnail === 'function' ? globalThis.getCachedThumbnail(step.id) : null;
+            const rep = reps[i];
+            const repeatBadge = rep.count > 1 ? `<span class="guide-step-repeat" title="Repeated once per module">Do this ${rep.count}×</span>` : '';
             return `
                 <div class="guide-step" data-step-id="${escapeHtml(step.id)}">
                     <div class="guide-step-thumb">${cached ? `<img src="${cached}" alt="">` : '<div class="guide-step-thumb-pending">rendering…</div>'}</div>
                     <div class="guide-step-body">
-                        <div class="guide-step-title"><span class="guide-step-num">${i + 1}</span> ${meta.icon} ${escapeHtml(step.title)}</div>
+                        <div class="guide-step-title"><span class="guide-step-num">${i + 1}</span> ${meta.icon} ${escapeHtml(step.title)} ${repeatBadge}</div>
                         <div class="guide-step-meta">${escapeHtml(meta.label)} · ${escapeHtml(stepSummary(step))} · ${((step.transitionMs + step.durationMs) / 1000).toFixed(1)} s</div>
                         ${step.notes ? `<div class="guide-step-notes">${escapeHtml(step.notes)}</div>` : ''}
                     </div>
@@ -1644,17 +1648,17 @@ import { STEP_KIND_META, stepSummary } from './build-steps.js';
         }).join('');
         return `
             <div class="guide-card guide-card-wide">
-                <div class="guide-card-header">Assembly Steps <span class="guide-card-sub">${steps.length} steps · <button class="guide-inline-btn" onclick="recordBuildStepsVideo()">🎬 Export video</button></span></div>
+                <div class="guide-card-header">Assembly Steps <span class="guide-card-sub">${steps.length} steps${allSteps.length > steps.length ? ` (${allSteps.length} with repeats)` : ''} · <button class="guide-inline-btn" onclick="recordBuildStepsVideo()">🎬 Export video</button></span></div>
                 <div class="guide-card-content guide-steps">${items}</div>
             </div>`;
     }
 
     /** Renders each step in the viewport and drops the images into the open guide. */
     async function fillGuideStepThumbnails() {
-        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        const steps = representativeSteps((state.buildSteps && state.buildSteps.steps) || []).map(r => r.step);
         if (!steps.length || typeof globalThis.captureStepThumbnails !== 'function') return;
         try {
-            const thumbs = await globalThis.captureStepThumbnails({ maxWidth: 640 });
+            const thumbs = await globalThis.captureStepThumbnails({ maxWidth: 640, stepIds: steps.map(s => s.id) });
             thumbs.forEach(t => {
                 const box = document.querySelector(`.guide-step[data-step-id="${CSS.escape(t.id)}"] .guide-step-thumb`);
                 if (box && t.dataUrl) box.innerHTML = `<img src="${t.dataUrl}" alt="">`;
@@ -1666,12 +1670,12 @@ import { STEP_KIND_META, stepSummary } from './build-steps.js';
 
     /** PDF export that first renders any missing step thumbnails. */
     async function exportGuidePDFAsync() {
-        const steps = (state.buildSteps && state.buildSteps.steps) || [];
+        const steps = representativeSteps((state.buildSteps && state.buildSteps.steps) || []).map(r => r.step);
         if (steps.length && typeof globalThis.captureStepThumbnails === 'function') {
             const missing = steps.some(s => !globalThis.getCachedThumbnail(s.id));
             if (missing) {
                 showToast('Rendering step images for the PDF…', 'info', 2000);
-                try { await globalThis.captureStepThumbnails({ maxWidth: 640 }); } catch (e) { /* export without images */ }
+                try { await globalThis.captureStepThumbnails({ maxWidth: 640, stepIds: steps.map(s => s.id) }); } catch (e) { /* export without images */ }
             }
         }
         exportGuidePDF();
@@ -2508,7 +2512,8 @@ import { STEP_KIND_META, stepSummary } from './build-steps.js';
         }
     
         // ---- ASSEMBLY STEPS ----
-        const guideSteps = (state.buildSteps && state.buildSteps.steps) || [];
+        const guideReps = representativeSteps((state.buildSteps && state.buildSteps.steps) || []);
+        const guideSteps = guideReps.map(r => r.step);
         if (guideSteps.length) {
             checkPageBreak(40);
             doc.setFillColor(...colors.sectionBg);
@@ -2536,15 +2541,16 @@ import { STEP_KIND_META, stepSummary } from './build-steps.js';
                         doc.rect(margin, y, imgW, imgH, 'S');
                     } catch (e) { /* image failed */ }
                 }
+                const rep = guideReps[i];
                 doc.setFont('helvetica', 'bold');
                 doc.setFontSize(8.5);
                 doc.setTextColor(...colors.text);
-                doc.text(`${i + 1}. ${step.title}`, textX, y + 4);
+                doc.text(`${i + 1}. ${step.title}${rep.count > 1 ? `  (repeat ×${rep.count})` : ''}`, textX, y + 4);
                 doc.setFont('helvetica', 'normal');
                 doc.setFontSize(7);
                 doc.setTextColor(...colors.muted);
                 let ty = y + 8;
-                doc.text(`${meta.label} · ${(step.transitionMs + step.durationMs) / 1000}s`, textX, ty);
+                doc.text(`${meta.label} · ${(step.transitionMs + step.durationMs) / 1000}s${rep.count > 1 ? ` · do this ${rep.count} times, once per module` : ''}`, textX, ty);
                 ty += 3.2;
                 summaryLines.forEach(line => { doc.text(line, textX, ty); ty += 3.2; });
                 if (noteLines.length) {

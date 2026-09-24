@@ -78,6 +78,9 @@ function hwPartEntry(mesh, build, turns, isNut) {
 function collectEntries(ctx) {
     const keys = targetKeysFor(ctx);
     const turns = Math.max(0.25, Number(ctx.step.op && ctx.step.op.turns) || 3);
+    // Optional assembly-axis filter: e.g. ['down','up'] = the bracket-to-ring bolt only
+    const axes = Array.isArray(ctx.step.op && ctx.step.op.axes) && ctx.step.op.axes.length ? new Set(ctx.step.op.axes) : null;
+    const onAxis = (b) => !axes || axes.has(b.renderAxisKey) || axes.has(b.partsAxisKey);
     const entries = [];
 
     // Legacy bolts
@@ -99,7 +102,7 @@ function collectEntries(ctx) {
             const bolts = [], nuts = [];
             for (const part of instance.children) {
                 const b = part.userData && part.userData.build;
-                if (!b) continue;
+                if (!b || !onAxis(b)) continue;
                 if (b.partType === 'bolt') bolts.push(part);
                 else if (b.partType === 'nut') nuts.push(part);
             }

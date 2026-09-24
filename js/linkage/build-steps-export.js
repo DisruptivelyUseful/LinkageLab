@@ -80,8 +80,10 @@ async function captureStepThumbnails(opts = {}) {
     const out = [];
     try {
         enterPlayback(0);
+        const wanted = Array.isArray(opts.stepIds) && opts.stepIds.length ? new Set(opts.stepIds) : null;
         for (let i = 0; i < list.length; i++) {
             const step = list[i];
+            if (wanted && !wanted.has(step.id)) continue;
             const key = stepCacheKey(step, i);
             const cached = thumbCache.get(step.id);
             if (cached && cached.key === key && !opts.force) {

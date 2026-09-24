@@ -28,7 +28,11 @@ import {
     captureView,
     computeStepVisibility,
     createDefaultPlayback,
+    groupOf,
+    nextIndexAfter,
+    normalizeSettings,
     normalizeView,
+    resolveParkOffset,
     tweenView,
 } from './build-steps.js';
 
@@ -88,6 +92,26 @@ function steps() {
     return (state.buildSteps && Array.isArray(state.buildSteps.steps)) ? state.buildSteps.steps : [];
 }
 
+function settings() {
+    return normalizeSettings(state.buildSteps && state.buildSteps.settings);
+}
+
+/** Group/repeat info for the current step, kept on the playback state for the UI. */
+function updateRepeatInfo() {
+    const pb = playback();
+    const g = groupOf(steps(), pb.stepIndex);
+    const mode = settings().repeatMode;
+    pb.repeat = { groupId: g.groupId, count: g.count, position: g.position, isFirst: g.isFirst, mode, fastFactor: settings().fastFactor };
+    return pb.repeat;
+}
+
+/** Time multiplier for the current step: later members of a group run fast in 'fast' mode. */
+function repeatFactor() {
+    const r = playback().repeat;
+    if (!r || r.count < 2 || r.isFirst) return 1;
+    return r.mode === 'fast' ? Math.max(1, r.fastFactor || 4) : 1;
+}
+
 function currentStep() {
     const list = steps();
     const pb = playback();
@@ -136,18 +160,73 @@ function structureCenterOf(data) {
 }
 
 /** World-space bounds of the parts matched by selectors (accounts for structure rotation). */
-function targetsBounds(selectors, data) {
+function targetsBounds(selectors, data, displacementOf = null) {
     if (!selectors || !selectors.length) return null;
     const parts = partsFor(data);
     const items = parts.filter(rec => selectors.some(sel => matchSelector(rec.obj, sel, rec.kind)));
-    const b = partsBounds(items);
+    let b = partsBounds(items);
     if (!b) return null;
+    // Parked parts sit displaced from their seated position; frame where they actually are
+    if (displacementOf) {
+        const off = displacementOf(items);
+        if (off) b = { ...b, center: { x: b.center.x + off.x, y: b.center.y + off.y, z: b.center.z + off.z } };
+    }
     const sc = structureCenterOf(data);
     const rot = degToRad(state.structureRotation || 0);
     // Panels are not rotated with the structure; everything else is.
     const onlyPanels = items.length && items.every(i => i.kind === 'panel');
     const center = onlyPanels ? b.center : rotateAboutY(b.center, sc, rot);
     return { ...b, center };
+}
+
+/** Structure-wide bounds (beams only) used to resolve 'beside' park offsets. */
+function structureBeamBounds(data) {
+    if (engine.partsCache.data === data && engine.partsCache.structBounds) return engine.partsCache.structBounds;
+    const parts = partsFor(data);
+    const b = partsBounds(parts.filter(p => p.kind === 'beam' && p.obj.stackType !== 'support-beam' && p.obj.stackType !== 'support-beam-reciprocal'));
+    engine.partsCache.structBounds = b;
+    return b;
+}
+
+/**
+ * Resolves the park offset (structure-local vector) for a set of part records
+ * that share one parkOffset spec. Cached per spec+data.
+ */
+function resolveDisplacement(spec, items, data) {
+    if (!spec) return null;
+    if (spec.mode !== 'beside') return resolveParkOffset(spec);
+    const key = JSON.stringify(spec) + '|' + items.map(i => i.key).sort().join(',');
+    engine.parkCache = engine.parkCache || new Map();
+    const cached = engine.parkCache.get(key);
+    if (cached && cached.data === data) return cached.off;
+    const off = resolveParkOffset(spec, structureBeamBounds(data), partsBounds(items));
+    engine.parkCache.set(key, { data, off });
+    return off;
+}
+
+/**
+ * Bounds to frame for a step: its targets, shifted where they are parked, and
+ * for a lift (from parked) the span between parked and seated positions.
+ */
+function stepFrameBounds(step, index, data) {
+    if (!step || !step.targets || !step.targets.length) return null;
+    const parts = partsFor(data);
+    const vis = computeStepVisibility(steps(), index, parts);
+    const groupItems = (items, map) => {
+        // all items of a step share one spec in practice; use the first
+        const first = items.find(i => map.has(i.key));
+        return first ? resolveDisplacement(map.get(first.key), items.filter(i => map.get(i.key) === map.get(first.key)), data) : null;
+    };
+    const op = step.op || {};
+    if (op.from === 'parked') {
+        const seated = targetsBounds(step.targets, data, null);
+        const parkedB = targetsBounds(step.targets, data, (items) => groupItems(items, vis.displacementBefore));
+        if (!seated || !parkedB) return seated || parkedB;
+        const center = { x: (seated.center.x + parkedB.center.x) / 2, y: (seated.center.y + parkedB.center.y) / 2, z: (seated.center.z + parkedB.center.z) / 2 };
+        const dx = seated.center.x - parkedB.center.x, dy = seated.center.y - parkedB.center.y, dz = seated.center.z - parkedB.center.z;
+        return { ...seated, center, radius: seated.radius + Math.sqrt(dx * dx + dy * dy + dz * dz) / 2 };
+    }
+    return targetsBounds(step.targets, data, (items) => groupItems(items, vis.displacement));
 }
 
 /** Resolves a view's look-at point (anchor bounds center or structure center). */
@@ -184,7 +263,7 @@ function resolveStepView(step, data, ctx = null) {
         }
     }
     if (step && step.targets && step.targets.length) {
-        const b = targetsBounds(step.targets, data);
+        const b = stepFrameBounds(step, ctx ? steps().indexOf(step) : steps().indexOf(step), data) || targetsBounds(step.targets, data);
         if (b) {
             const anchor = step.targets.length === 1 ? step.targets[0] : { kind: '*', __bounds: true };
             const v = autoFrameView(b, { fovDeg: 45, aspect: viewportAspect(), yaw: live.yaw, pitch: Math.max(0.2, live.pitch), anchor: null, foldAngleDeg: null });
@@ -330,6 +409,7 @@ function goToStep(index, { immediate = false, autoplay = null } = {}) {
     pb.stepIndex = clamp(index, 0, list.length - 1);
     const step = list[pb.stepIndex];
     if (!pb.active) enterPlayback(pb.stepIndex);
+    updateRepeatInfo();
     const data = currentData();
 
     engine.fromView = liveView();
@@ -447,7 +527,7 @@ function tick(ts) {
     // software-rendered frames (fold re-solves) to keep sequence time honest.
     const dt = engine.lastTs ? Math.min(250, ts - engine.lastTs) : 16;
     engine.lastTs = ts;
-    stepFrame(dt * (pb.speed || 1));
+    stepFrame(dt * (pb.speed || 1) * repeatFactor());
     if (pb.playing) engine.frameId = requestAnimationFrame(tick);
 }
 
@@ -499,8 +579,9 @@ function stepFrame(dtMs) {
 function advanceAfterHold() {
     const pb = playback();
     const list = steps();
-    if (pb.stepIndex < list.length - 1) {
-        goToStep(pb.stepIndex + 1, { immediate: false });
+    const nextIdx = nextIndexAfter(list, pb.stepIndex, settings().repeatMode);
+    if (nextIdx >= 0) {
+        goToStep(nextIdx, { immediate: false });
     } else if (pb.loop) {
         goToStep(0, { immediate: false });
     } else {
@@ -606,10 +687,30 @@ function applyBuildStepScene(data, sc) {
     const vis = computeStepVisibility(steps(), pb.stepIndex, parts);
     engine.visibility = vis;
 
+    // Parked parts (e.g. the top ring built beside the bottom ring) are displaced
+    // before op drivers stage, so drivers see the parked position as "seated".
+    const byKey = new Map(parts.map(p => [p.key, p]));
+    const specGroups = new Map(); // spec json -> items
+    vis.displacement.forEach((spec, key) => {
+        const rec = byKey.get(key);
+        if (!rec) return;
+        const k = JSON.stringify(spec);
+        if (!specGroups.has(k)) specGroups.set(k, { spec, items: [] });
+        specGroups.get(k).items.push(rec);
+    });
+    const offsetByKey = new Map();
+    specGroups.forEach(({ spec, items }) => {
+        const off = resolveDisplacement(spec, items, data);
+        if (off) items.forEach(i => offsetByKey.set(i.key, off));
+    });
+    engine.displacementOffsets = offsetByKey;
+
     forEachPartMesh((mesh, key) => {
         const s = vis.status.get(key);
         if (s === 'future') { mesh.visible = false; return; }
         mesh.visible = true;
+        const off = offsetByKey.get(key);
+        if (off) { mesh.position.x += off.x; mesh.position.y += off.y; mesh.position.z += off.z; }
         if (s === 'active') highlightMesh(mesh);
     });
 
@@ -629,6 +730,14 @@ function applyBuildStepScene(data, sc) {
         engine.ctx.data = data;
         engine.ctx.parts = parts;
         engine.ctx.structureCenter = sc || structureCenterOf(data);
+        engine.ctx.visibility = vis;
+        // Offsets the step's targets were parked at before this step (for from:'parked' lifts)
+        engine.ctx.parkedOffsetFor = (key) => {
+            const spec = vis.displacementBefore.get(key);
+            if (!spec) return null;
+            const items = parts.filter(p => vis.displacementBefore.get(p.key) === spec);
+            return resolveDisplacement(spec, items, data);
+        };
         const d = driverFor(step);
         if (d.stage) { try { d.stage(engine.ctx); } catch (e) { console.warn('[BuildSteps] op stage failed:', e); } }
         if (d.update && (pb.phase === 'op' || pb.phase === 'hold' || pb.phase === 'done')) {
@@ -709,6 +818,8 @@ const _moduleExports = {
     targetsBounds,
     forEachPartMesh,
     meshPartKey,
+    updateRepeatInfo,
+    settings,
 };
 
 bridgeGlobals(_moduleExports, 'buildStepsAnim');
@@ -737,4 +848,6 @@ export {
     targetsBounds,
     forEachPartMesh,
     meshPartKey,
+    updateRepeatInfo,
+    settings,
 };

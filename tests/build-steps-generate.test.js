@@ -90,21 +90,48 @@ describe('generateDefaultBuildSteps', () => {
         const cutCounts = steps.filter(s => s.kind === 'cut').map(s => parts.filter(p => p.kind === 'beam' && matches(p, s)).length);
         expect(cutCounts.reduce((a, b) => a + b, 0)).toBe(data.beams.length);
 
-        // Fasteners are fastened after the beams and brackets of their module are placed
+        // Fasteners are fastened after the brackets of their ring are placed, and V-stack
+        // bolts only after the V module exists (bottom) or the top ring was lifted on (top)
+        const liftIdx = steps.findIndex(s => s.title.startsWith('Lift the top assembly'));
+        expect(liftIdx).toBeGreaterThan(0);
         for (const rec of parts.filter(p => p.kind === 'bolt')) {
             const fasten = firstIndex(rec, 'fasten');
             expect(fasten, `${rec.key} never fastened`).toBeGreaterThanOrEqual(0);
             const mod = rec.obj.moduleIndex;
-            const beamPlaces = steps.map((s, i) => [s, i]).filter(([s]) => s.kind === 'place' && s.targets.some(t => t.kind === 'beam' && t.moduleIndex === mod));
-            const lastBeamPlace = Math.max(...beamPlaces.map(([, i]) => i));
-            if (rec.obj.ring === 'top') expect(fasten).toBeGreaterThan(lastBeamPlace);
-            const bracketPlace = steps.findIndex(s => s.kind === 'place' && s.targets.some(t => t.kind === 'bracket' && t.moduleIndex === mod));
-            expect(fasten).toBeGreaterThan(bracketPlace);
+            const ring = rec.obj.ring;
+            const bracketPlace = steps.findIndex(s => s.kind === 'place' && s.targets.some(t => t.kind === 'bracket' && t.moduleIndex === mod && t.ring === ring));
+            if (ring === 'bottom' || ring === 'top') expect(fasten, `${rec.key} before its bracket`).toBeGreaterThan(bracketPlace);
+            if (rec.obj.boltType === 'vstack') {
+                const vPlace = steps.findIndex(s => s.kind === 'place' && s.targets.some(t => t.kind === 'beam' && t.stackType === 'vertical' && t.moduleIndex === mod));
+                expect(fasten, `${rec.key} before its V module`).toBeGreaterThan(vPlace);
+                if (ring === 'top') expect(fasten, `${rec.key} before the lift`).toBeGreaterThan(liftIdx);
+            }
         }
 
-        // Modules ascend
-        const moduleOrder = steps.filter(s => /^Module \d+/.test(s.title)).map(s => parseInt(s.title.match(/^Module (\d+)/)[1], 10));
-        for (let i = 1; i < moduleOrder.length; i++) expect(moduleOrder[i]).toBeGreaterThanOrEqual(moduleOrder[i - 1]);
+        // Shop order: bottom ring -> top ring (parked) -> V modules -> attach -> lift -> secure
+        const titleIdx = (re) => steps.map((s, i) => (re.test(s.title) ? i : -1)).filter(i => i >= 0);
+        const bottom = titleIdx(/set bottom H-beams|fit the bottom brackets|bolt the bottom ring/);
+        const top = titleIdx(/set top H-beams|fit the top brackets|bolt the top ring/);
+        const vmod = titleIdx(/assemble the V module|V module centre pivot/);
+        const attach = titleIdx(/attach the V module/), secure = titleIdx(/secure the top bracket/);
+        expect(Math.max(...bottom)).toBeLessThan(Math.min(...top));
+        expect(Math.max(...top)).toBeLessThan(Math.min(...vmod.filter(i => !attach.includes(i))));
+        expect(Math.max(...vmod.filter(i => !attach.includes(i)))).toBeLessThan(Math.min(...attach));
+        expect(Math.max(...attach)).toBeLessThan(liftIdx);
+        expect(liftIdx).toBeLessThan(Math.min(...secure));
+
+        // Repeated module operations are grouped, one member per module
+        const modules = globalThis.state.modules;
+        const groups = new Map();
+        steps.forEach((s, i) => { if (s.groupId) { if (!groups.has(s.groupId)) groups.set(s.groupId, []); groups.get(s.groupId).push(i); } });
+        expect(groups.size).toBeGreaterThanOrEqual(9);
+        for (const [gid, members] of groups) {
+            expect(members.length, `${gid} members`).toBe(modules);
+            for (let k = 1; k < members.length; k++) expect(members[k], `${gid} contiguous`).toBe(members[k - 1] + 1);
+        }
+        // Top ring steps are built parked beside the structure; the lift starts from parked
+        steps.filter(s => s.kind === 'place' && /set top H-beams|fit the top brackets/.test(s.title)).forEach(s => expect(s.op.parkOffset).toEqual({ mode: 'beside', gapIn: 24 }));
+        expect(steps[liftIdx].op.from).toBe('parked');
 
         // Assembly steps carry the folded pose, deploy step the deployed pose
         expect(steps.find(s => s.title.startsWith('Module 1')).view.foldAngleDeg).toBe(40);
@@ -143,6 +170,10 @@ describe('generateDefaultBuildSteps', () => {
             expect(placed, `${rec.key} never placed`).toBeGreaterThanOrEqual(0);
             expect(fastened, `${rec.key} never fastened (${jointKey(rec.obj)})`).toBeGreaterThan(placed);
         }
+        // Hardware fasten steps name the assembly axes they turn (bracket bolt vs V-stack bolts)
+        const hwFastens = detailed.filter(s => s.kind === 'fasten' && s.targets.some(t => t.kind === 'placement'));
+        expect(hwFastens.length).toBeGreaterThan(0);
+        hwFastens.forEach(s => expect(Array.isArray(s.op.axes) && s.op.axes.length > 0).toBe(true));
     });
 
     it('drops empty sections gracefully', () => {

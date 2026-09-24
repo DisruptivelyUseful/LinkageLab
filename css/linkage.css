@@ -1911,3 +1911,19 @@ input.error {
 .guide-step-meta { font-size: 0.7rem; color: #667; margin-top: 2px; }
 .guide-step-notes { font-size: 0.78rem; margin-top: 6px; white-space: pre-wrap; line-height: 1.4; color: #333; }
 @media (max-width: 700px) { .guide-step { grid-template-columns: 1fr; } }
+/* Build Steps: groups, multi-select, repeat controls */
+.bs-toolbar-2 { align-items: center; }
+.bs-repeat-label { display: flex; align-items: center; gap: 4px; font-size: 0.62rem; color: var(--text-secondary); margin-left: auto; }
+.bs-repeat-label .bs-select { font-size: 0.62rem; padding: 3px 4px; max-width: 150px; }
+.bs-step.multi { outline: 1px dashed var(--clr-primary); outline-offset: -1px; }
+.bs-step.grouped { border-left: 3px solid rgba(var(--clr-primary-rgb), 0.55); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.bs-step.group-first { margin-top: 4px; }
+.bs-step.group-member { margin-left: 10px; opacity: 0.78; }
+.bs-step.group-member .bs-title { font-weight: 500; }
+.bs-step.group-last { margin-bottom: 4px; }
+.bs-group-badge { font-family: var(--font-mono); font-size: 0.6rem; font-weight: 700; color: #fff; background: var(--clr-primary); border-radius: 8px; padding: 1px 6px; white-space: nowrap; }
+.bs-group-line { display: flex; align-items: center; gap: 6px; }
+.bs-link { background: none; border: none; color: var(--clr-primary); text-decoration: underline; cursor: pointer; font-size: inherit; padding: 0; }
+.bs-scene-badge { margin-left: 4px; font-size: 0.55rem; font-weight: 700; color: var(--clr-primary); }
+.bs-caption-repeat { margin-left: 10px; font-size: 0.72rem; font-weight: 700; color: #111; background: #f7c948; border-radius: 10px; padding: 2px 9px; white-space: nowrap; }
+.guide-step-repeat { margin-left: 8px; font-size: 0.65rem; font-weight: 700; color: #111; background: #f7c948; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }

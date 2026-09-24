@@ -236,4 +236,51 @@ test.describe('Build steps', () => {
         ]);
         expect(download.suggestedFilename()).toMatch(/LinkageLab_BuildGuide_.*\.pdf$/);
     });
+
+    test('auto-generated groups skip repeats and can be toggled to fast-forward', async ({ page }) => {
+        await openApp(page);
+        page.on('dialog', (d) => d.accept());
+        await page.click('#bs-btn-auto');
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildSteps.steps.length)).toBeGreaterThan(10);
+
+        const info = await page.evaluate(() => {
+            const steps = globalThis.state.buildSteps.steps;
+            const modules = globalThis.state.modules;
+            const firstGrouped = steps.findIndex((s) => s.groupId);
+            const g = globalThis.groupOf(steps, firstGrouped);
+            return { modules, firstGrouped, count: g.count, next: globalThis.nextIndexAfter(steps, firstGrouped, 'skip'), badge: document.querySelectorAll('.bs-group-badge').length, mode: globalThis.state.buildSteps.settings.repeatMode };
+        });
+        expect(info.count).toBe(info.modules);
+        expect(info.next).toBe(info.firstGrouped + info.modules);
+        expect(info.badge).toBeGreaterThan(5);
+        expect(info.mode).toBe('skip');
+
+        // Play the first grouped step to its end: skip mode jumps past the whole group
+        await page.evaluate((i) => { globalThis.enterPlayback(i); globalThis.play(); }, info.firstGrouped);
+        await expect(page.locator('#bs-caption-repeat')).toContainText(`Do this ${info.modules}×`);
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildPlayback.stepIndex), { timeout: 60_000 }).toBe(info.next);
+        await page.evaluate(() => globalThis.pause());
+        await page.waitForTimeout(400);
+        const visibleBottom = await page.evaluate(() => globalThis.threeRenderer.beamGroup.children.filter((m) => m.visible && m.userData.beam && m.userData.beam.stackType === 'horizontal-bottom').length);
+        expect(visibleBottom).toBe(await page.evaluate(() => globalThis.state.modules * globalThis.state.hStackCount)); // one bottom stack per module
+
+        // Fast-forward mode plays every member; the second member runs faster
+        await page.selectOption('#bs-sel-repeat', 'fast');
+        await page.evaluate((i) => { globalThis.goToStep(i, { immediate: true }); globalThis.state.buildPlayback.playing = true; for (let k = 0; k < 40; k++) globalThis.stepFrame(100); globalThis.state.buildPlayback.playing = false; }, info.firstGrouped);
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildPlayback.stepIndex)).toBe(info.firstGrouped + 1);
+        await expect(page.locator('#bs-caption-notes')).toContainText('fast-forward');
+        await page.keyboard.press('Escape');
+
+        // Manual grouping of two adjacent ungrouped steps
+        await page.evaluate(() => {
+            const bs = globalThis.state.buildSteps;
+            bs.steps = bs.steps.slice(0, 2).map((s) => ({ ...s, groupId: null }));
+            globalThis.refreshBuildStepsUI();
+        });
+        await page.click('#bs-step-list .bs-step:nth-child(1)');
+        await page.click('#bs-step-list .bs-step:nth-child(2)', { modifiers: ['Control'] });
+        await page.click('#bs-btn-group');
+        await expect.poll(() => page.evaluate(() => globalThis.state.buildSteps.steps.map((s) => !!s.groupId))).toEqual([true, true]);
+        await expect(page.locator('.bs-group-badge')).toHaveText('×2');
+    });
 });

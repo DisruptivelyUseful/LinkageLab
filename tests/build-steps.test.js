@@ -19,6 +19,14 @@ import {
     totalDurationMs,
     tweenView,
     updateStep,
+    groupSteps,
+    ungroupSteps,
+    groupOf,
+    nextIndexAfter,
+    normalizeGroups,
+    representativeSteps,
+    computeDisplacement,
+    resolveParkOffset,
 } from '../js/linkage/build-steps.js';
 
 let getConfigSnapshot;
@@ -192,5 +200,84 @@ describe('build-steps: persistence', () => {
         delete json.buildSteps;
         applyV30Config(json);
         expect(globalThis.state.buildSteps.steps).toEqual([]);
+    });
+});
+
+describe('build-steps: groups and repeat modes', () => {
+    function five() {
+        const bs = createDefaultBuildSteps();
+        ['A', 'B', 'C', 'D', 'E'].forEach(t => addStep(bs, createStep('place', { title: t })));
+        return bs;
+    }
+
+    it('groups contiguous selections only', () => {
+        const bs = five();
+        const [a, b, c, d] = bs.steps;
+        expect(groupSteps(bs, [c.id, b.id])).toBeTruthy();
+        expect(groupOf(bs.steps, 1)).toMatchObject({ count: 2, isFirst: true, position: 0, first: 1, last: 2 });
+        expect(groupOf(bs.steps, 2)).toMatchObject({ count: 2, isFirst: false, position: 1 });
+        expect(groupOf(bs.steps, 0).groupId).toBeNull();
+        expect(groupSteps(bs, [a.id, d.id])).toBeNull(); // not contiguous
+        expect(groupSteps(bs, [a.id])).toBeNull();       // too small
+        expect(ungroupSteps(bs, [c.id])).toBe(1);
+        expect(bs.steps.every(s => !s.groupId)).toBe(true);
+    });
+
+    it('normalizes broken groups after moves and deletes', () => {
+        const bs = five();
+        groupSteps(bs, [bs.steps[1].id, bs.steps[2].id, bs.steps[3].id]);
+        const gid = bs.steps[1].groupId;
+        moveStep(bs, 2, 4); // pull the middle member out to the end
+        expect(bs.steps.map(s => s.groupId)).toEqual([null, gid, gid, null, null]);
+        removeStep(bs, bs.steps[1].id);
+        expect(bs.steps.every(s => !s.groupId)).toBe(true); // singleton dissolved
+        const raw = normalizeGroups([{ groupId: 'g' }, { groupId: null }, { groupId: 'g' }, { groupId: 'g' }]);
+        expect(raw.map(s => s.groupId)).toEqual([null, null, 'g', 'g']);
+    });
+
+    it('nextIndexAfter skips a group from its first member in skip mode only', () => {
+        const bs = five();
+        groupSteps(bs, [bs.steps[1].id, bs.steps[2].id, bs.steps[3].id]);
+        expect(nextIndexAfter(bs.steps, 0, 'skip')).toBe(1);
+        expect(nextIndexAfter(bs.steps, 1, 'skip')).toBe(4);
+        expect(nextIndexAfter(bs.steps, 2, 'skip')).toBe(3); // reached manually: advance normally
+        expect(nextIndexAfter(bs.steps, 1, 'fast')).toBe(2);
+        expect(nextIndexAfter(bs.steps, 4, 'skip')).toBe(-1);
+        groupSteps(bs, [bs.steps[3].id, bs.steps[4].id]);
+        expect(nextIndexAfter(bs.steps, 3, 'skip')).toBe(-1); // group runs to the end
+        expect(representativeSteps(bs.steps).map(r => [r.index, r.count])).toEqual([[0, 1], [1, 2], [3, 2]]);
+    });
+
+    it('settings round-trip through normalize and serialize', () => {
+        const bs = normalizeBuildSteps({ steps: [{ kind: 'view' }, { kind: 'view', groupId: 'x' }], settings: { repeatMode: 'fast', fastFactor: 6 } });
+        expect(bs.settings).toEqual({ repeatMode: 'fast', fastFactor: 6 });
+        expect(bs.steps[1].groupId).toBeNull(); // singleton group dissolved
+        expect(normalizeBuildSteps({ steps: [], settings: { repeatMode: 'bogus', fastFactor: 0 } }).settings).toEqual({ repeatMode: 'skip', fastFactor: 4 });
+        const ser = serializeBuildStepsForConfig(bs);
+        expect(ser.settings.repeatMode).toBe('fast');
+    });
+
+    it('tracks parked displacement until a later place step re-seats the parts', () => {
+        globalThis.state = createTestState({ showBolts: true, showBrackets: true, modules: 4, foldAngle: (100 * Math.PI) / 180 });
+        const parts = collectParts(solveLinkage(globalThis.state.foldAngle));
+        const park = { mode: 'beside', gapIn: 24 };
+        const steps = [
+            createStep('place', { targets: [{ kind: 'beam', stackType: 'horizontal-top' }], op: { parkOffset: park } }),
+            createStep('fasten', { targets: [{ kind: 'joint', ring: 'top' }] }),
+            createStep('place', { targets: [{ kind: 'beam', stackType: 'horizontal-top' }], op: { from: 'parked' } }),
+        ];
+        const top = parts.find(p => p.kind === 'beam' && p.obj.stackType === 'horizontal-top');
+        const bottom = parts.find(p => p.kind === 'beam' && p.obj.stackType === 'horizontal-bottom');
+        expect(computeDisplacement(steps, 0, parts).get(top.key)).toEqual(park);
+        expect(computeDisplacement(steps, 1, parts).get(top.key)).toEqual(park);
+        expect(computeDisplacement(steps, 2, parts).has(top.key)).toBe(false);
+        expect(computeDisplacement(steps, 2, parts).has(bottom.key)).toBe(false);
+        const vis = computeStepVisibility(steps, 2, parts);
+        expect(vis.displacementBefore.get(top.key)).toEqual(park);
+        expect(vis.displacement.has(top.key)).toBe(false);
+        const off = resolveParkOffset(park, { min: { x: -100, y: 0, z: -100 }, max: { x: 100, y: 96, z: 100 } }, { min: { x: -90, y: 90, z: -90 }, max: { x: 90, y: 96, z: 90 } });
+        expect(off.x).toBeCloseTo(100 - (-90) + 24);
+        expect(off.y).toBeCloseTo(-90);
+        expect(off.z).toBeCloseTo(0);
     });
 });

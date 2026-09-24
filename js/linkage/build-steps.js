@@ -36,8 +36,8 @@ export function defaultOpForKind(kind) {
     switch (kind) {
         case 'cut':    return { stockLengthIn: null, kerfIn: 0.125 };
         case 'drill':  return { bitDiameterIn: null, holes: 'auto' };
-        case 'place':  return { approach: 'above', travelIn: 24 };
-        case 'fasten': return { bolt: null, nut: null, turns: 3, allModules: false };
+        case 'place':  return { approach: 'above', travelIn: 24, parkOffset: null, from: null };
+        case 'fasten': return { bolt: null, nut: null, turns: 3, allModules: false, axes: null };
         default:       return {};
     }
 }
@@ -48,9 +48,25 @@ export function makeStepId() {
     return `step-${Date.now().toString(36)}-${_idCounter}-${Math.random().toString(36).slice(2, 6)}`;
 }
 
+export const REPEAT_MODES = ['skip', 'fast'];
+
+/** Playback settings saved with the design. */
+export function defaultSettings() {
+    return { repeatMode: 'skip', fastFactor: 4 };
+}
+
+export function normalizeSettings(raw) {
+    const d = defaultSettings();
+    if (!raw || typeof raw !== 'object') return d;
+    if (REPEAT_MODES.includes(raw.repeatMode)) d.repeatMode = raw.repeatMode;
+    const f = Number(raw.fastFactor);
+    if (Number.isFinite(f) && f >= 1 && f <= 20) d.fastFactor = f;
+    return d;
+}
+
 /** An empty build guide. */
 export function createDefaultBuildSteps() {
-    return { version: BUILD_STEPS_VERSION, steps: [] };
+    return { version: BUILD_STEPS_VERSION, steps: [], settings: defaultSettings() };
 }
 
 /** Non-persisted playback state. */
@@ -86,6 +102,8 @@ export function createStep(kind = 'view', partial = {}) {
         transitionMs: clampMs(partial.transitionMs, DEFAULT_TRANSITION_MS),
         durationMs: clampMs(partial.durationMs, meta.durationMs),
         op: Object.assign(defaultOpForKind(k), partial.op && typeof partial.op === 'object' ? cloneJson(partial.op) : {}),
+        // Contiguous steps sharing a groupId are one repeated operation (e.g. "×8 modules")
+        groupId: partial.groupId ? String(partial.groupId) : null,
     };
     return step;
 }
@@ -146,13 +164,15 @@ export function normalizeBuildSteps(raw) {
         seen.add(step.id);
         out.steps.push(step);
     }
+    out.settings = normalizeSettings(raw.settings);
+    normalizeGroups(out.steps);
     return out;
 }
 
 /** Deep-clone for config export; returns undefined when there is nothing to save. */
 export function serializeBuildStepsForConfig(buildSteps) {
     if (!buildSteps || !Array.isArray(buildSteps.steps) || buildSteps.steps.length === 0) return undefined;
-    return cloneJson({ version: BUILD_STEPS_VERSION, steps: buildSteps.steps });
+    return cloneJson({ version: BUILD_STEPS_VERSION, steps: buildSteps.steps, settings: normalizeSettings(buildSteps.settings) });
 }
 
 // ---------------------------------------------------------------------------
@@ -179,7 +199,9 @@ export function addStep(buildSteps, step, index = -1) {
 export function removeStep(buildSteps, id) {
     const i = stepIndexById(buildSteps, id);
     if (i < 0) return null;
-    return buildSteps.steps.splice(i, 1)[0];
+    const removed = buildSteps.steps.splice(i, 1)[0];
+    normalizeGroups(buildSteps.steps);
+    return removed;
 }
 
 /** Moves the step at fromIndex to toIndex (final position). Returns true if changed. */
@@ -190,7 +212,111 @@ export function moveStep(buildSteps, fromIndex, toIndex) {
     if (to === fromIndex) return false;
     const [s] = steps.splice(fromIndex, 1);
     steps.splice(to, 0, s);
+    normalizeGroups(steps);
     return true;
+}
+
+// ---------------------------------------------------------------------------
+// Groups: a run of contiguous steps with the same groupId is one repeated
+// operation. The first member is the representative shown in "skip" mode.
+// ---------------------------------------------------------------------------
+
+let _groupCounter = 0;
+export function makeGroupId() {
+    _groupCounter += 1;
+    return `grp-${Date.now().toString(36)}-${_groupCounter}-${Math.random().toString(36).slice(2, 5)}`;
+}
+
+/**
+ * Clears groupId on any member that is not contiguous with its group's first
+ * run, and on singleton groups. Mutates and returns the array.
+ */
+export function normalizeGroups(steps) {
+    if (!Array.isArray(steps)) return steps;
+    // Collect contiguous runs per groupId; keep the first run with 2+ members, clear the rest
+    const runs = [];
+    let i = 0;
+    while (i < steps.length) {
+        const gid = steps[i].groupId || null;
+        let j = i;
+        while (j < steps.length && (steps[j].groupId || null) === gid) j += 1;
+        if (gid) runs.push({ gid, start: i, end: j });
+        i = j;
+    }
+    const kept = new Map();
+    for (const run of runs) {
+        if (run.end - run.start >= 2 && !kept.has(run.gid)) kept.set(run.gid, run);
+    }
+    for (const run of runs) {
+        if (kept.get(run.gid) !== run) for (let k = run.start; k < run.end; k++) steps[k].groupId = null;
+    }
+    return steps;
+}
+
+/**
+ * Group membership of the step at `index`.
+ * @returns {{groupId:string|null, members:number[], position:number, count:number, isFirst:boolean, isLast:boolean, first:number, last:number}}
+ */
+export function groupOf(steps, index) {
+    const list = Array.isArray(steps) ? steps : [];
+    const step = list[index];
+    if (!step || !step.groupId) return { groupId: null, members: [index], position: 0, count: 1, isFirst: true, isLast: true, first: index, last: index };
+    let first = index, last = index;
+    while (first > 0 && list[first - 1].groupId === step.groupId) first -= 1;
+    while (last < list.length - 1 && list[last + 1].groupId === step.groupId) last += 1;
+    const members = [];
+    for (let k = first; k <= last; k++) members.push(k);
+    return { groupId: step.groupId, members, position: index - first, count: members.length, isFirst: index === first, isLast: index === last, first, last };
+}
+
+/**
+ * Groups the given step ids. They must form a contiguous run (in any order of
+ * selection). Returns the new groupId or null when the selection is not
+ * contiguous or has fewer than two steps.
+ */
+export function groupSteps(buildSteps, ids) {
+    const idx = [...new Set(ids || [])].map(id => stepIndexById(buildSteps, id)).filter(i => i >= 0).sort((a, b) => a - b);
+    if (idx.length < 2) return null;
+    for (let k = 1; k < idx.length; k++) if (idx[k] !== idx[k - 1] + 1) return null;
+    // Merge with an existing group only when the selection covers it entirely
+    const gid = makeGroupId();
+    idx.forEach(i => { buildSteps.steps[i].groupId = gid; });
+    normalizeGroups(buildSteps.steps);
+    return gid;
+}
+
+/** Removes the given steps (and their whole groups) from any group. */
+export function ungroupSteps(buildSteps, ids) {
+    const gids = new Set();
+    (ids || []).forEach(id => { const s = getStepById(buildSteps, id); if (s && s.groupId) gids.add(s.groupId); });
+    buildSteps.steps.forEach(s => { if (gids.has(s.groupId)) s.groupId = null; });
+    return gids.size;
+}
+
+/**
+ * Index to play after `index` finishes. In 'skip' mode a group's first member
+ * jumps past the whole group; other members (reached manually) advance normally.
+ * Returns -1 at the end of the sequence.
+ */
+export function nextIndexAfter(steps, index, repeatMode = 'skip') {
+    const list = Array.isArray(steps) ? steps : [];
+    if (index >= list.length - 1) return -1;
+    const g = groupOf(list, index);
+    if (repeatMode === 'skip' && g.count > 1 && g.isFirst) {
+        return g.last >= list.length - 1 ? -1 : g.last + 1;
+    }
+    return index + 1;
+}
+
+/** Steps shown in collapsed listings (guide, PDF, chips in skip mode): group representatives + ungrouped steps. */
+export function representativeSteps(steps) {
+    const list = Array.isArray(steps) ? steps : [];
+    const out = [];
+    list.forEach((s, i) => {
+        const g = groupOf(list, i);
+        if (g.isFirst) out.push({ step: s, index: i, count: g.count, members: g.members });
+    });
+    return out;
 }
 
 export function duplicateStep(buildSteps, id) {
@@ -358,7 +484,54 @@ export function computeStepVisibility(steps, index, parts) {
         status.set(rec.key, s);
         if (intro !== undefined) introduced.add(rec.key);
     }
-    return { status, introducedAny, activeKeys };
+
+    // Parking: a place step with op.parkOffset leaves its parts displaced (e.g. the
+    // top ring built on the ground beside the bottom ring) until a later place
+    // step targets them again (op.from === 'parked' lifts them into place).
+    const displacementBefore = computeDisplacement(list, idx - 1, parts);
+    const displacement = computeDisplacement(list, idx, parts);
+    return { status, introducedAny, activeKeys, displacement, displacementBefore };
+}
+
+/** Map key -> parkOffset in effect after step `upto` (inclusive). */
+export function computeDisplacement(steps, upto, parts) {
+    const out = new Map();
+    const list = Array.isArray(steps) ? steps : [];
+    for (let si = 0; si <= Math.min(upto, list.length - 1); si++) {
+        const step = list[si];
+        if (!step || step.kind !== 'place' || !step.targets || !step.targets.length) continue;
+        const park = step.op && step.op.parkOffset ? step.op.parkOffset : null;
+        for (const rec of parts) {
+            if (!step.targets.some(sel => matchSelector(rec.obj, sel, rec.kind))) continue;
+            if (park) out.set(rec.key, park); else out.delete(rec.key);
+        }
+    }
+    return out;
+}
+
+/**
+ * Turns a parkOffset spec into a structure-local vector.
+ * Specs: `{x,y,z}` literal, or `{ mode:'beside', gapIn }` = beyond the structure's
+ * +X extent, lowered so the parts rest at the structure's ground level.
+ * @param {Object} spec
+ * @param {{min:{x,y,z}, max:{x,y,z}}} structureBounds - bounds of the whole structure
+ * @param {{min:{x,y,z}, max:{x,y,z}}} partsBounds - seated bounds of the parked parts
+ */
+export function resolveParkOffset(spec, structureBounds, partsBounds) {
+    if (!spec) return { x: 0, y: 0, z: 0 };
+    if (spec.mode === 'beside') {
+        const gap = Number.isFinite(Number(spec.gapIn)) ? Number(spec.gapIn) : 24;
+        const sb = structureBounds, pb = partsBounds;
+        if (!sb || !pb) return { x: 0, y: 0, z: 0 };
+        const width = pb.max.x - pb.min.x;
+        return {
+            x: (sb.max.x - pb.min.x) + gap,                 // parts' left edge lands past the structure's right edge
+            y: sb.min.y - pb.min.y,                          // rest on the ground
+            z: ((sb.min.z + sb.max.z) / 2) - ((pb.min.z + pb.max.z) / 2),
+            _width: width,
+        };
+    }
+    return { x: Number(spec.x) || 0, y: Number(spec.y) || 0, z: Number(spec.z) || 0 };
 }
 
 /** Convenience: bounds of a step's targets in the given geometry. */
@@ -589,26 +762,68 @@ export function generateDefaultBuildSteps(data, opts = {}) {
         }
     }
 
-    // 3. Module by module (folded pose)
+    // 3. Assembly in shop order, operation-major so repeated module steps form groups:
+    //    bottom ring (+ brackets) -> top ring built beside it as a mirror -> V modules
+    //    -> attach V modules to the bottom ring -> lift the top ring on -> secure top brackets.
     const view = (fold) => (fold === null || fold === undefined ? null : { yaw: 0.6, pitch: 0.35, dist: 600, anchor: null, foldAngleDeg: fold });
-    for (let i = 0; i < modules; i++) {
-        const m = `Module ${i + 1}`;
-        const pushIf = (kind, title, notes, sels, extra = {}) => {
-            const targets = sels.filter(has);
-            if (!targets.length) return;
-            mk(kind, { title, notes, targets, view: null, ...extra });
-        };
-        pushIf('place', `${m}: set bottom H-beams`, 'Stack the bottom horizontal beams with their washers between layers.', [{ kind: 'beam', stackType: 'horizontal-bottom', moduleIndex: i }], { op: { approach: 'above', travelIn: 24 } });
-        const upright = opts.useFixedBeams
-            ? [{ kind: 'beam', stackType: 'fixed-beam', moduleIndex: i }, { kind: 'beam', stackType: 'fixed-beam-cap', moduleIndex: i }]
-            : [{ kind: 'beam', stackType: 'vertical', moduleIndex: i }, { kind: 'beam', stackType: 'vertical-cap', moduleIndex: i }];
-        pushIf('place', `${m}: stand the uprights`, opts.useFixedBeams ? 'Stand the fixed uprights on the bottom ring.' : 'Cross the V-beams in their A/B pattern and align the pivot holes.', upright, { op: { approach: 'radial', travelIn: 30 } });
-        pushIf('place', `${m}: fit the brackets`, 'Seat the U-brackets on the beam stack with the hole aligned to the pivot.', [{ kind: 'bracket', moduleIndex: i }, { kind: 'placement', moduleIndex: i, ring: ['bottom', 'top'] }], { op: { approach: 'above', travelIn: 12 } });
-        pushIf('fasten', `${m}: bolt the bottom pivots`, 'Insert the bottom pivot bolts through the brackets and beams; snug, do not fully torque yet.', [{ kind: 'joint', moduleIndex: i, ring: 'bottom' }, { kind: 'joint', moduleIndex: i, ring: 'center' }]);
-        pushIf('place', `${m}: set top H-beams`, 'Lower the top horizontal beams onto the upright brackets.', [{ kind: 'beam', stackType: 'horizontal-top', moduleIndex: i }], { op: { approach: 'above', travelIn: 24 } });
-        pushIf('fasten', `${m}: bolt the top pivots`, 'Insert the top pivot bolts and torque all pivots on this module.', [{ kind: 'joint', moduleIndex: i, ring: 'top' }]);
+    const hasPlacements = has({ kind: 'placement' });
+    const eachModule = (groupKey, fn) => {
+        const gid = `auto-${groupKey}`;
+        let emitted = 0;
+        for (let i = 0; i < modules; i++) {
+            const spec = fn(i, `Module ${i + 1}`);
+            if (!spec) continue;
+            const targets = spec.targets.filter(has);
+            if (!targets.length) continue;
+            const { kind, title, notes, ...extra } = spec;
+            mk(kind, { title, notes, targets, view: null, groupId: gid, ...extra });
+            emitted += 1;
+        }
+        return emitted;
+    };
+    const parked = { mode: 'beside', gapIn: 24 };
+
+    // Bottom assembly
+    eachModule('bottom-hbeams', (i, m) => ({ kind: 'place', title: `${m}: set bottom H-beams`, notes: 'Stack the bottom horizontal beams with their washers between layers.',
+        targets: [{ kind: 'beam', stackType: 'horizontal-bottom', moduleIndex: i }], op: { approach: 'above', travelIn: 24 } }));
+    eachModule('bottom-brackets', (i, m) => ({ kind: 'place', title: `${m}: fit the bottom brackets`, notes: 'Seat the U-brackets on the bottom stack with the hole aligned to the pivot.',
+        targets: [{ kind: 'bracket', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: { approach: 'above', travelIn: 12 } }));
+    eachModule('bottom-bracket-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the bottom ring pivots and brackets`, notes: 'Bolt the H-beam centre pivot, then bolt each bracket down through the bottom H-beam stack.',
+        targets: [{ kind: 'bolt', boltType: 'hstack', moduleIndex: i, ring: 'bottom' }, { kind: 'bolt', boltType: 'hpivot', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: hasPlacements ? { axes: ['down', 'up'] } : {} }));
+
+    // Top assembly, built on the ground beside the bottom ring as a mirror of it
+    eachModule('top-hbeams', (i, m) => ({ kind: 'place', title: `${m}: set top H-beams (mirror of the bottom ring)`, notes: 'Build the top ring beside the bottom ring, mirrored, with brackets facing down.',
+        targets: [{ kind: 'beam', stackType: 'horizontal-top', moduleIndex: i }], op: { approach: 'above', travelIn: 24, parkOffset: parked } }));
+    eachModule('top-brackets', (i, m) => ({ kind: 'place', title: `${m}: fit the top brackets`, notes: 'Seat the top U-brackets on the top stack, opening downward.',
+        targets: [{ kind: 'bracket', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: { approach: 'above', travelIn: 12, parkOffset: parked } }));
+    eachModule('top-bracket-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the top ring pivots and brackets`, notes: 'Bolt the top H-beam centre pivot, then bolt each top bracket through the top H-beam stack.',
+        targets: [{ kind: 'bolt', boltType: 'hstack', moduleIndex: i, ring: 'top' }, { kind: 'bolt', boltType: 'hpivot', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: hasPlacements ? { axes: ['down', 'up'] } : {} }));
+
+    // V modules
+    const uprightSel = (i) => (opts.useFixedBeams
+        ? [{ kind: 'beam', stackType: 'fixed-beam', moduleIndex: i }, { kind: 'beam', stackType: 'fixed-beam-cap', moduleIndex: i }]
+        : [{ kind: 'beam', stackType: 'vertical', moduleIndex: i }, { kind: 'beam', stackType: 'vertical-cap', moduleIndex: i }]);
+    eachModule('v-modules', (i, m) => ({ kind: 'place', title: `${m}: assemble the V module`, notes: opts.useFixedBeams ? 'Stand the fixed uprights.' : 'Cross the V-beams in their A/B pattern and align the pivot holes.',
+        targets: uprightSel(i), op: { approach: 'radial', travelIn: 30 } }));
+    eachModule('v-center-bolts', (i, m) => ({ kind: 'fasten', title: `${m}: bolt the V module centre pivot`, notes: 'Insert the centre pivot bolt through the crossing; snug, not torqued.',
+        targets: [{ kind: 'joint', moduleIndex: i, ring: 'center' }] }));
+
+    // Attach V modules to the bottom ring
+    eachModule('attach-bottom', (i, m) => ({ kind: 'fasten', title: `${m}: attach the V module to the bottom ring`, notes: 'Slide the V-beam ends into the bottom brackets and insert the pivot bolts.',
+        targets: [{ kind: 'bolt', boltType: 'vstack', moduleIndex: i, ring: 'bottom' }, { kind: 'placement', moduleIndex: i, ring: 'bottom' }], op: hasPlacements ? { axes: ['right', 'left'] } : {} }));
+
+    // Lift the top assembly onto the V modules
+    const liftTargets = [{ kind: 'beam', stackType: 'horizontal-top' }, { kind: 'bracket', ring: 'top' }, { kind: 'placement', ring: 'top' }].filter(has);
+    if (liftTargets.length) {
+        mk('place', { title: 'Lift the top assembly onto the V modules', notes: 'With helpers on each side, lift the assembled top ring and lower the brackets onto the V-beam ends.',
+            targets: liftTargets, view: null, op: { approach: 'above', travelIn: 24, from: 'parked' }, durationMs: 3500 });
     }
-    // Module steps share the folded pose
+
+    // Secure the top brackets to the V modules
+    eachModule('secure-top', (i, m) => ({ kind: 'fasten', title: `${m}: secure the top bracket to the V module`, notes: 'Insert the top pivot bolts and torque every pivot on this module.',
+        targets: [{ kind: 'bolt', boltType: 'vstack', moduleIndex: i, ring: 'top' }, { kind: 'placement', moduleIndex: i, ring: 'top' }], op: hasPlacements ? { axes: ['right', 'left'] } : {} }));
+
+    // Module steps share the assembly pose
     steps.forEach(s => { if (s.stage === 'assembly' && !s.view) s.view = view(folded); });
 
     // 4. Deploy, then support beams, reciprocal bolts, panels (deployed pose)
@@ -680,6 +895,18 @@ const _moduleExports = {
     benchSummary,
     stackTypeLabel,
     generateDefaultBuildSteps,
+    REPEAT_MODES,
+    defaultSettings,
+    normalizeSettings,
+    makeGroupId,
+    normalizeGroups,
+    groupOf,
+    groupSteps,
+    ungroupSteps,
+    nextIndexAfter,
+    representativeSteps,
+    computeDisplacement,
+    resolveParkOffset,
 };
 
 bridgeGlobals(_moduleExports, 'buildSteps');

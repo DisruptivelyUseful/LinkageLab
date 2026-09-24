@@ -30,10 +30,15 @@ import {
     duplicateStep,
     generateDefaultBuildSteps,
     getStepById,
+    groupOf,
+    groupSteps,
     moveStep,
+    normalizeSettings,
     removeStep,
+    representativeSteps,
     stepIndexById,
     stepSummary,
+    ungroupSteps,
     updateStep,
 } from './build-steps.js';
 import {
@@ -56,6 +61,7 @@ import {
 
 const ui = {
     selectedId: null,
+    selectedIds: new Set(),   // multi-selection (Ctrl/Shift-click) for grouping
     drag: { id: null, overId: null, after: false },
     pick: { active: false, stepId: null, downX: 0, downY: 0, raycaster: null, pointer: null },
     els: {},
@@ -133,13 +139,21 @@ function renderStepList() {
     if (empty) empty.style.display = steps.length ? 'none' : 'block';
     if (ui.selectedId && !getStepById(buildSteps(), ui.selectedId)) ui.selectedId = null;
 
+    ui.selectedIds.forEach(id => { if (!getStepById(buildSteps(), id)) ui.selectedIds.delete(id); });
     steps.forEach((step, i) => {
         const meta = STEP_KIND_META[step.kind] || STEP_KIND_META.view;
+        const g = groupOf(steps, i);
         const row = document.createElement('div');
-        row.className = 'bs-step' + (step.id === ui.selectedId ? ' selected' : '') + (playback().active && playback().stepIndex === i ? ' playing' : '');
+        row.className = 'bs-step'
+            + (step.id === ui.selectedId ? ' selected' : '')
+            + (ui.selectedIds.has(step.id) ? ' multi' : '')
+            + (playback().active && playback().stepIndex === i ? ' playing' : '')
+            + (g.count > 1 ? (g.isFirst ? ' grouped group-first' : ' grouped group-member') : '')
+            + (g.count > 1 && g.isLast ? ' group-last' : '');
         row.dataset.id = step.id;
         const count = targetCount(step);
         const warn = count === 0 ? '<span class="bs-warn" title="No parts in the current design match this step\'s targets">⚠</span>' : '';
+        const badge = g.count > 1 && g.isFirst ? `<span class="bs-group-badge" title="Repeated ${g.count} times (grouped)">×${g.count}</span>` : '';
         row.innerHTML = `
             <span class="bs-grip" draggable="true" title="Drag to reorder">⠿</span>
             <span class="bs-idx">${i + 1}</span>
@@ -148,12 +162,28 @@ function renderStepList() {
                 <span class="bs-title">${esc(step.title)}</span>
                 <span class="bs-sub">${esc(stepSummary(step))}${count ? ` · ${count} part${count === 1 ? '' : 's'}` : ''}</span>
             </span>
-            ${warn}
+            ${badge}${warn}
             <button class="bs-mini" data-act="dup" title="Duplicate">⧉</button>
             <button class="bs-mini bs-mini-danger" data-act="del" title="Delete">✕</button>`;
 
         row.addEventListener('click', (e) => {
             const act = e.target && e.target.dataset ? e.target.dataset.act : null;
+            // Multi-select for grouping: Ctrl/Cmd toggles, Shift extends from the selected step
+            if (!act && (e.ctrlKey || e.metaKey || e.shiftKey)) {
+                e.preventDefault();
+                if (e.shiftKey && ui.selectedId) {
+                    const a = stepIndexById(buildSteps(), ui.selectedId), b = i;
+                    for (let k = Math.min(a, b); k <= Math.max(a, b); k++) ui.selectedIds.add(buildSteps().steps[k].id);
+                } else if (ui.selectedIds.has(step.id)) {
+                    ui.selectedIds.delete(step.id);
+                } else {
+                    if (ui.selectedId && !ui.selectedIds.size) ui.selectedIds.add(ui.selectedId);
+                    ui.selectedIds.add(step.id);
+                }
+                renderStepList();
+                updateGroupButtons();
+                return;
+            }
             if (act === 'dup') {
                 const copy = duplicateStep(buildSteps(), step.id);
                 ui.selectedId = copy.id;
@@ -216,8 +246,10 @@ function renderStepList() {
 
 function selectStep(id, { jump = false } = {}) {
     ui.selectedId = id;
+    ui.selectedIds.clear();
     renderStepList();
     renderEditor();
+    updateGroupButtons();
     const idx = stepIndexById(buildSteps(), id);
     if (jump && playback().active && idx >= 0) goToStep(idx, { immediate: true });
 }
@@ -383,8 +415,13 @@ function renderEditor() {
     const meta = STEP_KIND_META[step.kind];
     const chips = (step.targets || []).map((sel, i) => `<span class="bs-chip" title="${esc(JSON.stringify(sel))}">${esc(selectorLabel(sel))}<button class="bs-chip-x" data-i="${i}" title="Remove">✕</button></span>`).join('');
 
+    const grp = groupOf(buildSteps().steps, idx);
+    const groupLine = grp.count > 1
+        ? `<div class="bs-hint bs-group-line">Repeated step ${grp.position + 1} of ${grp.count} in a group. <button class="bs-link" id="bs-ed-ungroup">Ungroup</button></div>`
+        : '';
     box.innerHTML = `
         <div class="bs-editor-head">Step ${idx + 1} <span class="bs-editor-kind">${meta.icon} ${esc(meta.label)}</span></div>
+        ${groupLine}
         <label class="bs-field">Title <input type="text" id="bs-ed-title" value="${esc(step.title)}"></label>
         <div class="bs-field-row">
             <label>Kind <select id="bs-ed-kind" class="bs-select">${optionsHtml(STEP_KINDS.map(k => [k, `${STEP_KIND_META[k].icon} ${STEP_KIND_META[k].label}`]), step.kind)}</select></label>
@@ -411,6 +448,8 @@ function renderEditor() {
     const bs = buildSteps();
     const upd = (patch, opts = {}) => { updateStep(bs, step.id, patch); changed(opts); };
 
+    const ungroupBtn = el('bs-ed-ungroup');
+    if (ungroupBtn) ungroupBtn.addEventListener('click', () => { ungroupSteps(bs, [step.id]); changed({ rerenderEditor: true }); });
     el('bs-ed-title').addEventListener('input', (e) => { step.title = e.target.value; persistBuildSteps(); renderStepList(); renderChips(); updateCaption(); });
     el('bs-ed-title').addEventListener('change', () => saveStateToHistory());
     el('bs-ed-notes').addEventListener('input', (e) => { step.notes = e.target.value; persistBuildSteps(); updateCaption(); });
@@ -489,10 +528,16 @@ function renderChips() {
     if (!box) return;
     const steps = buildSteps().steps;
     const pb = playback();
-    box.innerHTML = steps.map((s, i) => {
+    const mode = normalizeSettings(buildSteps().settings).repeatMode;
+    const entries = mode === 'skip'
+        ? representativeSteps(steps).map(r => ({ step: r.step, index: r.index, count: r.count, last: r.index + r.count - 1 }))
+        : steps.map((s, i) => ({ step: s, index: i, count: 1, last: i }));
+    box.innerHTML = entries.map(({ step: s, index: i, count, last }) => {
         const meta = STEP_KIND_META[s.kind] || STEP_KIND_META.view;
-        const cls = 'bs-scene-tab' + (i === pb.stepIndex ? ' active' : '') + (i < pb.stepIndex ? ' done' : '');
-        return `<button class="${cls}" data-i="${i}" title="${esc(s.title)}"><span class="bs-scene-icon">${meta.icon}</span>${i + 1}</button>`;
+        const active = pb.stepIndex >= i && pb.stepIndex <= last;
+        const cls = 'bs-scene-tab' + (active ? ' active' : '') + (last < pb.stepIndex ? ' done' : '');
+        const badge = count > 1 ? `<span class="bs-scene-badge">×${count}</span>` : '';
+        return `<button class="${cls}" data-i="${i}" title="${esc(s.title)}${count > 1 ? ` (repeated ${count} times)` : ''}"><span class="bs-scene-icon">${meta.icon}</span>${i + 1}${badge}</button>`;
     }).join('');
 }
 
@@ -529,9 +574,17 @@ function updateCaption() {
     i.textContent = `Step ${pb.stepIndex + 1}`;
     t.textContent = step.title;
     const bench = pb.benchSummary ? `${pb.benchSummary}` : '';
-    const text = [bench, step.notes || ''].filter(Boolean).join('\n');
+    const r = pb.repeat;
+    let repeatLine = '';
+    if (r && r.count > 1) {
+        if (r.mode === 'skip') repeatLine = r.isFirst ? `Do this ${r.count}× (once per module)` : `Repeat ${r.position + 1} of ${r.count}`;
+        else repeatLine = r.isFirst ? `Repeat 1 of ${r.count}` : `Repeat ${r.position + 1} of ${r.count} · fast-forward`;
+    }
+    const text = [repeatLine, bench, step.notes || ''].filter(Boolean).join('\n');
     n.textContent = text;
     n.style.display = text ? 'block' : 'none';
+    const badge = el('bs-caption-repeat');
+    if (badge) { badge.textContent = r && r.count > 1 && r.isFirst && r.mode === 'skip' ? `Do this ${r.count}×` : ''; badge.style.display = badge.textContent ? 'inline-block' : 'none'; }
 }
 
 function bindTransport() {
@@ -579,6 +632,31 @@ function bindToolbar() {
         const step = addStep(bs, createStep('view', { title: `Step ${bs.steps.length + 1}` }), after + 1);
         ui.selectedId = step.id;
         changed({ rerenderEditor: true });
+    });
+    on('bs-btn-group', 'click', () => {
+        const ids = [...ui.selectedIds];
+        const bs = buildSteps();
+        if (ids.length < 2) { showToast('Ctrl-click or Shift-click two or more adjacent steps first', 'warning'); return; }
+        if (!groupSteps(bs, ids)) { showToast('Grouped steps must be next to each other', 'warning'); return; }
+        ui.selectedId = ids.map(id => stepIndexById(bs, id)).sort((a, b) => a - b).map(i => bs.steps[i].id)[0];
+        ui.selectedIds.clear();
+        changed({ rerenderEditor: true });
+        updateGroupButtons();
+        showToast('Steps grouped: only the first plays in "First only" mode', 'success', 2000);
+    });
+    on('bs-btn-ungroup', 'click', () => {
+        const ids = ui.selectedIds.size ? [...ui.selectedIds] : (ui.selectedId ? [ui.selectedId] : []);
+        if (!ungroupSteps(buildSteps(), ids)) { showToast('Select a grouped step first', 'warning'); return; }
+        ui.selectedIds.clear();
+        changed({ rerenderEditor: true });
+        updateGroupButtons();
+    });
+    on('bs-sel-repeat', 'change', (e) => {
+        const bs = buildSteps();
+        bs.settings = normalizeSettings({ ...(bs.settings || {}), repeatMode: e.target.value });
+        changed({ rerenderList: false });
+        if (typeof globalThis.updateRepeatInfo === 'function' && playback().active) globalThis.updateRepeatInfo();
+        updateTransport();
     });
     on('bs-btn-record', 'click', () => {
         if (!buildSteps().steps.length) { showToast('Add a step first', 'warning'); return; }
@@ -727,11 +805,22 @@ function bindPick() {
     }, true);
 }
 
+function updateGroupButtons() {
+    const bs = buildSteps();
+    const groupBtn = el('bs-btn-group'), ungroupBtn = el('bs-btn-ungroup');
+    if (groupBtn) groupBtn.disabled = ui.selectedIds.size < 2;
+    const anyGrouped = [...ui.selectedIds, ui.selectedId].some(id => { const s = id && getStepById(bs, id); return s && s.groupId; });
+    if (ungroupBtn) ungroupBtn.disabled = !anyGrouped;
+    const sel = el('bs-sel-repeat');
+    if (sel) sel.value = normalizeSettings(bs.settings).repeatMode;
+}
+
 function refreshAll() {
     renderStepList();
     renderEditor();
     renderChips();
     updateTransport();
+    updateGroupButtons();
     const auto = el('bs-btn-auto');
     if (auto) auto.disabled = false;
 }
