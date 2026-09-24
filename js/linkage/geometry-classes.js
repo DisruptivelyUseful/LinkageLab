@@ -31,6 +31,9 @@ class Beam3D {
         this.stackId = metadata.stackId !== undefined ? metadata.stackId : -1;
         this.patternId = metadata.patternId || null;
         this.kinematicState = metadata.kinematicState || null;
+        // Position within its stack (0 = first beam). Together with moduleIndex,
+        // stackType, stackId and patternId this makes every beam uniquely addressable.
+        this.layerIndex = metadata.layerIndex !== undefined ? metadata.layerIndex : 0;
         
         // Calculate local coordinate system
         this.axisZ = vNorm(vSub(end, start));

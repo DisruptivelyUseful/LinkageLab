@@ -1806,6 +1806,9 @@ function hwAddAssemblyPlacement(placements, assemblyId, bracketData, vBoltDir, v
         assemblyId,
         pivotRole,
         moduleIndex: bracketData.moduleIndex != null ? bracketData.moduleIndex : null,
+        // Stable identity for build steps (see part-keys.js)
+        ring: bracketData.ring || (bracketData.isBottom ? 'bottom' : 'top'),
+        cap: !!bracketData.cap,
         pos: { x: bracketData.pos.x, y: bracketData.pos.y, z: bracketData.pos.z },
         bottomY: bracketData.bottomY,
         isBottom: bracketData.isBottom,

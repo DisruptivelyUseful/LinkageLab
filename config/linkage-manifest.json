@@ -29,6 +29,7 @@
     { "path": "js/core/feedback.js", "format": "esm" },
     { "path": "js/linkage/constants.js", "format": "esm" },
     { "path": "js/linkage/math.js", "format": "esm" },
+    { "path": "js/linkage/part-keys.js", "format": "esm" },
     { "path": "js/linkage/joint-kinematics.js", "format": "esm" },
     { "path": "js/linkage/beam-bolt-helpers.js", "format": "esm" },
     { "path": "js/linkage/animation.js", "format": "esm" },
