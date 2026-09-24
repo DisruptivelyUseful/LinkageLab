@@ -17,6 +17,7 @@ import {
     saveProject,
 } from '../core/project-export.js';
 import { exportGameBundleFile } from '../core/export-game-bundle.js';
+import { bindNumericInput } from './numeric-input.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -776,33 +777,20 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             requestRender();
         };
         
-        // V-bolt length - support both input (arrows) and change (typing)
-        const handleVBoltLength = e => {
-            if (!state.vBoltAuto) {
-                state.vBoltLength = unitConverter.inputDisplayToImperial('nb-vbolt-length', parseFloat(e.target.value) || 3);
+        // Bolt lengths (commit on blur / Enter / step; the Auto checkboxes disable manual entry)
+        const bindBoltLength = (id, stateKey, isAuto, def) => {
+            bindNumericInput(document.getElementById(id), { fallback: def, min: 0, commit: v => {
+                if (isAuto()) return;
+                state[stateKey] = unitConverter.inputDisplayToImperial(id, v);
                 invalidateGeometryCache();
                 requestRender();
-            }
+            } });
         };
-        const vBoltLengthEl = document.getElementById('nb-vbolt-length');
-        if (vBoltLengthEl) {
-            vBoltLengthEl.oninput = handleVBoltLength;
-            vBoltLengthEl.onchange = handleVBoltLength;
-        }
-        
-        // H-bolt length - support both input (arrows) and change (typing)
-        const handleHBoltLength = e => {
-            if (!state.hBoltAuto) {
-                state.hBoltLength = unitConverter.inputDisplayToImperial('nb-hbolt-length', parseFloat(e.target.value) || 3);
-                invalidateGeometryCache();
-                requestRender();
-            }
-        };
-        const hBoltLengthEl = document.getElementById('nb-hbolt-length');
-        if (hBoltLengthEl) {
-            hBoltLengthEl.oninput = handleHBoltLength;
-            hBoltLengthEl.onchange = handleHBoltLength;
-        }
+        bindBoltLength('nb-vbolt-length', 'vBoltLength', () => state.vBoltAuto, 3);
+        bindBoltLength('nb-hbolt-length', 'hBoltLength', () => state.hBoltAuto, 3);
+        bindBoltLength('nb-hpivot-bolt-length', 'hPivotBoltLength', () => state.hPivotBoltAuto, 4);
+        bindBoltLength('nb-vbolt-inner-length', 'vBoltInnerLength', () => !!document.getElementById('chk-vbolt-inner-auto')?.checked, 3);
+        bindBoltLength('nb-vbolt-outer-length', 'vBoltOuterLength', () => !!document.getElementById('chk-vbolt-outer-auto')?.checked, 2);
         
         document.getElementById('chk-vbolt-auto').onchange = e => {
             state.vBoltAuto = e.target.checked;
@@ -826,20 +814,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             }
         };
         
-        // H-pivot bolt length - support both input (arrows) and change (typing)
-        const handleHPivotBoltLength = e => {
-            if (!state.hPivotBoltAuto) {
-                state.hPivotBoltLength = unitConverter.inputDisplayToImperial('nb-hpivot-bolt-length', parseFloat(e.target.value) || 4);
-                invalidateGeometryCache();
-                requestRender();
-            }
-        };
-        const hPivotBoltLengthEl = document.getElementById('nb-hpivot-bolt-length');
-        if (hPivotBoltLengthEl) {
-            hPivotBoltLengthEl.oninput = handleHPivotBoltLength;
-            hPivotBoltLengthEl.onchange = handleHPivotBoltLength;
-        }
-        
         document.getElementById('chk-hpivot-bolt-auto')?.addEventListener('change', e => {
             state.hPivotBoltAuto = e.target.checked;
             const input = document.getElementById('nb-hpivot-bolt-length');
@@ -850,36 +824,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
                 requestRender();
             }
         });
-        
-        // Inner/outer bolt length event handlers (for split mode)
-        // Using 'input' event for real-time updates when using arrow buttons
-        const handleVBoltInnerChange = e => {
-            const autoChk = document.getElementById('chk-vbolt-inner-auto');
-            if (autoChk && !autoChk.checked) {
-                state.vBoltInnerLength = unitConverter.inputDisplayToImperial('nb-vbolt-inner-length', parseFloat(e.target.value) || 3);
-                invalidateGeometryCache();
-                requestRender();
-            }
-        };
-        const vBoltInnerEl = document.getElementById('nb-vbolt-inner-length');
-        if (vBoltInnerEl) {
-            vBoltInnerEl.oninput = handleVBoltInnerChange;
-            vBoltInnerEl.onchange = handleVBoltInnerChange;
-        }
-        
-        const handleVBoltOuterChange = e => {
-            const autoChk = document.getElementById('chk-vbolt-outer-auto');
-            if (autoChk && !autoChk.checked) {
-                state.vBoltOuterLength = unitConverter.inputDisplayToImperial('nb-vbolt-outer-length', parseFloat(e.target.value) || 2);
-                invalidateGeometryCache();
-                requestRender();
-            }
-        };
-        const vBoltOuterEl = document.getElementById('nb-vbolt-outer-length');
-        if (vBoltOuterEl) {
-            vBoltOuterEl.oninput = handleVBoltOuterChange;
-            vBoltOuterEl.onchange = handleVBoltOuterChange;
-        }
         
         const chkVBoltInnerAuto = document.getElementById('chk-vbolt-inner-auto');
         if (chkVBoltInnerAuto) {
@@ -907,57 +851,19 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             };
         }
         
-        // Bolt cost event handlers - using both 'input' and 'change' for arrow button support
-        const handleCostBoltV = e => {
-            const val = parseFloat(e.target.value) || 0.75;
-            state.costBoltVInner = val;
-            state.costBoltVOuter = val;
-            requestRender();
+        // Bolt and washer prices (0 is a valid price; only a blank field falls back)
+        const bindCost = (id, def, apply) => {
+            bindNumericInput(document.getElementById(id), { fallback: def, min: 0, format: v => v.toFixed(2), commit: v => { apply(v); requestRender(); } });
         };
-        document.getElementById('nb-cost-bolt-v')?.addEventListener('input', handleCostBoltV);
-        document.getElementById('nb-cost-bolt-v')?.addEventListener('change', handleCostBoltV);
-        
-        const handleCostBoltH = e => {
-            state.costBoltH = parseFloat(e.target.value) || 0.75;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-h')?.addEventListener('input', handleCostBoltH);
-        document.getElementById('nb-cost-bolt-h')?.addEventListener('change', handleCostBoltH);
-        
-        const handleCostBoltVInner = e => {
-            state.costBoltVInner = parseFloat(e.target.value) || 0.75;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-vinner')?.addEventListener('input', handleCostBoltVInner);
-        document.getElementById('nb-cost-bolt-vinner')?.addEventListener('change', handleCostBoltVInner);
-        
-        const handleCostBoltVOuter = e => {
-            state.costBoltVOuter = parseFloat(e.target.value) || 0.50;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-vouter')?.addEventListener('input', handleCostBoltVOuter);
-        document.getElementById('nb-cost-bolt-vouter')?.addEventListener('change', handleCostBoltVOuter);
-        
-        const handleCostBoltH2 = e => {
-            state.costBoltH = parseFloat(e.target.value) || 0.75;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-h2')?.addEventListener('input', handleCostBoltH2);
-        document.getElementById('nb-cost-bolt-h2')?.addEventListener('change', handleCostBoltH2);
-        
-        const handleCostBoltHPivot = e => {
-            state.costBoltHPivot = parseFloat(e.target.value) || 0.75;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-hpivot')?.addEventListener('input', handleCostBoltHPivot);
-        document.getElementById('nb-cost-bolt-hpivot')?.addEventListener('change', handleCostBoltHPivot);
-        
-        const handleCostBoltHPivot2 = e => {
-            state.costBoltHPivot = parseFloat(e.target.value) || 0.75;
-            requestRender();
-        };
-        document.getElementById('nb-cost-bolt-hpivot2')?.addEventListener('input', handleCostBoltHPivot2);
-        document.getElementById('nb-cost-bolt-hpivot2')?.addEventListener('change', handleCostBoltHPivot2);
+        bindCost('nb-cost-bolt-v', 0.75, v => { state.costBoltVInner = v; state.costBoltVOuter = v; });
+        bindCost('nb-cost-bolt-h', 0.75, v => { state.costBoltH = v; });
+        bindCost('nb-cost-bolt-vinner', 0.75, v => { state.costBoltVInner = v; });
+        bindCost('nb-cost-bolt-vouter', 0.50, v => { state.costBoltVOuter = v; });
+        bindCost('nb-cost-bolt-h2', 0.75, v => { state.costBoltH = v; });
+        bindCost('nb-cost-bolt-hpivot', 0.75, v => { state.costBoltHPivot = v; });
+        bindCost('nb-cost-bolt-hpivot2', 0.75, v => { state.costBoltHPivot = v; });
+        bindCost('nb-cost-washer-v', 0.10, v => { state.costWasherV = v; });
+        bindCost('nb-cost-washer-h', 0.10, v => { state.costWasherH = v; });
         
         // Washer event handlers
         document.getElementById('chk-vwasher-enabled')?.addEventListener('change', e => {
@@ -976,45 +882,27 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             requestRender();
         });
         
-        // V-washer inputs
-        document.getElementById('nb-vwasher-id')?.addEventListener('input', e => {
-            state.vWasherID = unitConverter.inputDisplayToImperial('nb-vwasher-id', parseFloat(e.target.value) || 0.4375);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        document.getElementById('nb-vwasher-id')?.addEventListener('change', e => {
-            state.vWasherID = unitConverter.inputDisplayToImperial('nb-vwasher-id', parseFloat(e.target.value) || 0.4375);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        
-        document.getElementById('nb-vwasher-od')?.addEventListener('input', e => {
-            state.vWasherOD = unitConverter.inputDisplayToImperial('nb-vwasher-od', parseFloat(e.target.value) || 1.0);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        document.getElementById('nb-vwasher-od')?.addEventListener('change', e => {
-            state.vWasherOD = unitConverter.inputDisplayToImperial('nb-vwasher-od', parseFloat(e.target.value) || 1.0);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        
-        const handleVWasherThickness = e => {
-            const rawVal = parseFloat(e.target.value) || 0;
-            const val = unitConverter.inputDisplayToImperial('nb-vwasher-thickness', rawVal);
-            state.vWasherThickness = Math.max(0, val);
-            
-            // Update stack gap to match washer thickness (washer should fill the gap)
-            state.vStackGap = state.vWasherThickness;
-            const vStackGapInput = document.getElementById('nb-vgap');
-            if (vStackGapInput) vStackGapInput.value = state.vStackGap.toFixed(3);
-            syncUI('vStackGap');
-            
-            invalidateGeometryCache();
-            requestRender();
+        // Washer dimensions
+        const bindWasherDim = (id, stateKey, def) => {
+            bindNumericInput(document.getElementById(id), { fallback: def, min: 0, commit: v => {
+                state[stateKey] = unitConverter.inputDisplayToImperial(id, v);
+                invalidateGeometryCache();
+                requestRender();
+            } });
         };
-        document.getElementById('nb-vwasher-thickness')?.addEventListener('input', handleVWasherThickness);
-        document.getElementById('nb-vwasher-thickness')?.addEventListener('change', handleVWasherThickness);
+        bindWasherDim('nb-vwasher-id', 'vWasherID', 0.4375);
+        bindWasherDim('nb-vwasher-od', 'vWasherOD', 1.0);
+        bindWasherDim('nb-hwasher-id', 'hWasherID', 0.4375);
+        bindWasherDim('nb-hwasher-od', 'hWasherOD', 1.0);
+        
+        // Washer thickness drives the matching stack gap (the washer fills the gap)
+        bindNumericInput(document.getElementById('nb-vwasher-thickness'), { fallback: 0, min: 0, commit: v => {
+            state.vWasherThickness = Math.max(0, unitConverter.inputDisplayToImperial('nb-vwasher-thickness', v));
+            state.vStackGap = state.vWasherThickness;
+            syncUI('vStackGap', { force: true });
+            invalidateGeometryCache();
+            requestRender();
+        } });
         
         document.getElementById('chk-vwasher-auto')?.addEventListener('change', e => {
             state.vWasherAuto = e.target.checked;
@@ -1036,45 +924,13 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             requestRender();
         });
         
-        // H-washer inputs
-        document.getElementById('nb-hwasher-id')?.addEventListener('input', e => {
-            state.hWasherID = unitConverter.inputDisplayToImperial('nb-hwasher-id', parseFloat(e.target.value) || 0.4375);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        document.getElementById('nb-hwasher-id')?.addEventListener('change', e => {
-            state.hWasherID = unitConverter.inputDisplayToImperial('nb-hwasher-id', parseFloat(e.target.value) || 0.4375);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        
-        document.getElementById('nb-hwasher-od')?.addEventListener('input', e => {
-            state.hWasherOD = unitConverter.inputDisplayToImperial('nb-hwasher-od', parseFloat(e.target.value) || 1.0);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        document.getElementById('nb-hwasher-od')?.addEventListener('change', e => {
-            state.hWasherOD = unitConverter.inputDisplayToImperial('nb-hwasher-od', parseFloat(e.target.value) || 1.0);
-            invalidateGeometryCache();
-            requestRender();
-        });
-        
-        const handleHWasherThickness = e => {
-            const rawVal = parseFloat(e.target.value) || 0;
-            const val = unitConverter.inputDisplayToImperial('nb-hwasher-thickness', rawVal);
-            state.hWasherThickness = Math.max(0, val);
-            
-            // Update stack gap to match washer thickness
+        bindNumericInput(document.getElementById('nb-hwasher-thickness'), { fallback: 0, min: 0, commit: v => {
+            state.hWasherThickness = Math.max(0, unitConverter.inputDisplayToImperial('nb-hwasher-thickness', v));
             state.hStackGap = state.hWasherThickness;
-            const hStackGapInput = document.getElementById('nb-hgap');
-            if (hStackGapInput) hStackGapInput.value = state.hStackGap.toFixed(3);
-            syncUI('hStackGap');
-            
+            syncUI('hStackGap', { force: true });
             invalidateGeometryCache();
             requestRender();
-        };
-        document.getElementById('nb-hwasher-thickness')?.addEventListener('input', handleHWasherThickness);
-        document.getElementById('nb-hwasher-thickness')?.addEventListener('change', handleHWasherThickness);
+        } });
         
         document.getElementById('chk-hwasher-auto')?.addEventListener('change', e => {
             state.hWasherAuto = e.target.checked;
@@ -1095,21 +951,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             invalidateGeometryCache();
             requestRender();
         });
-        
-        // Washer cost handlers
-        const handleCostWasherV = e => {
-            state.costWasherV = parseFloat(e.target.value) || 0.10;
-            requestRender();
-        };
-        document.getElementById('nb-cost-washer-v')?.addEventListener('input', handleCostWasherV);
-        document.getElementById('nb-cost-washer-v')?.addEventListener('change', handleCostWasherV);
-        
-        const handleCostWasherH = e => {
-            state.costWasherH = parseFloat(e.target.value) || 0.10;
-            requestRender();
-        };
-        document.getElementById('nb-cost-washer-h')?.addEventListener('input', handleCostWasherH);
-        document.getElementById('nb-cost-washer-h')?.addEventListener('change', handleCostWasherH);
         
         document.getElementById('sel-orientation').onchange = e => {
             state.orientation = e.target.value;

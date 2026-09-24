@@ -564,18 +564,17 @@ body:not(.solar-mode) #right-sidebar {
     display: block;
 }
 
-/* Input feedback */
-input[type="number"].modified {
+/* Input feedback: amber while a value is being typed (not yet committed),
+   red only when the app rejects a committed value (.error, set by updateState).
+   The browser's :invalid state is NOT styled: unit conversion leaves most
+   values off the step grid, which painted half the sidebar red. */
+input[type="number"].modified,
+input[type="number"].editing {
     border-color: var(--energy-amber);
 }
 
-input[type="number"]:valid {
-    border-color: var(--border-med);
-}
-
-/* Only show native invalid styling after editing (avoids red flash while typing) */
-input[type="number"]:invalid:not(:focus) {
-    border-color: var(--energy-red);
+input[type="number"].editing:focus {
+    box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.25);
 }
 
 input.error {

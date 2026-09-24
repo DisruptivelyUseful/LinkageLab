@@ -15,6 +15,7 @@ import { detectCollisions, findSafeFoldAngle } from './collision.js';
 import { invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { validateInput } from './validation.js';
 import { saveStateToHistory } from './history.js';
+import { bindNumericInput, setNumericInputValue } from './numeric-input.js';
 
     function updateState(key, val) {
         try {
@@ -33,6 +34,11 @@ import { saveStateToHistory } from './history.js';
                 if (k && inputs[k]) {
                     inputs[k].nb?.classList.add('error');
                     setTimeout(() => inputs[k].nb?.classList.remove('error'), 2000);
+                }
+                if (Number.isNaN(validation.value)) {
+                    // Not a number at all: keep the current state and restore the field
+                    syncUI(key, { force: true });
+                    return;
                 }
             } else if (k && inputs[k]?.nb) {
                 inputs[k].nb.classList.remove('error');
@@ -115,7 +121,7 @@ import { saveStateToHistory } from './history.js';
                     const stopSlider = document.getElementById('sl-anim-stop');
                     const stopNumber = document.getElementById('nb-anim-stop');
                     if (stopSlider) stopSlider.value = state.animation.stopAngle;
-                    if (stopNumber) stopNumber.value = state.animation.stopAngle;
+                    if (stopNumber) stopNumber.value = formatNumber(state.animation.stopAngle, 1);
                 }
             }
             
@@ -154,7 +160,7 @@ import { saveStateToHistory } from './history.js';
      * Synchronizes UI elements with state
      * @param {string} key - State key to sync
      */
-    function syncUI(key) {
+    function syncUI(key, { force = false } = {}) {
         const k = Object.keys(idMap).find(k => idMap[k] === key);
         if (k && inputs[k]) {
             let v = state[key];
@@ -169,7 +175,9 @@ import { saveStateToHistory } from './history.js';
             if (inputs[k].sl) inputs[k].sl.value = v;
             if (inputs[k].nb) {
                 let decimals = 1;
-                if (key.startsWith('cost')) {
+                if (key === 'modules' || key === 'hStackCount' || key === 'vStackCount') {
+                    decimals = 0;
+                } else if (key.startsWith('cost')) {
                     decimals = 2;
                 } else if (key.startsWith('bracket') || key === 'vStackGap' || key === 'hStackGap') {
                     decimals = 2;
@@ -184,7 +192,8 @@ import { saveStateToHistory } from './history.js';
                 if (impUnit === 'ft' && unitConverter.getPreferredUnitSystem() === 'metric') {
                     decimals = 2;
                 }
-                inputs[k].nb.value = formatNumber(v, decimals);
+                // Never overwrite a field the user is still typing in (unless forced after a commit)
+                setNumericInputValue(inputs[k].nb, formatNumber(v, decimals), { force });
             }
         }
     }
@@ -197,12 +206,8 @@ import { saveStateToHistory } from './history.js';
                 inputs[k].sl.addEventListener('input', debounce(e => updateState(key, e.target.value), DEBOUNCE_DELAY));
             }
             if (inputs[k].nb) {
-                if (inputs[k].sl) {
-                    inputs[k].nb.addEventListener('input', debounce(e => updateState(key, e.target.value), DEBOUNCE_DELAY));
-                } else {
-                    inputs[k].nb.addEventListener('input', e => updateState(key, e.target.value));
-                }
-                inputs[k].nb.addEventListener('change', e => updateState(key, e.target.value));
+                // Commit on blur / Enter / step only; typing never rewrites the field
+                bindNumericInput(inputs[k].nb, { commit: v => updateState(key, v) });
             }
         });
     }

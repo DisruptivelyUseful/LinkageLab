@@ -9,7 +9,7 @@ async function setFoldAngle(page, degrees) {
     const foldInput = page.locator('#nb-fold');
     await foldInput.scrollIntoViewIfNeeded();
     await foldInput.fill(String(degrees));
-    await foldInput.dispatchEvent('input');
+    await foldInput.dispatchEvent('change'); // number boxes commit on change, never mid-typing
     await page.waitForTimeout(50);
 }
 

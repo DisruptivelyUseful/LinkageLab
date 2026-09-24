@@ -240,8 +240,9 @@ import { initBuildStepsUI } from './build-steps-ui.js';
                     e.preventDefault();
                     e.stopPropagation();
                     input.stepUp();
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
+                    // Native order: input, then change (change is what commits)
                     input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
                 };
                 
                 // Create down button
@@ -253,8 +254,8 @@ import { initBuildStepsUI } from './build-steps-ui.js';
                     e.preventDefault();
                     e.stopPropagation();
                     input.stepDown();
-                    input.dispatchEvent(new Event('change', { bubbles: true }));
                     input.dispatchEvent(new Event('input', { bubbles: true }));
+                    input.dispatchEvent(new Event('change', { bubbles: true }));
                 };
                 
                 // Assemble
