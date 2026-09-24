@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 async function setFoldAngle(page, degrees) {
     const foldInput = page.locator('#nb-fold');
@@ -21,6 +22,10 @@ async function setModules(page, count) {
 }
 
 test.describe('LinkageLab core flows', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('fold slider updates state and keeps the viewport rendering', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

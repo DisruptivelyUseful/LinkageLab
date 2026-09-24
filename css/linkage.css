@@ -36,8 +36,8 @@ body:not(.solar-mode) #right-sidebar {
 /* Viewport - Main 3D canvas area */
 #viewport {
     position: fixed;
-    top: 52px;
-    left: 280px;
+    top: var(--topbar-h);
+    left: var(--sidebar-w);
     right: 280px;
     bottom: 0;
     background-color: var(--bg-canvas);
@@ -67,7 +67,7 @@ body:not(.solar-mode) #right-sidebar {
 /* Right Panel - Viewports and stats */
 #right-panel {
     position: fixed;
-    top: 52px;
+    top: var(--topbar-h);
     right: 0;
     width: 280px;
     bottom: 0;
@@ -193,7 +193,7 @@ body:not(.solar-mode) #right-sidebar {
 #sidebar-toggle {
     position: fixed;
     top: 50%;
-    left: 280px;
+    left: var(--sidebar-w);
     transform: translateY(-50%);
     background: var(--bg-sidebar);
     color: var(--text-primary);
@@ -372,23 +372,14 @@ input.error {
 }
 
 @media (max-width: 900px) {
-    #sidebar {
-        width: 260px;
-    }
-    #viewport {
-        left: 260px;
-    }
-    #sidebar-toggle {
-        left: 260px;
+    :root {
+        --sidebar-w: 260px;
     }
     #right-panel {
         width: 200px;
     }
     #viewport {
         right: 200px;
-    }
-    .topbar-center {
-        display: none;
     }
 }
 

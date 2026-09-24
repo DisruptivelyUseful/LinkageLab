@@ -218,7 +218,7 @@ import { initBuildStepsUI } from './build-steps-ui.js';
                 
                 // Create wrapper
                 const wrapper = document.createElement('div');
-                wrapper.className = 'number-spin-wrapper';
+                wrapper.className = 'number-spin-wrapper' + (buttonWidth <= 28 ? ' spin-compact' : '');
                 if (wrapperWidth) {
                     wrapper.style.width = wrapperWidth;
                     // Input should be full width, padding-right will prevent text from going under buttons

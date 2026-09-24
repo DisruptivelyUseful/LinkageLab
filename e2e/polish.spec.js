@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('Unified app polish', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('first-run loads starter circuit from simulator-default.json', async ({ page }) => {
         await page.goto('/index.html');
         await page.evaluate(() => {

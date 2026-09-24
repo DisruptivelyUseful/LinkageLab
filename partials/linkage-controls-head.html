@@ -7,6 +7,13 @@
             <label class="chk-label"><input type="checkbox" id="chk-bolts"> Bolts</label>
             <label class="chk-label"><input type="checkbox" id="chk-hw-full-detail"> Full Detail</label>
         </div>
+        <div class="ctrl-row" style="padding: 6px 0;">
+            <div class="ctrl-head"><span>Sun (time of day)</span><span id="sun-time-display" class="unit">12:00</span></div>
+            <div class="input-wrap">
+                <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of day (sunrise to sunset)" aria-label="Time of day">
+                <label class="chk-label" style="margin:0; white-space:nowrap;" title="Enable shadows"><input type="checkbox" id="chk-shadows"> Shadows</label>
+            </div>
+        </div>
         
         <div class="ctrl-row" style="padding: 6px 0;">
             <div class="ctrl-head"><span>Orientation</span></div>

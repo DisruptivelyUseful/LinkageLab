@@ -1,7 +1,12 @@
 ﻿import { test, expect } from '@playwright/test';
 import { BUILD_ID_PATTERN, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('LinkageLab smoke', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('bootstraps modules and renders the workspace', async ({ page }) => {
         const consoleLogs = [];
         page.on('console', (msg) => consoleLogs.push(msg.text()));

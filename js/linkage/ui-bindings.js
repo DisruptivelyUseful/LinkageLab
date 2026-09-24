@@ -1447,25 +1447,6 @@ import { exportGameBundleFile } from '../core/export-game-bundle.js';
             requestRender();
         };
         
-        // Topbar animation controls
-        document.getElementById('chk-anim-pingpong-top').onchange = e => {
-            state.animation.pingPong = e.target.checked;
-            // Sync with sidebar checkbox if it exists
-            const sidebarChk = document.getElementById('chk-anim-pingpong');
-            if (sidebarChk) sidebarChk.checked = e.target.checked;
-        };
-        document.getElementById('nb-anim-stop-top').onchange = e => {
-            let val = parseFloat(e.target.value) || 135;
-            val = Math.max(0, Math.min(180, val));
-            state.animation.stopAngle = val;
-            e.target.value = val;
-            // Sync with sidebar inputs if they exist
-            const sidebarSlider = document.getElementById('sl-anim-stop');
-            const sidebarNumber = document.getElementById('nb-anim-stop');
-            if (sidebarSlider) sidebarSlider.value = val;
-            if (sidebarNumber) sidebarNumber.value = val;
-        };
-        
         // Topbar Save/Export buttons — unified project (all modes)
         document.getElementById('btn-save-top').onclick = () => saveProject();
         document.getElementById('btn-load-top').onclick = () => loadProject();

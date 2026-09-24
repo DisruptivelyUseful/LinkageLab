@@ -1,28 +1,19 @@
     <div class="topbar-center">
-        <div style="display:flex; align-items:center; gap:6px;">
-            <span style="color:var(--text-secondary); font-weight:600; font-size:0.85rem; letter-spacing:0.5px;">FOLD:</span>
-            <input type="range" id="sl-fold" min="5" max="175" step="0.1" title="Fold Angle">
-            <input type="number" id="nb-fold" class="topbar-fold-input" min="5" max="175" step="0.1" title="Fold Angle (degrees)">
-            <span style="color:var(--text-muted); font-size:0.85rem; font-weight:600;">°</span>
+        <div class="topbar-cluster topbar-fold-row">
+            <label class="topbar-label" for="nb-fold">Fold</label>
+            <input type="range" id="sl-fold" min="5" max="175" step="0.1" title="Fold angle" aria-label="Fold angle">
+            <input type="number" id="nb-fold" class="topbar-fold-input" min="5" max="175" step="0.1" title="Fold angle (degrees)" aria-label="Fold angle in degrees">
+            <span class="topbar-deg" aria-hidden="true">°</span>
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-anim">
-            <button id="btn-anim-fold" title="Fold to Closed Position" style="padding:6px 12px; background:rgba(231,76,60,0.8); color:white; border:none; border-radius:4px; font-weight:600;">FOLD</button>
-            <button id="btn-anim-unfold" title="Unfold to Open Position" style="padding:6px 12px; background:rgba(46,204,113,0.8); color:white; border:none; border-radius:4px; font-weight:600;">UNFOLD</button>
-            <button id="btn-anim-play" title="Play Animation">▶</button>
-            <button id="btn-anim-pause" title="Pause Animation">⏸</button>
-            <button id="btn-anim-reverse" title="Reverse Direction">⟲</button>
-            <input type="range" id="sl-anim-speed" min="0.1" max="3" step="0.1" value="1" title="Animation Speed">
-            <label class="topbar-chk" title="Ping-pong animation" style="font-size:0.8rem; font-weight:600;"><input type="checkbox" id="chk-anim-pingpong-top" style="margin-right:4px;"> Loop</label>
-            <input type="number" id="nb-anim-stop-top" value="135" min="0" max="180" step="1" style="width:65px; font-size:0.8rem; font-weight:600; padding:4px 6px;" title="Close limit">
+        <div class="topbar-cluster topbar-anim">
+            <button type="button" id="btn-anim-fold" class="topbar-btn btn-anim-fold" title="Fold to closed position"><span aria-hidden="true">◀</span> Fold</button>
+            <button type="button" id="btn-anim-unfold" class="topbar-btn btn-anim-unfold" title="Unfold to open position">Unfold <span aria-hidden="true">▶</span></button>
         </div>
         <div class="topbar-divider"></div>
-        <div class="topbar-sun" title="Time of Day">
-            <span style="font-size:0.85rem; font-weight:600; color:var(--text-secondary); letter-spacing:0.5px; margin-right:4px;">SUN:</span>
-            <input type="range" id="sl-sun-time" min="0" max="100" value="50" step="0.1" title="Time of Day (Sunrise to Sunset)">
-            <span id="sun-time-display" style="font-size:0.85rem; color:var(--text-primary); min-width:60px; text-align:center; font-weight:600; font-family:var(--font-mono);">12:00</span>
-            <label class="topbar-chk" title="Enable Shadows" style="font-size:0.8rem; font-weight:600; margin-left:6px;">
-                <input type="checkbox" id="chk-shadows" style="margin-right:4px;"> Shadows
-            </label>
+        <div class="topbar-cluster topbar-transport">
+            <button type="button" id="btn-anim-play" class="topbar-btn" title="Play fold animation (Space)"><span aria-hidden="true">▶</span> Play</button>
+            <button type="button" id="btn-anim-pause" class="topbar-btn" title="Pause fold animation (Space)"><span aria-hidden="true">⏸</span> Pause</button>
+            <button type="button" id="btn-anim-reverse" class="topbar-btn" title="Reverse animation direction"><span aria-hidden="true">⟲</span> Reverse</button>
         </div>
     </div>

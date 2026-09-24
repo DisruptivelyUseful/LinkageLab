@@ -107,10 +107,9 @@ body[data-app-mode="solar-simulate"] {
 
 body[data-app-mode="solar-design"] #view-solar > #topbar,
 body[data-app-mode="solar-simulate"] #view-solar > #topbar {
-    border-bottom-color: var(--clr-solar, #f0ad4e);
+    border-bottom-color: rgba(var(--clr-solar-rgb, 240, 173, 78), 0.45);
     box-shadow:
-        0 4px 20px rgba(0, 0, 0, 0.5),
-        0 0 24px rgba(var(--clr-solar-rgb, 240, 173, 78), 0.12),
+        0 0 24px rgba(var(--clr-solar-rgb, 240, 173, 78), 0.10),
         inset 0 1px 0 rgba(255, 255, 255, 0.03);
 }
 

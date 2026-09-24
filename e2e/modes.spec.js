@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('Cross-mode smoke', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('linkage → design → simulate → design → linkage keeps each view functional', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

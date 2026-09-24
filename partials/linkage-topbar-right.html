@@ -1,15 +1,21 @@
     <div class="topbar-right">
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)">💾</button>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)">📂</button>
+        <div class="topbar-btn-group" role="group" aria-label="Project">
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-save-top" title="Save to Browser (Ctrl+S)" aria-label="Save to browser">💾</button>
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-load-top" title="Load from Browser (Ctrl+L)" aria-label="Load from browser">📂</button>
+        </div>
         <div class="topbar-divider"></div>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)">⬇️</button>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)">⬆️</button>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-gltf" title="Export 3D Model (glTF/GLB)">🧊</button>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-godot" title="Export for Godot Simulator (game bundle)">🎮</button>
+        <div class="topbar-btn-group" role="group" aria-label="Import and export">
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-json-top" title="Export JSON File (Ctrl+E)" aria-label="Export JSON file">⬇️</button>
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-import-json-top" title="Import JSON File (Ctrl+I)" aria-label="Import JSON file">⬆️</button>
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-gltf" title="Export 3D Model (glTF/GLB)" aria-label="Export 3D model">🧊</button>
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-export-godot" title="Export for Godot Simulator (game bundle)" aria-label="Export game bundle">🎮</button>
+        </div>
         <div class="topbar-divider"></div>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)">📏</button>
+        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-unit-system" title="Toggle Unit System (Metric/Imperial)" aria-label="Toggle unit system">📏</button>
         <div class="topbar-divider"></div>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-hardware-detail-top" title="Hardware Assembly Detail">🔩</button>
-        <button type="button" class="topbar-btn topbar-icon-btn" id="btn-build-guide-top" title="Open Build Guide">📋</button>
+        <div class="topbar-btn-group" role="group" aria-label="Detail views">
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-hardware-detail-top" title="Hardware Assembly Detail" aria-label="Hardware assembly detail">🔩</button>
+            <button type="button" class="topbar-btn topbar-icon-btn" id="btn-build-guide-top" title="Open Build Guide" aria-label="Open build guide">📋</button>
+        </div>
     </div>
 </div>

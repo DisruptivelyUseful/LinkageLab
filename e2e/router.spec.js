@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('App router', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('defaults to linkage view on /index.html', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

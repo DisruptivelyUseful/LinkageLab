@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('Simulator handoff regressions (Phase 9)', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('simulator shows wired paths immediately after design handoff', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

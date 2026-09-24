@@ -61,15 +61,13 @@ input[type="number"]:not(.number-spin-wrapper input)[style*="width:45px"] {
     padding-right: 28px; /* Less padding for compact inputs */
 }
 
-/* Compact spin buttons - smaller size for inputs with smaller padding */
-.number-spin-wrapper input[type="number"][style*="padding-right:24px"] ~ .number-spin-buttons,
-.number-spin-wrapper input[type="number"][style*="padding-right:28px"] ~ .number-spin-buttons {
+/* Compact spin buttons - the wrapper gets .spin-compact from createSpinButtons() for narrow inputs */
+.number-spin-wrapper.spin-compact .number-spin-buttons {
     width: 20px; /* Smaller buttons for compact inputs */
     right: 1px;
 }
 
-.number-spin-wrapper input[type="number"][style*="padding-right:24px"] ~ .number-spin-buttons .number-spin-btn::before,
-.number-spin-wrapper input[type="number"][style*="padding-right:28px"] ~ .number-spin-buttons .number-spin-btn::before {
+.number-spin-wrapper.spin-compact .number-spin-buttons .number-spin-btn::before {
     border-left-width: 4px;
     border-right-width: 4px;
     border-bottom-width: 5px;

@@ -1,6 +1,7 @@
 /* ============================================
    TOPBAR - Unified Toolbar Styling
    Consistent across all modes (Linkage, Designer, Simulator)
+   Layout tokens: --topbar-h (height), see variables.css
    ============================================ */
 
 /* Unified topbar - supports both ID and class for transition */
@@ -11,20 +12,18 @@
     top: 0;
     left: 0;
     right: 0;
-    height: 52px;
+    height: var(--topbar-h);
     background: var(--bg-toolbar);
-    border-bottom: 1px solid var(--clr-primary);
-    box-shadow: 
-        0 4px 20px rgba(0, 0, 0, 0.5),
-        inset 0 1px 0 rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid var(--border-light);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
     z-index: var(--z-fixed);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    gap: 15px;
+    padding: 0 14px;
+    gap: 12px;
     flex-shrink: 0;
-    overflow: hidden;
+    box-sizing: border-box;
 }
 
 /* Subtle scan line effect (aerospace aesthetic) */
@@ -54,6 +53,7 @@
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
+    min-height: 0;
 }
 
 .topbar-left,
@@ -66,21 +66,34 @@
 
 .topbar-center,
 .toolbar-center {
-    gap: 15px;
+    gap: 10px;
     flex: 1 1 auto;
     justify-content: center;
     min-width: 0;
-    overflow: hidden;
     position: relative;
     z-index: 1;
 }
 
 .topbar-right,
 .toolbar-right {
-    gap: 10px;
+    gap: 6px;
     flex: 0 0 auto;
     position: relative;
     z-index: 2;
+}
+
+/* Nothing in the bar may shrink below its content; only the sliders flex. */
+.topbar-left > *,
+.topbar-center > *,
+.topbar-right > *,
+.topbar-cluster > * {
+    flex: 0 0 auto;
+}
+
+.topbar-cluster {
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
 /* App title */
@@ -89,7 +102,7 @@
 .topbar .app-title,
 .toolbar .app-title {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1rem;
     font-weight: 700;
     font-family: var(--font-display);
     color: var(--clr-primary);
@@ -98,43 +111,45 @@
     text-shadow: var(--glow-primary);
 }
 
-/* Topbar buttons */
+/* Topbar buttons — class-based only, so the injected spin arrows and
+   other nested buttons are NOT caught by an ID selector. */
 .topbar-btn,
-.topbar button,
-#topbar button,
 .toolbar button {
     font-family: var(--font-display);
-    padding: 8px 14px;
-    min-width: 32px;
+    padding: 0 12px;
     height: 32px;
     background: var(--space-600);
     color: var(--text-secondary);
     border: 1px solid var(--space-400);
     border-radius: var(--radius-md);
     cursor: pointer;
-    font-size: 0.85em;
-    font-weight: 500;
-    transition: all var(--transition-fast);
+    font-size: 0.8rem;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), box-shadow var(--transition-fast);
     white-space: nowrap;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    gap: 5px;
+    flex: 0 0 auto;
+    line-height: 1;
 }
 
 .topbar-btn:hover,
-.topbar button:hover,
-#topbar button:hover,
 .toolbar button:hover {
     background: var(--space-500);
     border-color: var(--clr-primary);
     color: var(--text-primary);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.topbar-btn:active {
+    transform: translateY(1px);
 }
 
 .topbar-btn.active,
-.topbar button.active,
-#topbar button.active,
 .toolbar button.active {
     background: rgba(var(--clr-primary-rgb), 0.2);
     border-color: var(--clr-primary);
@@ -142,10 +157,15 @@
     box-shadow: var(--glow-primary);
 }
 
+.topbar-btn:focus-visible {
+    outline: 2px solid var(--clr-primary);
+    outline-offset: 2px;
+}
+
 /* Mode toggle group - segmented control (Mission Control style) */
 .mode-toggle {
     display: flex !important;
-    gap: 0;
+    gap: 2px;
     background: var(--space-800);
     border-radius: 8px;
     padding: 3px;
@@ -154,34 +174,32 @@
     visibility: visible !important;
 }
 
-.mode-toggle button {
+.mode-toggle .topbar-btn {
     border-radius: 6px;
     border: none;
     background: transparent;
-    min-width: 100px;
-    padding: 8px 20px;
+    height: 28px;
+    padding: 0 10px;
     color: var(--text-secondary);
     font-weight: 500;
 }
 
-.mode-toggle button:first-child {
-    border-radius: 6px;
-}
-
-.mode-toggle button:last-child {
-    border-radius: 6px;
-}
-
-.mode-toggle button.active {
+.mode-toggle .topbar-btn.active {
     background: var(--gradient-primary);
     color: var(--space-900);
     font-weight: 600;
     box-shadow: var(--glow-primary);
 }
 
-.mode-toggle button:hover:not(.active) {
+.mode-toggle .topbar-btn:hover:not(.active) {
     background: var(--space-600);
     color: var(--text-primary);
+    box-shadow: none;
+}
+
+.mode-icon {
+    font-size: 0.9rem;
+    line-height: 1;
 }
 
 /* Topbar dividers */
@@ -189,56 +207,148 @@
     width: 1px;
     height: 24px;
     background: var(--border-light);
-    margin: 0 8px;
+    margin: 0 4px;
+    flex: 0 0 auto;
 }
 
-/* Topbar animation controls */
-.topbar-anim {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.topbar-anim button {
-    padding: 6px 10px;
-    font-size: 0.85rem;
-    font-weight: 600;
-    background: var(--bg-input);
-    border: 1px solid var(--border-light);
-    color: var(--text-primary);
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    transition: all var(--transition-fast);
-    font-family: var(--font-display);
-    letter-spacing: 0.5px;
-}
-
-.topbar-anim button:hover {
-    border-color: var(--clr-primary);
-    color: var(--clr-primary);
-    background: var(--space-400);
-    box-shadow: var(--glow-subtle);
-}
-
-.topbar-anim button:active {
-    transform: translateY(1px);
-}
-
-.topbar-anim input[type="range"] {
-    min-width: 80px;
-    flex: 1 1 auto;
-    max-width: 200px;
+/* Fold angle cluster */
+.topbar-fold-row input[type="range"] {
+    flex: 1 1 140px;
+    min-width: 90px;
+    max-width: 240px;
+    width: auto;
     height: 4px;
 }
 
-.topbar-anim-status {
+.topbar-label {
+    color: var(--text-secondary);
+    font-weight: 600;
     font-size: 0.75rem;
-    color: var(--text-muted);
-    min-width: 60px;
-    font-weight: 500;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    margin: 0;
 }
 
-/* Topbar checkboxes and number inputs */
+/* Specificity note: the global input[type="number"] { width:100% } rule is (0,1,1),
+   so the class alone loses; qualify with the element + attribute to win. */
+.topbar input[type="number"].topbar-fold-input {
+    width: 6.5em;
+    min-width: 6.5em;
+    max-width: none;
+    flex: 0 0 auto;
+    height: 32px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    box-sizing: border-box;
+}
+
+/* Spin-button wrapper inherits the same fixed width so flex layout cannot crush the value */
+.topbar .number-spin-wrapper {
+    flex: 0 0 auto;
+}
+
+.topbar-center .number-spin-wrapper:has(.topbar-fold-input) {
+    width: 6.5em !important; /* createSpinButtons() copies the input width inline; keep it fixed */
+    min-width: 6.5em;
+}
+
+.topbar-deg {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+/* Deploy buttons (Fold / Unfold) */
+.btn-anim-fold,
+.btn-anim-unfold {
+    color: #fff;
+    border-color: transparent;
+}
+
+.btn-anim-fold {
+    background: rgba(231, 76, 60, 0.75);
+}
+
+.btn-anim-fold:hover {
+    background: rgba(231, 76, 60, 0.95);
+    border-color: rgba(231, 76, 60, 1);
+    color: #fff;
+}
+
+.btn-anim-unfold {
+    background: rgba(46, 204, 113, 0.75);
+}
+
+.btn-anim-unfold:hover {
+    background: rgba(46, 204, 113, 0.95);
+    border-color: rgba(46, 204, 113, 1);
+    color: #fff;
+}
+
+/* Transport: show Play or Pause, never both */
+body.anim-playing #btn-anim-play {
+    display: none;
+}
+
+body:not(.anim-playing) #btn-anim-pause {
+    display: none;
+}
+
+.topbar-icon-btn {
+    padding: 0 7px;
+    min-width: 32px;
+    font-size: 0.9rem;
+}
+
+/* Segmented icon groups (right side): buttons share borders, no gaps */
+.topbar-btn-group {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+}
+
+.topbar-btn-group .topbar-btn {
+    border-radius: 0;
+    margin-left: -1px;
+}
+
+.topbar-btn-group .topbar-btn:first-child {
+    border-radius: var(--radius-md) 0 0 var(--radius-md);
+    margin-left: 0;
+}
+
+.topbar-btn-group .topbar-btn:last-child {
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.topbar-btn-group .topbar-btn:only-child {
+    border-radius: var(--radius-md);
+}
+
+.topbar-btn-group .topbar-btn:hover {
+    position: relative;
+    z-index: 1;
+}
+
+.topbar-time-display {
+    font-size: 0.85rem;
+    color: var(--text-primary);
+    min-width: 60px;
+    text-align: center;
+    font-weight: 600;
+    font-family: var(--font-mono);
+}
+
+/* Legacy classes kept for the solar shell */
+.topbar-app-title {
+    font-size: 1rem;
+    margin: 0;
+    white-space: nowrap;
+}
+
 .topbar-chk {
     display: flex;
     align-items: center;
@@ -254,74 +364,23 @@
     margin: 0;
 }
 
-.topbar-chk input[type="number"] {
-    width: 50px;
-    padding: 4px 6px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    background: var(--bg-input);
-    border: 1px solid var(--border-light);
-    color: var(--text-primary);
-    border-radius: var(--radius-sm);
-    font-family: var(--font-mono);
-}
-
-/* Sun position controls */
-.topbar-sun {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.topbar-sun input[type="range"] {
-    min-width: 80px;
-    flex: 1 1 auto;
-    max-width: 200px;
-    height: 4px;
-}
-
-/* Topbar labels and text */
-.topbar-center > div > span,
-.topbar-center label {
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--text-secondary);
-    font-family: var(--font-display);
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-
-/* Fold angle section */
-.topbar-center > div:first-child {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.topbar-center > div:first-child input[type="range"] {
-    min-width: 100px;
-    flex: 1 1 auto;
-    max-width: 250px;
+.topbar-anim-status {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    min-width: 60px;
+    font-weight: 500;
 }
 
 @media (pointer: coarse) {
-    .topbar button,
-    .topbar-anim button {
+    .topbar .topbar-btn {
         min-height: 44px;
         min-width: 44px;
         padding: 0 14px;
     }
 
-    .topbar-anim input[type="range"],
-    .topbar-sun input[type="range"],
-    .topbar-center > div:first-child input[type="range"] {
+    .topbar-fold-row input[type="range"] {
         min-height: 44px;
         max-width: none;
-    }
-
-    .topbar-chk {
-        min-height: 44px;
-        font-size: 0.75rem;
     }
 }
 
@@ -352,153 +411,63 @@
     transform: translateY(-1px);
 }
 
-/* LinkageLab topbar — class-based layout (replaces inline styles) */
-.topbar-app-title {
-    font-size: 1rem;
-    margin: 0;
-    white-space: nowrap;
-}
-
-.topbar-fold-row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.topbar-label {
-    color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-    white-space: nowrap;
-}
-
-.topbar-fold-input {
-    width: 7.5em;
-    min-width: 7.5em;
-    max-width: none;
-    flex: 0 0 auto;
-    font-size: 0.85rem;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    box-sizing: border-box;
-}
-
-/* Spin-button wrapper inherits the same fixed width so flex layout cannot crush the value */
-.topbar-center .number-spin-wrapper:has(.topbar-fold-input) {
-    width: 7.5em;
-    min-width: 7.5em;
-    flex: 0 0 auto;
-}
-
-.topbar-deg {
-    color: var(--text-muted);
-    font-size: 0.85rem;
-    font-weight: 600;
-}
-
-.topbar-chk-label {
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.topbar-chk-shadows {
-    margin-left: 6px;
-}
-
-.topbar-chk-label input[type="checkbox"] {
-    margin-right: 4px;
-}
-
-.topbar-stop-input {
-    width: 65px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    padding: 4px 6px;
-}
-
-.topbar-time-display {
-    font-size: 0.85rem;
-    color: var(--text-primary);
-    min-width: 60px;
-    text-align: center;
-    font-weight: 600;
-    font-family: var(--font-mono);
-}
-
-.topbar-sun-label {
-    margin-right: 4px;
-}
-
-.topbar-icon-btn {
-    padding: 4px 8px;
-    font-size: 0.75rem;
-}
-
-.btn-anim-fold {
-    padding: 6px 12px;
-    background: rgba(231, 76, 60, 0.8);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-.btn-anim-unfold {
-    padding: 6px 12px;
-    background: rgba(46, 204, 113, 0.8);
-    color: white;
-    border: none;
-    border-radius: 4px;
-    font-weight: 600;
-}
-
-/* Responsive: wrap center controls on medium screens */
-@media (max-width: 1200px) {
-    .topbar-center {
-        flex-wrap: wrap;
-        justify-content: center;
-        row-gap: 6px;
+/* Responsive: shrink before wrapping */
+@media (max-width: 1600px) {
+    .mode-toggle .mode-label {
+        display: none;
     }
 
-    .topbar-fold-row input[type="range"],
-    .topbar-sun input[type="range"] {
-        max-width: 120px;
+    .topbar-fold-row input[type="range"] {
+        max-width: 130px;
+    }
+
+    .topbar-divider {
+        margin: 0 2px;
     }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1180px) {
+    /* Icon-only transport; title + aria-label still name each button */
+    .topbar-transport .topbar-btn > span + *,
+    .topbar-transport .topbar-btn {
+        font-size: 0;
+    }
+
+    .topbar-transport .topbar-btn > span {
+        font-size: 0.9rem;
+    }
+
+    .topbar-fold-row input[type="range"] {
+        max-width: 100px;
+    }
+}
+
+/* Narrow screens: two rows. The sidebar and viewport read --topbar-h, so they follow. */
+@media (max-width: 980px) {
+    :root {
+        --topbar-h: 96px;
+    }
+
     .topbar {
-        height: auto;
-        min-height: 52px;
         flex-wrap: wrap;
-        padding: 8px 12px;
-        gap: 8px;
+        padding: 6px 12px;
+        row-gap: 4px;
+        align-content: center;
     }
 
-    /* Keep in-app solar/simulate topbars on a single row */
-    #view-solar > #topbar,
+    .topbar-center {
+        order: 3;
+        flex: 1 0 100%;
+        justify-content: center;
+    }
+
+    /* The solar shell keeps a single 52px row (its own rules below) */
     #view-solar > #topbar {
         height: 52px;
         min-height: 52px;
         max-height: 52px;
         flex-wrap: nowrap;
         padding: 0 12px;
-    }
-
-    .topbar-left,
-    .topbar-right {
-        flex: 1 1 auto;
-    }
-
-    .topbar-right {
-        justify-content: flex-end;
-        flex-wrap: wrap;
-    }
-
-    #view-solar > #topbar .topbar-right,
-    #view-solar > #topbar .topbar-right {
-        flex-wrap: nowrap;
     }
 }
 

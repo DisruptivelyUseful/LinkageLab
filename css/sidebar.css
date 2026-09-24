@@ -5,15 +5,15 @@
 .sidebar,
 #sidebar {
     position: fixed;
-    top: 52px; /* Below topbar */
+    top: var(--topbar-h); /* Below topbar */
     left: 0;
     bottom: 0;
-    width: 280px;
+    width: var(--sidebar-w);
     background-color: var(--bg-sidebar);
     border-right: 1px solid var(--border-light);
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-sm);
     z-index: var(--z-sticky);
     transition: width var(--transition-med), transform var(--transition-med);
     overflow: hidden;

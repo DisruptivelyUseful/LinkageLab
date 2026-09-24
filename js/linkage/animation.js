@@ -23,6 +23,8 @@ import { getEffectiveMinFoldAngle } from './solver.js';
         const statusEl = document.getElementById('anim-status');
         const statusTopEl = document.getElementById('anim-status-top');
         const directionEl = document.getElementById('anim-direction');
+        // Topbar shows either Play or Pause depending on this class
+        document.body.classList.toggle('anim-playing', !!state.animation.playing);
         
         const statusText = state.animation.playing ? '▶ Playing' : '⏸ Stopped';
         const statusColor = state.animation.playing ? 'var(--clr-success)' : 'var(--text-muted)';

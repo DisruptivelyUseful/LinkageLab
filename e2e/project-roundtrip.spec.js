@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('Unified project document (Phase 12–13)', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('saveProject persists circuit across design ↔ simulate hops', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

@@ -1,7 +1,12 @@
 import { test, expect } from '@playwright/test';
 import { navigateAppMode, waitForAppReady } from './helpers/app-ready.js';
+import { installOfflineCdn } from './helpers/offline-cdn.js';
 
 test.describe('Linkage viewport interaction', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+    });
+
     test('webgl canvas receives pointer hits in the viewport center', async ({ page }) => {
         await page.goto('/index.html');
         await waitForAppReady(page);

@@ -5,6 +5,10 @@
    ============================================ */
 
 :root {
+    /* === LAYOUT (linkage shell) === */
+    --topbar-h: 52px;                 /* Top bar height; sidebar + viewport read this */
+    --sidebar-w: 340px;               /* Left sidebar width */
+
     /* === TYPOGRAPHY === */
     --font-display: 'Exo 2', 'Segoe UI', system-ui, sans-serif;
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
@@ -58,7 +62,7 @@
     --bg-panel: var(--space-600);
     --bg-input: var(--space-500);
     --bg-canvas: var(--space-900);
-    --bg-toolbar: linear-gradient(180deg, var(--space-700) 0%, var(--space-800) 100%);
+    --bg-toolbar: linear-gradient(180deg, var(--space-600) 0%, var(--space-700) 100%); /* ends on --bg-sidebar so bar and sidebar read as one surface */
     --gradient-panel: linear-gradient(180deg, var(--space-600) 0%, var(--space-700) 100%);
     --gradient-primary: linear-gradient(135deg, var(--clr-primary) 0%, var(--clr-primary-dark) 100%);
     --gradient-energy: linear-gradient(135deg, var(--energy-amber) 0%, var(--energy-orange) 100%);
