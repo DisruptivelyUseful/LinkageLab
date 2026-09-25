@@ -425,7 +425,9 @@ import { bindNumericInput } from './numeric-input.js';
 
         // Keyboard shortcuts
         document.addEventListener('keydown', e => {
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+            // Part view owns the camera keys (R recenters, T tightens); keep Space and Ctrl shortcuts.
+            if (state.hwDetailMode && !e.ctrlKey && !e.metaKey && e.key !== ' ') return;
             
             switch (e.key.toLowerCase()) {
                 case 'r':
@@ -1226,9 +1228,8 @@ import { bindNumericInput } from './numeric-input.js';
             if (btn) btn.onclick = openHardwareDetail;
             window.addEventListener('resize', () => {
                 if (!document.getElementById('hardware-detail-modal')?.classList.contains('visible')) return;
-                // Embedded part view re-sizes via the main render loop; legacy scene uses resizeHardwareDetail.
+                // The part view is drawn by the main render loop on the reparented canvas.
                 if (state.hwDetailMode) requestRender();
-                else resizeHardwareDetail();
             });
             document.addEventListener('click', (e) => { if (e.target.id === 'hardware-detail-modal') closeHardwareDetail(); });
             document.addEventListener('keydown', (e) => {

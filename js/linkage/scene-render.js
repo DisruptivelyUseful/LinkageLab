@@ -199,12 +199,28 @@ import { partKey } from './part-keys.js';
                 excludeBeams: true,
                 selectedPartId: hwDetail && hwDetail.selectedPartId
             });
-            // Keep the focused assembly head-on and centered while folding/exploding.
-            if (focusInstance && hwDetail && (hwDetail.lockRadialView !== false || hwDetail.needsRecenter)) {
-                hwFrameDetailInstance(focusInstance, hwFocus.worldPos, sc, hwFocus.assembly && hwFocus.assembly.detailCam);
-                hwDetail.needsRecenter = false;
+            // Look-at point: the assembly's visual centre (world bounding box), so it stays
+            // centred across fold angles and explode levels. Empty assemblies fall back to the anchor.
+            let focusPoint = hwFocus.worldPos;
+            let focusRadius = 6;
+            if (focusInstance) {
+                const box = hwInstanceWorldBounds(focusInstance);
+                if (box) { focusPoint = box.center; focusRadius = box.radius; }
             }
-            if (hwDetail) hwDetail.focusGroupUuid = focusInstance ? focusInstance.uuid : null;
+            threeRenderer._hwFocusTarget = focusPoint;
+            threeRenderer._hwFocusRadius = focusRadius;
+            if (hwDetail) {
+                if (hwDetail.needsRecenter) {
+                    hwFrameDetailInstance(focusPoint, focusRadius, sc, hwFocus.assembly && hwFocus.assembly.detailCam);
+                    hwDetail.needsRecenter = false;
+                    hwDetail.needsRefit = false;
+                } else if (hwDetail.needsRefit) {
+                    hwFitDetailDistance(focusRadius);
+                    hwDetail.needsRefit = false;
+                }
+                hwDetail.focusGroupUuid = focusInstance ? focusInstance.uuid : null;
+            }
+            if (typeof globalThis.hwSyncFoldSliderFromState === 'function') globalThis.hwSyncFoldSliderFromState();
         }
         
         // Render actuator visualization lines if one is selected
@@ -249,32 +265,54 @@ import { partKey } from './part-keys.js';
         }
     }
 
-    /**
-     * Frame state.cam head-on (radially outward) on the focused assembly instance.
-     * Each assembly carries its own detailCam preset (pitch + distance multiplier) so
-     * V-beam, V-center, and H-center views read differently.
-     */
-    function hwFrameDetailInstance(instance, worldPos, sc, detailCam) {
-        let radius = 12;
+    /** World-space bounding sphere of an assembly instance ({center, radius}) or null. */
+    function hwInstanceWorldBounds(instance) {
         try {
             instance.updateWorldMatrix(true, true);
             const box = new THREE.Box3().setFromObject(instance);
-            if (!box.isEmpty()) {
-                const size = box.getSize(new THREE.Vector3());
-                radius = Math.max(size.x, size.y, size.z) || radius;
-            }
-        } catch (e) { /* keep default radius */ }
+            if (box.isEmpty()) return null;
+            const center = box.getCenter(new THREE.Vector3());
+            const size = box.getSize(new THREE.Vector3());
+            const radius = Math.max(0.5, size.length() / 2);
+            return { center: { x: center.x, y: center.y, z: center.z }, radius };
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /** Camera distance that fits a sphere of `radius` in the narrower field of view. */
+    function hwFitDistanceForRadius(radius) {
+        const cam = threeRenderer.mainCamera;
+        const vfov = ((cam && cam.fov) || 45) * Math.PI / 180;
+        const aspect = (cam && cam.aspect) || 1.5;
+        const hfov = 2 * Math.atan(Math.tan(vfov / 2) * aspect);
+        const fov = Math.min(vfov, hfov);
+        const dist = (Math.max(0.5, radius) / Math.sin(fov / 2)) * 1.25;
+        return Math.min(400, Math.max(8, dist));
+    }
+
+    /** Re-fit only the distance (explode level changed); keeps the user's orbit. */
+    function hwFitDetailDistance(radius) {
+        state.cam.dist = hwFitDistanceForRadius(radius);
+    }
+
+    /**
+     * Frame state.cam head-on (radially outward) on the focused assembly.
+     * Each assembly carries its own detailCam preset (pitch) so V-beam, V-center
+     * and H-center views read differently. Distance comes from the bounding sphere.
+     */
+    function hwFrameDetailInstance(focusPoint, radius, sc, detailCam) {
         const pitchDeg = detailCam && typeof detailCam.pitchDeg === 'number' ? detailCam.pitchDeg : 8;
-        const distMul = detailCam && typeof detailCam.distMul === 'number' ? detailCam.distMul : 2.0;
-        const radialX = worldPos.x - sc.x;
-        const radialZ = worldPos.z - sc.z;
+        const radialX = focusPoint.x - sc.x;
+        const radialZ = focusPoint.z - sc.z;
         if (Math.abs(radialX) > 1e-4 || Math.abs(radialZ) > 1e-4) {
             state.cam.yaw = Math.atan2(radialX, radialZ);
         }
         state.cam.pitch = pitchDeg * Math.PI / 180;
-        state.cam.dist = Math.max(16, radius * distMul + 8);
+        state.cam.dist = hwFitDistanceForRadius(radius);
         state.cam.panX = 0;
         state.cam.panY = 0;
+        state.cam.target = null;
     }
     
     /**

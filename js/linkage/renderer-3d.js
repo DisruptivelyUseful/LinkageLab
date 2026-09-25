@@ -186,9 +186,11 @@ function createMainCamera() {
  */
 function updateMainCamera(structureCenter = null) {
     const cam = state.cam;
-    // Build-step playback can pin the orbit/look-at point to a part (cam.target);
-    // otherwise orbit around the structure center as before.
-    const sc = (cam && cam.target) || structureCenter || { x: 0, y: 0, z: 0 };
+    // Build-step playback can pin the orbit/look-at point to a part (cam.target).
+    // The parts detail view always looks at its focus target (passed in as
+    // structureCenter), so a stale pin from the step editor must not win there.
+    const partView = state.hwDetailMode && !(state.buildPlayback && state.buildPlayback.active);
+    const sc = (!partView && cam && cam.target) || structureCenter || { x: 0, y: 0, z: 0 };
     
     // Calculate camera position from yaw, pitch, and distance
     const x = cam.dist * Math.sin(cam.yaw) * Math.cos(cam.pitch);
@@ -218,10 +220,18 @@ function updateMainCamera(structureCenter = null) {
     // reparented into the hardware modal viewport in part view).
     const mainWebGLCanvas = document.getElementById('canvas-webgl');
     const sizeEl = (mainWebGLCanvas && mainWebGLCanvas.parentElement) || document.getElementById('viewport');
+    let projDirty = false;
     if (sizeEl && sizeEl.clientWidth > 0 && sizeEl.clientHeight > 0 && threeRenderer.mainCamera) {
         threeRenderer.mainCamera.aspect = sizeEl.clientWidth / sizeEl.clientHeight;
-        threeRenderer.mainCamera.updateProjectionMatrix();
+        projDirty = true;
     }
+    // Small hardware stacks sit close to the camera in part view; a 10 in near plane clips them.
+    const near = partView ? 0.5 : 10;
+    if (threeRenderer.mainCamera && threeRenderer.mainCamera.near !== near) {
+        threeRenderer.mainCamera.near = near;
+        projDirty = true;
+    }
+    if (projDirty && threeRenderer.mainCamera) threeRenderer.mainCamera.updateProjectionMatrix();
 }
 
 /**

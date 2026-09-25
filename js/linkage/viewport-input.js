@@ -242,10 +242,17 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
         const webglCanvas = document.getElementById('canvas-webgl');
         if (!viewportElement) return;
 
+        const releasePartViewLock = () => {
+            if (state.hwDetailMode && globalThis.hwDetail) globalThis.hwDetail.lockRadialView = false;
+        };
+
         const beginViewportDrag = (e) => {
             if (isFormElement(e.target)) return;
+            // Part view: a pointerdown on a hardware part already started a part drag
+            if (state.hwDetailMode && globalThis.hwDetail && globalThis.hwDetail.dragPartId) return;
 
             e.preventDefault();
+            releasePartViewLock();
 
             drag.active = true;
             drag.x = e.clientX;
@@ -262,6 +269,7 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
 
             if (e.touches.length === 1) {
                 e.preventDefault();
+                releasePartViewLock();
                 pinch.active = false;
                 drag.active = true;
                 drag.x = e.touches[0].clientX;
@@ -343,6 +351,7 @@ const pinch = { active: false, startDist: 0, startCamDist: 0, lastCenterX: 0, la
 
         const handleWheel = e => {
             e.preventDefault();
+            releasePartViewLock();
             state.cam.dist += e.deltaY * (state.cam.dist / 1000);
             clampCameraDistance();
             requestRender();

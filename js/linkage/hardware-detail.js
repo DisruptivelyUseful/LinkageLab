@@ -647,16 +647,11 @@ function hwEnsureDetailRaycaster() {
 }
 
 function hwGetDetailCanvas() {
-    if (state.hwDetailMode && hwDetail.embedded) return document.getElementById('canvas-webgl');
-    if (hwDetail.initialized) return document.getElementById('hw-detail-canvas');
-    return document.getElementById('canvas-webgl') || document.getElementById('hw-detail-canvas');
+    return document.getElementById('canvas-webgl');
 }
 
 function hwGetDetailCamera() {
-    if (state.hwDetailMode && hwDetail.embedded && typeof threeRenderer !== 'undefined' && threeRenderer.mainCamera) {
-        return threeRenderer.mainCamera;
-    }
-    return hwDetail.camera;
+    return (typeof threeRenderer !== 'undefined' && threeRenderer.mainCamera) ? threeRenderer.mainCamera : null;
 }
 
 function hwGetFocusAssemblyGroup() {
@@ -683,14 +678,12 @@ function hwProjectPointerToAxisPos(event, ctx) {
     let ray = hwDetail.raycaster.ray;
     const camDir = new THREE.Vector3();
     camera.getWorldDirection(camDir);
-    if (state.hwDetailMode && hwDetail.embedded) {
-        const focusGroup = hwGetFocusAssemblyGroup();
-        if (!focusGroup) return null;
-        focusGroup.updateWorldMatrix(true, false);
-        const inv = new THREE.Matrix4().copy(focusGroup.matrixWorld).invert();
-        ray = hwDetail.raycaster.ray.clone().applyMatrix4(inv);
-        camDir.transformDirection(inv).normalize();
-    }
+    const focusGroup = hwGetFocusAssemblyGroup();
+    if (!focusGroup) return null;
+    focusGroup.updateWorldMatrix(true, false);
+    const inv = new THREE.Matrix4().copy(focusGroup.matrixWorld).invert();
+    ray = hwDetail.raycaster.ray.clone().applyMatrix4(inv);
+    camDir.transformDirection(inv).normalize();
 
     let planeNormal = new THREE.Vector3().crossVectors(ctx.dirVec, camDir);
     if (planeNormal.lengthSq() < 1e-8) {
@@ -737,18 +730,13 @@ function hwRaycastPartId(event) {
         return null;
     };
 
-    if (state.hwDetailMode && hwDetail.embedded) {
-        const focusGroup = hwGetFocusAssemblyGroup();
-        if (!focusGroup) return null;
-        const partId = pickFrom(focusGroup);
-        if (!partId) return null;
-        const asm = getActiveHardwareAssembly();
-        const part = asm && asm.parts.find(p => p.id === partId);
-        return (part && part.type !== 'bracket') ? partId : null;
-    }
-
-    if (!hwDetail.assemblyGroup) return null;
-    return pickFrom(hwDetail.assemblyGroup);
+    const focusGroup = hwGetFocusAssemblyGroup();
+    if (!focusGroup) return null;
+    const partId = pickFrom(focusGroup);
+    if (!partId) return null;
+    const asm = getActiveHardwareAssembly();
+    const part = asm && asm.parts.find(p => p.id === partId);
+    return (part && part.type !== 'bracket') ? partId : null;
 }
 
 function hwGetBracketHoleY(bracketPart) {
@@ -1509,13 +1497,6 @@ function hwCreatePartMeshForAxis(part, axisKey, assembly) {
 // ---------------------------------------------------------------------------
 
 const hwDetail = {
-    initialized: false,
-    renderer: null,
-    scene: null,
-    camera: null,
-    controls: null,
-    assemblyGroup: null,
-    raf: null,
     selectedPartId: null,
     dragPartId: null,
     dragCtx: null,
@@ -1528,8 +1509,11 @@ const hwDetail = {
     originalCanvasNext: null,
     focusGroupUuid: null,
     embeddedInteractionWired: false,
-    /** When true (default in part view), camera stays head-on on the focused assembly. */
+    /** True until the user orbits/zooms; Recenter sets it again. */
     lockRadialView: true,
+    /** Re-frame head-on on the next render (open, assembly change, Recenter). */
+    needsRefit: false,
+    explodeDragHintShown: false,
 };
 
 // Move the main WebGL canvas into the hardware modal viewport so the detail
@@ -1540,8 +1524,6 @@ function hwEmbedMainCanvas() {
     if (!canvas || !vp || hwDetail.embedded) return;
     hwDetail.originalCanvasParent = canvas.parentElement;
     hwDetail.originalCanvasNext = canvas.nextSibling;
-    const placeholder = document.getElementById('hw-detail-canvas');
-    if (placeholder) placeholder.style.display = 'none';
     vp.appendChild(canvas);
     hwDetail.embedded = true;
 }
@@ -1555,8 +1537,6 @@ function hwRestoreMainCanvas() {
         if (next && next.parentElement === parent) parent.insertBefore(canvas, next);
         else parent.appendChild(canvas);
     }
-    const placeholder = document.getElementById('hw-detail-canvas');
-    if (placeholder) placeholder.style.display = '';
     hwDetail.originalCanvasParent = null;
     hwDetail.originalCanvasNext = null;
     hwDetail.embedded = false;
@@ -1564,7 +1544,7 @@ function hwRestoreMainCanvas() {
 
 function hwDetailPointerDown(e) {
     if (e.button !== 0) return;
-    if (!state.hwDetailMode && !hwDetail.initialized) return;
+    if (!state.hwDetailMode) return;
     const canvas = hwGetDetailCanvas();
     if (!canvas || e.target !== canvas) return;
     const partId = hwRaycastPartId(e);
@@ -1642,72 +1622,6 @@ function hwWireEmbeddedDetailInteraction() {
     canvas.addEventListener('pointerup', hwDetailPointerUp);
     canvas.addEventListener('pointercancel', hwDetailPointerUp);
     hwDetail.embeddedInteractionWired = true;
-}
-
-function initHardwareDetailScene() {
-    if (hwDetail.initialized) return;
-    const canvas = document.getElementById('hw-detail-canvas');
-    if (!canvas || typeof THREE === 'undefined') return;
-
-    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    renderer.setPixelRatio(window.devicePixelRatio || 1);
-    renderer.localClippingEnabled = true; // for bracket cutoff clipping plane
-    hwDetail.renderer = renderer;
-
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x1b1d22);
-    hwDetail.scene = scene;
-
-    const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 1000);
-    camera.position.set(6, 4, 8);
-    hwDetail.camera = camera;
-
-    scene.add(new THREE.AmbientLight(0xffffff, 0.55));
-    const key = new THREE.DirectionalLight(0xffffff, 0.9);
-    key.position.set(5, 8, 6);
-    scene.add(key);
-    const fill = new THREE.DirectionalLight(0xffffff, 0.4);
-    fill.position.set(-6, -3, -5);
-    scene.add(fill);
-
-    if (THREE.OrbitControls) {
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.08;
-        hwDetail.controls = controls;
-    }
-
-    hwDetail.assemblyGroup = new THREE.Group();
-    scene.add(hwDetail.assemblyGroup);
-
-    hwDetail.raycaster = new THREE.Raycaster();
-    hwDetail.pointer = new THREE.Vector2();
-
-    canvas.addEventListener('pointerdown', hwDetailPointerDown);
-    canvas.addEventListener('pointermove', hwDetailPointerMove);
-    canvas.addEventListener('pointerup', hwDetailPointerUp);
-    canvas.addEventListener('pointercancel', hwDetailPointerUp);
-
-    hwDetail.initialized = true;
-
-    const animate = () => {
-        hwDetail.raf = requestAnimationFrame(animate);
-        if (hwDetail.controls) hwDetail.controls.update();
-        renderer.render(scene, camera);
-    };
-    animate();
-}
-
-function resizeHardwareDetail() {
-    if (!hwDetail.initialized) return;
-    const canvas = document.getElementById('hw-detail-canvas');
-    const wrap = canvas ? canvas.parentElement : null;
-    if (!wrap) return;
-    const w = wrap.clientWidth, h = wrap.clientHeight;
-    if (w === 0 || h === 0) return;
-    hwDetail.renderer.setSize(w, h, false);
-    hwDetail.camera.aspect = w / h;
-    hwDetail.camera.updateProjectionMatrix();
 }
 
 function getActiveHardwareAssembly() {
@@ -2179,27 +2093,6 @@ function buildHardwareAssemblyGroup(assembly, options = {}) {
     });
 
     return group;
-}
-
-function buildHardwareAssemblyScene() {
-    // Embedded part view: the main render loop draws the assembly in-structure.
-    if (state.hwDetailMode) {
-        hwPersistHardwareConfig();
-        if (typeof requestRender === 'function') requestRender();
-        return;
-    }
-    if (!hwDetail.initialized) return;
-    const group = hwDetail.assemblyGroup;
-    clearGroup(group);
-
-    const assembly = getActiveHardwareAssembly();
-    if (!assembly) return;
-    hwDetail.assemblyGroup.add(buildHardwareAssemblyGroup(assembly, {
-        explode: hwExplodeFactor(),
-        selectedPartId: hwDetail.selectedPartId,
-        syncFromState: true
-    }));
-    hwPersistHardwareConfig();
 }
 
 // ---------------------------------------------------------------------------
@@ -3240,14 +3133,31 @@ function hwCopyHardwareFromSelected() {
     renderHardwareEditPanel();
 }
 
-// Refresh the detail preview: in embedded part view the main render loop draws it;
-// otherwise fall back to the legacy standalone editor scene.
+// Refresh the detail preview: the main render loop draws the assembly in-structure.
 function hwRebuildDetailView() {
-    if (state.hwDetailMode) {
-        if (typeof requestRender === 'function') requestRender();
-    } else {
-        buildHardwareAssemblyScene();
-    }
+    if (typeof requestRender === 'function') requestRender();
+}
+
+/** Legacy name kept for callers: persist and redraw. */
+function buildHardwareAssemblyScene() {
+    hwPersistHardwareConfig();
+    hwRebuildDetailView();
+}
+
+/** Keep the modal fold slider in step with state.foldAngle (main animation, top bar, drag). */
+function hwSyncFoldSliderFromState() {
+    const foldSl = document.getElementById('hw-fold-slider');
+    if (!foldSl) return;
+    const deg = radToDeg(state.foldAngle);
+    if (document.activeElement !== foldSl && Math.abs(parseFloat(foldSl.value) - deg) > 0.05) foldSl.value = deg.toFixed(1);
+    const foldVal = document.getElementById('hw-fold-value');
+    if (foldVal) foldVal.textContent = deg.toFixed(1) + '°';
+}
+
+function hwRecenterDetailView() {
+    hwDetail.needsRecenter = true;
+    hwDetail.lockRadialView = true;
+    hwRebuildDetailView();
 }
 
 function hwSyncMirrorControlsFromAssembly() {
@@ -3332,6 +3242,7 @@ function wireHardwareDetailControls() {
         const onExplodeInput = () => {
             ensureHardwareAssemblies();
             state.hardwareAssemblies.explode = (parseFloat(sl.value) || 0) / 100;
+            hwDetail.needsRefit = true; // exploded stack is longer; keep it in frame
             const v = document.getElementById('hw-explode-value');
             if (v) v.textContent = Math.round(state.hardwareAssemblies.explode * 100) + '%';
             hwRebuildDetailView();
@@ -3343,18 +3254,26 @@ function wireHardwareDetailControls() {
         });
     }
 
+    const recenterBtn = document.getElementById('hw-btn-recenter');
+    if (recenterBtn) recenterBtn.onclick = hwRecenterDetailView;
+
+    document.addEventListener('keydown', (e) => {
+        if (!state.hwDetailMode) return;
+        const tag = e.target && e.target.tagName;
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
+        const k = e.key.toLowerCase();
+        if (k === 'r') { e.preventDefault(); hwRecenterDetailView(); }
+        else if (k === 't') { e.preventDefault(); document.getElementById('hw-btn-tighten')?.click(); }
+    });
+
     const foldSl = document.getElementById('hw-fold-slider');
     if (foldSl) {
-        const minDeg = radToDeg(getEffectiveMinFoldAngle());
-        const maxDeg = radToDeg(MAX_FOLD_ANGLE);
-        foldSl.min = String(minDeg);
-        foldSl.max = String(maxDeg);
         const onFoldInput = () => {
+            const minDeg = parseFloat(foldSl.min) || radToDeg(getEffectiveMinFoldAngle());
             const deg = parseFloat(foldSl.value) || minDeg;
             state.foldAngle = Math.max(getEffectiveMinFoldAngle(), Math.min(MAX_FOLD_ANGLE, degToRad(deg)));
             const foldVal = document.getElementById('hw-fold-value');
             if (foldVal) foldVal.textContent = radToDeg(state.foldAngle).toFixed(1) + '°';
-            hwDetail.lockRadialView = true;
             if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
             if (typeof syncUI === 'function') syncUI('foldAngle');
             hwRebuildDetailView();
@@ -3397,6 +3316,9 @@ function openHardwareDetail() {
     if (slv) slv.textContent = Math.round((state.hardwareAssemblies.explode || 0) * 100) + '%';
     const foldSl = document.getElementById('hw-fold-slider');
     if (foldSl) {
+        // Limits can change with the design (min fold follows beam contact); refresh on every open
+        foldSl.min = String(radToDeg(getEffectiveMinFoldAngle()));
+        foldSl.max = String(radToDeg(MAX_FOLD_ANGLE));
         foldSl.value = radToDeg(state.foldAngle).toFixed(1);
         const foldVal = document.getElementById('hw-fold-value');
         if (foldVal) foldVal.textContent = radToDeg(state.foldAngle).toFixed(1) + '°';
@@ -3407,7 +3329,9 @@ function openHardwareDetail() {
     state.hwDetailMode = true;
     hwDetail.needsRecenter = true;
     hwDetail.lockRadialView = true;
-    hwDetail.savedCam = { ...state.cam };
+    // A pinned look-at left by the step editor would drag the view off the assembly
+    hwDetail.savedCam = { ...state.cam, target: null };
+    state.cam.target = null;
     hwEmbedMainCanvas();
     hwWireEmbeddedDetailInteraction();
     hwSyncMirrorControlsFromAssembly();
@@ -3434,7 +3358,7 @@ function closeHardwareDetail() {
     state.hwDetailMode = false;
     hwDetail.focusGroupUuid = null;
     hwRestoreMainCanvas();
-    if (hwDetail.savedCam) { state.cam = hwDetail.savedCam; hwDetail.savedCam = null; }
+    if (hwDetail.savedCam) { state.cam = { ...hwDetail.savedCam, target: null }; hwDetail.savedCam = null; }
     // Revert detailed placements to whatever the main toggle dictates.
     if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
     if (typeof requestRender === 'function') requestRender();
@@ -3511,8 +3435,6 @@ const _moduleExports = {
     createHWBracketMesh,
     createHardwarePartMesh,
     hwCreatePartMeshForAxis,
-    initHardwareDetailScene,
-    resizeHardwareDetail,
     getActiveHardwareAssembly,
     hwAssemblyEnabled,
     hwAnyAssemblyEnabled,
@@ -3558,6 +3480,9 @@ const _moduleExports = {
     hwFlushHardwareConfigSync,
     serializeHardwareAssembliesForConfig,
     hwRefreshAll,
+    hwRebuildDetailView,
+    hwRecenterDetailView,
+    hwSyncFoldSliderFromState,
     renderHardwareEditPanel,
     hwBindNumberInput,
     buildHardwarePartCard,
@@ -3580,4 +3505,4 @@ hwInstallHardwarePersistFlush();
 
 bridgeGlobals(_moduleExports, 'hardwareDetail');
 
-export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, initHardwareDetailScene, resizeHardwareDetail, getActiveHardwareAssembly, hwAssemblyEnabled, hwAnyAssemblyEnabled, hwAssemblyHasParts, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblySandwichGap, hwSumCenterAxisGap, hwGetAssemblyMirrorPairs, hwSyncMirrorControlsFromAssembly, hwApplyMirrorControlsToAssembly, hwGetCenterRenderAxis, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwFlushHardwareConfigSync, serializeHardwareAssembliesForConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
+export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, getActiveHardwareAssembly, hwAssemblyEnabled, hwAnyAssemblyEnabled, hwAssemblyHasParts, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblySandwichGap, hwSumCenterAxisGap, hwGetAssemblyMirrorPairs, hwSyncMirrorControlsFromAssembly, hwApplyMirrorControlsToAssembly, hwGetCenterRenderAxis, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwFlushHardwareConfigSync, serializeHardwareAssembliesForConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
