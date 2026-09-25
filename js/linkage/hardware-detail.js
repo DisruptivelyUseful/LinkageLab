@@ -932,7 +932,7 @@ function getDefaultHardwareAssemblies() {
                     hwDefaultHBeamGapWasherPart('outerVBeam'),
                     { id: 'c-bolt', type: 'bolt', label: 'H-Pivot Bolt 1/2"x3" Hex', axis: 'down', seq: 2, qty: 1, perModule: 1, cost: 0.75, posAssembled: 0, posExploded: 0, crossOffset: 0, flipAxis: false,
                       params: { diameter: 0.5, length: 3.0, threadLength: 1.0, headType: 'hex', headDia: 0.75, headHeight: 0.3125, driveSize: 0, metric: '' } },
-                    { id: 'c-outer-washer', type: 'washer', label: 'Outer Washer 5/16"ID 1.5"OD', axis: 'down', seq: 3, qty: 1, perModule: 1, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.3125, od: 1.5, thickness: 0.0625 } },
+                    { id: 'c-outer-washer', type: 'washer', label: 'Outer Washer 1/2"ID 1.5"OD', axis: 'down', seq: 3, qty: 1, perModule: 1, cost: 0.08, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.53, od: 1.5, thickness: 0.0625 } },
                     { id: 'c-nut', type: 'nut', label: '1/2"-13 Rivet Nut', axis: 'down', seq: 4, qty: 1, perModule: 1, cost: 0.40, posAssembled: 0, posExploded: 0, crossOffset: 0, params: { id: 0.5, od: 17 * HW_MM_TO_IN, length: 0.5, flangeOd: 18 * HW_MM_TO_IN, flangeThickness: HW_MM_TO_IN, style: 'rivet', thread: '1/2-13' } }
                 ]
             },
