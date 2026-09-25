@@ -10,7 +10,7 @@
                     "test:e2e:ui":  "playwright test --ui",
                     "playwright:install":  "playwright install chromium",
                     "test:all":  "npm test \u0026\u0026 npm run test:e2e",
-                    "test:golden:update":  "node scripts/generate-golden-fixtures.mjs"
+                    "test:golden:update":  "vitest run tests/config-golden.test.js -u"
                 },
     "devDependencies":  {
                             "@playwright/test":  "^1.52.0",

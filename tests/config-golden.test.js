@@ -1,4 +1,4 @@
-﻿import fs from 'node:fs';
+import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it, beforeAll } from 'vitest';
@@ -40,7 +40,6 @@ describe('config golden files', () => {
         );
 
         const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-        const expected = JSON.parse(fs.readFileSync(goldenPath, 'utf8'));
 
         globalThis.state = createTestState();
         applyConfig(config, false);
@@ -50,6 +49,8 @@ describe('config golden files', () => {
             globalThis.state,
         );
 
-        expect(actual).toEqual(expected);
+        // File snapshot: `npm run test:golden:update` (vitest -u) rewrites the
+        // fixture in this same environment, so the generator can never drift.
+        await expect(`${JSON.stringify(actual, null, 2)}\n`).toMatchFileSnapshot(goldenPath);
     });
 });

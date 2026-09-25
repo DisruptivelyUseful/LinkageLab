@@ -3,11 +3,11 @@
   "arrayCount": 1,
   "orientation": "horizontal",
   "beamCount": 59,
-  "bracketCount": 36,
-  "boltCount": 93,
-  "washerCount": 128,
+  "bracketCount": 0,
+  "boltCount": 25,
+  "washerCount": 64,
   "faceCount": 16,
   "maxRad": 227.3446,
-  "maxHeight": 96.8772,
+  "maxHeight": 94.9024,
   "foldAngleDeg": 134.9
 }
