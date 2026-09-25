@@ -29,6 +29,106 @@
     <div id="view-solar" class="app-view" data-app-mode="solar" hidden></div>
 </div>
 
+<script>
+/*
+ * Stale-cache self-heal. GitHub Pages lets browsers reuse files for 10 minutes
+ * without asking, so a reload shortly after a deploy can mix old and new ES
+ * modules ("does not provide an export named ..."). This file is the one a
+ * reload always re-checks, so it holds the recovery, and it must not depend on
+ * any cached JS being current: on a mixed-version boot failure it re-downloads
+ * the whole app bypassing the HTTP cache (everything the page loaded, the
+ * linkage manifest, and every module reachable through import statements),
+ * then reloads once. A session flag stops it looping on a genuine bug.
+ * Manifests and HTML partials are fetched with no-store and never go stale.
+ */
+(function () {
+    var KEY = 'linkageLab:staleModuleReloadAt';
+    var STALE = /does not provide an export named|Failed to fetch dynamically imported module|Importing a module script failed|error loading dynamically imported module/i;
+    // Module-relative imports ('./x.js', "../y.js") and document-relative asset paths ('js/z.js', 'css/a.css').
+    var MODULE_REF = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(['"])(\.{1,2}\/[^'"\s]+?\.m?js)\1/g;
+    var DOC_REF = /(['"])((?:js|css)\/[^'"\s]+?\.(?:m?js|css))\1/g;
+    var started = false;
+    try { performance.setResourceTimingBufferSize(4000); } catch (e) { /* older browsers */ }
+
+    function refreshAll() {
+        var seen = {};
+        var queue = [];
+        var add = function (ref, base) {
+            var url;
+            try { url = new URL(ref, base || location.href); } catch (e) { return; }
+            if (url.origin !== location.origin) return;
+            url.hash = '';
+            if (!seen[url.href]) { seen[url.href] = true; queue.push(url.href); }
+        };
+        performance.getEntriesByType('resource').forEach(function (e) { add(e.name); });
+        document.querySelectorAll('script[src], link[rel="stylesheet"][href]').forEach(function (el) { add(el.src || el.href); });
+        add('config/linkage-manifest.json');
+        var next = 0;
+        var worker = function () {
+            if (next >= queue.length) return Promise.resolve();
+            var url = queue[next++];
+            return fetch(url, { cache: 'reload' }).then(function (res) {
+                if (!res.ok) return;
+                var path = new URL(url).pathname;
+                if (/linkage-manifest\.json$/.test(path)) {
+                    return res.json().then(function (manifest) {
+                        (manifest.scripts || []).forEach(function (s) { add(typeof s === 'string' ? s : s.path); });
+                    });
+                }
+                if (!/\.m?js$/.test(path)) return;
+                return res.text().then(function (text) {
+                    var m;
+                    MODULE_REF.lastIndex = 0;
+                    while ((m = MODULE_REF.exec(text))) add(m[2], url);
+                    DOC_REF.lastIndex = 0;
+                    while ((m = DOC_REF.exec(text))) add(m[2]);
+                });
+            }).catch(function () {}).then(worker);
+        };
+        var workers = [];
+        for (var i = 0; i < 8; i++) workers.push(worker());
+        // A worker that finds the queue momentarily empty exits; the rest drain what it left.
+        var drain = function () {
+            return Promise.all(workers).then(function () {
+                if (next >= queue.length) return;
+                workers = [worker()];
+                return drain();
+            });
+        };
+        return drain();
+    }
+
+    function recover(err) {
+        var msg = String((err && (err.message || err)) || '');
+        if (started || !STALE.test(msg)) return started;
+        try {
+            if (Date.now() - (Number(sessionStorage.getItem(KEY)) || 0) < 60000) return false;
+            sessionStorage.setItem(KEY, String(Date.now()));
+        } catch (e) {
+            return false; // no storage means no loop guard: show the error instead
+        }
+        started = true;
+        console.info('[LinkageLab] Mixed cached versions detected after an update; refreshing files.');
+        refreshAll().then(function () { location.reload(); });
+        return true;
+    }
+
+    window.linkageRecoverFromStaleModules = recover;
+    // A link error in the entry module's own import graph never reaches main.js.
+    window.addEventListener('error', function (e) { recover(e.error || e.message); });
+    window.addEventListener('unhandledrejection', function (e) { recover(e.reason); });
+    // main.js itself may be a stale copy without that hook, but every version
+    // reports boot failure with an .app-boot-error banner appended to #app-root
+    // (or body): watch those two child lists only, which stays cheap.
+    var bannerWatch = new MutationObserver(function () {
+        var banner = document.querySelector('#app-root > .app-boot-error, body > .app-boot-error');
+        if (banner && recover(banner.textContent)) bannerWatch.disconnect();
+    });
+    [document.getElementById('app-root'), document.body].forEach(function (el) {
+        if (el) bannerWatch.observe(el, { childList: true });
+    });
+})();
+</script>
 <script type="module" src="js/app/main.js"></script>
 
 </body>

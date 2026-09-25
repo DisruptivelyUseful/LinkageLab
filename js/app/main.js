@@ -204,6 +204,9 @@ async function main() {
 }
 
 main().catch((err) => {
+    // Right after a deploy the browser can hold a mix of old and new modules;
+    // index.html refreshes them and reloads once instead of showing an error.
+    if (globalThis.linkageRecoverFromStaleModules?.(err)) return;
     console.error('LinkageLab app boot failed:', err);
     showBootError(err.message);
 });
