@@ -34,6 +34,27 @@ test.describe('Linkage layout', () => {
         await installOfflineCdn(page);
     });
 
+    test('top bar never overlaps across the compaction tiers and the two-row layout', async ({ page }) => {
+        await page.setViewportSize({ width: 1440, height: 900 });
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+
+        // Tier edges in css/topbar.css: 1440 icon transport, 1320 no Fold label,
+        // 1260 icon Fold/Unfold, 1180 two rows (labels return from 760 up).
+        for (const w of [1441, 1400, 1321, 1300, 1280, 1261, 1240, 1181, 1180, 1100, 1024, 900, 760, 759, 700]) {
+            await page.setViewportSize({ width: w, height: 900 });
+            await page.waitForTimeout(150);
+            const audit = await auditTopbar(page);
+            expect(audit.overflow, `button text overflows its box at ${w}px`).toEqual([]);
+            expect(audit.overlaps, `top bar controls overlap at ${w}px`).toEqual([]);
+            expect(audit.outside, `controls outside the bar at ${w}px`).toEqual([]);
+            expect(audit.foldVisible, `fold angle value is clipped at ${w}px`).toBe(true);
+            expect(audit.barH, `bar height at ${w}px`).toBe(w > 1180 ? 52 : 96);
+            const vpTop = await page.evaluate(() => document.getElementById('viewport').getBoundingClientRect().top);
+            expect(vpTop, `viewport follows the bar at ${w}px`).toBe(audit.barH);
+        }
+    });
+
     for (const [w, h] of [[1366, 768], [1536, 864], [1920, 1080]]) {
         test(`top bar fits on one row at ${w}x${h}`, async ({ page }) => {
             await page.setViewportSize({ width: w, height: h });

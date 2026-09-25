@@ -68,7 +68,7 @@
 .toolbar-center {
     gap: 10px;
     flex: 1 1 auto;
-    justify-content: center;
+    justify-content: safe center; /* on overflow, never slide under the left group */
     min-width: 0;
     position: relative;
     z-index: 1;
@@ -426,9 +426,12 @@ body:not(.anim-playing) #btn-anim-pause {
     }
 }
 
-@media (max-width: 1180px) {
+/* Compact the centre group in steps before it can overflow its neighbours.
+   Measured budget (fallback font, wider than Exo 2): left 282 + right 355 +
+   padding/gaps 52 = 689px fixed; centre needs 693 full, 607 with an icon-only
+   transport, 559 without the Fold label, 470 with icon-only Fold/Unfold. */
+@media (max-width: 1440px) {
     /* Icon-only transport; title + aria-label still name each button */
-    .topbar-transport .topbar-btn > span + *,
     .topbar-transport .topbar-btn {
         font-size: 0;
     }
@@ -442,8 +445,25 @@ body:not(.anim-playing) #btn-anim-pause {
     }
 }
 
+@media (max-width: 1320px) {
+    /* The slider and number box keep their aria-labels */
+    .topbar-fold-row .topbar-label {
+        display: none;
+    }
+}
+
+@media (max-width: 1260px) {
+    .topbar-anim .topbar-btn {
+        font-size: 0;
+    }
+
+    .topbar-anim .topbar-btn > span {
+        font-size: 0.9rem;
+    }
+}
+
 /* Narrow screens: two rows. The sidebar and viewport read --topbar-h, so they follow. */
-@media (max-width: 980px) {
+@media (max-width: 1180px) {
     :root {
         --topbar-h: 96px;
     }
@@ -468,6 +488,23 @@ body:not(.anim-playing) #btn-anim-pause {
         max-height: 52px;
         flex-wrap: nowrap;
         padding: 0 12px;
+    }
+}
+
+/* Two rows give the centre group a row of its own: labels fit again (693px needed). */
+@media (min-width: 760px) and (max-width: 1180px) {
+    .topbar-transport .topbar-btn,
+    .topbar-anim .topbar-btn {
+        font-size: 0.8rem;
+    }
+
+    .topbar-transport .topbar-btn > span,
+    .topbar-anim .topbar-btn > span {
+        font-size: inherit;
+    }
+
+    .topbar-fold-row .topbar-label {
+        display: inline;
     }
 }
 
