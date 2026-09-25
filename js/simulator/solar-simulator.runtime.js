@@ -23936,15 +23936,27 @@
             const arrayBottomY = (panelGrid[gridRows - 1]?.[0]?.y || 0) + panelHeightPx + 80;
             const arrayCenterX = ((panelGrid[0]?.[0]?.x || 0) + (panelGrid[0]?.[gridCols - 1]?.x || 0) + panelWidthPx) / 2;
 
+            // Each grid column is wired as one series string into the controller.
+            const stringVoc = gridRows * (panelSpecs.voc || 24);
+            const pickPresetForString = () => globalThis.ControllerFaults?.pickControllerPresetForStringVoc?.(
+                CONTROLLER_PRESETS,
+                stringVoc,
+            );
+            let controllerUpgradedTo = null;
             if (!controller) {
-                const stringVoc = gridRows * (panelSpecs.voc || 24);
-                const preset = globalThis.ControllerFaults?.pickControllerPresetForStringVoc?.(
-                    CONTROLLER_PRESETS,
-                    stringVoc,
-                ) || CONTROLLER_PRESETS.find((p) => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
+                const preset = pickPresetForString()
+                    || CONTROLLER_PRESETS.find((p) => p.name.includes('PowMR 5000W')) || CONTROLLER_PRESETS[3];
                 const controllerWidth = preset.width ? preset.width * 0.12 : 100;
                 controller = createController(arrayCenterX - controllerWidth / 2 - 50, arrayBottomY, preset);
                 allItems.push(controller);
+            } else if ((controller.specs?.maxVoc ?? 0) < stringVoc) {
+                // An existing controller (e.g. the default design's 100V unit) would be
+                // destroyed the moment the synced strings are wired in: upgrade it in place.
+                const preset = pickPresetForString();
+                if (preset && (preset.maxVoc || 0) > (controller.specs?.maxVoc ?? 0)) {
+                    globalThis.ControllerFaults.applyControllerPresetSpecs(controller, preset);
+                    controllerUpgradedTo = preset.name;
+                }
             }
 
             if (!battery) {
@@ -23997,7 +24009,11 @@
                 added: linkagePanels.length,
                 removed: removedCount,
                 layout: layoutDesc,
-                message: `Synced ${linkagePanels.length} panels (${layoutDesc})`,
+                controllerUpgradedTo,
+                message: `Synced ${linkagePanels.length} panels (${layoutDesc})`
+                    + (controllerUpgradedTo
+                        ? ` · controller upgraded to ${controllerUpgradedTo} for ${stringVoc.toFixed(0)}V strings`
+                        : ''),
             };
         }
 

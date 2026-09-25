@@ -18,6 +18,16 @@ test.describe('Cross-mode smoke', () => {
         const designComponents = await page.evaluate(() => globalThis.SolarDesigner?.getItems?.()?.length ?? 0);
         expect(designComponents).toBeGreaterThan(0);
 
+        // Syncing the linkage panels must size the controller for the series strings it
+        // wires, never blow up the default design's controller on first visit.
+        await expect.poll(async () => page.evaluate(() => {
+            const items = globalThis.SolarDesigner.getItems();
+            const panels = items.filter((i) => i.type === 'panel');
+            const controller = items.find((i) => i.type === 'controller');
+            return panels.length > 0 && !!controller && !controller.destroyed;
+        })).toBe(true);
+        await expect(page.locator('#incidentReportOverlay')).not.toHaveClass(/visible/);
+
         await navigateAppMode(page, 'solar-simulate');
         await expect(page.locator('#view-solar #playPauseButton')).toBeVisible();
         await expect(page.locator('#view-solar .simulator-native-stage #main-content')).toBeVisible();
