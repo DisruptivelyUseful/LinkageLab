@@ -18,9 +18,10 @@
 //       flipAxis = false  → head inside the datum: head underside seats on the
 //                            inner face of the datum wall (bracket wall or 0),
 //                            shank points + through the members.
-//       flipAxis = true   → head outside: head seats on the face at the bolt's
-//                            seq position, shank points − back through the
-//                            members (and the datum wall) toward the datum.
+//       flipAxis = true   → head outside: head seats on the outermost face of
+//                            the stack (after every member and nut, whatever
+//                            the bolt's list position), shank points − back
+//                            through the members (and the datum wall).
 //   • `centered` stacks (sandwich centre slot) are shifted so the members
 //     straddle the origin: [origin − span/2, origin + span/2].
 //   • Exploded positions keep the order and add a uniform gap per rank.
@@ -236,8 +237,8 @@ function computeAxisStack(parts, opts = {}) {
         const headOutside = !!part.flipAxis;
         let headStart, headEnd, shankStart, shankEnd, start, end;
         if (headOutside) {
-            // Head seats on the face reached at the bolt's seq position; shank runs back toward the datum
-            const face = bolt.seqCursor + gapBeforeOf(part);
+            // Head seats on the outermost face of the stack; shank runs back toward the datum
+            const face = membersEnd + gapBeforeOf(part);
             headStart = face; headEnd = face + headH;
             shankEnd = face; shankStart = face - shankL;
             start = shankStart; end = headEnd;
@@ -249,7 +250,7 @@ function computeAxisStack(parts, opts = {}) {
             start = headStart; end = shankEnd;
         }
         boltInfo = { part, headOutside, headH, shankL, headStart, headEnd, shankStart, shankEnd, start, end, len };
-        items.push({ part, kind: HW_KIND.BOLT, copyIndex: 0, start, end, len, rank: bolt.seqRank, gapBefore: gapBeforeOf(part), partBase: start, baseStart: start, headOutside });
+        items.push({ part, kind: HW_KIND.BOLT, copyIndex: 0, start, end, len, rank: headOutside ? rank : bolt.seqRank, gapBefore: gapBeforeOf(part), partBase: start, baseStart: start, headOutside });
     }
 
     let shift = 0;

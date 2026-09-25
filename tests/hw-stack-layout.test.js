@@ -71,13 +71,24 @@ describe('hw-stack-layout: seated stacking', () => {
         expect(stackGripLength(s)).toBeCloseTo(0.12 + 1.5 + 0.0625 + 0.4375);
     });
 
-    it('seats an outside-head bolt on the face at its seq position with the shank back through the stack', () => {
+    it('seats an outside-head bolt on the outermost face with the shank back through the stack', () => {
         const s = computeAxisStack([beam(1), lock(2), bolt(3, 2.36, { flipAxis: true })], { datumWall: 0.12 });
         expect(s.bolt.headOutside).toBe(true);
         expect(s.bolt.headStart).toBeCloseTo(1.6);
         expect(s.bolt.headEnd).toBeCloseTo(1.9);
         expect(s.bolt.shankEnd).toBeCloseTo(1.6);
         expect(s.bolt.shankStart).toBeCloseTo(1.6 - 2.36);
+    });
+
+    it('an outside-head bolt ignores its list position: it always seats on the last member', () => {
+        const s = computeAxisStack([beam(1), bolt(2, 2.36, { flipAxis: true }), lock(3)], { datumWall: 0.12 });
+        expect(s.bolt.headStart).toBeCloseTo(1.6);
+        assertNoOverlaps(s);
+        const ex = explodeAxisStack(s, 1);
+        const b = s.items.find(it => it.kind === HW_KIND.BOLT);
+        // exploded head (at the bolt's far end) clears the exploded lock washer
+        const headStart = ex.get(b) + b.len - s.bolt.headH;
+        expect(headStart).toBeGreaterThan(ex.get(byId(s, 'lock3')) + byId(s, 'lock3').len);
     });
 
     it('puts a bushing inside the preceding beam bore, flush with its outer face, adding no thickness', () => {

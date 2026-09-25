@@ -42,6 +42,8 @@
     { "path": "js/linkage/animation.js", "format": "esm" },
     { "path": "js/linkage/geometry-classes.js", "format": "esm" },
     { "path": "js/linkage/config-persistence.js", "format": "esm" },
+    { "path": "js/linkage/numeric-input.js", "format": "esm" },
+    { "path": "js/linkage/hw-stack-layout.js", "format": "esm" },
     { "path": "js/linkage/hardware-detail.js", "format": "esm" },
     { "path": "js/linkage/hw-structure-spacing.js", "format": "esm" },
     { "path": "js/linkage/app-state.js", "format": "esm" },
