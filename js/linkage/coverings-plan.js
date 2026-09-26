@@ -16,23 +16,26 @@ import { formatInchesFraction } from '../core/unit-converter.js';
 let cache = { key: null, plan: null };
 const round = (v, p = 2) => +(+v).toFixed(p);
 
-function planKey(covData, cov) {
-    const shapes = (covData.shapes || []).map(s => [s.kind, s.spanIndex, s.band, s.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])]);
-    return JSON.stringify([shapes, cov.sheet, cov.fabric, cov.table]);
+function planKey(covData, cov, floorDeck) {
+    const shapes = ((covData && covData.shapes) || []).map(s => [s.kind, s.spanIndex, s.band, s.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])]);
+    const deck = floorDeck ? [floorDeck.thicknessIn, floorDeck.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])] : null;
+    return JSON.stringify([shapes, cov.sheet, cov.fabric, cov.table, deck]);
 }
 
 /**
  * @param {Object} covData - data.coverings (from computeCoverings)
  * @param {Object} cov - state.coverings
  */
-export function computeCoveringCutPlan(covData, cov) {
-    if (!covData || !covData.supported || !cov) return emptyPlan();
-    const key = planKey(covData, cov);
+export function computeCoveringCutPlan(covData, cov, floorDeck = null) {
+    const haveCov = !!(covData && covData.supported);
+    if ((!haveCov && !floorDeck) || !cov) return emptyPlan();
+    const key = planKey(haveCov ? covData : null, cov, floorDeck);
     if (cache.key === key && cache.plan) return cache.plan;
 
     const stock = { ...cov.sheet };
     const walls = [], tables = [], fabric = [];
-    (covData.shapes || []).forEach(shape => {
+    const floor = floorDeck ? { shape: floorDeck, nest: nestPolygonOnSheets(floorDeck.corners2D, { ...stock, thicknessIn: floorDeck.thicknessIn }) } : null;
+    ((haveCov && covData.shapes) || []).forEach(shape => {
         if (shape.kind === 'wall') walls.push({ shape, nest: nestPolygonOnSheets(shape.corners2D, stock) });
         else if (shape.kind === 'table') tables.push({ shape, nest: nestPolygonOnSheets(shape.corners2D, { ...stock, thicknessIn: cov.table.thicknessIn }) });
         else if (shape.kind === 'fabric') fabric.push({ shape, pattern: buildFabricPattern(shape.corners2D, cov.fabric) });
@@ -40,10 +43,11 @@ export function computeCoveringCutPlan(covData, cov) {
     const order = (a, b) => (a.shape.spanIndex - b.shape.spanIndex) || String(a.shape.band).localeCompare(String(b.shape.band));
     walls.sort(order); tables.sort(order); fabric.sort(order);
 
-    const sheetItems = walls.concat(tables);
+    const sheetItems = walls.concat(tables, floor ? [floor] : []);
     const totals = {
         walls: walls.length,
         tables: tables.length,
+        floorSheets: floor ? floor.nest.sheetCount : 0,
         fabricBands: fabric.length,
         sheets: sheetItems.reduce((a, w) => a + w.nest.sheetCount, 0),
         fullSheets: sheetItems.reduce((a, w) => a + w.nest.pieces.filter(p => p.isFullSheet).length, 0),
@@ -60,15 +64,15 @@ export function computeCoveringCutPlan(covData, cov) {
     };
     totals.utilization = totals.stockAreaIn2 > 0 ? round(totals.plywoodAreaIn2 / totals.stockAreaIn2, 3) : 0;
 
-    const plan = { key, walls, tables, fabric, totals, stock, fabricCfg: { ...cov.fabric }, tableCfg: { ...cov.table } };
+    const plan = { key, walls, tables, fabric, floor, totals, stock, fabricCfg: { ...cov.fabric }, tableCfg: { ...cov.table } };
     cache = { key, plan };
     return plan;
 }
 
 function emptyPlan() {
     return {
-        key: null, walls: [], tables: [], fabric: [],
-        totals: { walls: 0, tables: 0, fabricBands: 0, sheets: 0, fullSheets: 0, cutPieces: 0, plywoodAreaIn2: 0, stockAreaIn2: 0, seams: 0, battenLinearIn: 0, fabricYards: 0, fabricAreaIn2: 0, fabricPanels: 0, grommets: 0, warnings: 0, utilization: 0 },
+        key: null, walls: [], tables: [], fabric: [], floor: null,
+        totals: { walls: 0, tables: 0, floorSheets: 0, fabricBands: 0, sheets: 0, fullSheets: 0, cutPieces: 0, plywoodAreaIn2: 0, stockAreaIn2: 0, seams: 0, battenLinearIn: 0, fabricYards: 0, fabricAreaIn2: 0, fabricPanels: 0, grommets: 0, warnings: 0, utilization: 0 },
         stock: null, fabricCfg: null, tableCfg: null,
     };
 }
@@ -95,7 +99,7 @@ export function coveringBomItems(plan, st) {
         items.push({
             key: 'plywoodSheet', stateKey: 'costPlywoodSheet', sidebarId: 'nb-cost-plywood',
             qty: t.sheets,
-            item: `Plywood sheets ${formatInchesFraction(s.widthIn)} × ${formatInchesFraction(s.lengthIn)} × ${formatInchesFraction(s.thicknessIn)} (${t.walls} wall${t.walls === 1 ? '' : 's'}${t.tables ? `, ${t.tables} table${t.tables === 1 ? '' : 's'}` : ''})`,
+            item: `Plywood sheets ${formatInchesFraction(s.widthIn)} × ${formatInchesFraction(s.lengthIn)} (${[t.walls ? `${t.walls} wall${t.walls === 1 ? '' : 's'}` : null, t.tables ? `${t.tables} table${t.tables === 1 ? '' : 's'}` : null, t.floorSheets ? `floor deck` : null].filter(Boolean).join(', ')})`,
             unit: sheetPrice, total: round(t.sheets * sheetPrice),
         });
     }
@@ -156,6 +160,7 @@ export function coveringEntryOverviewSvg(entry) {
 /** File name for a plan entry's cut file. */
 export function coveringEntryFilename(entry, prefix = 'linkagelab') {
     const s = entry.shape;
+    if (s.band === 'floor') return `${prefix}-floor-deck.svg`;
     const kind = s.kind === 'fabric' ? 'fabric' : (s.kind === 'table' ? 'table' : 'wall');
     return `${prefix}-span${(s.spanIndex ?? 0) + 1}-${s.band}-${kind}.svg`;
 }

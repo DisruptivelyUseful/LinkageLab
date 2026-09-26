@@ -19,6 +19,7 @@ import { solveLinkage } from './solver.js';
 import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
+import { generateFloorBeams, computeFloorDeck } from './floor-geometry.js';
 import { requestRender } from './render-app.js';
 import { showToast } from '../core/feedback.js';
 
@@ -1750,7 +1751,7 @@ import { showToast } from '../core/feedback.js';
     /** Beams that belong to the main Hoberman linkage (excludes secondary support/reciprocal). */
     function isMainStructureBeam(beam) {
         const t = beam && beam.stackType ? beam.stackType : '';
-        return !t.startsWith('support-beam');
+        return !t.startsWith('support-beam') && !t.startsWith('floor-beam');
     }
     
     /** Y elevation for radial support beams: top H-stack surface + beam half-thickness + offsetV. */
@@ -3349,6 +3350,15 @@ import { showToast } from '../core/feedback.js';
                 thickness: p.thickness
             })) : [],
             coverings: data.coverings ? snapshotCoverings(data.coverings, roundVec3ForExport) : null,
+            floor: data.floor ? {
+                beamCount: (data.floor.beams || []).length,
+                deck: data.floor.deck ? {
+                    corners: data.floor.deck.corners3D.map(roundVec3ForExport),
+                    areaIn2: data.floor.deck.areaIn2,
+                    thicknessIn: data.floor.deck.thicknessIn,
+                    yTop: data.floor.deck.yTop,
+                } : null,
+            } : null,
             maxRadius: +((data.structureBounds?.maxRadius ?? data.maxRad) || 0).toFixed(2),
             maxHeight: +((data.structureBounds?.maxHeight ?? data.maxHeight) || 0).toFixed(2),
             fixedBeams: state.useFixedBeams ? allBeams
@@ -3652,6 +3662,17 @@ import { showToast } from '../core/feedback.js';
             });
         }
     
+        // Floor beams sub-array (same objects as in data.beams; keep the reference consistent)
+        if (data.floorBeams) {
+            data.floorBeams = data.floorBeams.map(b => !b ? b : {
+                ...b,
+                corners: b.corners ? b.corners.map(sp) : b.corners,
+                center:  sp(b.center),
+                p1:      sp(b.p1),
+                p2:      sp(b.p2),
+            });
+        }
+
         // Solar panels
         data.panels = (data.panels || []).map(panel => !panel ? panel : {
             ...panel,
@@ -3720,6 +3741,18 @@ import { showToast } from '../core/feedback.js';
             updateRcpDiagnosticsUI();
             data.supportBeamsUnsupported = !!(state.supportBeams && state.supportBeams.enabled && state.orientation === 'vertical');
         }
+
+        // Raised floor beams (reciprocal layout mirrored onto the bottom ring)
+        data.floorBeams = [];
+        if (includeSupportBeams && state.floor && state.floor.enabled) {
+            try {
+                data.floorBeams = generateFloorBeams(data, state.floor, state);
+                if (data.floorBeams.length) data.beams = data.beams.concat(data.floorBeams);
+            } catch (e) {
+                console.warn('[Geometry] Could not compute floor beams:', e);
+                data.floorBeams = [];
+            }
+        }
         
         if (includePanels && state.solarPanels && state.solarPanels.enabled) {
             const foldingMode = hasFoldingSolarPanels();
@@ -3779,6 +3812,16 @@ import { showToast } from '../core/feedback.js';
 
         // Coverings (walls / tables / fabric) are derived from the recentered beams,
         // so they are computed after the shift and never need shifting themselves.
+        data.floor = null;
+        if (options.includeCoverings !== false && state.floor && state.floor.enabled) {
+            try {
+                const deck = computeFloorDeck(data, state.floor, state);
+                data.floor = { enabled: true, beams: data.floorBeams || [], deck, supported: state.orientation !== 'vertical' };
+            } catch (e) {
+                console.warn('[Geometry] Could not compute floor deck:', e);
+                data.floor = { enabled: true, beams: data.floorBeams || [], deck: null, supported: false };
+            }
+        }
         data.coverings = null;
         if (options.includeCoverings !== false && state.coverings && state.coverings.enabled) {
             try {

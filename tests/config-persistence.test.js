@@ -146,3 +146,23 @@ describe('config-persistence: coverings', () => {
         expect(globalThis.state.coverings.spans[7].lower).toBe('fabric');
     });
 });
+
+describe('config-persistence: floor', () => {
+    it('round-trips the floor block and resets it when absent', () => {
+        globalThis.state = createTestState({ modules: 8 });
+        globalThis.state.floor.enabled = true;
+        globalThis.state.floor.beams.parallelSwingAngle = 12;
+        globalThis.state.floor.beams.radialEnabled = true;
+        globalThis.state.floor.deck.insetIn = 3;
+        const snap = getConfigSnapshot();
+        expect(snap.floor.enabled).toBe(true);
+        globalThis.state = createTestState({ modules: 8 });
+        applyV30Config(JSON.parse(JSON.stringify(snap)));
+        expect(globalThis.state.floor.enabled).toBe(true);
+        expect(globalThis.state.floor.beams.parallelSwingAngle).toBe(12);
+        expect(globalThis.state.floor.beams.radialEnabled).toBe(true);
+        expect(globalThis.state.floor.deck.insetIn).toBe(3);
+        applyV30Config({ structure: { modules: 6 } });
+        expect(globalThis.state.floor.enabled).toBe(false);
+    });
+});

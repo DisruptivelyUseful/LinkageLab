@@ -225,6 +225,17 @@ export function buildWallOverviewSvg(shape, nest, opts = {}) {
         }
     }
     body += pathFrom(poly, fy, ox, 'outline');
+    if (poly.length !== 4) {
+        // n-gon (floor deck): bounding dimensions only
+        const dimY = fy(minY) + fontIn * 1.4;
+        body += `<line class="dim" x1="${round(minX + ox)}" y1="${round(dimY)}" x2="${round(maxX + ox)}" y2="${round(dimY)}"/>`;
+        body += text((minX + maxX) / 2 + ox, dimY + fontIn * 1.1, `${fmtIn(maxX - minX)} across`, { size: fontIn, anchor: 'middle' });
+        const dimX = minX + ox - fontIn * 1.2;
+        body += `<line class="dim" x1="${round(dimX)}" y1="${round(fy(minY))}" x2="${round(dimX)}" y2="${round(fy(maxY))}"/>`;
+        body += text(dimX - fontIn * 0.4, (fy(minY) + fy(maxY)) / 2, `${fmtIn(maxY - minY)}`, { size: fontIn, anchor: 'middle', rotate: -90 });
+        if (shape.edgeIn) body += text((poly[0].x + poly[1].x) / 2 + ox, fy((poly[0].y + poly[1].y) / 2) - fontIn * 0.4, `${poly.length} sides × ${fmtIn(shape.edgeIn)}`, { size: fontIn * 0.95, anchor: 'middle', cls: 'muted' });
+        return svgDocument({ widthIn: W + pad * 2, heightIn: H + pad * 2.2, body, title: shape.label || 'Covering' });
+    }
     // overall dims
     const bl = poly[0], br = poly[1], tr = poly[2], tl = poly[3] || poly[2];
     const dimY = fy(minY) + fontIn * 1.4;

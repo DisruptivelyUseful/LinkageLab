@@ -50,6 +50,7 @@ function undo() {
         });
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
+        if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
         requestRender();
         showToast('Undone', 'info');
     }
@@ -66,6 +67,7 @@ function redo() {
         });
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
+        if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
         requestRender();
         showToast('Redone', 'info');
     }

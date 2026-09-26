@@ -16,6 +16,7 @@ import { scheduleLinkageViewportRefresh } from './viewport-refresh.js';
 import { initViewportInput } from './viewport-input.js';
 import { initBuildStepsUI } from './build-steps-ui.js';
 import { initCoveringsUI } from './coverings-ui.js';
+import { initFloorUI } from './floor-ui.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -26,6 +27,7 @@ import { initCoveringsUI } from './coverings-ui.js';
         initHardwareUI();
         initBuildStepsUI();
         initCoveringsUI();
+        initFloorUI();
         
         // Add ARIA labels for accessibility
         document.getElementById('canvas').setAttribute('role', 'img');

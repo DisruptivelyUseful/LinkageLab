@@ -280,3 +280,22 @@ describe('coverings in generated steps', () => {
         expect(none).toEqual([]);
     });
 });
+
+describe('floor in generated steps', () => {
+    it('lays floor beams then the deck after the roof and before the walls', () => {
+        const beam = (i, side) => ({ type: 'beam', stackType: 'floor-beam-reciprocal', moduleIndex: i, stackId: 2100 + i * 2 + side, patternId: side ? 'B' : 'A', p1: { x: 0, y: 5, z: 0 }, p2: { x: 96, y: 5, z: 0 }, center: { x: 48, y: 5, z: 0 }, w: 2.5, t: 1.5, corners: [] });
+        const deck = { type: 'covering', kind: 'wall', band: 'floor', spanIndex: 0, moduleIndex: 0, coverType: 'plywood', corners3D: [{ x: 0, y: 7, z: 0 }, { x: 90, y: 7, z: 0 }, { x: 90, y: 7, z: 90 }, { x: 0, y: 7, z: 90 }], center: { x: 45, y: 7, z: 45 } };
+        const wall = { type: 'covering', kind: 'wall', band: 'lower', spanIndex: 1, moduleIndex: 1, coverType: 'plywood', corners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }], center: { x: 45, y: 24, z: 2.5 } };
+        const data = { beams: [beam(0, 0), beam(0, 1)], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [], coverings: { supported: true, shapes: [wall] }, floor: { deck, beams: [beam(0, 0), beam(0, 1)] } };
+        const steps = generateDefaultBuildSteps(data, { modules: 1, deployedAngleDeg: 135, stockLengthIn: 96 });
+        const titles = steps.map(s => s.title);
+        const iBeams = titles.indexOf('Lay the floor beams'), iDeck = titles.indexOf('Lay the floor deck'), iWalls = titles.indexOf('Install the lower wall panels'), iDeploy = titles.indexOf('Deploy the structure');
+        expect(iDeploy).toBeGreaterThanOrEqual(0);
+        expect(iBeams).toBeGreaterThan(iDeploy);
+        expect(iDeck).toBeGreaterThan(iBeams);
+        expect(iWalls).toBeGreaterThan(iDeck);
+        expect(steps[iDeck].targets).toEqual([{ kind: 'wall', band: 'floor' }]);
+        const parts = collectParts(data);
+        expect(parts.filter(p => p.kind === 'wall').map(p => p.key)).toEqual(['wall:s1:lower', 'wall:s0:floor']);
+    });
+});

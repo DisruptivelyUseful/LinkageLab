@@ -1,0 +1,128 @@
+        <div class="group collapsed" data-group="floor">
+            <button type="button" class="group-title">Floor</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <label class="chk-label" title="Reciprocal floor beams on the bottom ring with a plywood deck"><input type="checkbox" id="chk-floor"> Enable Raised Floor</label>
+                </div>
+                <div id="floor-mode-hint" class="hint hint-accent" style="display:none;"></div>
+                <div id="floor-controls" style="display:none;">
+                    <div class="hint">Floor beams copy the roof's reciprocal layout onto the bottom ring. The deck is the ring's inner polygon, cut from the same sheet stock as the walls.</div>
+
+                    <div class="subhead">Floor beams (reciprocal)</div>
+                    <div class="ctrl-row">
+                        <label class="chk-label"><input type="checkbox" id="chk-floor-rcp" checked> Reciprocal beams (2 per module)</label>
+                    </div>
+                    <div class="sub-block" id="floor-rcp-controls">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rcp-length" min="24" max="240" step="1" value="96">
+                                <input type="number" id="nb-floor-rcp-length" min="12" max="480" step="1" value="96">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Width × Thickness</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-floor-rcp-width" min="0.5" max="12" step="0.25" value="2.5">
+                                <span class="x">×</span>
+                                <input type="number" id="nb-floor-rcp-thickness" min="0.5" max="12" step="0.25" value="1.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Swing angle</span><span class="unit">°</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rcp-swing" min="-60" max="60" step="0.5" value="0">
+                                <input type="number" id="nb-floor-rcp-swing" min="-90" max="90" step="0.5" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Anchor from crossing</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rcp-anchor" min="0" max="60" step="0.5" value="20">
+                                <input type="number" id="nb-floor-rcp-anchor" min="0" max="240" step="0.5" value="20">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>End overhang / A-over-B lift</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-floor-rcp-end" min="0" max="48" step="0.5" value="0">
+                                <span class="x">/</span>
+                                <input type="number" id="nb-floor-rcp-voff" min="0" max="12" step="0.25" value="1.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Lift above ring</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-lift" min="0" max="12" step="0.25" value="0">
+                                <input type="number" id="nb-floor-lift" min="0" max="48" step="0.25" value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="ctrl-row rule-above">
+                        <label class="chk-label"><input type="checkbox" id="chk-floor-radial"> Radial beams (1 per module)</label>
+                    </div>
+                    <div class="sub-block" id="floor-radial-controls" style="display:none;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rad-length" min="24" max="240" step="1" value="120">
+                                <input type="number" id="nb-floor-rad-length" min="12" max="480" step="1" value="120">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Radial offset</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rad-offset" min="-240" max="240" step="0.5" value="-46.5">
+                                <input type="number" id="nb-floor-rad-offset" min="-240" max="240" step="0.5" value="-46.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Width × Thickness</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-floor-rad-width" min="0.5" max="12" step="0.25" value="1.5">
+                                <span class="x">×</span>
+                                <input type="number" id="nb-floor-rad-thickness" min="0.5" max="12" step="0.25" value="3.5">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Deck</div>
+                    <div class="ctrl-row">
+                        <label class="chk-label"><input type="checkbox" id="chk-floor-deck" checked> Plywood deck on the beams</label>
+                    </div>
+                    <div class="sub-block" id="floor-deck-controls">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-floor-deck-t" min="0.1" max="3" step="0.125" value="0.75">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Edge inset from pivots</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-deck-inset" min="0" max="12" step="0.25" value="0.5">
+                                <input type="number" id="nb-floor-deck-inset" min="0" max="24" step="0.25" value="0.5">
+                            </div>
+                        </div>
+                        <div class="hint">Sheet size, kerf and price come from the Coverings group's plywood stock.</div>
+                    </div>
+
+                    <div class="subhead rule-above">Display</div>
+                    <div class="chk-grid">
+                        <label class="chk-label"><input type="checkbox" id="chk-floor-show-beams" checked> Beams</label>
+                        <label class="chk-label"><input type="checkbox" id="chk-floor-show-deck" checked> Deck</label>
+                    </div>
+
+                    <div id="floor-readout" class="diag-panel">
+                        <div class="kv-grid">
+                            <span class="k">Floor beams:</span><span id="floor-stat-beams">0</span>
+                            <span class="k">Deck height:</span><span id="floor-stat-height">--</span>
+                            <span class="k">Deck area:</span><span id="floor-stat-area">--</span>
+                            <span class="k">Deck sheets:</span><span id="floor-stat-sheets">--</span>
+                            <span class="k">Beam cost:</span><span id="floor-stat-cost">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

@@ -10,6 +10,7 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoveringCutPlan, coveringBomItems, coveringEnclosureCost, coveringEntryOverviewSvg } from './coverings-plan.js';
 import { describeMark } from './sheet-nesting.js';
+import { computeFloorBomContribution } from './floor-geometry.js';
 import { svgForInline } from '../core/svg-cut-file.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
@@ -123,10 +124,13 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     
     /** Cut plan for the current geometry (null when coverings are off / unsupported). */
     function getCoveringPlanForGuide(data) {
-        if (!data || !data.coverings || !data.coverings.supported || !state.coverings || !state.coverings.enabled) return null;
+        if (!data || !state.coverings) return null;
+        const covData = data.coverings && data.coverings.supported && state.coverings.enabled ? data.coverings : null;
+        const deck = data.floor && data.floor.deck ? data.floor.deck : null;
+        if (!covData && !deck) return null;
         try {
-            const plan = computeCoveringCutPlan(data.coverings, state.coverings);
-            if (!plan || (plan.walls.length + plan.tables.length + plan.fabric.length) === 0) return null;
+            const plan = computeCoveringCutPlan(covData, state.coverings, deck);
+            if (!plan || (plan.walls.length + plan.tables.length + plan.fabric.length + (plan.floor ? 1 : 0)) === 0) return null;
             return plan;
         } catch (e) {
             console.warn('[BuildGuide] covering plan failed:', e);
@@ -184,6 +188,12 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                     <div class="guide-cut-svg">${overview}</div>
                     <table class="guide-table guide-cut-dims">
                         <tbody>
+                            ${s.band === 'floor' ? `
+                            <tr><td class="k">Outline</td><td>${s.sides}-sided, ${fr(s.edgeIn)} per side, ${fr(s.widthBottomIn)} × ${fr(s.widthTopIn)} overall</td></tr>
+                            <tr><td class="k">Deck height</td><td>top face at ${fr(s.yTop)} (beams top ${fr(s.beamsTopIn)}), ${fr(s.thicknessIn)} thick</td></tr>
+                            <tr><td class="k">Corner angles</td><td>${s.cornerAnglesDeg.map(a => formatNumber(a, 1) + '°').join(' · ')}</td></tr>
+                            <tr><td class="k">Area / sheets</td><td>${formatNumber(s.areaIn2 / 144, 1)} ft² · ${n.sheetCount} sheet${n.sheetCount === 1 ? '' : 's'} ${n.orientation}, ${Math.round(n.utilization * 100)}% used</td></tr>
+                            ` : `
                             <tr><td class="k">Bottom / top width</td><td>${fr(s.widthBottomIn)} / ${fr(s.widthTopIn)}</td></tr>
                             <tr><td class="k">${s.kind === 'table' ? 'Depth' : 'Slant height'}</td><td>${fr(s.slantHeightIn)}${s.kind === 'table' ? '' : ` (${fr(s.verticalHeightIn)} vertical)`}</td></tr>
                             <tr><td class="k">${s.kind === 'table' ? 'Surface' : 'Tilt from vertical'}</td><td>${s.kind === 'table' ? `horizontal at ${fr(s.yTop)}` : `${formatNumber(s.tiltFromVerticalDeg, 1)}° (top leans ${s.tiltFromVerticalDeg >= 0 ? 'inward' : 'outward'})`}</td></tr>
@@ -191,6 +201,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                             <tr><td class="k">Corner angles</td><td>${s.cornerAnglesDeg.map(a => formatNumber(a, 1) + '°').join(' · ')} (BL · BR · TR · TL)</td></tr>
                             ${s.kind === 'table' ? '' : `<tr><td class="k">Bevel to next wall</td><td>${bevel}</td></tr>`}
                             <tr><td class="k">Area / sheets</td><td>${formatNumber(s.areaIn2 / 144, 1)} ft² · ${n.sheetCount} sheet${n.sheetCount === 1 ? '' : 's'} ${n.orientation}, ${Math.round(n.utilization * 100)}% used</td></tr>
+                            `}
                         </tbody>
                     </table>
                 </div>
@@ -261,6 +272,19 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                 <div class="guide-card-content">
                     <p class="guide-cut-note">Horizontal surfaces resting on the lower wall's top edge, ${fr(plan.tableCfg.thicknessIn)} thick, ${fr(plan.tableCfg.depthIn)} deep. The side edges follow the uprights, so they converge toward the centre.</p>
                     ${plan.tables.map(w => coveringSheetCardHtml(w, 'Table')).join('')}
+                </div>
+            </div>`);
+        }
+        if (plan.floor) {
+            const fb = computeFloorBomContribution(state.floor, state.modules, state);
+            const beamRows = fb.structureItems.map(it => `<tr><td class="qty">${it.qty}×</td><td>${esc(it.item)}</td></tr>`).join('');
+            cards.push(`
+            <div class="guide-card guide-card-wide guide-coverings">
+                <div class="guide-card-header">Raised Floor</div>
+                <div class="guide-card-content">
+                    <p class="guide-cut-note">Floor beams copy the roof's reciprocal layout onto the bottom ring: each module gets two beams anchored ${fr(state.floor.beams.anchorDist)} from its bottom scissor crossing, B on the ring and A riding over B. The deck is the ring's inner ${plan.floor.shape.sides}-gon, inset ${fr(state.floor.deck.insetIn)}, laid on the beams.</p>
+                    <table class="guide-table guide-cut-table" style="max-width:520px;margin-bottom:12px;"><thead><tr><th>Qty</th><th>Floor beams</th></tr></thead><tbody>${beamRows || '<tr><td colspan="2">no beams enabled</td></tr>'}</tbody></table>
+                    ${coveringSheetCardHtml(plan.floor, 'Floor deck')}
                 </div>
             </div>`);
         }
@@ -484,7 +508,15 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
         const totalKw = totalWatts / 1000;
         
-        const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost;
+        const floorBomForGuide = computeFloorBomContribution(state.floor, moduleCount, state);
+        const floorBOMGuideRows = floorBomForGuide.structureItems.map(it => `
+                                <tr data-bom-section="structure">
+                                    <td class="qty">${it.qty}×</td>
+                                    <td class="item">${it.item}</td>
+                                    <td class="price"><input type="number" class="guide-price-input" data-bom-state="${it.item.startsWith('Floor radial') ? 'costHBeam' : 'costVBeam'}" data-bom-qty="${it.qty}" data-bom-sidebar="${it.item.startsWith('Floor radial') ? 'nb-cost-hbeam' : 'nb-cost-vbeam'}" value="${formatNumber(it.unit, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                    <td class="total">$${formatNumber(it.total, 2)}</td>
+                                </tr>`).join('');
+        const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost + floorBomForGuide.floorBeamCost;
         const coveringPlanForGuide = getCoveringPlanForGuide(data);
         const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
         const enclosureCostForGuide = coveringPlanForGuide ? coveringEnclosureCost(coveringPlanForGuide, state) : 0;
@@ -760,6 +792,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                 </tr>
                                 ` : ''}
                                 ${supportBOMGuideRows}
+                                ${floorBOMGuideRows}
                                 <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-structure" style="font-weight:700;">$${formatNumber(structureCost, 2)}</td></tr>
                                 ${solarEnabled ? `
                                 <tr class="guide-bom-section-row"><td colspan="4">POWER</td></tr>
@@ -1997,7 +2030,8 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
         const totalKw = totalWatts / 1000;
     
-        const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost;
+        const floorBom = computeFloorBomContribution(state.floor, moduleCount, state);
+        const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost + floorBom.floorBeamCost;
         const coveringPlan = getCoveringPlanForGuide(data);
         const enclosureItems = coveringPlan ? coveringBomItems(coveringPlan, state) : [];
         const enclosureCost = coveringPlan ? coveringEnclosureCost(coveringPlan, state) : 0;
@@ -2008,7 +2042,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const vBeamWeight = calculateVBeamTotalWeight();
         const bracketWeight = uBrackets * state.weightBracket;
         const boltWeight = nBolts * state.weightBolt;
-        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
+        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight + floorBom.floorBeamWeight;
         const solarWeightSummary = getSolarPanelWeightSummary(data);
         const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarWeightSummary.total : 0;
         const totalWeight = structureWeight + solarPanelWeight;
@@ -2063,6 +2097,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         }
     
         sbBom.structureItems.forEach(li => structureItems.push(li));
+        floorBom.structureItems.forEach(li => structureItems.push(li));
     
         // Detailed hardware assembly extras (bushings / lock washers / nuts)
         assemblyHardwareItems.forEach(li => structureItems.push(li));
@@ -2791,6 +2826,10 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             if (plan.tables.length) {
                 sectionHeader('TABLES');
                 plan.tables.forEach(w => drawCoveringEntry(w, 'Table'));
+            }
+            if (plan.floor) {
+                sectionHeader('RAISED FLOOR');
+                drawCoveringEntry(plan.floor, 'Floor deck');
             }
             if (plan.fabric.length) {
                 sectionHeader('FABRIC PANELS');

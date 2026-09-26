@@ -219,3 +219,46 @@ test.describe('coverings: build steps, 3D pick and dimensions', () => {
         expect(errors).toEqual([]);
     });
 });
+
+test.describe('raised floor', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.addInitScript(() => localStorage.clear());
+    });
+
+    test('floor beams and deck render, appear in the guide and BOM, and persist', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        const group = page.locator('#sidebar .group[data-group="floor"]');
+        await expect(group).toBeVisible();
+        await group.locator('.group-title').click();
+        await page.locator('#chk-floor').check();
+        await expect(page.locator('#floor-controls')).toBeVisible();
+        const modules = await page.evaluate(() => globalThis.state.modules);
+        await expect.poll(() => page.evaluate(() => {
+            const d = globalThis.buildLinkageGeometry({ useCache: true });
+            return [d.floorBeams.length, !!(d.floor && d.floor.deck), d.floor && d.floor.deck ? d.floor.deck.corners3D.length : 0];
+        })).toEqual([2 * modules, true, modules]);
+        // deck mesh is in the wall group (so build playback stages it); beams are ordinary beam meshes
+        await expect.poll(() => page.evaluate(() => globalThis.threeRenderer.coveringWallGroup.children.filter(m => m.userData.covering && m.userData.covering.band === 'floor').length)).toBe(1);
+        await expect(page.locator('#floor-stat-beams')).toHaveText(String(2 * modules));
+        await expect(page.locator('#floor-stat-sheets')).not.toHaveText('--');
+        // radial beams toggle adds one per module
+        await page.locator('#chk-floor-radial').check();
+        await expect.poll(() => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).floorBeams.length)).toBe(3 * modules);
+        // guide + BOM
+        await page.evaluate(() => globalThis.showBuildGuide());
+        const guide = page.locator('#guide-content');
+        await expect(guide).toContainText('Raised Floor');
+        await expect(guide).toContainText('Floor beams, reciprocal');
+        await expect(guide).toContainText('Floor radial beams');
+        await expect(guide).toContainText('ENCLOSURE');
+        // persisted
+        const snap = await page.evaluate(() => globalThis.getConfigSnapshot());
+        expect(snap.floor.enabled).toBe(true);
+        expect(snap.floor.beams.radialEnabled).toBe(true);
+        expect(errors).toEqual([]);
+    });
+});

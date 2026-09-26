@@ -538,13 +538,18 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         
         // Enclosure (coverings) cost, when enabled
         let enclosureCost = 0;
-        if (data.coverings && data.coverings.supported && state.coverings && state.coverings.enabled
-            && typeof globalThis.computeCoveringCutPlan === 'function' && typeof globalThis.coveringEnclosureCost === 'function') {
-            try { enclosureCost = globalThis.coveringEnclosureCost(globalThis.computeCoveringCutPlan(data.coverings, state.coverings), state); } catch (e) { enclosureCost = 0; }
+        const covForCost = (data.coverings && data.coverings.supported && state.coverings && state.coverings.enabled) ? data.coverings : null;
+        const deckForCost = data.floor && data.floor.deck ? data.floor.deck : null;
+        if ((covForCost || deckForCost) && typeof globalThis.computeCoveringCutPlan === 'function' && typeof globalThis.coveringEnclosureCost === 'function') {
+            try { enclosureCost = globalThis.coveringEnclosureCost(globalThis.computeCoveringCutPlan(covForCost, state.coverings, deckForCost), state); } catch (e) { enclosureCost = 0; }
+        }
+        let floorBeamCost = 0;
+        if (typeof globalThis.computeFloorBomContribution === 'function') {
+            try { floorBeamCost = globalThis.computeFloorBomContribution(state.floor, moduleCount, state).floorBeamCost; } catch (e) { floorBeamCost = 0; }
         }
 
         // Calculate total cost (structure includes washers and support BOM)
-        const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + solarCost + enclosureCost;
+        const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + floorBeamCost + solarCost + enclosureCost;
         uiStats.bt.innerText = formatNumber(totalCost, 2);
         if (uiStats.costTotalChip) uiStats.costTotalChip.innerText = '$' + formatNumber(totalCost, 2);
     

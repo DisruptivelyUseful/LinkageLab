@@ -5,6 +5,7 @@
 
 import { bridgeGlobals } from './global-bridge.js';
 import { createDefaultCoverings } from './coverings-geometry.js';
+import { createDefaultFloor } from './floor-geometry.js';
 
 /** Application state object containing all configuration parameters */
 export const state = {
@@ -209,6 +210,8 @@ export const state = {
     },
     /** Coverings: plywood walls / tables / fabric between uprights (see coverings-geometry.js) */
     coverings: createDefaultCoverings(8),
+    /** Raised floor: reciprocal floor beams on the bottom ring + plywood deck (floor-geometry.js) */
+    floor: createDefaultFloor(),
     measurePoints: [],
     collisions: [],
     animation: {

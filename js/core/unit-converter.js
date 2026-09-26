@@ -468,6 +468,7 @@ function updateAllUnitLabels() {
         const spans = head.querySelectorAll('span');
         if (spans.length < 2) return;
         const unitSpan = spans[spans.length - 1];
+        if (unitSpan.dataset && unitSpan.dataset.fixedUnit !== undefined) return; // inputs that always take inches
         const text = unitSpan.textContent.trim();
         if (text === 'ft' || text === 'm') {
             unitSpan.textContent = isMetric ? 'm' : 'ft';

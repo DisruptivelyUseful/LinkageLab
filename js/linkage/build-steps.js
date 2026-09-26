@@ -881,11 +881,13 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     const rcp = has({ kind: 'beam', stackType: 'support-beam-reciprocal' });
     const rcpBolts = has({ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] });
     const panels = has({ kind: 'panel' });
+    const floorBeams = has({ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal'] });
+    const floorDeck = has({ kind: 'wall', band: 'floor' });
     const lowerWalls = has({ kind: 'wall', band: 'lower', coverType: 'plywood' });
     const lowerFabric = has({ kind: 'wall', band: 'lower', coverType: 'fabric' });
     const tables = has({ kind: 'wall', band: 'table' });
     const upper = has({ kind: 'wall', band: 'upper' });
-    const coverings = lowerWalls || lowerFabric || tables || upper;
+    const coverings = lowerWalls || lowerFabric || tables || upper || floorBeams || floorDeck;
     if (deployed !== null || support || rcp || panels || coverings) {
         mk('view', { title: 'Deploy the structure', notes: 'Open the scissor ring to its deployed angle before adding the roof.', targets: [], view: view(deployed), transitionMs: 2500, durationMs: 800 });
     }
@@ -898,7 +900,11 @@ export function generateDefaultBuildSteps(data, opts = {}) {
             op: { approach: 'above', travelIn: 30, sequential: true }, durationMs: Math.min(12000, Math.max(2000, 600 * count + 800)) });
     }
 
-    // 5. Coverings: walls, tables and fabric go on after the roof, from the outside in
+    // 5. Raised floor: beams onto the bottom ring, then the deck
+    if (floorBeams) mk('place', { title: 'Lay the floor beams', notes: 'Set the floor beams across the bottom ring, each anchored on its bottom scissor leg, weaving A over B like the roof beams.', targets: [{ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal'] }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
+    if (floorDeck) mk('place', { title: 'Lay the floor deck', notes: 'Screw the plywood deck pieces onto the floor beams, cut edges toward the ring.', targets: [{ kind: 'wall', band: 'floor' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
+
+    // 6. Coverings: walls, tables and fabric go on after the roof, from the outside in
     const coverStep = (title, notes, sel, approach) => {
         const count = resolveTargets(data, [sel], parts).items.length;
         mk('place', { title, notes, targets: [sel], view: view(deployed),

@@ -108,7 +108,9 @@ import { partKey } from './part-keys.js';
         // Add beams (drill any bolt-through-holes so the live 3D matches the GLB export)
         if (data.beams) {
             const beamBolts = data.bolts || [];
+            const hideFloorBeams = !!(state.floor && state.floor.visibility && state.floor.visibility.beams === false);
             data.beams.forEach(beam => {
+                if (hideFloorBeams && beam.stackType && beam.stackType.startsWith('floor-beam')) return;
                 const mesh = createBeamMesh(beam, isColliding(beam), beamBolts);
                 offsetMesh(mesh);
                 // Part view: the structure beams ARE the sandwich assembly beams.
@@ -170,6 +172,16 @@ import { partKey } from './part-keys.js';
                     threeRenderer.coveringPickGroup.add(mesh);
                 });
             }
+        }
+        // Raised floor deck (an n-gon plywood slab; the floor beams are ordinary beams)
+        if (!detail && data.floor && data.floor.deck && threeRenderer.coveringWallGroup
+            && !(state.floor && state.floor.visibility && state.floor.visibility.deck === false)) {
+            const mesh = createCoveringMesh(data.floor.deck);
+            offsetMesh(mesh);
+            threeRenderer.coveringWallGroup.add(mesh);
+        }
+        if (typeof globalThis.updateFloorReadout === 'function') {
+            try { globalThis.updateFloorReadout(data); } catch (e) { console.warn('[Floor] readout failed:', e); }
         }
         if (typeof globalThis.updateCoveringsReadout === 'function') {
             try { globalThis.updateCoveringsReadout(data); } catch (e) { console.warn('[Coverings] readout failed:', e); }

@@ -1747,31 +1747,40 @@ const COVERING_COLORS = {
  * face, same winding]. Winding is fixed per face so normals point outward.
  */
 function buildSlabGeometry(c) {
-    const cx = c.reduce((a, p) => a + p.x, 0) / 8;
-    const cy = c.reduce((a, p) => a + p.y, 0) / 8;
-    const cz = c.reduce((a, p) => a + p.z, 0) / 8;
-    const quads = [
-        [0, 1, 2, 3], // face A
-        [4, 5, 6, 7], // face B
-        [0, 1, 5, 4], // bottom edge
-        [1, 2, 6, 5], // right edge
-        [2, 3, 7, 6], // top edge
-        [3, 0, 4, 7], // left edge
-    ];
+    // c = n corners of one face followed by the n corners of the opposite face (same winding)
+    const n = c.length / 2;
+    const cx = c.reduce((a, p) => a + p.x, 0) / c.length;
+    const cy = c.reduce((a, p) => a + p.y, 0) / c.length;
+    const cz = c.reduce((a, p) => a + p.z, 0) / c.length;
     const pos = [];
-    quads.forEach(q => {
-        const p0 = c[q[0]], p1 = c[q[1]], p2 = c[q[2]], p3 = c[q[3]];
-        // outward test on the face normal
+    const pushTri = (p0, p1, p2, faceCenter) => {
+        // wind so the triangle normal points away from the slab centre
         const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
         const bx = p2.x - p0.x, by = p2.y - p0.y, bz = p2.z - p0.z;
         const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
-        const fx = (p0.x + p1.x + p2.x + p3.x) / 4 - cx;
-        const fy = (p0.y + p1.y + p2.y + p3.y) / 4 - cy;
-        const fz = (p0.z + p1.z + p2.z + p3.z) / 4 - cz;
-        const flip = (nx * fx + ny * fy + nz * fz) < 0;
-        const tri = flip ? [p0, p2, p1, p0, p3, p2] : [p0, p1, p2, p0, p2, p3];
+        const flip = (nx * (faceCenter.x - cx) + ny * (faceCenter.y - cy) + nz * (faceCenter.z - cz)) < 0;
+        const tri = flip ? [p0, p2, p1] : [p0, p1, p2];
         tri.forEach(p => pos.push(p.x, p.y, p.z));
+    };
+    const faceCenter = (idx) => ({
+        x: idx.reduce((a, i) => a + c[i].x, 0) / idx.length,
+        y: idx.reduce((a, i) => a + c[i].y, 0) / idx.length,
+        z: idx.reduce((a, i) => a + c[i].z, 0) / idx.length,
     });
+    // the two faces (fan triangulation, fine for convex polygons)
+    [0, n].forEach(off => {
+        const idx = Array.from({ length: n }, (_, i) => off + i);
+        const fc = faceCenter(idx);
+        for (let i = 1; i < n - 1; i++) pushTri(c[off], c[off + i], c[off + i + 1], fc);
+    });
+    // the sides
+    for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        const q = [i, j, j + n, i + n];
+        const fc = faceCenter(q);
+        pushTri(c[q[0]], c[q[1]], c[q[2]], fc);
+        pushTri(c[q[0]], c[q[2]], c[q[3]], fc);
+    }
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
     geo.computeVertexNormals();
@@ -1796,7 +1805,7 @@ function coveringMaterialFor(kind) {
  * userData.covering for picking / build steps.
  */
 function createCoveringMesh(shape) {
-    const corners = shape.slabCorners3D && shape.slabCorners3D.length === 8
+    const corners = shape.slabCorners3D && shape.slabCorners3D.length >= 6 && shape.slabCorners3D.length % 2 === 0
         ? shape.slabCorners3D
         : shape.corners3D.concat(shape.corners3D);
     const mesh = new THREE.Mesh(buildSlabGeometry(corners), coveringMaterialFor(shape.kind));

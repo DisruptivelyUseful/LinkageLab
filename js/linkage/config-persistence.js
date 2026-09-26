@@ -22,6 +22,7 @@ import {
 } from './linkage-geometry.js';
 import { threeRenderer, updateMainCamera } from './renderer-3d.js';
 import { createDefaultCoverings, normalizeCoverings, resizeCoveringSpans, serializeCoverings } from './coverings-geometry.js';
+import { createDefaultFloor, normalizeFloor, serializeFloor } from './floor-geometry.js';
 import { syncUI } from './state-sync.js';
 
 // ============================================================================
@@ -357,6 +358,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             state.coverings = createDefaultCoverings(state.modules);
         }
         resizeCoveringSpans(state.coverings, state.modules);
+
+        // Raised floor (same reset-to-defaults rule)
+        state.floor = (config.floor && typeof config.floor === 'object') ? normalizeFloor(config.floor) : createDefaultFloor();
     }
     
     /**
@@ -505,6 +509,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
 
             // Coverings: plywood walls / tables / fabric between uprights
             coverings: serializeCoverings(state.coverings),
+            // Raised floor
+            floor: serializeFloor(state.floor),
             
             // Solar panel configuration
             panels: {
@@ -1052,6 +1058,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
 
             // Coverings sidebar (module loads after this one; global lookup avoids a cycle)
             if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
+            if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
             
             // Panel lift (top panels)
             const slPanelLift = document.getElementById('sl-panel-lift');

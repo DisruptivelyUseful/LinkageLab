@@ -26,6 +26,8 @@ const STACK_TYPE_LABELS = {
     'fixed-beam-cap': 'Cap fixed beam',
     'support-beam': 'Radial support beam',
     'support-beam-reciprocal': 'Reciprocal beam',
+    'floor-beam': 'Floor radial beam',
+    'floor-beam-reciprocal': 'Floor beam',
 };
 
 const BOLT_TYPE_LABELS = {
@@ -187,6 +189,8 @@ export function describePart(obj, kind = partKind(obj)) {
         case 'panel':
             return `Solar panel ${num(obj.index, 0) + 1}`;
         case 'wall': {
+            if (obj.band === 'floor') return 'Floor deck';
+            if (obj.band === 'roof') return `Shade cloth ${num(obj.spanIndex, 0) + 1}`;
             const what = obj.band === 'table' ? 'Table' : `${obj.band === 'upper' ? 'Upper' : 'Lower'} ${obj.coverType === 'fabric' ? 'fabric' : 'plywood wall'}`;
             return `${what}, span ${num(obj.spanIndex, 0) + 1}`;
         }
@@ -390,6 +394,7 @@ export function collectParts(data) {
     push('placement', data && data.hardwareAssemblyPlacements);
     push('panel', data && data.panels);
     push('wall', data && data.coverings && data.coverings.shapes);
+    push('wall', data && data.floor && data.floor.deck ? [data.floor.deck] : null);
     return out;
 }
 
@@ -482,6 +487,8 @@ export function selectorLabel(sel) {
     else if (kind === 'hwpart') parts.push(`${sel.partId || 'part'} (${sel.assemblyId || 'assembly'})`);
     else if (kind === 'panel') parts.push(sel.index !== undefined && sel.index !== '*' ? `Solar panel ${sel.index + 1}` : 'Solar panels');
     else if (kind === 'wall') {
+        if (sel.band === 'floor') { parts.push('Floor deck'); return parts.join(' · '); }
+        if (sel.band === 'roof') { parts.push('Shade cloths'); if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`#${sel.spanIndex + 1}`); return parts.join(' · '); }
         const band = sel.band === 'table' ? 'Tables' : (sel.band === 'upper' ? 'Upper' : (sel.band === 'lower' ? 'Lower' : 'All')) + (sel.coverType === 'fabric' ? ' fabric' : (sel.coverType === 'plywood' ? ' walls' : ' coverings'));
         parts.push(band);
         if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`span ${sel.spanIndex + 1}`);

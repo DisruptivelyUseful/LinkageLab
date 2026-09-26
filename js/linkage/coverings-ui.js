@@ -22,6 +22,8 @@ const $ = (id) => document.getElementById(id);
 
 /** Last computed coverings (set on every render by updateCoveringsReadout). */
 let lastCoverings = null;
+/** Last computed floor deck shape (for cut-file downloads). */
+let lastFloorDeck = null;
 /** Key of the last picker render, to skip DOM churn when nothing changed. */
 let lastPickerKey = '';
 
@@ -215,6 +217,7 @@ function updateCoveringsReadout(data) {
     const c = cov();
     const covData = data && data.coverings;
     lastCoverings = covData || null;
+    lastFloorDeck = data && data.floor && data.floor.deck ? data.floor.deck : null;
     updateModeHint(c, covData);
     renderCoveringRingPicker();
     if (!covData || !covData.supported) {
@@ -240,7 +243,7 @@ function updateCoveringsReadout(data) {
     setText('cov-stat-ply-area', plyArea > 0 ? fmtFt2(plyArea) : '--');
     setText('cov-stat-fabric-area', t.fabricAreaIn2 > 0 ? fmtFt2(t.fabricAreaIn2) : '--');
     let plan = null;
-    try { plan = computeCoveringCutPlan(covData, c); } catch (e) { console.warn('[Coverings] cut plan failed:', e); }
+    try { plan = computeCoveringCutPlan(covData, c, data && data.floor ? data.floor.deck : null); } catch (e) { console.warn('[Coverings] cut plan failed:', e); }
     const pt = plan ? plan.totals : null;
     setText('cov-stat-sheets', pt && pt.sheets > 0 ? `${pt.sheets} (${Math.round(pt.utilization * 100)}% used${pt.seams ? `, ${pt.seams} seam${pt.seams === 1 ? '' : 's'}` : ''})` : '--');
     setText('cov-stat-yards', pt && pt.fabricYards > 0 ? `${Math.ceil(pt.fabricYards)} yd (${pt.fabricPanels} panel${pt.fabricPanels === 1 ? '' : 's'})` : '--');
@@ -313,6 +316,7 @@ function pickCoveringAt(clientX, clientY) {
             if (o.visible === false) break;
             const ud = o.userData || {};
             if (ud.coveringPick) return { spanIndex: ud.coveringPick.spanIndex, band: ud.coveringPick.band };
+            if (ud.covering && (ud.covering.band === 'floor' || ud.covering.band === 'roof')) return null;
             if (ud.covering && ud.covering.band !== 'table') return { spanIndex: ud.covering.spanIndex, band: ud.covering.band };
             if (ud.covering) return { spanIndex: ud.covering.spanIndex, band: 'table' };
             o = o.parent;
@@ -347,9 +351,10 @@ function bindCoveringPick() {
 
 /** One full-scale SVG per wall / table / fabric band, downloaded in sequence. */
 function exportCoveringCutFiles() {
-    if (!lastCoverings || !lastCoverings.supported) { showToast('Enable coverings on a closed cylinder ring first', 'info'); return; }
-    const plan = computeCoveringCutPlan(lastCoverings, cov());
-    const entries = plan.walls.concat(plan.tables, plan.fabric);
+    const deck = lastFloorDeck;
+    if ((!lastCoverings || !lastCoverings.supported) && !deck) { showToast('Enable coverings or the floor on a closed cylinder ring first', 'info'); return; }
+    const plan = computeCoveringCutPlan(lastCoverings, cov(), deck);
+    const entries = plan.walls.concat(plan.tables, plan.fabric, plan.floor ? [plan.floor] : []);
     if (!entries.length) { showToast('No coverings selected: click a wedge in the ring or use Enclose', 'info'); return; }
     const files = entries.map(entry => ({
         text: coveringEntrySvg(entry, state),
