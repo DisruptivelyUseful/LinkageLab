@@ -229,7 +229,7 @@ function updateCoveringsReadout(data) {
     setText('cov-stat-fabric', String(t.fabricBands));
     setText('cov-stat-tables', String(t.tables));
     const first = covData.spans.find(s => s.plane);
-    setText('cov-stat-tilt', first ? `${first.tiltFromVerticalDeg.toFixed(1)}° from vertical` : '--');
+    setText('cov-stat-tilt', first ? `${first.tiltFromVerticalDeg.toFixed(1)}° / ${(first.upperTiltFromVerticalDeg ?? first.tiltFromVerticalDeg).toFixed(1)}° from vertical` : '--');
     const lower = first && first.lower;
     const upper = first && first.upper;
     const anyLower = lower || covData.spans.map(s => s.lower).find(Boolean);
@@ -385,10 +385,14 @@ function syncCoveringsUIFromState() {
     setPair('sl-cov-bottom', 'nb-cov-bottom', c.bottomIn);
     setPair('sl-cov-top-clear', 'nb-cov-top-clear', c.topClearanceIn);
     setPair('sl-cov-edge-gap', 'nb-cov-edge-gap', c.edgeGapIn);
-    setPair('sl-cov-tilt', 'nb-cov-tilt', c.customTiltDeg);
+    setPair('sl-cov-tilt', 'nb-cov-tilt', c.lowerTiltDeg);
+    setPair('sl-cov-tilt-upper', 'nb-cov-tilt-upper', c.upperTiltDeg);
     setPair('sl-cov-table-depth', 'nb-cov-table-depth', c.table.depthIn);
-    const lean = $('sel-cov-lean'); if (lean) lean.value = c.lean;
-    const tiltRow = $('cov-tilt-row'); if (tiltRow) tiltRow.style.display = c.lean === 'custom' ? '' : 'none';
+    setPair('sl-cov-table-slide', 'nb-cov-table-slide', c.table.slideIn || 0);
+    const lean = $('sel-cov-lean'); if (lean) lean.value = c.lowerLean;
+    const tiltRow = $('cov-tilt-row'); if (tiltRow) tiltRow.style.display = c.lowerLean === 'custom' ? '' : 'none';
+    const leanU = $('sel-cov-lean-upper'); if (leanU) leanU.value = c.upperLean;
+    const tiltRowU = $('cov-tilt-upper-row'); if (tiltRowU) tiltRowU.style.display = c.upperLean === 'custom' ? '' : 'none';
     const mount = $('sel-cov-mount'); if (mount) mount.value = c.mount;
     syncSheetPresetSelect(c);
     const set = (id, v) => { const el = $(id); if (el) el.value = v; };
@@ -473,12 +477,18 @@ function initCoveringsUI() {
     bindPair('sl-cov-bottom', 'nb-cov-bottom', () => cov().bottomIn, (v) => { cov().bottomIn = v; }, { min: 0, max: 600 });
     bindPair('sl-cov-top-clear', 'nb-cov-top-clear', () => cov().topClearanceIn, (v) => { cov().topClearanceIn = v; }, { min: 0, max: 60 });
     bindPair('sl-cov-edge-gap', 'nb-cov-edge-gap', () => cov().edgeGapIn, (v) => { cov().edgeGapIn = v; }, { min: 0, max: 6 });
-    bindPair('sl-cov-tilt', 'nb-cov-tilt', () => cov().customTiltDeg, (v) => { cov().customTiltDeg = v; }, { min: -80, max: 80 });
+    bindPair('sl-cov-tilt', 'nb-cov-tilt', () => cov().lowerTiltDeg, (v) => { cov().lowerTiltDeg = v; }, { min: -80, max: 80 });
+    bindPair('sl-cov-tilt-upper', 'nb-cov-tilt-upper', () => cov().upperTiltDeg, (v) => { cov().upperTiltDeg = v; }, { min: -80, max: 80 });
     bindPair('sl-cov-table-depth', 'nb-cov-table-depth', () => cov().table.depthIn, (v) => { cov().table.depthIn = v; }, { min: 1, max: 240 });
+    bindPair('sl-cov-table-slide', 'nb-cov-table-slide', () => cov().table.slideIn || 0, (v) => { cov().table.slideIn = v; }, { min: -120, max: 240 });
 
-    bindSelect('sel-cov-lean', () => cov().lean, (v) => {
-        cov().lean = v;
+    bindSelect('sel-cov-lean', () => cov().lowerLean, (v) => {
+        cov().lowerLean = v;
         const row = $('cov-tilt-row'); if (row) row.style.display = v === 'custom' ? '' : 'none';
+    });
+    bindSelect('sel-cov-lean-upper', () => cov().upperLean, (v) => {
+        cov().upperLean = v;
+        const row = $('cov-tilt-upper-row'); if (row) row.style.display = v === 'custom' ? '' : 'none';
     });
     bindSelect('sel-cov-mount', () => cov().mount, (v) => { cov().mount = v; });
 

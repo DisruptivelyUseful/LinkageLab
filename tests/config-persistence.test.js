@@ -89,7 +89,10 @@ describe('config-persistence: coverings', () => {
     it('round-trips the coverings block and the enclosure costs', () => {
         globalThis.state = createTestState({ modules: 8 });
         globalThis.state.coverings.enabled = true;
-        globalThis.state.coverings.lean = 'vertical';
+        globalThis.state.coverings.lowerLean = 'vertical';
+        globalThis.state.coverings.upperLean = 'custom';
+        globalThis.state.coverings.upperTiltDeg = -12;
+        globalThis.state.coverings.table.slideIn = 6;
         globalThis.state.coverings.splitHeightIn = 40;
         globalThis.state.coverings.spans[2].lower = 'plywood';
         globalThis.state.coverings.spans[2].table = true;
@@ -110,7 +113,10 @@ describe('config-persistence: coverings', () => {
         applyV30Config(JSON.parse(JSON.stringify(snapshot)));
         const c = globalThis.state.coverings;
         expect(c.enabled).toBe(true);
-        expect(c.lean).toBe('vertical');
+        expect(c.lowerLean).toBe('vertical');
+        expect(c.upperLean).toBe('custom');
+        expect(c.upperTiltDeg).toBe(-12);
+        expect(c.table.slideIn).toBe(6);
         expect(c.splitHeightIn).toBe(40);
         expect(c.spans[2]).toEqual({ lower: 'plywood', upper: 'none', table: true });
         expect(c.spans[5].upper).toBe('fabric');

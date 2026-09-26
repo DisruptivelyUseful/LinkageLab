@@ -59,7 +59,7 @@
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Lean</span></div>
+                        <div class="ctrl-head"><span>Lower band lean</span></div>
                         <div class="input-wrap">
                             <select id="sel-cov-lean">
                                 <option value="inward" selected>Inward (follow inner V-beams)</option>
@@ -70,10 +70,28 @@
                         </div>
                     </div>
                     <div class="ctrl-row" id="cov-tilt-row" style="display:none;">
-                        <div class="ctrl-head"><span>Tilt (+ = top inward)</span><span class="unit">°</span></div>
+                        <div class="ctrl-head"><span>Lower tilt (+ = top inward)</span><span class="unit">°</span></div>
                         <div class="input-wrap">
                             <input type="range" id="sl-cov-tilt" min="-60" max="60" step="0.5" value="0">
                             <input type="number" id="nb-cov-tilt" min="-80" max="80" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Upper band lean</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-cov-lean-upper">
+                                <option value="inward">Inward (follow inner V-beams)</option>
+                                <option value="outward" selected>Outward (follow outer V-beams)</option>
+                                <option value="vertical">Vertical</option>
+                                <option value="custom">Custom tilt</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ctrl-row" id="cov-tilt-upper-row" style="display:none;">
+                        <div class="ctrl-head"><span>Upper tilt (+ = top inward)</span><span class="unit">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-tilt-upper" min="-60" max="60" step="0.5" value="0">
+                            <input type="number" id="nb-cov-tilt-upper" min="-80" max="80" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -186,6 +204,13 @@
                             </div>
                         </div>
                         <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Slide in / out (+ = toward centre)</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-cov-table-slide" min="-24" max="48" step="0.5" value="0">
+                                <input type="number" id="nb-cov-table-slide" min="-120" max="240" step="0.5" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
                             <div class="ctrl-head"><span>Thickness</span><span class="unit">in</span></div>
                             <div class="input-wrap">
                                 <input type="number" id="nb-cov-table-t" min="0.1" max="3" step="0.125" value="0.75">
@@ -207,7 +232,7 @@
                             <span class="k">Plywood walls:</span><span id="cov-stat-walls">0</span>
                             <span class="k">Fabric bands:</span><span id="cov-stat-fabric">0</span>
                             <span class="k">Tables:</span><span id="cov-stat-tables">0</span>
-                            <span class="k">Wall tilt:</span><span id="cov-stat-tilt">--</span>
+                            <span class="k">Lean (lower / upper):</span><span id="cov-stat-tilt">--</span>
                             <span class="k">Lower band:</span><span id="cov-stat-lower">--</span>
                             <span class="k">Upper band:</span><span id="cov-stat-upper">--</span>
                             <span class="k">Plywood area:</span><span id="cov-stat-ply-area">--</span>

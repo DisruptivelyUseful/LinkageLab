@@ -42,8 +42,10 @@ const PLANARITY_WARN_IN = 0.25;
 
 export const DEFAULT_COVERINGS = Object.freeze({
     enabled: false,
-    lean: 'inward',
-    customTiltDeg: 0,
+    lowerLean: 'inward',     // lower band follows the inward-leaning V-beams
+    lowerTiltDeg: 0,
+    upperLean: 'outward',    // upper band mirrors it, following the outward-leaning V-beams
+    upperTiltDeg: 0,
     splitHeightIn: 48,
     bottomIn: 0,
     topClearanceIn: 1,
@@ -51,7 +53,7 @@ export const DEFAULT_COVERINGS = Object.freeze({
     mount: 'outside',
     sheet: { widthIn: 48, lengthIn: 96, thicknessIn: 0.5, orientation: 'auto', align: 'center', kerfIn: 0.125 },
     fabric: { rollWidthIn: 60, hemIn: 1, seamIn: 0.5, stretchPct: 2, grommetSpacingIn: 12 },
-    table: { depthIn: 24, thicknessIn: 0.75 },
+    table: { depthIn: 24, thicknessIn: 0.75, slideIn: 0 },   // slideIn: + toward the centre, − overhangs outward
     spans: [],
     visibility: { walls: true, fabric: true, tables: true },
     showDimensions: false,
@@ -103,8 +105,11 @@ export function normalizeCoverings(raw, n) {
     const vis = r.visibility || {};
     const cov = {
         enabled: !!r.enabled,
-        lean: pick(r.lean, LEAN_MODES, d.lean),
-        customTiltDeg: clampNum(r.customTiltDeg, d.customTiltDeg, -MAX_TILT_DEG, MAX_TILT_DEG),
+        // legacy single `lean` / `customTiltDeg` (Phase 1–3 configs) applies to the lower band
+        lowerLean: pick(r.lowerLean !== undefined ? r.lowerLean : r.lean, LEAN_MODES, d.lowerLean),
+        lowerTiltDeg: clampNum(r.lowerTiltDeg !== undefined ? r.lowerTiltDeg : r.customTiltDeg, d.lowerTiltDeg, -MAX_TILT_DEG, MAX_TILT_DEG),
+        upperLean: pick(r.upperLean, LEAN_MODES, d.upperLean),
+        upperTiltDeg: clampNum(r.upperTiltDeg, d.upperTiltDeg, -MAX_TILT_DEG, MAX_TILT_DEG),
         splitHeightIn: clampNum(r.splitHeightIn, d.splitHeightIn, 1, 600),
         bottomIn: clampNum(r.bottomIn, d.bottomIn, 0, 600),
         topClearanceIn: clampNum(r.topClearanceIn, d.topClearanceIn, 0, 60),
@@ -128,6 +133,7 @@ export function normalizeCoverings(raw, n) {
         table: {
             depthIn: clampNum(table.depthIn, d.table.depthIn, 1, 240),
             thicknessIn: clampNum(table.thicknessIn, d.table.thicknessIn, 0.1, 3),
+            slideIn: clampNum(table.slideIn, d.table.slideIn, -120, 240),
         },
         spans: Array.isArray(r.spans) ? r.spans.map(normalizeSpan) : [],
         visibility: {
@@ -529,13 +535,16 @@ export function buildTableShape(ctx) {
     const vy = plane.v.y;
     if (Math.abs(vy) < 1e-6) return null;
     // Outer line: wall inner face ∩ y = ySurface (direction u is horizontal)
-    const o = vAdd(plane.origin, vAdd(vScale(plane.n, ctx.wallInnerOffsetIn), vScale(plane.v, (ySurface - plane.origin.y) / vy)));
+    const oWall = vAdd(plane.origin, vAdd(vScale(plane.n, ctx.wallInnerOffsetIn), vScale(plane.v, (ySurface - plane.origin.y) / vy)));
     const outerDir = plane.u;
     // Horizontal inward direction
     const nh = { x: plane.n.x, y: 0, z: plane.n.z };
     const nhMag = vMag(nh);
     if (nhMag < 1e-6) return null;
     const inward = vScale(nh, -1 / nhMag);
+    // Radial slide: + moves the whole table toward the centre, − lets it overhang outward
+    const slide = num(ctx.slideIn, 0);
+    const o = slide ? vAdd(oWall, vScale(inward, slide)) : oWall;
     const innerPoint = vAdd(o, vScale(inward, ctx.depthIn));
     // Side lines: upright side planes ∩ y = ySurface
     const spanMid = vScale(vAdd(L.B.pivotBot, R.B.pivotBot), 0.5);
@@ -665,57 +674,81 @@ export function computeCoverings(data, cov, st) {
     const bottomIn = num(c.bottomIn, 0);
     const upperTop = ringUndersideY - num(c.topClearanceIn, 0);
     const splitIn = Math.min(num(c.splitHeightIn, 48), upperTop - 6);
-    const guidePattern = c.lean === 'outward' ? 'A' : 'B';
+    const BANDS = ['lower', 'upper'];
+    const leanOf = (band) => (band === 'upper' ? c.upperLean : c.lowerLean) || 'inward';
+    const tiltOf = (band) => num(band === 'upper' ? c.upperTiltDeg : c.lowerTiltDeg, 0);
+    const sameBands = leanOf('lower') === leanOf('upper') && tiltOf('lower') === tiltOf('upper');
 
-    // Pass 1: planes and side lines
-    spans.forEach(span => {
-        const L = uprights[span.left], R = uprights[span.right];
-        const solved = solveSpanPlane(span, L, R, c.lean, c.customTiltDeg, ringCenter);
-        span.plane = solved ? solved.plane : null;
-        span.planarityErrorIn = solved ? round(solved.planarityErrorIn) : null;
-        span.tiltFromVerticalDeg = solved ? round(solved.tiltFromVerticalDeg, 2) : null;
-        span.guide = solved ? solved.guide : null;
+    /** Plane, side lines and beam-face distances for one band of one span. */
+    const solveBand = (span, L, R, lean, tiltDeg) => {
+        const solved = solveSpanPlane(span, L, R, lean, tiltDeg, ringCenter);
+        const out = {
+            plane: solved ? solved.plane : null,
+            planarityErrorIn: solved ? round(solved.planarityErrorIn) : null,
+            tiltFromVerticalDeg: solved ? round(solved.tiltFromVerticalDeg, 2) : null,
+            guide: solved ? solved.guide : null,
+            lean,
+            sideL: null, sideR: null, faceOutsideIn: 0, faceInsideIn: 0, dihedralToNextDeg: null,
+        };
         (solved ? solved.warnings : []).forEach(w => warnings.push({ spanIndex: span.index, band: null, ...w }));
-        if (!span.plane) return;
+        if (!out.plane) return out;
         const spanMid = vScale(vAdd(L.B.pivotBot, R.B.pivotBot), 0.5);
-        span.sideL = sideLineFor(span.plane, L, spanMid, num(c.edgeGapIn, 0));
-        span.sideR = sideLineFor(span.plane, R, spanMid, num(c.edgeGapIn, 0));
-        if (!span.sideL || !span.sideR) {
+        out.sideL = sideLineFor(out.plane, L, spanMid, num(c.edgeGapIn, 0));
+        out.sideR = sideLineFor(out.plane, R, spanMid, num(c.edgeGapIn, 0));
+        if (!out.sideL || !out.sideR) {
             warnings.push({ spanIndex: span.index, band: null, code: 'side-parallel', message: 'Wall plane is parallel to an upright; span skipped.' });
-            span.plane = null;
-            return;
+            out.plane = null;
+            return out;
         }
         // Mount offset from the guide beams' physical faces
+        const guidePattern = lean === 'outward' ? 'A' : 'B';
         let dMax = -Infinity, dMin = Infinity;
         [L, R].forEach(U => U.beams.forEach(b => {
             if (b.patternId !== guidePattern) return;
             (b.corners || []).forEach(p => {
-                const d = vDot(vSub(p, span.plane.origin), span.plane.n);
+                const d = vDot(vSub(p, out.plane.origin), out.plane.n);
                 if (d > dMax) dMax = d;
                 if (d < dMin) dMin = d;
             });
         }));
         if (!Number.isFinite(dMax)) { dMax = 0; dMin = 0; }
-        span.faceOutsideIn = round(dMax);
-        span.faceInsideIn = round(dMin);
+        out.faceOutsideIn = round(dMax);
+        out.faceInsideIn = round(dMin);
+        return out;
+    };
+
+    // Pass 1: planes and side lines, per band
+    spans.forEach(span => {
+        const L = uprights[span.left], R = uprights[span.right];
+        span.bands = {};
+        span.bands.lower = solveBand(span, L, R, leanOf('lower'), tiltOf('lower'));
+        span.bands.upper = sameBands ? span.bands.lower : solveBand(span, L, R, leanOf('upper'), tiltOf('upper'));
+        // Lower-band values double as the span's summary (tables, readout, legacy consumers)
+        const lb = span.bands.lower;
+        span.plane = lb.plane; span.sideL = lb.sideL; span.sideR = lb.sideR;
+        span.planarityErrorIn = lb.planarityErrorIn; span.tiltFromVerticalDeg = lb.tiltFromVerticalDeg; span.guide = lb.guide;
+        span.upperTiltFromVerticalDeg = span.bands.upper.tiltFromVerticalDeg;
+        span.faceOutsideIn = lb.faceOutsideIn; span.faceInsideIn = lb.faceInsideIn;
     });
 
-    // Dihedral to neighbours (for corner bevel reporting)
+    // Dihedral to neighbours (for corner bevel reporting), per band
     const byIndex = new Map(spans.map(s => [s.index, s]));
     const N = uprights.filter(u => !u.isCap).length;
     spans.forEach(span => {
         const next = byIndex.get((span.index + 1) % N);
-        if (span.plane && next && next.plane) {
-            span.dihedralToNextDeg = round(radToDeg(Math.acos(Math.max(-1, Math.min(1, vDot(span.plane.n, next.plane.n))))), 2);
-        } else {
-            span.dihedralToNextDeg = null;
-        }
+        BANDS.forEach(band => {
+            const a = span.bands[band], b = next && next.bands ? next.bands[band] : null;
+            a.dihedralToNextDeg = (a.plane && b && b.plane)
+                ? round(radToDeg(Math.acos(Math.max(-1, Math.min(1, vDot(a.plane.n, b.plane.n))))), 2)
+                : null;
+        });
+        span.dihedralToNextDeg = span.bands.lower.dihedralToNextDeg;
     });
 
-    const mountFor = (span, thick) => {
+    const mountFor = (bandInfo, thick) => {
         if (c.mount === 'centerline') return 0;
-        if (c.mount === 'inside') return span.faceInsideIn - thick / 2;
-        return span.faceOutsideIn + thick / 2;
+        if (c.mount === 'inside') return bandInfo.faceInsideIn - thick / 2;
+        return bandInfo.faceOutsideIn + thick / 2;
     };
 
     // Pass 2: shapes
@@ -723,28 +756,31 @@ export function computeCoverings(data, cov, st) {
         const cfg = (c.spans && c.spans[span.index]) || createDefaultSpan();
         span.config = cfg;
         span.lower = null; span.upper = null; span.table = null;
-        if (!span.plane) return;
+        if (!span.bands.lower.plane && !span.bands.upper.plane) return;
         const L = uprights[span.left], R = uprights[span.right];
         const bands = [
             { band: 'lower', type: cfg.lower, yBot: bottomIn, yTop: splitIn },
             { band: 'upper', type: cfg.upper, yBot: splitIn, yTop: upperTop },
         ];
         bands.forEach(bd => {
+            const info = span.bands[bd.band];
+            if (!info || !info.plane) return;
             const isFabric = bd.type === 'fabric';
             const thick = isFabric ? fabricThick : sheetThick;
             const ctx = {
-                plane: span.plane, sideL: span.sideL, sideR: span.sideR,
-                mountOffsetIn: mountFor(span, bd.type === 'none' ? sheetThick : thick),
-                tiltFromVerticalDeg: span.tiltFromVerticalDeg,
+                plane: info.plane, sideL: info.sideL, sideR: info.sideR,
+                mountOffsetIn: mountFor(info, bd.type === 'none' ? sheetThick : thick),
+                tiltFromVerticalDeg: info.tiltFromVerticalDeg,
             };
             const shape = buildBandShape(ctx, bd.yBot, bd.yTop, bd.type === 'none' ? sheetThick : thick);
             if (!shape) return;
             shape.spanIndex = span.index;
             shape.moduleIndex = span.moduleIndex;
             shape.band = bd.band;
-            shape.dihedralToNextDeg = span.dihedralToNextDeg;
-            shape.edgeBevelDeg = span.dihedralToNextDeg != null ? round(span.dihedralToNextDeg / 2, 2) : null;
-            shape.planarityErrorIn = span.planarityErrorIn;
+            shape.dihedralToNextDeg = info.dihedralToNextDeg;
+            shape.edgeBevelDeg = info.dihedralToNextDeg != null ? round(info.dihedralToNextDeg / 2, 2) : null;
+            shape.planarityErrorIn = info.planarityErrorIn;
+            shape.lean = info.lean;
             shape.label = `Span ${span.index + 1} · ${bd.band === 'lower' ? 'Lower' : 'Upper'}`;
             pickQuads.push({ spanIndex: span.index, band: bd.band, corners3D: shape.corners3D, type: bd.type });
             if (bd.type === 'none') return;
@@ -752,17 +788,17 @@ export function computeCoverings(data, cov, st) {
             shape.kind = isFabric ? 'fabric' : 'wall';
             // Clearance: does any H-beam of this wedge poke through the slab's inner face?
             const innerFace = ctx.mountOffsetIn - thick / 2;
-            const sL = span.sideL, sR = span.sideR;
+            const sL = info.sideL, sR = info.sideR;
             let worst = 0;
             hBeams.forEach(b => {
                 const mi = b.moduleIndex;
                 if (mi !== span.moduleIndex && mi !== ((span.moduleIndex + N - 1) % N)) return;
                 (b.corners || []).forEach(p => {
                     if (p.y < bd.yBot - 0.01 || p.y > bd.yTop + 0.01) return;
-                    const rel = vSub(p, span.plane.origin);
-                    const d = vDot(rel, span.plane.n) - innerFace;
+                    const rel = vSub(p, info.plane.origin);
+                    const d = vDot(rel, info.plane.n) - innerFace;
                     if (d <= 0.5) return;
-                    const s = vDot(rel, span.plane.u), t = vDot(rel, span.plane.v);
+                    const s = vDot(rel, info.plane.u), t = vDot(rel, info.plane.v);
                     const sMin = sL.s0 + (t - sL.t0) * sL.slope + 2;
                     const sMax = sR.s0 + (t - sR.t0) * sR.slope - 2;
                     if (s > sMin && s < sMax && d > worst) worst = d;
@@ -778,7 +814,7 @@ export function computeCoverings(data, cov, st) {
             else { totals.plywoodWalls++; totals.plywoodAreaIn2 += shape.areaIn2; }
         });
 
-        if (cfg.table) {
+        if (cfg.table && span.bands.lower.plane) {
             const lowerWall = span.lower && span.lower.kind === 'wall' ? span.lower : null;
             const wallInner = lowerWall ? (lowerWall.mountOffsetIn - lowerWall.thicknessIn / 2) : 0;
             const table = buildTableShape({
@@ -788,6 +824,7 @@ export function computeCoverings(data, cov, st) {
                 ySurface: splitIn,
                 depthIn: num(c.table && c.table.depthIn, 24),
                 thicknessIn: num(c.table && c.table.thicknessIn, 0.75),
+                slideIn: num(c.table && c.table.slideIn, 0),
             });
             if (table) {
                 table.spanIndex = span.index;

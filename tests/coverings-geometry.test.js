@@ -72,7 +72,8 @@ describe('coverings-geometry: state helpers', () => {
     it('normalizeCoverings clamps and falls back to defaults', () => {
         const cov = normalizeCoverings({ enabled: 1, lean: 'sideways', splitHeightIn: -5, spans: [{ lower: 'steel', upper: 'fabric', table: 'yes' }], pickMode: true }, 3);
         expect(cov.enabled).toBe(true);
-        expect(cov.lean).toBe('inward');
+        expect(cov.lowerLean).toBe('inward');
+        expect(cov.upperLean).toBe('outward');
         expect(cov.splitHeightIn).toBe(1);
         expect(cov.spans).toHaveLength(3);
         expect(cov.spans[0]).toEqual({ lower: 'none', upper: 'fabric', table: true });
@@ -182,16 +183,54 @@ describe('coverings-geometry: variants', () => {
         const st = makeRingState();
         const { data } = solveClosed(st);
         const cov = enclosed(8);
-        cov.lean = 'vertical';
+        cov.lowerLean = 'vertical';
         const vert = computeCoverings(data, cov, st);
         vert.spans.forEach(s => expect(Math.abs(s.tiltFromVerticalDeg)).toBeLessThan(0.01));
-        cov.lean = 'outward';
+        cov.lowerLean = 'outward';
         const out = computeCoverings(data, cov, st);
         out.spans.forEach(s => expect(s.tiltFromVerticalDeg).toBeLessThan(-15));
-        cov.lean = 'custom';
-        cov.customTiltDeg = 10;
+        cov.lowerLean = 'custom';
+        cov.lowerTiltDeg = 10;
         const cust = computeCoverings(data, cov, st);
         cust.spans.forEach(s => expect(s.tiltFromVerticalDeg).toBeCloseTo(10, 1));
+    });
+
+    it('by default the upper band mirrors the lower band: lower leans in, upper leans out', () => {
+        const st = makeRingState();
+        const { data } = solveClosed(st);
+        const r = computeCoverings(data, enclosed(8), st);
+        r.spans.forEach(s => {
+            expect(s.lower.tiltFromVerticalDeg).toBeGreaterThan(15);
+            expect(s.upper.tiltFromVerticalDeg).toBeLessThan(-15);
+            expect(s.upper.tiltFromVerticalDeg).toBeCloseTo(-s.lower.tiltFromVerticalDeg, 0);
+            expect(s.upper.lean).toBe('outward');
+            expect(s.upper.yBottom).toBeCloseTo(48, 1);
+            const rc = r.ringCenter;
+            const rad = (p) => Math.hypot(p.x - rc.x, p.z - rc.z);
+            // the upper band's top edge is further out than the lower band's top edge (it leans away)
+            expect(rad(s.upper.corners3D[3])).toBeGreaterThan(rad(s.lower.corners3D[3]));
+        });
+        expect(r.pickQuads.filter(x => x.spanIndex === 2)).toHaveLength(2);
+        const legacy = normalizeCoverings({ enabled: true, lean: 'vertical', customTiltDeg: 5 }, 8);
+        expect(legacy.lowerLean).toBe('vertical');
+        expect(legacy.lowerTiltDeg).toBe(5);
+        expect(legacy.upperLean).toBe('outward');
+    });
+
+    it('table slide moves every table corner toward the ring centre', () => {
+        const st = makeRingState();
+        const { data } = solveClosed(st);
+        const cov = enclosed(8);
+        const base = computeCoverings(data, cov, st);
+        const baseTable = base.spans[1].table;
+        cov.table.slideIn = 10;
+        const slidTable = computeCoverings(data, cov, st).spans[1].table;
+        const rad = (p) => Math.hypot(p.x - base.ringCenter.x, p.z - base.ringCenter.z);
+        // the table centre sits on the span bisector, so its radius shrinks by exactly the slide
+        expect(rad(baseTable.center) - rad(slidTable.center)).toBeCloseTo(10, 1);
+        baseTable.corners3D.forEach((p, i) => expect(rad(p)).toBeGreaterThan(rad(slidTable.corners3D[i]) + 9));
+        expect(slidTable.depthIn).toBe(baseTable.depthIn);
+        expect(slidTable.widthOuterIn).toBeLessThan(baseTable.widthOuterIn);
     });
 
     it('two-layer stacks solve the same wall plane as three-layer stacks', () => {
