@@ -1,4 +1,6 @@
 @echo off
+REM Plain static server only. To also pull the latest working branch first,
+REM double-click dev-branch.bat instead (it uses the Node dev server).
 echo ========================================
 echo   LinkageLab Local Server
 echo ========================================
