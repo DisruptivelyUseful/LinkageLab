@@ -780,6 +780,7 @@ function meshPartKey(obj) {
     if (ud.bracket) return partKey(ud.bracket, 'bracket');
     if (ud.placement) return partKey(ud.placement, 'placement');
     if (ud.panel) return partKey(ud.panel, 'panel');
+    if (ud.covering) return partKey(ud.covering, 'wall');
     return null;
 }
 
@@ -813,6 +814,7 @@ function forEachPartMesh(fn) {
     const groups = [
         threeRenderer.beamGroup, threeRenderer.bracketGroup, threeRenderer.boltGroup,
         threeRenderer.washerGroup, threeRenderer.hardwareAssemblyGroup, threeRenderer.panelGroup,
+        threeRenderer.coveringWallGroup, threeRenderer.coveringFabricGroup, threeRenderer.coveringTableGroup,
     ];
     for (const g of groups) {
         if (!g) continue;
@@ -901,7 +903,8 @@ function applyBuildStepScene(data, sc) {
     if (threeRenderer.gridHelper && bench) threeRenderer.gridHelper.visible = false;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = !bench;
     if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = false; // reference tank distracts from the build
-    if (threeRenderer.coveringGroup) threeRenderer.coveringGroup.visible = false; // coverings are not build-step parts yet
+    if (threeRenderer.coveringPickGroup) threeRenderer.coveringPickGroup.visible = false;
+    if (threeRenderer.coveringDimGroup) threeRenderer.coveringDimGroup.visible = false;
     if (threeRenderer.benchGroup && !bench) threeRenderer.benchGroup.visible = false;
     if (!bench) pb.benchSummary = '';
 
@@ -937,7 +940,8 @@ function restoreSceneAfterPlayback() {
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = true;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = true;
     if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = true;
-    if (threeRenderer.coveringGroup) threeRenderer.coveringGroup.visible = true;
+    if (threeRenderer.coveringPickGroup) threeRenderer.coveringPickGroup.visible = true;
+    if (threeRenderer.coveringDimGroup) threeRenderer.coveringDimGroup.visible = true;
     if (threeRenderer.benchGroup) threeRenderer.benchGroup.visible = false;
     if (state.buildPlayback) state.buildPlayback.benchSummary = '';
 }

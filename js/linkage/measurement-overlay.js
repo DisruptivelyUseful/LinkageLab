@@ -1135,29 +1135,12 @@ if (!unitConverter) {
      * Creates or updates the 3D measurement lines
      * @param {Object} data - Linkage data with structure dimensions
      */
-    function update3DMeasurementLines(data) {
-        if (!threeRenderer.measurementGroup) return;
-        
-        // Clear existing measurement lines
-        while (threeRenderer.measurementGroup.children.length > 0) {
-            const child = threeRenderer.measurementGroup.children[0];
-            if (child.geometry) child.geometry.dispose();
-            if (child.material) {
-                if (child.material.map) child.material.map.dispose();
-                child.material.dispose();
-            }
-            threeRenderer.measurementGroup.remove(child);
-        }
-        
-        if (!state.measureMode) return;
-        
-        const measurements = calculateMeasurements(data);
-        const isArchMode = state.orientation === 'vertical';
-        const system = unitConverter.getPreferredUnitSystem();
-        
-        // Helper to create a 3D measurement line with endpoints and label
-        const createMeasurementLine3D = (point1, point2, label, color) => {
-            if (!point1 || !point2) return;
+    /**
+     * Builds a 3D measurement line (line + end markers + sprite label).
+     * @returns {THREE.Group|null} the group (added to `targetGroup` when given)
+     */
+    function createMeasurementLine3D(point1, point2, label, color, targetGroup = threeRenderer.measurementGroup, opts = {}) {
+            if (!point1 || !point2) return null;
             
             const lineGroup = new THREE.Group();
             
@@ -1179,7 +1162,7 @@ if (!unitConverter) {
             lineGroup.add(line);
             
             // Create endpoint markers (small spheres)
-            const markerGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+            const markerGeometry = new THREE.SphereGeometry(opts.markerRadius || 1.5, 8, 8);
             const markerMaterial = new THREE.MeshBasicMaterial({ color: color });
             
             const marker1 = new THREE.Mesh(markerGeometry, markerMaterial);
@@ -1231,12 +1214,34 @@ if (!unitConverter) {
                 sizeAttenuation: true
             });
             const labelSprite = new THREE.Sprite(labelMaterial);
-            labelSprite.position.set(midPoint.x, midPoint.y + 8, midPoint.z);
-            labelSprite.scale.set(40, 10, 1);
+            labelSprite.position.set(midPoint.x, midPoint.y + (opts.labelLift ?? 8), midPoint.z);
+            labelSprite.scale.set(opts.labelScale || 40, (opts.labelScale || 40) / 4, 1);
             lineGroup.add(labelSprite);
             
-            threeRenderer.measurementGroup.add(lineGroup);
-        };
+            if (targetGroup) targetGroup.add(lineGroup);
+            return lineGroup;
+    }
+
+    function update3DMeasurementLines(data) {
+        if (!threeRenderer.measurementGroup) return;
+        
+        // Clear existing measurement lines
+        while (threeRenderer.measurementGroup.children.length > 0) {
+            const child = threeRenderer.measurementGroup.children[0];
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (child.material.map) child.material.map.dispose();
+                child.material.dispose();
+            }
+            threeRenderer.measurementGroup.remove(child);
+        }
+        
+        if (!state.measureMode) return;
+        
+        const measurements = calculateMeasurements(data);
+        const isArchMode = state.orientation === 'vertical';
+        const system = unitConverter.getPreferredUnitSystem();
+        
         
         // Update sidebar display
         const innerEl = document.getElementById('meas-inner-dia');
@@ -1319,6 +1324,7 @@ if (!unitConverter) {
 
 
 const _moduleExports = {
+    createMeasurementLine3D,
     formatMeasurementSidebar,
     calculateMeasurements,
     drawMeasurements,
@@ -1336,4 +1342,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'measurementOverlay');
 
-export { formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, preloadIbcGlb, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };
+export { createMeasurementLine3D, formatMeasurementSidebar, calculateMeasurements, drawMeasurements, drawMeasurementsOverlay, applyIbcInteriorGlow, rebuildIbcPivotStack, createIbcExportGroup, syncIbcStackControlsVisibility, getStructurePlanFootprintForReference, preloadIbcGlb, updateIbcGlbReference, updateHumanScaleFigure, update3DMeasurementLines };

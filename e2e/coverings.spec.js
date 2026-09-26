@@ -149,3 +149,73 @@ test.describe('coverings: build guide and exports', () => {
         expect(errors).toEqual([]);
     });
 });
+
+test.describe('coverings: build steps, 3D pick and dimensions', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.addInitScript(() => localStorage.clear());
+    });
+
+    test('auto-generated steps install walls; pick mode toggles spans; dimension lines draw', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            globalThis.state.coverings.enabled = true;
+            globalThis.state.coverings.spans.forEach((s, i) => { s.lower = 'plywood'; s.table = i === 0; });
+            globalThis.syncCoveringsUIFromState();
+            globalThis.requestRender();
+        });
+        const modules = await page.evaluate(() => globalThis.state.modules);
+        await expect.poll(() => page.evaluate(() => globalThis.threeRenderer.coveringWallGroup.children.length)).toBe(modules);
+
+        // Wall meshes are parts: the generated sequence installs them after the roof
+        const titles = await page.evaluate(() => {
+            const data = globalThis.buildLinkageGeometry({ useCache: true });
+            return globalThis.generateDefaultBuildSteps(data, { modules: globalThis.state.modules, deployedAngleDeg: 135 }).map(s => s.title);
+        });
+        expect(titles).toContain('Install the lower wall panels');
+        expect(titles).toContain('Fit the tables');
+        const parts = await page.evaluate(() => globalThis.collectParts(globalThis.buildLinkageGeometry({ useCache: true })).filter(p => p.kind === 'wall').length);
+        expect(parts).toBe(modules + 1);
+
+        // Pick mode: a raycast through a wall mesh's screen position hits that span
+        const group = page.locator('#sidebar .group[data-group="coverings"]');
+        if (await group.evaluate(el => el.classList.contains('collapsed'))) await group.locator('.group-title').click();
+        await page.locator('#btn-cov-pick').scrollIntoViewIfNeeded();
+        await page.locator('#btn-cov-pick').click();
+        await expect.poll(() => page.evaluate(() => globalThis.state.coverings.pickMode)).toBe(true);
+        await expect(page.locator('#viewport')).toHaveClass(/cov-picking/);
+        // Use the exported picker with the projected point of the first wall
+        const picked = await page.evaluate(() => {
+            const tr = globalThis.threeRenderer;
+            // the wall nearest the camera (nothing can be in front of it), in a span without a table
+            const sc = tr.structureGroup.position;
+            const camPos = tr.mainCamera.position;
+            const dist = (m) => { const c = m.userData.covering.center; const w = new THREE.Vector3(c.x - sc.x, c.y - sc.y, c.z - sc.z); tr.structureGroup.localToWorld(w); return w.distanceTo(camPos); };
+            const mesh = tr.coveringWallGroup.children.filter(m => m.userData.covering.spanIndex !== 0).sort((a, b) => dist(a) - dist(b))[0];
+            const shape = mesh.userData.covering;
+            const world = new THREE.Vector3(shape.center.x - sc.x, shape.center.y - sc.y, shape.center.z - sc.z);
+            tr.structureGroup.localToWorld(world);
+            const ndc = world.clone().project(tr.mainCamera);
+            const rect = document.getElementById('canvas-webgl').getBoundingClientRect();
+            const x = rect.left + (ndc.x + 1) / 2 * rect.width;
+            const y = rect.top + (1 - ndc.y) / 2 * rect.height;
+            return { x, y, expected: shape.spanIndex, got: globalThis.pickCoveringAt(x, y) };
+        });
+        expect(picked.got).toBeTruthy();
+        expect(picked.got.spanIndex).toBe(picked.expected);
+        expect(picked.got.band).toBe('lower');
+        // A real click at that point cycles plywood → fabric
+        await page.mouse.click(picked.x, picked.y);
+        await expect.poll(() => page.evaluate((i) => globalThis.state.coverings.spans[i].lower, picked.expected)).toBe('fabric');
+        await page.keyboard.press('Escape');
+        await expect.poll(() => page.evaluate(() => globalThis.state.coverings.pickMode)).toBe(false);
+
+        // Dimension lines: three per visible covering
+        await page.locator('#chk-cov-dims').check();
+        await expect.poll(() => page.evaluate(() => globalThis.threeRenderer.coveringDimGroup.children.length)).toBe((modules + 1) * 3);
+        expect(errors).toEqual([]);
+    });
+});

@@ -751,6 +751,7 @@ function partObjectFromHit(object) {
         if (ud.bracket) return { kind: 'bracket', obj: ud.bracket };
         if (ud.placement) return { kind: 'placement', obj: ud.placement };
         if (ud.panel) return { kind: 'panel', obj: ud.panel };
+        if (ud.covering) return { kind: 'wall', obj: ud.covering };
         o = o.parent;
     }
     return null;
@@ -853,6 +854,8 @@ const _moduleExports = {
     selectBuildStep: selectStep,
     pickBuildTargetAt: pickAt,
     autoGenerateBuildSteps: autoGenerateSteps,
+    setBuildStepPickActive: setPickActive,
+    isBuildStepPickActive: () => !!ui.pick.active,
 };
 
 bridgeGlobals(_moduleExports, 'buildStepsUi');

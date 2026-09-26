@@ -182,3 +182,42 @@ describe('part-keys: selectors', () => {
         expect(selectorLabel({ kind: 'beam', stackType: 'vertical' })).toBe('V-beam · all modules');
     });
 });
+
+describe('part-keys: coverings (wall kind)', () => {
+    const wall = (spanIndex, band, coverType = 'plywood') => ({
+        type: 'covering', kind: coverType === 'fabric' ? 'fabric' : (band === 'table' ? 'table' : 'wall'), band, spanIndex, moduleIndex: spanIndex, coverType,
+        corners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }],
+        slabCorners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }, { x: 0, y: 0, z: 0.5 }, { x: 90, y: 0, z: 0.5 }, { x: 80, y: 48, z: 5.5 }, { x: 10, y: 48, z: 5.5 }],
+        center: { x: 45, y: 24, z: 2.5 },
+    });
+    const data = () => ({ beams: [], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [], coverings: { supported: true, shapes: [wall(0, 'lower'), wall(0, 'upper', 'fabric'), wall(0, 'table'), wall(3, 'lower')] } });
+
+    it('collects covering shapes as wall parts with stable keys and labels', () => {
+        const parts = collectParts(data());
+        const walls = parts.filter(p => p.kind === 'wall');
+        expect(walls).toHaveLength(4);
+        expect(walls.map(w => w.key)).toEqual(['wall:s0:lower', 'wall:s0:upper', 'wall:s0:table', 'wall:s3:lower']);
+        expect(describePart(walls[0].obj)).toBe('Lower plywood wall, span 1');
+        expect(describePart(walls[1].obj)).toBe('Upper fabric, span 1');
+        expect(describePart(walls[2].obj)).toBe('Table, span 1');
+        expect(partKey(walls[3].obj)).toBe('wall:s3:lower');
+    });
+
+    it('selectors match by band, cover type and span', () => {
+        const d = data();
+        expect(resolveTargets(d, [{ kind: 'wall', band: 'lower', coverType: 'plywood' }]).walls).toHaveLength(2);
+        expect(resolveTargets(d, [{ kind: 'wall', band: 'upper' }]).walls).toHaveLength(1);
+        expect(resolveTargets(d, [{ kind: 'wall', spanIndex: 3 }]).walls).toHaveLength(1);
+        const exact = selectorForPart(d.coverings.shapes[2]);
+        expect(exact).toEqual({ kind: 'wall', spanIndex: 0, band: 'table' });
+        expect(resolveTargets(d, [exact]).items).toHaveLength(1);
+        expect(selectorLabel({ kind: 'wall', band: 'lower', coverType: 'plywood' })).toBe('Lower walls · all spans');
+        expect(selectorLabel({ kind: 'wall', band: 'table', spanIndex: 2 })).toBe('Tables · span 3');
+    });
+
+    it('bounds come from the slab corners', () => {
+        const b = partsBounds(collectParts(data()).filter(p => p.key === 'wall:s0:lower'));
+        expect(b.min).toEqual({ x: 0, y: 0, z: 0 });
+        expect(b.max).toEqual({ x: 90, y: 48, z: 5.5 });
+    });
+});

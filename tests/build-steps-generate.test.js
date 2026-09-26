@@ -241,3 +241,42 @@ describe('generateDefaultBuildSteps', () => {
         expect(partKey({})).toBeNull();
     });
 });
+
+describe('coverings in generated steps', () => {
+    const wall = (spanIndex, band, coverType = 'plywood') => ({
+        type: 'covering', kind: coverType === 'fabric' ? 'fabric' : (band === 'table' ? 'table' : 'wall'), band, spanIndex, moduleIndex: spanIndex, coverType,
+        corners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }], center: { x: 45, y: 24, z: 2.5 },
+    });
+    const panel = (i) => ({ type: 'panel', index: i, center: { x: i * 40, y: 100, z: 0 }, width: 39, length: 65, thickness: 1.5, axisX: { x: 1, y: 0, z: 0 }, axisY: { x: 0, y: 1, z: 0 }, axisZ: { x: 0, y: 0, z: 1 } });
+
+    it('places lower walls, fabric, tables and upper coverings after the roof, one span at a time', () => {
+        const data = { beams: [], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [panel(0)],
+            coverings: { supported: true, shapes: [wall(0, 'lower'), wall(1, 'lower'), wall(2, 'lower', 'fabric'), wall(0, 'table'), wall(0, 'upper', 'fabric')] } };
+        const steps = generateDefaultBuildSteps(data, { modules: 3, deployedAngleDeg: 135 });
+        const titles = steps.map(s => s.title);
+        const iPanels = titles.indexOf('Mount the solar panels');
+        const iWalls = titles.indexOf('Install the lower wall panels');
+        const iFabric = titles.indexOf('Hang the lower fabric bands');
+        const iTables = titles.indexOf('Fit the tables');
+        const iUpper = titles.indexOf('Install the upper coverings');
+        expect(iPanels).toBeGreaterThanOrEqual(0);
+        expect(iWalls).toBeGreaterThan(iPanels);
+        expect(iFabric).toBeGreaterThan(iWalls);
+        expect(iTables).toBeGreaterThan(iFabric);
+        expect(iUpper).toBeGreaterThan(iTables);
+        const wallsStep = steps[iWalls];
+        expect(wallsStep.kind).toBe('place');
+        expect(wallsStep.op.sequential).toBe(true);
+        expect(wallsStep.op.approach).toBe('radial');
+        expect(wallsStep.durationMs).toBe(700 * 2 + 800);
+        expect(steps[iTables].op.approach).toBe('above');
+        expect(steps[iTables].targets).toEqual([{ kind: 'wall', band: 'table' }]);
+    });
+
+    it('adds the deploy step when only coverings exist, and nothing when none do', () => {
+        const withWalls = generateDefaultBuildSteps({ beams: [], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [], coverings: { supported: true, shapes: [wall(0, 'lower')] } }, { modules: 2 });
+        expect(withWalls.map(s => s.title)).toEqual(['Deploy the structure', 'Install the lower wall panels']);
+        const none = generateDefaultBuildSteps({ beams: [], bolts: [], brackets: [], washers: [], hardwareAssemblyPlacements: [], panels: [], coverings: null }, { modules: 2 });
+        expect(none).toEqual([]);
+    });
+});

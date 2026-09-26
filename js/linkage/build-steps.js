@@ -881,7 +881,12 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     const rcp = has({ kind: 'beam', stackType: 'support-beam-reciprocal' });
     const rcpBolts = has({ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] });
     const panels = has({ kind: 'panel' });
-    if (deployed !== null || support || rcp || panels) {
+    const lowerWalls = has({ kind: 'wall', band: 'lower', coverType: 'plywood' });
+    const lowerFabric = has({ kind: 'wall', band: 'lower', coverType: 'fabric' });
+    const tables = has({ kind: 'wall', band: 'table' });
+    const upper = has({ kind: 'wall', band: 'upper' });
+    const coverings = lowerWalls || lowerFabric || tables || upper;
+    if (deployed !== null || support || rcp || panels || coverings) {
         mk('view', { title: 'Deploy the structure', notes: 'Open the scissor ring to its deployed angle before adding the roof.', targets: [], view: view(deployed), transitionMs: 2500, durationMs: 800 });
     }
     if (support) mk('place', { title: 'Install radial support beams', notes: 'Lay the radial support beams across the top ring.', targets: [{ kind: 'beam', stackType: 'support-beam' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
@@ -892,6 +897,17 @@ export function generateDefaultBuildSteps(data, opts = {}) {
         mk('place', { title: 'Mount the solar panels', notes: 'Lift each panel onto the support beams in order and clamp it down.', targets: [{ kind: 'panel' }], view: view(deployed),
             op: { approach: 'above', travelIn: 30, sequential: true }, durationMs: Math.min(12000, Math.max(2000, 600 * count + 800)) });
     }
+
+    // 5. Coverings: walls, tables and fabric go on after the roof, from the outside in
+    const coverStep = (title, notes, sel, approach) => {
+        const count = resolveTargets(data, [sel], parts).items.length;
+        mk('place', { title, notes, targets: [sel], view: view(deployed),
+            op: { approach, travelIn: 30, sequential: true }, durationMs: Math.min(12000, Math.max(2000, 700 * count + 800)) });
+    };
+    if (lowerWalls) coverStep('Install the lower wall panels', 'Stand each plywood wall against the outside face of the uprights and screw it to the V-beams; back any seams with a batten.', { kind: 'wall', band: 'lower', coverType: 'plywood' }, 'radial');
+    if (lowerFabric) coverStep('Hang the lower fabric bands', 'Grommet the lower fabric panels and lace them to the uprights, tensioning evenly.', { kind: 'wall', band: 'lower', coverType: 'fabric' }, 'radial');
+    if (tables) coverStep('Fit the tables', 'Drop each table onto the top edge of its lower wall and fix it with cleats on the uprights.', { kind: 'wall', band: 'table' }, 'above');
+    if (upper) coverStep('Install the upper coverings', 'Fit the upper plywood or fabric bands between the lower band and the top ring.', { kind: 'wall', band: 'upper' }, 'radial');
 
     return steps;
 }

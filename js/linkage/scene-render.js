@@ -92,6 +92,7 @@ import { partKey } from './part-keys.js';
         if (threeRenderer.coveringFabricGroup) clearGroup(threeRenderer.coveringFabricGroup);
         if (threeRenderer.coveringTableGroup) clearGroup(threeRenderer.coveringTableGroup);
         if (threeRenderer.coveringPickGroup) clearGroup(threeRenderer.coveringPickGroup);
+        if (threeRenderer.coveringDimGroup) clearGroup(threeRenderer.coveringDimGroup);
         
         // Check if a beam is colliding
         const isColliding = (beam) => state.collisions.some(c => c.beam === beam || c.other === beam);
@@ -148,6 +149,18 @@ import { partKey } from './part-keys.js';
                 offsetMesh(mesh);
                 groupFor[shape.kind].add(mesh);
             });
+            if (state.coverings && state.coverings.showDimensions && typeof globalThis.createMeasurementLine3D === 'function') {
+                const fmt = (v) => (typeof globalThis.formatInchesFraction === 'function' ? globalThis.formatInchesFraction(v, 16) : `${v.toFixed(1)}"`);
+                const off = (p) => ({ x: p.x - sc.x, y: p.y - sc.y, z: p.z - sc.z });
+                (cov.shapes || []).forEach(shape => {
+                    if (!shown[shape.kind] || !shape.corners3D || shape.corners3D.length < 4) return;
+                    const [bl, br, tr, tl] = shape.corners3D.map(off);
+                    const o = { markerRadius: 0.8, labelScale: 26, labelLift: 3 };
+                    globalThis.createMeasurementLine3D(bl, br, fmt(shape.widthBottomIn), 0xf0ad4e, threeRenderer.coveringDimGroup, o);
+                    globalThis.createMeasurementLine3D(tl, tr, fmt(shape.widthTopIn), 0x00d2d3, threeRenderer.coveringDimGroup, o);
+                    globalThis.createMeasurementLine3D(bl, tl, `${fmt(shape.slantHeightIn)}${shape.kind === 'table' ? '' : ` @ ${shape.tiltFromVerticalDeg.toFixed(1)}°`}`, 0x2ecc71, threeRenderer.coveringDimGroup, o);
+                });
+            }
             if (state.coverings && state.coverings.pickMode) {
                 const covered = new Set((cov.shapes || []).filter(s => s.band !== 'table').map(s => `${s.spanIndex}:${s.band}`));
                 (cov.pickQuads || []).forEach(q => {

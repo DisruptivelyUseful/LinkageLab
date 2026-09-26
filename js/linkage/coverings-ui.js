@@ -267,6 +267,81 @@ function escapeHtml(s) {
 }
 
 // ----------------------------------------------------------------------------
+// 3D pick mode: click a span in the viewport to cycle its covering
+// ----------------------------------------------------------------------------
+
+const pick = { raycaster: null, pointer: null, downX: 0, downY: 0, bound: false };
+
+function setCoveringsPickMode(on) {
+    const c = cov();
+    const want = !!on && c.enabled;
+    if (c.pickMode === want) { syncPickButton(); return; }
+    c.pickMode = want;
+    const vp = $('viewport');
+    if (vp) vp.classList.toggle('cov-picking', want);
+    if (want && typeof globalThis.isBuildStepPickActive === 'function' && globalThis.isBuildStepPickActive()) {
+        globalThis.setBuildStepPickActive(false); // one picker at a time
+    }
+    if (want) showToast('Click a span to cycle none → plywood → fabric (Shift-click toggles its table). Esc to stop.', 'info', 3000);
+    syncPickButton();
+    requestRender();
+}
+
+function syncPickButton() {
+    const btn = $('btn-cov-pick');
+    if (btn) btn.classList.toggle('active', !!cov().pickMode);
+}
+
+/**
+ * Raycasts the covering meshes / empty-span quads under a canvas point.
+ * @returns {{spanIndex:number, band:string}|null}
+ */
+function pickCoveringAt(clientX, clientY) {
+    if (typeof THREE === 'undefined' || !globalThis.threeRenderer || !threeRenderer.mainCamera || !threeRenderer.coveringGroup) return null;
+    const canvas = $('canvas-webgl');
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    if (!pick.raycaster) { pick.raycaster = new THREE.Raycaster(); pick.pointer = new THREE.Vector2(); }
+    pick.pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    pick.pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+    pick.raycaster.setFromCamera(pick.pointer, threeRenderer.mainCamera);
+    const hits = pick.raycaster.intersectObjects([threeRenderer.coveringGroup], true);
+    for (const hit of hits) {
+        let o = hit.object;
+        while (o) {
+            if (o.visible === false) break;
+            const ud = o.userData || {};
+            if (ud.coveringPick) return { spanIndex: ud.coveringPick.spanIndex, band: ud.coveringPick.band };
+            if (ud.covering && ud.covering.band !== 'table') return { spanIndex: ud.covering.spanIndex, band: ud.covering.band };
+            if (ud.covering) return { spanIndex: ud.covering.spanIndex, band: 'table' };
+            o = o.parent;
+        }
+    }
+    return null;
+}
+
+function bindCoveringPick() {
+    if (pick.bound) return;
+    const canvas = $('canvas-webgl');
+    if (!canvas) return;
+    pick.bound = true;
+    canvas.addEventListener('mousedown', (e) => { pick.downX = e.clientX; pick.downY = e.clientY; });
+    canvas.addEventListener('mouseup', (e) => {
+        if (!cov().pickMode || e.button !== 0) return;
+        if (Math.hypot(e.clientX - pick.downX, e.clientY - pick.downY) > 4) return; // orbit drag, not a click
+        const hit = pickCoveringAt(e.clientX, e.clientY);
+        if (!hit) { showToast('No span under the cursor', 'warning', 1200); return; }
+        cycleSpanBand(hit.spanIndex, e.shiftKey ? 'table' : hit.band);
+        const span = cov().spans[hit.spanIndex];
+        if (span) showToast(`Span ${hit.spanIndex + 1} ${e.shiftKey ? 'table' : hit.band}: ${e.shiftKey ? (span.table ? 'on' : 'off') : span[hit.band]}`, 'success', 1200);
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && cov().pickMode) { setCoveringsPickMode(false); e.stopPropagation(); }
+    }, true);
+}
+
+// ----------------------------------------------------------------------------
 // Cut file downloads
 // ----------------------------------------------------------------------------
 
@@ -334,6 +409,9 @@ function syncCoveringsUIFromState() {
     const chkW = $('chk-cov-show-walls'); if (chkW) chkW.checked = c.visibility.walls !== false;
     const chkF = $('chk-cov-show-fabric'); if (chkF) chkF.checked = c.visibility.fabric !== false;
     const chkT = $('chk-cov-show-tables'); if (chkT) chkT.checked = c.visibility.tables !== false;
+    const chkD = $('chk-cov-dims'); if (chkD) chkD.checked = !!c.showDimensions;
+    syncPickButton();
+    const vp = $('viewport'); if (vp) vp.classList.toggle('cov-picking', !!c.pickMode);
     updateModeHint(c, lastCoverings);
     renderCoveringRingPicker(true);
 }
@@ -348,6 +426,7 @@ function initCoveringsUI() {
 
     bindCheck('chk-coverings', () => c.enabled, (v) => {
         cov().enabled = v;
+        if (!v) setCoveringsPickMode(false);
         updateModeHint(cov(), lastCoverings);
         if (v && cov().spans.every(s => s.lower === 'none' && s.upper === 'none')) {
             showToast('Coverings on: click a wedge in the ring, or use Enclose', 'info');
@@ -387,6 +466,8 @@ function initCoveringsUI() {
     });
     on('btn-cov-guide', () => { if (typeof globalThis.showBuildGuide === 'function') globalThis.showBuildGuide(); });
     on('btn-cov-cutfiles', () => exportCoveringCutFiles());
+    on('btn-cov-pick', () => setCoveringsPickMode(!cov().pickMode));
+    bindCoveringPick();
 
     bindPair('sl-cov-split', 'nb-cov-split', () => cov().splitHeightIn, (v) => { cov().splitHeightIn = v; }, { min: 1, max: 600 });
     bindPair('sl-cov-bottom', 'nb-cov-bottom', () => cov().bottomIn, (v) => { cov().bottomIn = v; }, { min: 0, max: 600 });
@@ -429,6 +510,7 @@ function initCoveringsUI() {
     bindCheck('chk-cov-show-walls', () => cov().visibility.walls, (v) => { cov().visibility.walls = v; });
     bindCheck('chk-cov-show-fabric', () => cov().visibility.fabric, (v) => { cov().visibility.fabric = v; });
     bindCheck('chk-cov-show-tables', () => cov().visibility.tables, (v) => { cov().visibility.tables = v; });
+    bindCheck('chk-cov-dims', () => cov().showDimensions, (v) => { cov().showDimensions = v; });
 
     syncCoveringsUIFromState();
 }
@@ -440,8 +522,10 @@ const _moduleExports = {
     updateCoveringsReadout,
     cycleSpanBand,
     exportCoveringCutFiles,
+    setCoveringsPickMode,
+    pickCoveringAt,
 };
 
 bridgeGlobals(_moduleExports, 'coveringsUI');
 
-export { initCoveringsUI, syncCoveringsUIFromState, renderCoveringRingPicker, updateCoveringsReadout, cycleSpanBand, exportCoveringCutFiles };
+export { initCoveringsUI, syncCoveringsUIFromState, renderCoveringRingPicker, updateCoveringsReadout, cycleSpanBand, exportCoveringCutFiles, setCoveringsPickMode, pickCoveringAt };

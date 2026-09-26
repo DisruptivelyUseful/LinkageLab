@@ -15,7 +15,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 
 /** Part kinds this module understands. */
-export const PART_KINDS = ['beam', 'bolt', 'washer', 'bracket', 'placement', 'hwpart', 'panel'];
+export const PART_KINDS = ['beam', 'bolt', 'washer', 'bracket', 'placement', 'hwpart', 'panel', 'wall'];
 
 const STACK_TYPE_LABELS = {
     'horizontal-bottom': 'Bottom H-beam',
@@ -77,6 +77,7 @@ export function partKind(obj) {
     if (obj.assemblyId && obj.partId) return 'hwpart';
     if (obj.assemblyId) return 'placement';
     if (obj.holeDistance !== undefined && obj.pos) return 'bracket';
+    if (obj.type === 'covering') return 'wall';
     if (obj.type === 'panel' || (obj.width !== undefined && obj.length !== undefined && obj.center && obj.axisX)) return 'panel';
     return null;
 }
@@ -113,6 +114,8 @@ export function partKey(obj, kind = partKind(obj)) {
         }
         case 'panel':
             return `panel:${num(obj.index, num(obj.panelIndex, 0))}`;
+        case 'wall':
+            return `wall:s${num(obj.spanIndex, 0)}:${obj.band || 'lower'}`;
         default:
             return null;
     }
@@ -183,6 +186,10 @@ export function describePart(obj, kind = partKind(obj)) {
             return `${obj.partLabel || obj.partId} in ${describePart(obj.placement, 'placement')}`;
         case 'panel':
             return `Solar panel ${num(obj.index, 0) + 1}`;
+        case 'wall': {
+            const what = obj.band === 'table' ? 'Table' : `${obj.band === 'upper' ? 'Upper' : 'Lower'} ${obj.coverType === 'fabric' ? 'fabric' : 'plywood wall'}`;
+            return `${what}, span ${num(obj.spanIndex, 0) + 1}`;
+        }
         default:
             return 'Part';
     }
@@ -246,6 +253,10 @@ export function selectorForPart(obj, kind = partKind(obj)) {
         case 'panel':
             copy('index', num(obj.index, 0));
             return sel;
+        case 'wall':
+            copy('spanIndex', num(obj.spanIndex, 0));
+            copy('band', obj.band);
+            return sel;
         default:
             return null;
     }
@@ -270,6 +281,8 @@ export function groupSelectorForPart(obj, kind = partKind(obj)) {
     } else if (kind === 'bracket' || kind === 'placement') {
         sel.moduleIndex = exact.moduleIndex;
         if (exact.assemblyId) sel.assemblyId = exact.assemblyId;
+    } else if (kind === 'wall') {
+        sel.band = exact.band; // every covering in the same band
     } else {
         return exact;
     }
@@ -285,6 +298,7 @@ const SELECTOR_FIELDS = {
     placement: ['assemblyId', 'moduleIndex', 'ring', 'cap', 'arrayIndex'],
     hwpart: ['assemblyId', 'moduleIndex', 'ring', 'cap', 'arrayIndex', 'partId', 'copyIndex', 'renderAxisKey'],
     panel: ['index'],
+    wall: ['spanIndex', 'band', 'coverType', 'moduleIndex'],
 };
 
 function fieldValue(obj, kind, field) {
@@ -375,6 +389,7 @@ export function collectParts(data) {
     push('bracket', data && data.brackets);
     push('placement', data && data.hardwareAssemblyPlacements);
     push('panel', data && data.panels);
+    push('wall', data && data.coverings && data.coverings.shapes);
     return out;
 }
 
@@ -385,7 +400,7 @@ export function collectParts(data) {
 export function resolveTargets(data, selectors, parts = null) {
     const all = parts || collectParts(data);
     const sels = Array.isArray(selectors) ? selectors : (selectors ? [selectors] : []);
-    const result = { items: [], keys: new Set(), beams: [], bolts: [], washers: [], brackets: [], placements: [], panels: [] };
+    const result = { items: [], keys: new Set(), beams: [], bolts: [], washers: [], brackets: [], placements: [], panels: [], walls: [] };
     if (!sels.length) return result;
     for (const rec of all) {
         if (result.keys.has(rec.key)) continue;
@@ -421,6 +436,10 @@ export function partPoints(obj, kind = partKind(obj)) {
             return obj.worldPos ? [obj.worldPos] : partPoints(obj.placement, 'placement');
         case 'panel':
             if (Array.isArray(obj.corners) && obj.corners.length) return obj.corners;
+            return obj.center ? [obj.center] : [];
+        case 'wall':
+            if (Array.isArray(obj.slabCorners3D) && obj.slabCorners3D.length) return obj.slabCorners3D;
+            if (Array.isArray(obj.corners3D) && obj.corners3D.length) return obj.corners3D;
             return obj.center ? [obj.center] : [];
         default:
             return [];
@@ -462,6 +481,12 @@ export function selectorLabel(sel) {
     else if (kind === 'placement') parts.push(`${sel.assemblyId || 'Hardware'} assembly`);
     else if (kind === 'hwpart') parts.push(`${sel.partId || 'part'} (${sel.assemblyId || 'assembly'})`);
     else if (kind === 'panel') parts.push(sel.index !== undefined && sel.index !== '*' ? `Solar panel ${sel.index + 1}` : 'Solar panels');
+    else if (kind === 'wall') {
+        const band = sel.band === 'table' ? 'Tables' : (sel.band === 'upper' ? 'Upper' : (sel.band === 'lower' ? 'Lower' : 'All')) + (sel.coverType === 'fabric' ? ' fabric' : (sel.coverType === 'plywood' ? ' walls' : ' coverings'));
+        parts.push(band);
+        if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`span ${sel.spanIndex + 1}`);
+        else parts.push('all spans');
+    }
     else parts.push(kind === '*' ? 'All parts' : kind.charAt(0).toUpperCase() + kind.slice(1) + 's');
     if (sel.ring && sel.ring !== '*') parts.push(sel.ring);
     if (sel.role && sel.role !== '*') parts.push(sel.role);
@@ -470,7 +495,7 @@ export function selectorLabel(sel) {
         parts.push(Array.isArray(sel.moduleIndex)
             ? `modules ${sel.moduleIndex.map(i => i + 1).join(',')}`
             : (typeof sel.moduleIndex === 'object' ? `modules ${sel.moduleIndex.min + 1}-${sel.moduleIndex.max + 1}` : `module ${sel.moduleIndex + 1}`));
-    } else if (kind !== 'panel' && kind !== '*') {
+    } else if (kind !== 'panel' && kind !== 'wall' && kind !== '*') {
         parts.push('all modules');
     }
     if (sel.layerIndex !== undefined && sel.layerIndex !== '*') parts.push(`layer ${sel.layerIndex + 1}`);

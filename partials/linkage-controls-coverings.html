@@ -22,6 +22,9 @@
                         <button type="button" class="btn-sm" id="btn-cov-tables" title="Toggle a table on every span that has a plywood lower wall">Tables</button>
                         <button type="button" class="btn-sm" id="btn-cov-clear">Clear</button>
                     </div>
+                    <div class="ctrl-row">
+                        <button type="button" class="btn-sm btn-block" id="btn-cov-pick" title="Click a span in the 3D view to cycle its covering (Shift-click toggles the table). Esc to stop.">Pick spans in 3D view</button>
+                    </div>
 
                     <div class="subhead rule-above">Bands</div>
                     <div class="ctrl-row">
@@ -195,6 +198,7 @@
                         <label class="chk-label"><input type="checkbox" id="chk-cov-show-walls" checked> Walls</label>
                         <label class="chk-label"><input type="checkbox" id="chk-cov-show-fabric" checked> Fabric</label>
                         <label class="chk-label"><input type="checkbox" id="chk-cov-show-tables" checked> Tables</label>
+                        <label class="chk-label" title="Bottom width, top width and slant height on each covering"><input type="checkbox" id="chk-cov-dims"> Dimensions</label>
                     </div>
 
                     <div id="cov-readout" class="diag-panel">
