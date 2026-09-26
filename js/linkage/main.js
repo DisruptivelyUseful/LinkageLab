@@ -15,6 +15,7 @@ import { initThreeJS } from './renderer-3d.js';
 import { scheduleLinkageViewportRefresh } from './viewport-refresh.js';
 import { initViewportInput } from './viewport-input.js';
 import { initBuildStepsUI } from './build-steps-ui.js';
+import { initCoveringsUI } from './coverings-ui.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -24,6 +25,7 @@ import { initBuildStepsUI } from './build-steps-ui.js';
         initUIBindings();
         initHardwareUI();
         initBuildStepsUI();
+        initCoveringsUI();
         
         // Add ARIA labels for accessibility
         document.getElementById('canvas').setAttribute('role', 'img');
@@ -153,6 +155,8 @@ import { initBuildStepsUI } from './build-steps-ui.js';
             localStorage.setItem('linkageLab_config', JSON.stringify(config));
             patchProjectDocumentLinkageSlice(extractLinkageSliceFromConfig(config));
         }, 8000);
+        // Feature modules with hand-wired controls (coverings, …) call this after mutating state.
+        bridgeGlobals({ scheduleAutoSave: autoSave }, 'mainAutosave');
         
         // Add auto-save listener (only for number inputs, not sliders during drag)
         // Sliders are already handled by updateState which is debounced

@@ -21,6 +21,7 @@ import {
     resetSupportBeamsToDefaults,
 } from './linkage-geometry.js';
 import { threeRenderer, updateMainCamera } from './renderer-3d.js';
+import { createDefaultCoverings, normalizeCoverings, resizeCoveringSpans, serializeCoverings } from './coverings-geometry.js';
 import { syncUI } from './state-sync.js';
 
 // ============================================================================
@@ -308,6 +309,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (c.washerH !== undefined) state.costWasherH = c.washerH;
             if (c.bracket !== undefined) state.costBracket = c.bracket;
             if (c.solarPanel !== undefined) state.costSolarPanel = c.solarPanel;
+            if (c.plywoodSheet !== undefined) state.costPlywoodSheet = c.plywoodSheet;
+            if (c.fabricYard !== undefined) state.costFabricYard = c.fabricYard;
+            if (c.grommet !== undefined) state.costGrommet = c.grommet;
             // Volume-based auto pricing settings
             if (c.autoLumber !== undefined) state.autoLumberPricing = c.autoLumber;
             if (c.refBeam) {
@@ -344,6 +348,15 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (ib.scale !== undefined) state.ibc.scale = ib.scale;
             ibcStackLayoutCacheKey = '';
         }
+
+        // Coverings: absent block resets to defaults (like supportBeams) so stale
+        // selections never carry over between loaded designs.
+        if (config.coverings && typeof config.coverings === 'object') {
+            state.coverings = normalizeCoverings(config.coverings, state.modules);
+        } else {
+            state.coverings = createDefaultCoverings(state.modules);
+        }
+        resizeCoveringSpans(state.coverings, state.modules);
     }
     
     /**
@@ -489,6 +502,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 rotationYDeg: state.ibc.rotationYDeg,
                 scale: state.ibc.scale
             },
+
+            // Coverings: plywood walls / tables / fabric between uprights
+            coverings: serializeCoverings(state.coverings),
             
             // Solar panel configuration
             panels: {
@@ -632,6 +648,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 washerH: state.costWasherH,            // H-stack washers
                 bracket: state.costBracket,
                 solarPanel: state.costSolarPanel,
+                plywoodSheet: state.costPlywoodSheet,
+                fabricYard: state.costFabricYard,
+                grommet: state.costGrommet,
                 // Volume-based auto pricing settings
                 autoLumber: state.autoLumberPricing,
                 refBeam: {
@@ -648,7 +667,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 bolts: state.showBolts,
                 hardwareFullDetail: state.showHardwareFullDetail,
                 solarPanels: state.solarPanels.enabled,
-                ibc: state.ibc.enabled
+                ibc: state.ibc.enabled,
+                coverings: !!(state.coverings && state.coverings.enabled)
             },
             
             // Camera/viewport state for debugging and default view in simulate mode
@@ -1029,6 +1049,9 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             
             // Support beams (independent from solar panels)
             syncSupportBeamsUIFromState();
+
+            // Coverings sidebar (module loads after this one; global lookup avoids a cycle)
+            if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
             
             // Panel lift (top panels)
             const slPanelLift = document.getElementById('sl-panel-lift');

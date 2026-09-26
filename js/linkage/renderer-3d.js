@@ -31,6 +31,12 @@ const threeRenderer = {
     humanScaleGroup: null,    // Group for human scale reference figure
     ibcReferenceGroup: null,  // Column root (child of structureGroup); sits on beam footprint
     ibcPivot: null,           // Y-rotation + stacked tank clones
+    coveringGroup: null,      // Coverings root (child of structureGroup): walls / fabric / tables / pick quads / dims
+    coveringWallGroup: null,
+    coveringFabricGroup: null,
+    coveringTableGroup: null,
+    coveringPickGroup: null,
+    coveringDimGroup: null,
     measurementGroup: null,   // Group for 3D measurement lines
     gridHelper: null       // Grid helper mesh
 };
@@ -147,6 +153,21 @@ function initThreeJS() {
     threeRenderer.ibcPivot = new THREE.Group();
     threeRenderer.ibcReferenceGroup.add(threeRenderer.ibcPivot);
     threeRenderer.structureGroup.add(threeRenderer.ibcReferenceGroup);
+
+    // Coverings (plywood walls, fabric, tables) rotate with the structure
+    threeRenderer.coveringGroup = new THREE.Group();
+    threeRenderer.coveringGroup.name = 'Coverings';
+    threeRenderer.coveringWallGroup = new THREE.Group();
+    threeRenderer.coveringFabricGroup = new THREE.Group();
+    threeRenderer.coveringTableGroup = new THREE.Group();
+    threeRenderer.coveringPickGroup = new THREE.Group();
+    threeRenderer.coveringDimGroup = new THREE.Group();
+    threeRenderer.coveringGroup.add(threeRenderer.coveringWallGroup);
+    threeRenderer.coveringGroup.add(threeRenderer.coveringFabricGroup);
+    threeRenderer.coveringGroup.add(threeRenderer.coveringTableGroup);
+    threeRenderer.coveringGroup.add(threeRenderer.coveringPickGroup);
+    threeRenderer.coveringGroup.add(threeRenderer.coveringDimGroup);
+    threeRenderer.structureGroup.add(threeRenderer.coveringGroup);
     
     // Create group for 3D measurement lines
     threeRenderer.measurementGroup = new THREE.Group();
@@ -1711,6 +1732,109 @@ function clearGroup(group) {
 }
 
 
+// ============================================================================
+// COVERINGS (plywood walls / fabric / tables)
+// ============================================================================
+
+const COVERING_COLORS = {
+    wall: 0xd4b27a,
+    table: 0xc9a86a,
+    fabric: 0xe6e2d3,
+};
+
+/**
+ * Builds a closed slab (6 quads) from 8 corners: [4 on one face, 4 on the opposite
+ * face, same winding]. Winding is fixed per face so normals point outward.
+ */
+function buildSlabGeometry(c) {
+    const cx = c.reduce((a, p) => a + p.x, 0) / 8;
+    const cy = c.reduce((a, p) => a + p.y, 0) / 8;
+    const cz = c.reduce((a, p) => a + p.z, 0) / 8;
+    const quads = [
+        [0, 1, 2, 3], // face A
+        [4, 5, 6, 7], // face B
+        [0, 1, 5, 4], // bottom edge
+        [1, 2, 6, 5], // right edge
+        [2, 3, 7, 6], // top edge
+        [3, 0, 4, 7], // left edge
+    ];
+    const pos = [];
+    quads.forEach(q => {
+        const p0 = c[q[0]], p1 = c[q[1]], p2 = c[q[2]], p3 = c[q[3]];
+        // outward test on the face normal
+        const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
+        const bx = p2.x - p0.x, by = p2.y - p0.y, bz = p2.z - p0.z;
+        const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+        const fx = (p0.x + p1.x + p2.x + p3.x) / 4 - cx;
+        const fy = (p0.y + p1.y + p2.y + p3.y) / 4 - cy;
+        const fz = (p0.z + p1.z + p2.z + p3.z) / 4 - cz;
+        const flip = (nx * fx + ny * fy + nz * fz) < 0;
+        const tri = flip ? [p0, p2, p1, p0, p3, p2] : [p0, p1, p2, p0, p2, p3];
+        tri.forEach(p => pos.push(p.x, p.y, p.z));
+    });
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
+    return geo;
+}
+
+function coveringMaterialFor(kind) {
+    if (kind === 'fabric') {
+        return getCachedMaterial('covering-fabric', () => new THREE.MeshStandardMaterial({
+            color: COVERING_COLORS.fabric, roughness: 1, metalness: 0,
+            transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false,
+        }));
+    }
+    const color = kind === 'table' ? COVERING_COLORS.table : COVERING_COLORS.wall;
+    return getCachedMaterial(`covering-${kind}`, () => new THREE.MeshStandardMaterial({
+        color, roughness: 0.85, metalness: 0, side: THREE.DoubleSide,
+    }));
+}
+
+/**
+ * Mesh for one covering shape (from coverings-geometry). Tagged with
+ * userData.covering for picking / build steps.
+ */
+function createCoveringMesh(shape) {
+    const corners = shape.slabCorners3D && shape.slabCorners3D.length === 8
+        ? shape.slabCorners3D
+        : shape.corners3D.concat(shape.corners3D);
+    const mesh = new THREE.Mesh(buildSlabGeometry(corners), coveringMaterialFor(shape.kind));
+    mesh.userData.covering = shape;
+    mesh.userData.type = 'covering';
+    mesh.castShadow = (state.shadowsEnabled || false) && shape.kind !== 'fabric';
+    mesh.receiveShadow = state.shadowsEnabled || false;
+    mesh.renderOrder = shape.kind === 'fabric' ? 3 : 1;
+    // Edge outline so plywood reads as a sheet, not a blob
+    if (shape.kind !== 'fabric') {
+        const edges = new THREE.EdgesGeometry(mesh.geometry, 20);
+        const line = new THREE.LineSegments(edges, getCachedMaterial('covering-edge', () =>
+            new THREE.LineBasicMaterial({ color: 0x5a4a30, transparent: true, opacity: 0.6 })));
+        line.userData.coveringEdge = true;
+        mesh.add(line);
+    }
+    return mesh;
+}
+
+/** Translucent quad for an empty span/band so it can be clicked in pick mode. */
+function createCoveringPickMesh(quad, highlighted = false) {
+    const c = quad.corners3D;
+    const geo = new THREE.BufferGeometry();
+    const pos = [c[0], c[1], c[2], c[0], c[2], c[3]].flatMap(p => [p.x, p.y, p.z]);
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
+    const mat = getCachedMaterial(highlighted ? 'covering-pick-hi' : 'covering-pick', () => new THREE.MeshBasicMaterial({
+        color: highlighted ? 0x67e8f9 : 0x22d3ee, transparent: true, opacity: highlighted ? 0.35 : 0.14,
+        side: THREE.DoubleSide, depthWrite: false,
+    }));
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.userData.coveringPick = { spanIndex: quad.spanIndex, band: quad.band };
+    mesh.userData.type = 'coveringPick';
+    mesh.renderOrder = 4;
+    return mesh;
+}
+
+
 const _moduleExports = {
     threeRenderer,
     ibcGlbState,
@@ -1733,6 +1857,9 @@ const _moduleExports = {
     createBracketMesh,
     createBoltMesh,
     createWasherMesh,
+    createCoveringMesh,
+    createCoveringPickMesh,
+    buildSlabGeometry,
     clearGroup,
     ibcStackLayoutCacheKey,
 };
@@ -1745,4 +1872,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'renderer3d');
 
-export { threeRenderer, ibcGlbState, getCachedMaterial, getCachedGeometry, invalidateMeshCaches, initThreeJS, createMainCamera, updateMainCamera, setupThreeJSLighting, updateSunPosition, updateGroundPlane, updateGridVisibility, updateGridPosition, rgbToThreeColor, getBeamBoltIntersections, buildBeamMeshWithHoles, createBeamMesh, createPanelMesh, createBracketMesh, createBoltMesh, createWasherMesh, clearGroup, ibcStackLayoutCacheKey };
+export { threeRenderer, ibcGlbState, getCachedMaterial, getCachedGeometry, invalidateMeshCaches, initThreeJS, createMainCamera, updateMainCamera, setupThreeJSLighting, updateSunPosition, updateGroundPlane, updateGridVisibility, updateGridPosition, rgbToThreeColor, getBeamBoltIntersections, buildBeamMeshWithHoles, createBeamMesh, createPanelMesh, createBracketMesh, createBoltMesh, createWasherMesh, createCoveringMesh, createCoveringPickMesh, buildSlabGeometry, clearGroup, ibcStackLayoutCacheKey };

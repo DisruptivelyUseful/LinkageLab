@@ -1,0 +1,220 @@
+        <div class="group collapsed" data-group="coverings">
+            <button type="button" class="group-title">Coverings</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <label class="chk-label" title="Plywood walls, tables and tensioned fabric between the uprights"><input type="checkbox" id="chk-coverings"> Enable Coverings</label>
+                </div>
+                <div id="cov-mode-hint" class="hint hint-accent" style="display:none;"></div>
+                <div id="cov-controls" style="display:none;">
+                    <div class="subhead">Spans</div>
+                    <div class="hint">Click a wedge to cycle <b>none → plywood → fabric</b>. Outer ring = lower band, middle = upper band, centre = table on the lower wall.</div>
+                    <div id="cov-ring-picker" class="cov-ring-picker" role="group" aria-label="Span coverings"></div>
+                    <div class="cov-legend">
+                        <span><i class="cov-swatch cov-swatch-ply"></i>Plywood</span>
+                        <span><i class="cov-swatch cov-swatch-fabric"></i>Fabric</span>
+                        <span><i class="cov-swatch cov-swatch-table"></i>Table</span>
+                        <span><i class="cov-swatch cov-swatch-none"></i>None</span>
+                    </div>
+                    <div class="cov-quick">
+                        <button type="button" class="btn-sm" id="btn-cov-enclose" title="Plywood lower band + fabric upper band on every span">Enclose</button>
+                        <button type="button" class="btn-sm" id="btn-cov-all-ply" title="Plywood on both bands of every span">All plywood</button>
+                        <button type="button" class="btn-sm" id="btn-cov-all-fabric" title="Fabric on both bands of every span">All fabric</button>
+                        <button type="button" class="btn-sm" id="btn-cov-tables" title="Toggle a table on every span that has a plywood lower wall">Tables</button>
+                        <button type="button" class="btn-sm" id="btn-cov-clear">Clear</button>
+                    </div>
+
+                    <div class="subhead rule-above">Bands</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Split height</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-split" min="12" max="120" step="0.25" value="48">
+                            <input type="number" id="nb-cov-split" min="1" max="600" step="0.25" value="48">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <button type="button" class="btn-sm btn-block" id="btn-cov-fit-sheet" title="Set the split height so the lower band is exactly one sheet tall along the slant">Fit lower band to one sheet</button>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Bottom</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-bottom" min="0" max="24" step="0.25" value="0">
+                            <input type="number" id="nb-cov-bottom" min="0" max="600" step="0.25" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Top clearance</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-top-clear" min="0" max="12" step="0.25" value="1">
+                            <input type="number" id="nb-cov-top-clear" min="0" max="60" step="0.25" value="1">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Edge gap to upright</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-edge-gap" min="0" max="2" step="0.0625" value="0.25">
+                            <input type="number" id="nb-cov-edge-gap" min="0" max="6" step="0.0625" value="0.25">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Lean</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-cov-lean">
+                                <option value="inward" selected>Inward (follow inner V-beams)</option>
+                                <option value="outward">Outward (follow outer V-beams)</option>
+                                <option value="vertical">Vertical</option>
+                                <option value="custom">Custom tilt</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ctrl-row" id="cov-tilt-row" style="display:none;">
+                        <div class="ctrl-head"><span>Tilt (+ = top inward)</span><span class="unit">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-cov-tilt" min="-60" max="60" step="0.5" value="0">
+                            <input type="number" id="nb-cov-tilt" min="-80" max="80" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Mount on beam face</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-cov-mount">
+                                <option value="outside" selected>Outside face</option>
+                                <option value="centerline">Beam centreline</option>
+                                <option value="inside">Inside face</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Plywood stock</div>
+                    <div class="sub-block">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Sheet size</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-cov-sheet-preset">
+                                    <option value="4x8" selected>4 × 8 ft</option>
+                                    <option value="5x5">5 × 5 ft</option>
+                                    <option value="4x10">4 × 10 ft</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Width × Length</span><span class="unit">in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-cov-sheet-w" min="6" max="240" step="0.5" value="48">
+                                <span class="x">×</span>
+                                <input type="number" id="nb-cov-sheet-l" min="6" max="480" step="0.5" value="96">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-sheet-t" min="0.1" max="3" step="0.125" value="0.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Orientation</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-cov-sheet-orient">
+                                    <option value="auto" selected>Auto (fewest sheets)</option>
+                                    <option value="landscape">Landscape (long side down)</option>
+                                    <option value="portrait">Portrait (short side down)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Kerf</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-kerf" min="0" max="1" step="0.03125" value="0.125">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Price per sheet</span><span class="unit">$</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cost-plywood" min="0" max="1000" step="0.5" value="45">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Fabric</div>
+                    <div class="sub-block">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Roll width</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-roll" min="12" max="240" step="1" value="60">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Hem / Seam</span><span class="unit">in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-cov-hem" min="0" max="12" step="0.25" value="1">
+                                <span class="x">/</span>
+                                <input type="number" id="nb-cov-seam" min="0" max="6" step="0.125" value="0.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Tension shrink</span><span class="unit">%</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-stretch" min="0" max="20" step="0.5" value="2">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Grommet spacing</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-grommet" min="2" max="120" step="1" value="12">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Price per yard / grommet</span><span class="unit">$</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-cost-fabric" min="0" max="500" step="0.25" value="8">
+                                <span class="x">/</span>
+                                <input type="number" id="nb-cost-grommet" min="0" max="50" step="0.05" value="0.25">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Tables</div>
+                    <div class="sub-block">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Depth (inward)</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-cov-table-depth" min="6" max="60" step="0.5" value="24">
+                                <input type="number" id="nb-cov-table-depth" min="1" max="240" step="0.5" value="24">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Thickness</span><span class="unit">in</span></div>
+                            <div class="input-wrap">
+                                <input type="number" id="nb-cov-table-t" min="0.1" max="3" step="0.125" value="0.75">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Display</div>
+                    <div class="chk-grid">
+                        <label class="chk-label"><input type="checkbox" id="chk-cov-show-walls" checked> Walls</label>
+                        <label class="chk-label"><input type="checkbox" id="chk-cov-show-fabric" checked> Fabric</label>
+                        <label class="chk-label"><input type="checkbox" id="chk-cov-show-tables" checked> Tables</label>
+                    </div>
+
+                    <div id="cov-readout" class="diag-panel">
+                        <div class="kv-grid">
+                            <span class="k">Spans covered:</span><span id="cov-stat-spans">0</span>
+                            <span class="k">Plywood walls:</span><span id="cov-stat-walls">0</span>
+                            <span class="k">Fabric bands:</span><span id="cov-stat-fabric">0</span>
+                            <span class="k">Tables:</span><span id="cov-stat-tables">0</span>
+                            <span class="k">Wall tilt:</span><span id="cov-stat-tilt">--</span>
+                            <span class="k">Lower band:</span><span id="cov-stat-lower">--</span>
+                            <span class="k">Upper band:</span><span id="cov-stat-upper">--</span>
+                            <span class="k">Plywood area:</span><span id="cov-stat-ply-area">--</span>
+                            <span class="k">Sheets (min):</span><span id="cov-stat-sheets">--</span>
+                            <span class="k">Fabric area:</span><span id="cov-stat-fabric-area">--</span>
+                        </div>
+                        <div id="cov-warnings" class="cov-warnings"></div>
+                    </div>
+                    <div class="ctrl-row">
+                        <button type="button" class="btn-sm btn-block" id="btn-cov-guide" title="Open the Build Guide (sheet cuts and fabric patterns are listed there)">Open Build Guide</button>
+                    </div>
+                </div>
+            </div>
+        </div>

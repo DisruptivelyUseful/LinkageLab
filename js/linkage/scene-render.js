@@ -88,6 +88,10 @@ import { partKey } from './part-keys.js';
         clearGroup(threeRenderer.boltGroup);
         clearGroup(threeRenderer.washerGroup);
         clearGroup(threeRenderer.hardwareAssemblyGroup);
+        if (threeRenderer.coveringWallGroup) clearGroup(threeRenderer.coveringWallGroup);
+        if (threeRenderer.coveringFabricGroup) clearGroup(threeRenderer.coveringFabricGroup);
+        if (threeRenderer.coveringTableGroup) clearGroup(threeRenderer.coveringTableGroup);
+        if (threeRenderer.coveringPickGroup) clearGroup(threeRenderer.coveringPickGroup);
         
         // Check if a beam is colliding
         const isColliding = (beam) => state.collisions.some(c => c.beam === beam || c.other === beam);
@@ -130,6 +134,32 @@ import { partKey } from './part-keys.js';
                 offsetMesh(mesh);
                 threeRenderer.panelGroup.add(mesh);
             });
+        }
+
+        // Coverings: plywood walls / fabric / tables between uprights (hidden in part view)
+        const cov = data.coverings;
+        if (!detail && cov && cov.supported && threeRenderer.coveringGroup) {
+            const vis = (state.coverings && state.coverings.visibility) || {};
+            const groupFor = { wall: threeRenderer.coveringWallGroup, fabric: threeRenderer.coveringFabricGroup, table: threeRenderer.coveringTableGroup };
+            const shown = { wall: vis.walls !== false, fabric: vis.fabric !== false, table: vis.tables !== false };
+            (cov.shapes || []).forEach(shape => {
+                if (!shown[shape.kind]) return;
+                const mesh = createCoveringMesh(shape);
+                offsetMesh(mesh);
+                groupFor[shape.kind].add(mesh);
+            });
+            if (state.coverings && state.coverings.pickMode) {
+                const covered = new Set((cov.shapes || []).filter(s => s.band !== 'table').map(s => `${s.spanIndex}:${s.band}`));
+                (cov.pickQuads || []).forEach(q => {
+                    if (covered.has(`${q.spanIndex}:${q.band}`)) return;
+                    const mesh = createCoveringPickMesh(q);
+                    offsetMesh(mesh);
+                    threeRenderer.coveringPickGroup.add(mesh);
+                });
+            }
+        }
+        if (typeof globalThis.updateCoveringsReadout === 'function') {
+            try { globalThis.updateCoveringsReadout(data); } catch (e) { console.warn('[Coverings] readout failed:', e); }
         }
         
         // Add brackets if enabled (hidden when high-detail assemblies are shown)

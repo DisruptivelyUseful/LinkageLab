@@ -1,4 +1,5 @@
 import { DEFAULT_CAM_DIST, INCHES_PER_METER } from '../../js/linkage/constants.js';
+import { createDefaultCoverings } from '../../js/linkage/coverings-geometry.js';
 
 /** Minimal linkage state for unit tests (mirrors app-state shape). */
 export function createTestState(overrides = {}) {
@@ -68,6 +69,9 @@ export function createTestState(overrides = {}) {
         costWasherH: 0.1,
         costBracket: 5,
         costSolarPanel: 150,
+        costPlywoodSheet: 45,
+        costFabricYard: 8,
+        costGrommet: 0.25,
         showBrackets: true,
         showBolts: false,
         showHardwareFullDetail: false,
@@ -124,6 +128,7 @@ export function createTestState(overrides = {}) {
             cachedModules: null,
             cachedPivotPct: null,
         },
+        coverings: createDefaultCoverings(overrides.modules ?? 12),
         ibc: {
             enabled: false,
             count: 2,

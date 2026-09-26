@@ -49,6 +49,7 @@ function undo() {
             }
         });
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+        if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         requestRender();
         showToast('Undone', 'info');
     }
@@ -64,6 +65,7 @@ function redo() {
             }
         });
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+        if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         requestRender();
         showToast('Redone', 'info');
     }

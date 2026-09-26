@@ -16,6 +16,7 @@ import { invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { validateInput } from './validation.js';
 import { saveStateToHistory } from './history.js';
 import { bindNumericInput, setNumericInputValue } from './numeric-input.js';
+import { resizeCoveringSpans } from './coverings-geometry.js';
 
     function updateState(key, val) {
         try {
@@ -111,6 +112,12 @@ import { bindNumericInput, setNumericInputValue } from './numeric-input.js';
                     generateWallFaceButtons();
                 }
                 
+                // Keep one covering entry per span when the module count changes
+                if (key === 'modules' && state.coverings) {
+                    resizeCoveringSpans(state.coverings, state.modules);
+                    if (typeof globalThis.renderCoveringRingPicker === 'function') globalThis.renderCoveringRingPicker();
+                }
+
                 // Also invalidate animation closed angle cache when relevant params change
                 if (['modules', 'hLengthFt', 'pivotPct', 'hobermanAng', 'pivotAng', 'offsetTopIn', 'offsetBotIn'].includes(key)) {
                     state.animation.cachedClosedAngle = undefined;

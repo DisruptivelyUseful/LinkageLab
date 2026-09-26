@@ -901,6 +901,7 @@ function applyBuildStepScene(data, sc) {
     if (threeRenderer.gridHelper && bench) threeRenderer.gridHelper.visible = false;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = !bench;
     if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = false; // reference tank distracts from the build
+    if (threeRenderer.coveringGroup) threeRenderer.coveringGroup.visible = false; // coverings are not build-step parts yet
     if (threeRenderer.benchGroup && !bench) threeRenderer.benchGroup.visible = false;
     if (!bench) pb.benchSummary = '';
 
@@ -936,6 +937,7 @@ function restoreSceneAfterPlayback() {
     if (threeRenderer.panelGroupRoot) threeRenderer.panelGroupRoot.visible = true;
     if (threeRenderer.humanScaleGroup) threeRenderer.humanScaleGroup.visible = true;
     if (threeRenderer.ibcReferenceGroup) threeRenderer.ibcReferenceGroup.visible = true;
+    if (threeRenderer.coveringGroup) threeRenderer.coveringGroup.visible = true;
     if (threeRenderer.benchGroup) threeRenderer.benchGroup.visible = false;
     if (state.buildPlayback) state.buildPlayback.benchSummary = '';
 }

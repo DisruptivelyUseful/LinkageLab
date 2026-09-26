@@ -721,6 +721,14 @@ import { bindNumericInput } from './numeric-input.js';
                     }
                 });
             }
+            if (threeRenderer.coveringGroup) {
+                threeRenderer.coveringGroup.traverse((child) => {
+                    if (child.isMesh && !child.userData.coveringPick) {
+                        child.castShadow = state.shadowsEnabled;
+                        child.receiveShadow = state.shadowsEnabled;
+                    }
+                });
+            }
             
             requestRender();
         };

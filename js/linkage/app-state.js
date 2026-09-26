@@ -4,6 +4,7 @@
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
+import { createDefaultCoverings } from './coverings-geometry.js';
 
 /** Application state object containing all configuration parameters */
 export const state = {
@@ -91,6 +92,9 @@ export const state = {
     costBolt: 0.75,
     costBracket: 5.00,
     costSolarPanel: 150.00,
+    costPlywoodSheet: 45.00,   // per sheet (coverings)
+    costFabricYard: 8.00,      // per linear yard at roll width (coverings)
+    costGrommet: 0.25,         // each (coverings)
 
     // Weight constants (lbs)
     woodDensity: 0.018,     // Wood density in lbs per cubic inch (typical softwood: ~30-35 lbs/ft³ = ~0.017-0.020 lbs/in³)
@@ -203,6 +207,8 @@ export const state = {
         rotationYDeg: 0,
         scale: INCHES_PER_METER
     },
+    /** Coverings: plywood walls / tables / fabric between uprights (see coverings-geometry.js) */
+    coverings: createDefaultCoverings(8),
     measurePoints: [],
     collisions: [],
     animation: {

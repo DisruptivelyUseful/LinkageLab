@@ -319,6 +319,7 @@ export const LINKAGE_CONFIG_KEYS = [
     'panelsVisibleAngle',
     'ibc',
     'supportBeams',
+    'coverings',
 ];
 
 /** Pick linkage-oriented fields from a full getConfigSnapshot() object. */

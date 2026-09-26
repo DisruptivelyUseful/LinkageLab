@@ -125,3 +125,13 @@ describe('project-store', () => {
         expect(projectDocumentToLegacyUnified(resolveProjectDocument()).foldAngle).toBe(12.5);
     });
 });
+
+describe('project-store: coverings slice', () => {
+    it('keeps the coverings block in the linkage slice', async () => {
+        const mod = await import('../js/core/project-store.js');
+        expect(mod.LINKAGE_CONFIG_KEYS).toContain('coverings');
+        const slice = mod.extractLinkageSliceFromConfig({ structure: { modules: 4 }, coverings: { enabled: true, spans: [] }, junk: 1 });
+        expect(slice.coverings).toEqual({ enabled: true, spans: [] });
+        expect(slice.junk).toBeUndefined();
+    });
+});

@@ -84,3 +84,59 @@ describe('config-persistence', () => {
         expect(globalThis.state.supportBeams.enabled).toBe(false);
     });
 });
+
+describe('config-persistence: coverings', () => {
+    it('round-trips the coverings block and the enclosure costs', () => {
+        globalThis.state = createTestState({ modules: 8 });
+        globalThis.state.coverings.enabled = true;
+        globalThis.state.coverings.lean = 'vertical';
+        globalThis.state.coverings.splitHeightIn = 40;
+        globalThis.state.coverings.spans[2].lower = 'plywood';
+        globalThis.state.coverings.spans[2].table = true;
+        globalThis.state.coverings.spans[5].upper = 'fabric';
+        globalThis.state.coverings.pickMode = true;
+        globalThis.state.costPlywoodSheet = 52;
+        globalThis.state.costFabricYard = 11;
+        globalThis.state.costGrommet = 0.4;
+
+        const snapshot = getConfigSnapshot();
+        expect(snapshot.coverings.enabled).toBe(true);
+        expect(snapshot.coverings.spans).toHaveLength(8);
+        expect(snapshot.coverings.pickMode).toBeUndefined();
+        expect(snapshot.costs.plywoodSheet).toBe(52);
+        expect(snapshot.visibility.coverings).toBe(true);
+
+        globalThis.state = createTestState({ modules: 8 });
+        applyV30Config(JSON.parse(JSON.stringify(snapshot)));
+        const c = globalThis.state.coverings;
+        expect(c.enabled).toBe(true);
+        expect(c.lean).toBe('vertical');
+        expect(c.splitHeightIn).toBe(40);
+        expect(c.spans[2]).toEqual({ lower: 'plywood', upper: 'none', table: true });
+        expect(c.spans[5].upper).toBe('fabric');
+        expect(c.pickMode).toBe(false);
+        expect(globalThis.state.costPlywoodSheet).toBe(52);
+        expect(globalThis.state.costFabricYard).toBe(11);
+        expect(globalThis.state.costGrommet).toBe(0.4);
+    });
+
+    it('resets coverings to defaults when a config has no coverings block', () => {
+        globalThis.state = createTestState({ modules: 8 });
+        globalThis.state.coverings.enabled = true;
+        globalThis.state.coverings.spans[0].lower = 'plywood';
+        applyV30Config({ structure: { modules: 6 } });
+        expect(globalThis.state.coverings.enabled).toBe(false);
+        expect(globalThis.state.coverings.spans).toHaveLength(6);
+        expect(globalThis.state.coverings.spans.every(s => s.lower === 'none')).toBe(true);
+    });
+
+    it('resizes the span list to the loaded module count', () => {
+        globalThis.state = createTestState({ modules: 8 });
+        const snap = getConfigSnapshot();
+        snap.structure.modules = 10;
+        snap.coverings.spans[7].lower = 'fabric';
+        applyV30Config(snap);
+        expect(globalThis.state.coverings.spans).toHaveLength(10);
+        expect(globalThis.state.coverings.spans[7].lower).toBe('fabric');
+    });
+});

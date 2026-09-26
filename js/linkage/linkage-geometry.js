@@ -18,6 +18,7 @@ import { Beam3D } from './geometry-classes.js';
 import { solveLinkage } from './solver.js';
 import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
 import { requestRender } from './render-app.js';
 import { showToast } from '../core/feedback.js';
 
@@ -3347,6 +3348,7 @@ import { showToast } from '../core/feedback.js';
                 length: p.length,
                 thickness: p.thickness
             })) : [],
+            coverings: data.coverings ? snapshotCoverings(data.coverings, roundVec3ForExport) : null,
             maxRadius: +((data.structureBounds?.maxRadius ?? data.maxRad) || 0).toFixed(2),
             maxHeight: +((data.structureBounds?.maxHeight ?? data.maxHeight) || 0).toFixed(2),
             fixedBeams: state.useFixedBeams ? allBeams
@@ -3773,6 +3775,18 @@ import { showToast } from '../core/feedback.js';
             data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
             data.structureCenter = data.structureBounds.center;
             data.fullBounds = calculateBeamBounds(data.beams);
+        }
+
+        // Coverings (walls / tables / fabric) are derived from the recentered beams,
+        // so they are computed after the shift and never need shifting themselves.
+        data.coverings = null;
+        if (options.includeCoverings !== false && state.coverings && state.coverings.enabled) {
+            try {
+                data.coverings = computeCoverings(data, state.coverings, state);
+            } catch (e) {
+                console.warn('[Geometry] Could not compute coverings:', e);
+                data.coverings = null;
+            }
         }
     
         return data;
