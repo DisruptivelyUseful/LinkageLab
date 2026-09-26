@@ -92,3 +92,60 @@ test.describe('coverings', () => {
         await expect(page.locator('#cov-stat-tables')).toHaveText('1');
     });
 });
+
+test.describe('coverings: build guide and exports', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.addInitScript(() => localStorage.clear());
+    });
+
+    test('guide lists sheet cuts and fabric patterns; SVG, CSV and PDF exports run', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        await page.evaluate(() => {
+            globalThis.state.coverings.enabled = true;
+            globalThis.state.coverings.spans.forEach((s, i) => { s.lower = 'plywood'; s.upper = i % 2 ? 'fabric' : 'none'; s.table = i === 0; });
+            globalThis.syncCoveringsUIFromState();
+            globalThis.requestRender();
+        });
+        await expect(page.locator('#cov-stat-sheets')).not.toHaveText('--');
+        await expect(page.locator('#cov-stat-yards')).not.toHaveText('--');
+        await expect(page.locator('#cov-stat-cost')).toContainText('$');
+
+        // Build guide sections
+        await page.evaluate(() => globalThis.showBuildGuide());
+        const guide = page.locator('#guide-content');
+        await expect(guide).toContainText('Wall Panels & Sheet Cuts');
+        await expect(guide).toContainText('Fabric Panels');
+        await expect(guide).toContainText('Tables');
+        await expect(guide).toContainText('ENCLOSURE');
+        const modules = await page.evaluate(() => globalThis.state.modules);
+        await expect(guide.locator('.guide-coverings .guide-cut-svg svg')).toHaveCount(modules + modules / 2 + 1);
+        await expect(guide.locator('.guide-cut-table').first()).toContainText('@');
+        // editing the plywood price in the guide updates state, sidebar and total
+        const before = await page.evaluate(() => parseFloat(document.getElementById('guide-bom-grand-total').textContent.replace(/[$,]/g, '')));
+        const priceInput = guide.locator('input[data-bom-state="costPlywoodSheet"]');
+        await priceInput.fill('60');
+        await priceInput.dispatchEvent('input');
+        await expect.poll(() => page.evaluate(() => globalThis.state.costPlywoodSheet)).toBe(60);
+        await expect(page.locator('#nb-cost-plywood')).toHaveValue('60.00');
+        const after = await page.evaluate(() => parseFloat(document.getElementById('guide-bom-grand-total').textContent.replace(/[$,]/g, '')));
+        expect(after).toBeGreaterThan(before);
+
+        // Downloads: cut files (one per wall/table/fabric band), CSV and PDF
+        const downloads = [];
+        page.on('download', (d) => downloads.push(d.suggestedFilename()));
+        await page.evaluate(() => globalThis.exportCoveringCutFiles());
+        await expect.poll(() => downloads.length, { timeout: 15000 }).toBe(modules + modules / 2 + 1);
+        expect(downloads.filter(n => n.endsWith('-wall.svg'))).toHaveLength(modules);
+        expect(downloads.filter(n => n.endsWith('-fabric.svg'))).toHaveLength(modules / 2);
+        expect(downloads.filter(n => n.endsWith('-table.svg'))).toHaveLength(1);
+        await page.evaluate(() => globalThis.exportBOMcsv());
+        await expect.poll(() => downloads.some(n => n.endsWith('.csv'))).toBe(true);
+        await page.evaluate(() => globalThis.exportGuidePDF());
+        await expect.poll(() => downloads.some(n => n.endsWith('.pdf')), { timeout: 30000 }).toBe(true);
+        expect(errors).toEqual([]);
+    });
+});

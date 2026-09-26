@@ -7,6 +7,11 @@ import { state } from './app-state.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
 import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { computeCoveringCutPlan, coveringBomItems, coveringEnclosureCost, coveringEntryOverviewSvg } from './coverings-plan.js';
+import { describeMark } from './sheet-nesting.js';
+import { svgForInline } from '../core/svg-cut-file.js';
+import { formatInchesFraction } from '../core/unit-converter.js';
 
     function computeReciprocalDrillData(data) {
         const result = {
@@ -116,6 +121,163 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
         return result;
     }
     
+    /** Cut plan for the current geometry (null when coverings are off / unsupported). */
+    function getCoveringPlanForGuide(data) {
+        if (!data || !data.coverings || !data.coverings.supported || !state.coverings || !state.coverings.enabled) return null;
+        try {
+            const plan = computeCoveringCutPlan(data.coverings, state.coverings);
+            if (!plan || (plan.walls.length + plan.tables.length + plan.fabric.length) === 0) return null;
+            return plan;
+        } catch (e) {
+            console.warn('[BuildGuide] covering plan failed:', e);
+            return null;
+        }
+    }
+
+    const fr = (v) => formatInchesFraction(v, 16);
+    const esc = (s) => String(s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+    /** Fold-angle stamp shared by the covering sections. */
+    function coveringFoldNoteHtml() {
+        const foldDeg = radToDeg(state.foldAngle);
+        let closedDeg = null;
+        try { closedDeg = radToDeg(getOptimalClosedAngleForAnimation()); } catch (e) { /* no ring */ }
+        const off = closedDeg != null ? Math.abs(foldDeg - closedDeg) : 0;
+        const warn = off > 0.5
+            ? `<span style="color:#c0392b;font-weight:600;"> The ring is ${formatNumber(off, 1)}° away from its deployed angle (${formatNumber(closedDeg, 1)}°): set the fold angle before cutting.</span>`
+            : '';
+        return `<p class="guide-cut-note">All covering dimensions assume a fold angle of <b>${formatNumber(foldDeg, 1)}°</b>. Angles are measured in the sheet plane (miter cuts on a track saw); the bevel where two walls meet is listed separately.${warn}</p>`;
+    }
+
+    function coveringPieceRowsHtml(nest) {
+        return nest.pieces.map(p => {
+            const cuts = p.edges.filter(e => !e.isStock);
+            const cutText = p.isFullSheet
+                ? '<span class="muted">full sheet, no cuts</span>'
+                : cuts.map(e => `${fr(e.lengthIn)} @ ${formatNumber(e.angleDeg, 1)}°`).join('<br>');
+            const markText = p.marks.length
+                ? p.marks.map(m => esc(describeMark(m, fr))).join('<br>')
+                : '<span class="muted">—</span>';
+            return `<tr>
+                <td class="qty">${p.pieceId}</td>
+                <td>${fr(p.bboxW)} × ${fr(p.bboxH)}${p.isFullSheet ? '' : ` <span class="muted">(from ${fr(nest.cellW)} × ${fr(nest.cellH)})</span>`}</td>
+                <td>${cutText}</td>
+                <td>${markText}</td>
+            </tr>`;
+        }).join('');
+    }
+
+    function coveringWarningsHtml(list) {
+        if (!list || !list.length) return '';
+        return `<ul class="guide-cut-warnings">${list.map(w => `<li>${esc(w.message)}</li>`).join('')}</ul>`;
+    }
+
+    function coveringSheetCardHtml(entry, kindLabel) {
+        const s = entry.shape, n = entry.nest;
+        const overview = svgForInline(coveringEntryOverviewSvg(entry), { maxWidth: '100%' });
+        const bevel = s.edgeBevelDeg != null ? `${formatNumber(s.edgeBevelDeg, 1)}° (${formatNumber(s.dihedralToNextDeg, 1)}° between walls)` : '—';
+        const warnings = (s.warnings || []).concat(n.warnings || []);
+        return `
+            <div class="guide-cut-item">
+                <div class="guide-cut-title">${esc(s.label)} · ${kindLabel}</div>
+                <div class="guide-cut-body">
+                    <div class="guide-cut-svg">${overview}</div>
+                    <table class="guide-table guide-cut-dims">
+                        <tbody>
+                            <tr><td class="k">Bottom / top width</td><td>${fr(s.widthBottomIn)} / ${fr(s.widthTopIn)}</td></tr>
+                            <tr><td class="k">${s.kind === 'table' ? 'Depth' : 'Slant height'}</td><td>${fr(s.slantHeightIn)}${s.kind === 'table' ? '' : ` (${fr(s.verticalHeightIn)} vertical)`}</td></tr>
+                            <tr><td class="k">${s.kind === 'table' ? 'Surface' : 'Tilt from vertical'}</td><td>${s.kind === 'table' ? `horizontal at ${fr(s.yTop)}` : `${formatNumber(s.tiltFromVerticalDeg, 1)}° (top leans ${s.tiltFromVerticalDeg >= 0 ? 'inward' : 'outward'})`}</td></tr>
+                            <tr><td class="k">Side taper (L / R)</td><td>${formatNumber(s.sideTaperDeg.left, 1)}° / ${formatNumber(s.sideTaperDeg.right, 1)}° off square</td></tr>
+                            <tr><td class="k">Corner angles</td><td>${s.cornerAnglesDeg.map(a => formatNumber(a, 1) + '°').join(' · ')} (BL · BR · TR · TL)</td></tr>
+                            ${s.kind === 'table' ? '' : `<tr><td class="k">Bevel to next wall</td><td>${bevel}</td></tr>`}
+                            <tr><td class="k">Area / sheets</td><td>${formatNumber(s.areaIn2 / 144, 1)} ft² · ${n.sheetCount} sheet${n.sheetCount === 1 ? '' : 's'} ${n.orientation}, ${Math.round(n.utilization * 100)}% used</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <table class="guide-table guide-cut-table">
+                    <thead><tr><th>Piece</th><th>Finished size</th><th>Cuts (length @ angle from bottom edge)</th><th>Mark from sheet corner</th></tr></thead>
+                    <tbody>${coveringPieceRowsHtml(n)}</tbody>
+                </table>
+                ${coveringWarningsHtml(warnings)}
+            </div>`;
+    }
+
+    function coveringFabricCardHtml(entry) {
+        const s = entry.shape, p = entry.pattern;
+        const overview = svgForInline(coveringEntryOverviewSvg(entry), { maxWidth: '100%' });
+        const rows = p.panels.map(pn => `<tr>
+                <td class="qty">${esc(pn.label)}</td>
+                <td>${fr(pn.bboxW)} × ${fr(pn.bboxH)}</td>
+                <td>${pn.seamEdges.length ? pn.seamEdges.length + ' seam edge' + (pn.seamEdges.length === 1 ? '' : 's') : 'none'}</td>
+                <td>${pn.grommets.length}</td>
+                <td>${pn.fitsRoll ? 'yes' : '<span style="color:#c0392b;">no — widen the roll</span>'}</td>
+            </tr>`).join('');
+        return `
+            <div class="guide-cut-item">
+                <div class="guide-cut-title">${esc(s.label)} · Fabric</div>
+                <div class="guide-cut-body">
+                    <div class="guide-cut-svg">${overview}</div>
+                    <table class="guide-table guide-cut-dims">
+                        <tbody>
+                            <tr><td class="k">Opening (bottom / top × slant)</td><td>${fr(s.widthBottomIn)} / ${fr(s.widthTopIn)} × ${fr(s.slantHeightIn)}</td></tr>
+                            <tr><td class="k">Finished after ${p.stretchPct}% shrink</td><td>${fr(p.finishedBBox.w)} wide × ${fr(p.finishedBBox.h)} tall</td></tr>
+                            <tr><td class="k">Allowances</td><td>hem ${fr(p.hemIn)}, seam ${fr(p.seamIn)}</td></tr>
+                            <tr><td class="k">Panels / roll</td><td>${p.panelCount} on a ${fr(p.rollWidthIn)} roll · ${p.fabricYards} yd</td></tr>
+                            <tr><td class="k">Grommets</td><td>${p.grommetCount} every ${fr(p.grommetSpacingIn)}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <table class="guide-table guide-cut-table">
+                    <thead><tr><th>Panel</th><th>Cut size</th><th>Seams</th><th>Grommets</th><th>Fits roll</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            </div>`;
+    }
+
+    /**
+     * Build HTML for the covering sections (sheet cuts, tables, fabric patterns).
+     * Empty when coverings are disabled or unsupported.
+     */
+    function buildCoveringsGuideSectionHtml(data) {
+        const plan = getCoveringPlanForGuide(data);
+        if (!plan) return '';
+        const t = plan.totals;
+        const cards = [];
+        if (plan.walls.length) {
+            cards.push(`
+            <div class="guide-card guide-card-wide guide-coverings">
+                <div class="guide-card-header">Wall Panels &amp; Sheet Cuts</div>
+                <div class="guide-card-content">
+                    ${coveringFoldNoteHtml()}
+                    <p class="guide-cut-note">${plan.walls.length} plywood wall${plan.walls.length === 1 ? '' : 's'} from ${fr(plan.stock.widthIn)} × ${fr(plan.stock.lengthIn)} × ${fr(plan.stock.thicknessIn)} sheets: <b>${t.sheets} sheets</b> total (${t.fullSheets} uncut, ${t.cutPieces} cut), ${Math.round(t.utilization * 100)}% of the stock used${t.seams ? `, ${t.seams} seam${t.seams === 1 ? '' : 's'} to back with battens (${formatNumber(t.battenLinearIn / 12, 1)} ft)` : ''}. Piece IDs read row-column from the bottom-left of the wall; angles are measured from the sheet's bottom (long) edge.</p>
+                    ${plan.walls.map(w => coveringSheetCardHtml(w, 'Plywood wall')).join('')}
+                </div>
+            </div>`);
+        }
+        if (plan.tables.length) {
+            cards.push(`
+            <div class="guide-card guide-card-wide guide-coverings">
+                <div class="guide-card-header">Tables</div>
+                <div class="guide-card-content">
+                    <p class="guide-cut-note">Horizontal surfaces resting on the lower wall's top edge, ${fr(plan.tableCfg.thicknessIn)} thick, ${fr(plan.tableCfg.depthIn)} deep. The side edges follow the uprights, so they converge toward the centre.</p>
+                    ${plan.tables.map(w => coveringSheetCardHtml(w, 'Table')).join('')}
+                </div>
+            </div>`);
+        }
+        if (plan.fabric.length) {
+            cards.push(`
+            <div class="guide-card guide-card-wide guide-coverings">
+                <div class="guide-card-header">Fabric Panels</div>
+                <div class="guide-card-content">
+                    ${plan.walls.length ? '' : coveringFoldNoteHtml()}
+                    <p class="guide-cut-note">${plan.fabric.length} tensioned band${plan.fabric.length === 1 ? '' : 's'}: <b>${Math.ceil(t.fabricYards)} yd</b> of ${fr(plan.fabricCfg.rollWidthIn)} fabric, ${t.fabricPanels} panel${t.fabricPanels === 1 ? '' : 's'}, ${t.grommets} grommets. Patterns are the opening shrunk ${plan.fabricCfg.stretchPct}% for tension, plus hem and seam allowances; download the SVG cut files from the Coverings panel for full-scale patterns.</p>
+                    ${plan.fabric.map(coveringFabricCardHtml).join('')}
+                </div>
+            </div>`);
+        }
+        return cards.join('\n');
+    }
+
     /**
      * Build HTML for electrical / wiring sections when Solar Designer is active.
      */
@@ -323,7 +485,20 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
         const totalKw = totalWatts / 1000;
         
         const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost;
-        const totalCost = structureCost + solarPanelCost;
+        const coveringPlanForGuide = getCoveringPlanForGuide(data);
+        const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
+        const enclosureCostForGuide = coveringPlanForGuide ? coveringEnclosureCost(coveringPlanForGuide, state) : 0;
+        const enclosureBOMGuideRows = enclosureItemsForGuide.length ? `
+                                <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE</td></tr>
+                                ${enclosureItemsForGuide.map(it => `
+                                <tr data-bom-section="enclosure">
+                                    <td class="qty">${it.qty}×</td>
+                                    <td class="item">${it.item}</td>
+                                    <td class="price"><input type="number" class="guide-price-input" data-bom-state="${it.stateKey}" data-bom-qty="${it.qty}" data-bom-sidebar="${it.sidebarId}" value="${formatNumber(it.unit, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
+                                    <td class="total">$${formatNumber(it.total, 2)}</td>
+                                </tr>`).join('')}
+                                <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-enclosure" style="font-weight:700;">$${formatNumber(enclosureCostForGuide, 2)}</td></tr>` : '';
+        const totalCost = structureCost + solarPanelCost + enclosureCostForGuide;
         
         // Calculate weight (lbs) based on volume and density
         // Volume = width × thickness × length (all in inches)
@@ -596,6 +771,7 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
                                 </tr>
                                 <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-power" style="font-weight:700;">$${formatNumber(solarPanelCost, 2)}</td></tr>
                                 ` : ''}
+                                ${enclosureBOMGuideRows}
                             </tbody>
                         </table>
                         <div class="guide-total-row">
@@ -1014,6 +1190,8 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
                 </div>
             </div>
             
+            ${buildCoveringsGuideSectionHtml(data)}
+
             ${buildElectricalGuideSectionHtml()}
 
             ${buildStepsGuideSectionHtml()}
@@ -1688,6 +1866,7 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
     function recalcGuideBOM() {
         let structureTotal = 0;
         let powerTotal = 0;
+        let enclosureTotal = 0;
     
         document.querySelectorAll('#guide-bom-table .guide-price-input').forEach(input => {
             const price = parseFloat(input.value) || 0;
@@ -1704,6 +1883,7 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
     
             if (section === 'structure') structureTotal += lineTotal;
             else if (section === 'power') powerTotal += lineTotal;
+            else if (section === 'enclosure') enclosureTotal += lineTotal;
     
             if (sidebarId) {
                 const sidebarEl = document.getElementById(sidebarId);
@@ -1733,8 +1913,10 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
         if (structSub) structSub.textContent = '$' + formatNumber(structureTotal, 2);
         const powerSub = document.getElementById('guide-bom-subtotal-power');
         if (powerSub) powerSub.textContent = '$' + formatNumber(powerTotal, 2);
+        const enclosureSub = document.getElementById('guide-bom-subtotal-enclosure');
+        if (enclosureSub) enclosureSub.textContent = '$' + formatNumber(enclosureTotal, 2);
     
-        const grandTotal = structureTotal + powerTotal;
+        const grandTotal = structureTotal + powerTotal + enclosureTotal;
         const gtEl = document.getElementById('guide-bom-grand-total');
         if (gtEl) gtEl.textContent = '$' + formatNumber(grandTotal, 2);
         const statEl = document.getElementById('guide-stat-total');
@@ -1816,7 +1998,10 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
         const totalKw = totalWatts / 1000;
     
         const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost;
-        const totalCost = structureCost + solarPanelCost;
+        const coveringPlan = getCoveringPlanForGuide(data);
+        const enclosureItems = coveringPlan ? coveringBomItems(coveringPlan, state) : [];
+        const enclosureCost = coveringPlan ? coveringEnclosureCost(coveringPlan, state) : 0;
+        const totalCost = structureCost + solarPanelCost + enclosureCost;
     
         const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
         const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
@@ -1893,6 +2078,7 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
             data, moduleCount, splitBolts, nBolts,
             structureItems, structureCost,
             powerItems, powerCost: solarPanelCost,
+            enclosureItems, enclosureCost, coveringPlan,
             totalCost, totalWeight, structureWeight, solarPanelWeight,
             supportBeamCost: sbBom.supportBeamCost,
             supportBeamWeight: sbBom.supportBeamWeight,
@@ -2090,6 +2276,19 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
             ]);
         }
     
+        if (bom.enclosureItems && bom.enclosureItems.length > 0) {
+            bomRows.push([{ content: 'ENCLOSURE', colSpan: 4, styles: { fillColor: [230, 230, 235], fontStyle: 'bold', fontSize: 7.5, textColor: colors.sectionBg } }]);
+            bom.enclosureItems.forEach(r => {
+                bomRows.push([`${r.qty}x`, r.item, `$${formatNumber(r.unit, 2)}`, `$${formatNumber(r.total, 2)}`]);
+            });
+            bomRows.push([
+                { content: '', styles: { fillColor: colors.subtotalBg } },
+                { content: 'Enclosure Subtotal', styles: { fontStyle: 'bold', fillColor: colors.subtotalBg } },
+                { content: '', styles: { fillColor: colors.subtotalBg } },
+                { content: `$${formatNumber(bom.enclosureCost, 2)}`, styles: { fontStyle: 'bold', fillColor: colors.subtotalBg } }
+            ]);
+        }
+
         bomRows.push([
             { content: '', styles: { fillColor: colors.headerBg, textColor: colors.headerText } },
             { content: 'ESTIMATED TOTAL', styles: { fontStyle: 'bold', fillColor: colors.headerBg, textColor: colors.headerText, fontSize: 9 } },
@@ -2479,6 +2678,145 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
             );
         }
     
+        // ---- COVERINGS: WALL PANELS, TABLES, FABRIC ----
+        if (bom.coveringPlan) {
+            const plan = bom.coveringPlan;
+            const frP = (v) => formatInchesFraction(v, 16);
+
+            // Draws a y-up polygon (inches) scaled into a box at (bx, by) of width bw mm; returns height used (mm)
+            const drawPolyPdf = (poly, bx, by, bw, maxH, opts = {}) => {
+                const xs = poly.map(p => p.x), ys = poly.map(p => p.y);
+                const minX = Math.min(...xs, opts.minX ?? Infinity), maxX = Math.max(...xs, opts.maxX ?? -Infinity);
+                const minY = Math.min(...ys, opts.minY ?? Infinity), maxY = Math.max(...ys, opts.maxY ?? -Infinity);
+                const w = Math.max(1e-6, maxX - minX), h = Math.max(1e-6, maxY - minY);
+                const scale = Math.min(bw / w, maxH / h);
+                const px = (x) => bx + (x - minX) * scale;
+                const py = (y) => by + (maxY - y) * scale;
+                if (opts.grid) {
+                    doc.setDrawColor(150, 150, 150);
+                    doc.setLineDashPattern([1, 1], 0);
+                    opts.grid.forEach(g => doc.rect(px(g.x), py(g.y + g.h), g.w * scale, g.h * scale));
+                    doc.setLineDashPattern([], 0);
+                }
+                doc.setFillColor(...(opts.fill || [233, 216, 180]));
+                doc.setDrawColor(74, 58, 34);
+                doc.setLineWidth(0.3);
+                const pts = poly.map(p => [px(p.x), py(p.y)]);
+                const segs = pts.slice(1).map((p, i) => [p[0] - pts[i][0], p[1] - pts[i][1]]);
+                doc.lines(segs, pts[0][0], pts[0][1], [1, 1], 'FD', true);
+                doc.setLineWidth(0.2);
+                if (opts.labels) {
+                    doc.setFontSize(6.5);
+                    doc.setTextColor(...colors.text);
+                    opts.labels.forEach(l => doc.text(l.text, px(l.x), py(l.y) + (l.dy || 0), { align: l.align || 'center' }));
+                }
+                return h * scale;
+            };
+
+            const drawCoveringEntry = (entry, kindLabel) => {
+                const s = entry.shape, n = entry.nest;
+                checkPageBreak(70);
+                doc.setFontSize(8.5);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...colors.text);
+                doc.text(`${s.label} - ${kindLabel}`, margin, y + 3);
+                y += 6;
+                const poly = s.corners2D.map(p => ({ x: p.s, y: p.t }));
+                const grid = n ? n.pieces.map(p => ({ x: p.cellX, y: p.cellY, w: n.cellW, h: n.cellH })) : null;
+                const gridExt = n ? { minX: Math.min(...grid.map(g => g.x)), maxX: Math.max(...grid.map(g => g.x + g.w)), minY: 0, maxY: Math.max(...grid.map(g => g.y + g.h)) } : {};
+                const drawW = contentW * 0.5;
+                const used = drawPolyPdf(poly, margin, y, drawW, 45, {
+                    grid, ...gridExt,
+                    labels: [
+                        { x: (poly[0].x + poly[1].x) / 2, y: 0, dy: 3.5, text: `${frP(s.widthBottomIn)} bottom` },
+                        { x: (poly[2].x + poly[3].x) / 2, y: poly[2].y, dy: -1.2, text: `${frP(s.widthTopIn)} top` },
+                        ...(n ? n.pieces.map(p => ({ x: p.cellX + n.cellW / 2, y: p.cellY + n.cellH / 2, text: p.pieceId })) : []),
+                    ],
+                });
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(...colors.text);
+                const tx = margin + drawW + 6;
+                const lines = [
+                    `${frP(s.widthBottomIn)} bottom / ${frP(s.widthTopIn)} top x ${frP(s.slantHeightIn)} ${s.kind === 'table' ? 'deep' : 'slant'}`,
+                    s.kind === 'table' ? `Horizontal at ${frP(s.yTop)}` : `Tilt ${formatNumber(s.tiltFromVerticalDeg, 1)} deg from vertical`,
+                    `Side taper ${formatNumber(s.sideTaperDeg.left, 1)} / ${formatNumber(s.sideTaperDeg.right, 1)} deg off square`,
+                    `Corners ${s.cornerAnglesDeg.map(a => formatNumber(a, 1)).join(' / ')} deg (BL BR TR TL)`,
+                    s.kind !== 'table' && s.edgeBevelDeg != null ? `Bevel to next wall ${formatNumber(s.edgeBevelDeg, 1)} deg` : null,
+                    n ? `${n.sheetCount} sheet${n.sheetCount === 1 ? '' : 's'} ${n.orientation}, ${Math.round(n.utilization * 100)}% used` : null,
+                ].filter(Boolean);
+                lines.forEach((ln, i) => doc.text(ln, tx, y + 4 + i * 4.2));
+                y += Math.max(used, lines.length * 4.2 + 4) + 4;
+                if (n) {
+                    const body = n.pieces.map(p => [
+                        p.pieceId,
+                        `${frP(p.bboxW)} x ${frP(p.bboxH)}`,
+                        p.isFullSheet ? 'full sheet' : p.edges.filter(e => !e.isStock).map(e => `${frP(e.lengthIn)} @ ${formatNumber(e.angleDeg, 1)} deg`).join('\n'),
+                        p.marks.length ? p.marks.map(m => describeMark(m, frP)).join('\n') : '-',
+                    ]);
+                    doc.autoTable({
+                        startY: y,
+                        margin: { left: margin, right: margin },
+                        head: [['Piece', 'Size', 'Cuts (length @ angle from bottom edge)', 'Mark from sheet corner']],
+                        body,
+                        theme: 'grid',
+                        headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7, cellPadding: 1.8 },
+                        styles: { fontSize: 7, cellPadding: 1.6, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },
+                        columnStyles: { 0: { cellWidth: 14, fontStyle: 'bold' }, 1: { cellWidth: 32 }, 2: { cellWidth: 'auto' }, 3: { cellWidth: 62 } },
+                    });
+                    y = doc.lastAutoTable.finalY + 5;
+                }
+            };
+
+            const sectionHeader = (label) => {
+                checkPageBreak(24);
+                doc.setFillColor(...colors.sectionBg);
+                doc.rect(margin, y, contentW, 7, 'F');
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'bold');
+                doc.setTextColor(...colors.headerText);
+                doc.text(label, margin + 4, y + 5);
+                y += 10;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(7);
+                doc.setTextColor(...colors.muted);
+                doc.text(`All covering dimensions assume fold angle ${formatNumber(radToDeg(state.foldAngle), 1)} deg. Angles are in the sheet plane (miter cuts).`, margin, y);
+                y += 5;
+            };
+
+            if (plan.walls.length) {
+                sectionHeader('WALL PANELS & SHEET CUTS');
+                plan.walls.forEach(w => drawCoveringEntry(w, 'Plywood wall'));
+            }
+            if (plan.tables.length) {
+                sectionHeader('TABLES');
+                plan.tables.forEach(w => drawCoveringEntry(w, 'Table'));
+            }
+            if (plan.fabric.length) {
+                sectionHeader('FABRIC PANELS');
+                plan.fabric.forEach(f => {
+                    const s = f.shape, p = f.pattern;
+                    checkPageBreak(40);
+                    doc.setFontSize(8.5);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(...colors.text);
+                    doc.text(`${s.label} - Fabric`, margin, y + 3);
+                    y += 5;
+                    doc.autoTable({
+                        startY: y,
+                        margin: { left: margin, right: margin },
+                        head: [['Panel', 'Cut size', 'Seams', 'Grommets', 'Notes']],
+                        body: p.panels.map(pn => [pn.label, `${frP(pn.bboxW)} x ${frP(pn.bboxH)}`, String(pn.seamEdges.length), String(pn.grommets.length), pn.fitsRoll ? `fits ${frP(p.rollWidthIn)} roll` : 'does not fit roll']),
+                        foot: [[{ content: `Opening ${frP(s.widthBottomIn)} / ${frP(s.widthTopIn)} x ${frP(s.slantHeightIn)}; finished ${frP(p.finishedBBox.w)} x ${frP(p.finishedBBox.h)} after ${p.stretchPct}% shrink; hem ${frP(p.hemIn)}, seam ${frP(p.seamIn)}; ${p.fabricYards} yd`, colSpan: 5, styles: { fontStyle: 'normal', fontSize: 6.5, textColor: colors.muted } }]],
+                        theme: 'grid',
+                        headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7, cellPadding: 1.8 },
+                        styles: { fontSize: 7, cellPadding: 1.6, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },
+                    });
+                    y = doc.lastAutoTable.finalY + 5;
+                });
+            }
+        }
+
         // ---- BRACKET DETAIL ----
         const bracketCanvas = document.getElementById('guide-bracket-front');
         const bracketSideCanvas = document.getElementById('guide-bracket-side');
@@ -2656,6 +2994,16 @@ import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.
             });
             rows.push(['', '', '', 'Power Subtotal:', `$${formatNumber(bom.powerCost, 2)}`]);
         }
+
+        // ---- ENCLOSURE ----
+        if (bom.enclosureItems && bom.enclosureItems.length > 0) {
+            rows.push([]);
+            rows.push(['ENCLOSURE', '', '', '', '']);
+            bom.enclosureItems.forEach(r => {
+                rows.push(['', r.qty, r.item, `$${formatNumber(r.unit, 2)}`, `$${formatNumber(r.total, 2)}`]);
+            });
+            rows.push(['', '', '', 'Enclosure Subtotal:', `$${formatNumber(bom.enclosureCost, 2)}`]);
+        }
     
         // ---- GRAND TOTAL ----
         rows.push([]);
@@ -2725,6 +3073,7 @@ const _moduleExports = {
     exportBuildGuide,
     initBuildGuideHandlers,
     buildStepsGuideSectionHtml,
+    buildCoveringsGuideSectionHtml,
     fillGuideStepThumbnails,
 };
 

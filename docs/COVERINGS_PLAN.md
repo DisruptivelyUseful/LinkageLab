@@ -2,7 +2,7 @@
 
 > Design document for the Coverings sidebar feature. Written before implementation; update as phases land.
 >
-> **Status:** Phase 1 landed (geometry module `js/linkage/coverings-geometry.js`, sidebar partial + `js/linkage/coverings-ui.js`, rendering, GLB export, persistence, unit + e2e tests). Phases 2 and 3 are next.
+> **Status:** Phase 1 landed (geometry module `js/linkage/coverings-geometry.js`, sidebar partial + `js/linkage/coverings-ui.js`, rendering, GLB export, persistence, unit + e2e tests). Phase 2 landed (`js/linkage/sheet-nesting.js`, `js/linkage/fabric-patterns.js`, `js/core/svg-cut-file.js`, `js/core/download.js`, `js/linkage/coverings-plan.js`, SVG cut-file downloads, Build Guide / BOM / CSV / PDF sections, `formatInchesFraction`). Phase 3 is next.
 >
 > Running the e2e suite where the CDNs are unreachable: install `three@0.128.0 jspdf@2.5.1 jspdf-autotable@3.8.4 d3@7 topojson-client@3 world-atlas@2` into a scratch folder and set `LINKAGE_E2E_CDN_DIR=<that folder>`; point `PLAYWRIGHT_CHROMIUM_EXECUTABLE` at a local Chromium if the Playwright cache has none.
 

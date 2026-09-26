@@ -536,8 +536,15 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             uiStats.bSolarSubtotalRow.style.display = 'none';
         }
         
+        // Enclosure (coverings) cost, when enabled
+        let enclosureCost = 0;
+        if (data.coverings && data.coverings.supported && state.coverings && state.coverings.enabled
+            && typeof globalThis.computeCoveringCutPlan === 'function' && typeof globalThis.coveringEnclosureCost === 'function') {
+            try { enclosureCost = globalThis.coveringEnclosureCost(globalThis.computeCoveringCutPlan(data.coverings, state.coverings), state); } catch (e) { enclosureCost = 0; }
+        }
+
         // Calculate total cost (structure includes washers and support BOM)
-        const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + solarCost;
+        const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + solarCost + enclosureCost;
         uiStats.bt.innerText = formatNumber(totalCost, 2);
         if (uiStats.costTotalChip) uiStats.costTotalChip.innerText = '$' + formatNumber(totalCost, 2);
     

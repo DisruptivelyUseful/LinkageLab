@@ -317,6 +317,29 @@ function formatDecimalInchesTrimmed(inches, maxDecimals) {
 }
 
 /**
+ * Shop-style fractional inches, e.g. 22.1875 → 22 3/16". Rounds to 1/denom and
+ * reduces the fraction; whole numbers print without a fraction.
+ * @param {number} inches
+ * @param {number} [denom=16] - 8, 16, 32 or 64
+ * @param {{unit?:string}} [opts] - unit suffix (default ")"); '' for none
+ */
+function formatInchesFraction(inches, denom = 16, opts = {}) {
+    if (inches === null || inches === undefined || isNaN(inches)) return '—';
+    const unit = opts.unit !== undefined ? opts.unit : '"';
+    const d = [2, 4, 8, 16, 32, 64].includes(denom) ? denom : 16;
+    const sign = inches < 0 ? '-' : '';
+    const abs = Math.abs(inches);
+    let whole = Math.floor(abs);
+    let num = Math.round((abs - whole) * d);
+    if (num === d) { whole += 1; num = 0; }
+    let den = d;
+    while (num > 0 && num % 2 === 0 && den % 2 === 0) { num /= 2; den /= 2; }
+    if (num === 0) return `${sign}${whole}${unit}`;
+    if (whole === 0) return `${sign}${num}/${den}${unit}`;
+    return `${sign}${whole} ${num}/${den}${unit}`;
+}
+
+/**
  * Format a weight in lbs to the current display system.
  * Requires formatNumber to be available globally.
  */
@@ -648,7 +671,7 @@ const unitConverter = {
     stateToDisplay, displayToState,
     inputDisplayToImperial,
     formatWeightWithUnit, formatDimensionWithUnit, formatForceWithUnit,
-    trimTrailingZerosFromDecimalString, formatDecimalInchesTrimmed,
+    trimTrailingZerosFromDecimalString, formatDecimalInchesTrimmed, formatInchesFraction,
     formatFeetWithUnit, formatInchesAsLargeUnit,
     formatBoltSpec, formatBeamSpecForCost,
     applyUnitSystemToUI, storeOriginalInputProps,
@@ -662,4 +685,4 @@ const unitConverter = {
 
 bridgeGlobals({ unitConverter });
 
-export { unitConverter };
+export { unitConverter, formatInchesFraction };

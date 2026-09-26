@@ -15,6 +15,8 @@ import {
     splitHeightForOneSheet,
     wrapDeg,
 } from './coverings-geometry.js';
+import { computeCoveringCutPlan, coveringEnclosureCost, coveringEntrySvg, coveringEntryFilename } from './coverings-plan.js';
+import { downloadTextSequence } from '../core/download.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -236,12 +238,17 @@ function updateCoveringsReadout(data) {
     setText('cov-stat-upper', anyUpper ? `${fmtIn(anyUpper.widthBottomIn)} → ${fmtIn(anyUpper.widthTopIn)} × ${fmtIn(anyUpper.slantHeightIn)} slant` : `${covData.splitHeightIn}" → ${covData.upperTopIn}" (empty)`);
     const plyArea = t.plywoodAreaIn2 + t.tableAreaIn2;
     setText('cov-stat-ply-area', plyArea > 0 ? fmtFt2(plyArea) : '--');
-    const sheetArea = (c.sheet.widthIn || 48) * (c.sheet.lengthIn || 96);
-    const minSheets = covData.shapes
-        .filter(s => s.kind === 'wall' || s.kind === 'table')
-        .reduce((acc, s) => acc + Math.ceil((s.areaIn2 / sheetArea) - 1e-6), 0);
-    setText('cov-stat-sheets', minSheets > 0 ? `≥ ${minSheets}` : '--');
     setText('cov-stat-fabric-area', t.fabricAreaIn2 > 0 ? fmtFt2(t.fabricAreaIn2) : '--');
+    let plan = null;
+    try { plan = computeCoveringCutPlan(covData, c); } catch (e) { console.warn('[Coverings] cut plan failed:', e); }
+    const pt = plan ? plan.totals : null;
+    setText('cov-stat-sheets', pt && pt.sheets > 0 ? `${pt.sheets} (${Math.round(pt.utilization * 100)}% used${pt.seams ? `, ${pt.seams} seam${pt.seams === 1 ? '' : 's'}` : ''})` : '--');
+    setText('cov-stat-yards', pt && pt.fabricYards > 0 ? `${Math.ceil(pt.fabricYards)} yd (${pt.fabricPanels} panel${pt.fabricPanels === 1 ? '' : 's'})` : '--');
+    setText('cov-stat-grommets', pt && pt.grommets > 0 ? String(pt.grommets) : '--');
+    const cost = plan ? coveringEnclosureCost(plan, state) : 0;
+    setText('cov-stat-cost', cost > 0 ? `$${cost.toFixed(2)}` : '--');
+    const cutBtn = $('btn-cov-cutfiles');
+    if (cutBtn) cutBtn.disabled = !(plan && (plan.walls.length + plan.tables.length + plan.fabric.length) > 0);
     const w = $('cov-warnings');
     if (w) {
         const seen = new Set();
@@ -257,6 +264,25 @@ function updateCoveringsReadout(data) {
 
 function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+
+// ----------------------------------------------------------------------------
+// Cut file downloads
+// ----------------------------------------------------------------------------
+
+/** One full-scale SVG per wall / table / fabric band, downloaded in sequence. */
+function exportCoveringCutFiles() {
+    if (!lastCoverings || !lastCoverings.supported) { showToast('Enable coverings on a closed cylinder ring first', 'info'); return; }
+    const plan = computeCoveringCutPlan(lastCoverings, cov());
+    const entries = plan.walls.concat(plan.tables, plan.fabric);
+    if (!entries.length) { showToast('No coverings selected: click a wedge in the ring or use Enclose', 'info'); return; }
+    const files = entries.map(entry => ({
+        text: coveringEntrySvg(entry, state),
+        filename: coveringEntryFilename(entry),
+        mime: 'image/svg+xml;charset=utf-8',
+    }));
+    downloadTextSequence(files, 300);
+    showToast(`Downloading ${files.length} cut file${files.length === 1 ? '' : 's'} (SVG, 1 unit = 1 inch)`, 'success');
 }
 
 // ----------------------------------------------------------------------------
@@ -360,6 +386,7 @@ function initCoveringsUI() {
         commit();
     });
     on('btn-cov-guide', () => { if (typeof globalThis.showBuildGuide === 'function') globalThis.showBuildGuide(); });
+    on('btn-cov-cutfiles', () => exportCoveringCutFiles());
 
     bindPair('sl-cov-split', 'nb-cov-split', () => cov().splitHeightIn, (v) => { cov().splitHeightIn = v; }, { min: 1, max: 600 });
     bindPair('sl-cov-bottom', 'nb-cov-bottom', () => cov().bottomIn, (v) => { cov().bottomIn = v; }, { min: 0, max: 600 });
@@ -412,8 +439,9 @@ const _moduleExports = {
     renderCoveringRingPicker,
     updateCoveringsReadout,
     cycleSpanBand,
+    exportCoveringCutFiles,
 };
 
 bridgeGlobals(_moduleExports, 'coveringsUI');
 
-export { initCoveringsUI, syncCoveringsUIFromState, renderCoveringRingPicker, updateCoveringsReadout, cycleSpanBand };
+export { initCoveringsUI, syncCoveringsUIFromState, renderCoveringRingPicker, updateCoveringsReadout, cycleSpanBand, exportCoveringCutFiles };
