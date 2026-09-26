@@ -51,6 +51,7 @@ function undo() {
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
+        if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
         requestRender();
         showToast('Undone', 'info');
     }
@@ -68,6 +69,7 @@ function redo() {
         Object.keys(idMap).forEach(k => syncUI(idMap[k]));
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
+        if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
         requestRender();
         showToast('Redone', 'info');
     }

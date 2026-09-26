@@ -17,6 +17,7 @@ import { initViewportInput } from './viewport-input.js';
 import { initBuildStepsUI } from './build-steps-ui.js';
 import { initCoveringsUI } from './coverings-ui.js';
 import { initFloorUI } from './floor-ui.js';
+import { initShadeUI } from './shade-ui.js';
 
     async function initLinkageLab() {
         initViewportInput();
@@ -28,6 +29,7 @@ import { initFloorUI } from './floor-ui.js';
         initBuildStepsUI();
         initCoveringsUI();
         initFloorUI();
+        initShadeUI();
         
         // Add ARIA labels for accessibility
         document.getElementById('canvas').setAttribute('role', 'img');

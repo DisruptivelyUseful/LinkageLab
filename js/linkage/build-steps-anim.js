@@ -814,7 +814,7 @@ function forEachPartMesh(fn) {
     const groups = [
         threeRenderer.beamGroup, threeRenderer.bracketGroup, threeRenderer.boltGroup,
         threeRenderer.washerGroup, threeRenderer.hardwareAssemblyGroup, threeRenderer.panelGroup,
-        threeRenderer.coveringWallGroup, threeRenderer.coveringFabricGroup, threeRenderer.coveringTableGroup,
+        threeRenderer.coveringWallGroup, threeRenderer.coveringFabricGroup, threeRenderer.coveringTableGroup, threeRenderer.coveringShadeGroup,
     ];
     for (const g of groups) {
         if (!g) continue;

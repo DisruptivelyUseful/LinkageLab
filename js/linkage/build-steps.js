@@ -883,11 +883,12 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     const panels = has({ kind: 'panel' });
     const floorBeams = has({ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal'] });
     const floorDeck = has({ kind: 'wall', band: 'floor' });
+    const shade = has({ kind: 'wall', band: 'roof' });
     const lowerWalls = has({ kind: 'wall', band: 'lower', coverType: 'plywood' });
     const lowerFabric = has({ kind: 'wall', band: 'lower', coverType: 'fabric' });
     const tables = has({ kind: 'wall', band: 'table' });
     const upper = has({ kind: 'wall', band: 'upper' });
-    const coverings = lowerWalls || lowerFabric || tables || upper || floorBeams || floorDeck;
+    const coverings = lowerWalls || lowerFabric || tables || upper || floorBeams || floorDeck || shade;
     if (deployed !== null || support || rcp || panels || coverings) {
         mk('view', { title: 'Deploy the structure', notes: 'Open the scissor ring to its deployed angle before adding the roof.', targets: [], view: view(deployed), transitionMs: 2500, durationMs: 800 });
     }
@@ -914,6 +915,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     if (lowerFabric) coverStep('Hang the lower fabric bands', 'Grommet the lower fabric panels and lace them to the uprights, tensioning evenly.', { kind: 'wall', band: 'lower', coverType: 'fabric' }, 'radial');
     if (tables) coverStep('Fit the tables', 'Drop each table onto the top edge of its lower wall and fix it with cleats on the uprights.', { kind: 'wall', band: 'table' }, 'above');
     if (upper) coverStep('Install the upper coverings', 'Fit the upper plywood or fabric bands between the lower band and the top ring.', { kind: 'wall', band: 'upper' }, 'radial');
+    if (shade) coverStep('Spread the shade cloths', 'Unroll each shade cloth over the roof beams in its grid position, overlapping its neighbours, and tie the corners down.', { kind: 'wall', band: 'roof' }, 'above');
 
     return steps;
 }

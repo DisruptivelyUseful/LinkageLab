@@ -11,7 +11,8 @@ import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoveringCutPlan, coveringBomItems, coveringEnclosureCost, coveringEntryOverviewSvg } from './coverings-plan.js';
 import { describeMark } from './sheet-nesting.js';
 import { computeFloorBomContribution } from './floor-geometry.js';
-import { svgForInline } from '../core/svg-cut-file.js';
+import { shadeBomItem } from './shade-cloth.js';
+import { svgForInline, buildShadeLayoutSvg } from '../core/svg-cut-file.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
     function computeReciprocalDrillData(data) {
@@ -245,13 +246,35 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             </div>`;
     }
 
+    /** Roof shade cloth card (empty when disabled). */
+    function buildShadeGuideCardHtml(data) {
+        const sd = data && data.shade;
+        if (!sd || !sd.supported || !sd.count) return '';
+        const rows = sd.shapes.map(s => `<tr><td class="qty">${s.spanIndex + 1}</td><td>row ${s.row + 1}, col ${s.col + 1}</td><td>${formatNumber(s.insideAreaIn2 / 144, 1)} ft²</td><td>${formatNumber(s.overhangIn2 / 144, 1)} ft²</td></tr>`).join('');
+        return `
+            <div class="guide-card guide-card-wide guide-coverings">
+                <div class="guide-card-header">Roof Shade Cloths</div>
+                <div class="guide-card-content">
+                    <p class="guide-cut-note"><b>${sd.count} cloths</b> of ${fr(sd.widthIn)} × ${fr(sd.lengthIn)} in a ${sd.cols} × ${sd.rows} grid rotated ${formatNumber(sd.rotationDeg, 1)}°, overlapping ${fr(sd.overlapIn)}, laid ${fr(sd.y)} above ground. They cover ${sd.coveragePct}% of the ${formatNumber(sd.canopyAreaIn2 / 144, 0)} ft² roof and overhang ${formatNumber(sd.overhangIn2 / 144, 0)} ft² in total. Nothing is cut: tie each corner to the nearest beam and let the overlaps shed water downhill.</p>
+                    <div class="guide-cut-item">
+                        <div class="guide-cut-svg">${svgForInline(buildShadeLayoutSvg(sd), { maxWidth: '100%' })}</div>
+                        <table class="guide-table guide-cut-table" style="margin-top:10px;">
+                            <thead><tr><th>Cloth</th><th>Grid position</th><th>Over the roof</th><th>Overhang</th></tr></thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+    }
+
     /**
      * Build HTML for the covering sections (sheet cuts, tables, fabric patterns).
      * Empty when coverings are disabled or unsupported.
      */
     function buildCoveringsGuideSectionHtml(data) {
         const plan = getCoveringPlanForGuide(data);
-        if (!plan) return '';
+        const shadeCard = buildShadeGuideCardHtml(data);
+        if (!plan) return shadeCard;
         const t = plan.totals;
         const cards = [];
         if (plan.walls.length) {
@@ -299,6 +322,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                 </div>
             </div>`);
         }
+        if (shadeCard) cards.push(shadeCard);
         return cards.join('\n');
     }
 
@@ -519,7 +543,9 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost + floorBomForGuide.floorBeamCost;
         const coveringPlanForGuide = getCoveringPlanForGuide(data);
         const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
-        const enclosureCostForGuide = coveringPlanForGuide ? coveringEnclosureCost(coveringPlanForGuide, state) : 0;
+        const shadeItemForGuide = shadeBomItem(data.shade, state);
+        if (shadeItemForGuide) enclosureItemsForGuide.push(shadeItemForGuide);
+        const enclosureCostForGuide = enclosureItemsForGuide.reduce((a, it) => a + it.total, 0);
         const enclosureBOMGuideRows = enclosureItemsForGuide.length ? `
                                 <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE</td></tr>
                                 ${enclosureItemsForGuide.map(it => `
@@ -2034,7 +2060,9 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost + floorBom.floorBeamCost;
         const coveringPlan = getCoveringPlanForGuide(data);
         const enclosureItems = coveringPlan ? coveringBomItems(coveringPlan, state) : [];
-        const enclosureCost = coveringPlan ? coveringEnclosureCost(coveringPlan, state) : 0;
+        const shadeItem = shadeBomItem(data.shade, state);
+        if (shadeItem) enclosureItems.push(shadeItem);
+        const enclosureCost = enclosureItems.reduce((a, it) => a + it.total, 0);
         const totalCost = structureCost + solarPanelCost + enclosureCost;
     
         const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
@@ -2854,6 +2882,34 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                     y = doc.lastAutoTable.finalY + 5;
                 });
             }
+        }
+
+        // ---- ROOF SHADE CLOTHS ----
+        if (bom.data && bom.data.shade && bom.data.shade.supported && bom.data.shade.count) {
+            const sd = bom.data.shade;
+            checkPageBreak(30);
+            doc.setFillColor(...colors.sectionBg);
+            doc.rect(margin, y, contentW, 7, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.headerText);
+            doc.text('ROOF SHADE CLOTHS', margin + 4, y + 5);
+            y += 10;
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(7.5);
+            doc.setTextColor(...colors.text);
+            doc.text(`${sd.count} cloths ${formatInchesFraction(sd.widthIn, 16)} x ${formatInchesFraction(sd.lengthIn, 16)}, grid ${sd.cols} x ${sd.rows} at ${formatNumber(sd.rotationDeg, 1)} deg, overlap ${formatInchesFraction(sd.overlapIn, 16)}, ${sd.coveragePct}% of the roof covered`, margin, y);
+            y += 5;
+            doc.autoTable({
+                startY: y,
+                margin: { left: margin, right: margin },
+                head: [['Cloth', 'Grid position', 'Over the roof (ft2)', 'Overhang (ft2)']],
+                body: sd.shapes.map(s => [String(s.spanIndex + 1), `row ${s.row + 1}, col ${s.col + 1}`, formatNumber(s.insideAreaIn2 / 144, 1), formatNumber(s.overhangIn2 / 144, 1)]),
+                theme: 'grid',
+                headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7, cellPadding: 1.8 },
+                styles: { fontSize: 7, cellPadding: 1.6, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },
+            });
+            y = doc.lastAutoTable.finalY + 5;
         }
 
         // ---- BRACKET DETAIL ----

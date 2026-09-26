@@ -321,6 +321,7 @@ export const LINKAGE_CONFIG_KEYS = [
     'supportBeams',
     'coverings',
     'floor',
+    'shadeCloth',
 ];
 
 /** Pick linkage-oriented fields from a full getConfigSnapshot() object. */

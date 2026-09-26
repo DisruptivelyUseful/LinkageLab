@@ -93,6 +93,7 @@ import { partKey } from './part-keys.js';
         if (threeRenderer.coveringTableGroup) clearGroup(threeRenderer.coveringTableGroup);
         if (threeRenderer.coveringPickGroup) clearGroup(threeRenderer.coveringPickGroup);
         if (threeRenderer.coveringDimGroup) clearGroup(threeRenderer.coveringDimGroup);
+        if (threeRenderer.coveringShadeGroup) clearGroup(threeRenderer.coveringShadeGroup);
         
         // Check if a beam is colliding
         const isColliding = (beam) => state.collisions.some(c => c.beam === beam || c.other === beam);
@@ -179,6 +180,17 @@ import { partKey } from './part-keys.js';
             const mesh = createCoveringMesh(data.floor.deck);
             offsetMesh(mesh);
             threeRenderer.coveringWallGroup.add(mesh);
+        }
+        // Roof shade cloths
+        if (!detail && data.shade && data.shade.supported && threeRenderer.coveringShadeGroup && state.shadeCloth && state.shadeCloth.visible !== false) {
+            data.shade.shapes.forEach(shape => {
+                const mesh = createCoveringMesh(shape);
+                offsetMesh(mesh);
+                threeRenderer.coveringShadeGroup.add(mesh);
+            });
+        }
+        if (typeof globalThis.updateShadeReadout === 'function') {
+            try { globalThis.updateShadeReadout(data); } catch (e) { console.warn('[Shade] readout failed:', e); }
         }
         if (typeof globalThis.updateFloorReadout === 'function') {
             try { globalThis.updateFloorReadout(data); } catch (e) { console.warn('[Floor] readout failed:', e); }

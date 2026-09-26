@@ -543,6 +543,9 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         if ((covForCost || deckForCost) && typeof globalThis.computeCoveringCutPlan === 'function' && typeof globalThis.coveringEnclosureCost === 'function') {
             try { enclosureCost = globalThis.coveringEnclosureCost(globalThis.computeCoveringCutPlan(covForCost, state.coverings, deckForCost), state); } catch (e) { enclosureCost = 0; }
         }
+        if (data.shade && data.shade.count && typeof globalThis.shadeBomItem === 'function') {
+            try { enclosureCost += globalThis.shadeBomItem(data.shade, state).total; } catch (e) { /* readout only */ }
+        }
         let floorBeamCost = 0;
         if (typeof globalThis.computeFloorBomContribution === 'function') {
             try { floorBeamCost = globalThis.computeFloorBomContribution(state.floor, moduleCount, state).floorBeamCost; } catch (e) { floorBeamCost = 0; }

@@ -259,6 +259,34 @@ export function buildWallOverviewSvg(shape, nest, opts = {}) {
     return svgDocument({ widthIn: totalW, heightIn: totalH, body, title: shape.label || 'Covering' });
 }
 
-const _moduleExports = { escapeXml, svgDocument, svgForInline, buildSheetCutSvg, buildFabricPatternSvg, buildWallOverviewSvg };
+/**
+ * Plan view of the roof polygon with the shade-cloth grid over it (inline use).
+ * @param {Object} shadeData - calculateShadeCloths result (uses polygon.local + shapes[].localRect)
+ */
+export function buildShadeLayoutSvg(shadeData, opts = {}) {
+    const fmtIn = opts.fmtIn || fmtInDefault;
+    const poly = (shadeData && shadeData.polygon && shadeData.polygon.local) || [];
+    const cloths = (shadeData && shadeData.shapes) || [];
+    if (poly.length < 3) return svgDocument({ widthIn: 10, heightIn: 4, body: text(1, 2, 'no roof', { size: 1 }) });
+    const xs = poly.map(p => p.x).concat(cloths.flatMap(c => [c.localRect.x, c.localRect.x + c.localRect.w]));
+    const ys = poly.map(p => p.y).concat(cloths.flatMap(c => [c.localRect.y, c.localRect.y + c.localRect.h]));
+    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    const W = maxX - minX, H = maxY - minY;
+    const fontIn = opts.fontIn || Math.max(3, W * 0.025);
+    const pad = fontIn * 3;
+    const ox = pad - minX, oy = pad;
+    const fy = (y) => oy + H - (y - minY);
+    let body = '';
+    cloths.forEach(c => {
+        const r = c.localRect;
+        body += `<rect class="fabric-cut" x="${round(r.x + ox)}" y="${round(fy(r.y + r.h))}" width="${r.w}" height="${r.h}" fill-opacity="0.35"/>`;
+        body += text(r.x + ox + r.w / 2, fy(r.y + r.h / 2) + fontIn * 0.35, `${c.spanIndex + 1}`, { size: fontIn * 1.2, anchor: 'middle', cls: 'muted' });
+    });
+    body += pathFrom(poly, fy, ox, 'grid').replace('class="grid"', 'class="grid" stroke="#4a3a22" stroke-width="0.25" stroke-dasharray="none"');
+    body += text(pad, pad - fontIn * 0.8, `${cloths.length} cloths ${fmtIn(shadeData.widthIn)} × ${fmtIn(shadeData.lengthIn)}, grid ${shadeData.cols} × ${shadeData.rows} at ${shadeData.rotationDeg}°, ${shadeData.coveragePct}% covered`, { size: fontIn, cls: 'title' });
+    return svgDocument({ widthIn: W + pad * 2, heightIn: H + pad * 2, body, title: 'Roof shade cloths' });
+}
+
+const _moduleExports = { escapeXml, svgDocument, svgForInline, buildSheetCutSvg, buildFabricPatternSvg, buildWallOverviewSvg, buildShadeLayoutSvg };
 
 bridgeGlobals(_moduleExports, 'svgCutFile');

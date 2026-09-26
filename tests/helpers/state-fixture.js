@@ -1,6 +1,7 @@
 import { DEFAULT_CAM_DIST, INCHES_PER_METER } from '../../js/linkage/constants.js';
 import { createDefaultCoverings } from '../../js/linkage/coverings-geometry.js';
 import { createDefaultFloor } from '../../js/linkage/floor-geometry.js';
+import { createDefaultShade } from '../../js/linkage/shade-cloth.js';
 
 /** Minimal linkage state for unit tests (mirrors app-state shape). */
 export function createTestState(overrides = {}) {
@@ -73,6 +74,7 @@ export function createTestState(overrides = {}) {
         costPlywoodSheet: 45,
         costFabricYard: 8,
         costGrommet: 0.25,
+        costShadeCloth: 60,
         showBrackets: true,
         showBolts: false,
         showHardwareFullDetail: false,
@@ -131,6 +133,7 @@ export function createTestState(overrides = {}) {
         },
         coverings: createDefaultCoverings(overrides.modules ?? 12),
         floor: createDefaultFloor(),
+        shadeCloth: createDefaultShade(),
         ibc: {
             enabled: false,
             count: 2,

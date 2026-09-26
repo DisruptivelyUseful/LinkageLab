@@ -166,3 +166,23 @@ describe('config-persistence: floor', () => {
         expect(globalThis.state.floor.enabled).toBe(false);
     });
 });
+
+describe('config-persistence: shade cloths', () => {
+    it('round-trips the shadeCloth block and its price, resets when absent', () => {
+        globalThis.state = createTestState({ modules: 8 });
+        globalThis.state.shadeCloth.enabled = true;
+        globalThis.state.shadeCloth.rotationDeg = 22.5;
+        globalThis.state.shadeCloth.widthIn = 144;
+        globalThis.state.costShadeCloth = 75;
+        const snap = getConfigSnapshot();
+        expect(snap.shadeCloth.enabled).toBe(true);
+        expect(snap.costs.shadeCloth).toBe(75);
+        globalThis.state = createTestState({ modules: 8 });
+        applyV30Config(JSON.parse(JSON.stringify(snap)));
+        expect(globalThis.state.shadeCloth.rotationDeg).toBe(22.5);
+        expect(globalThis.state.shadeCloth.widthIn).toBe(144);
+        expect(globalThis.state.costShadeCloth).toBe(75);
+        applyV30Config({ structure: { modules: 6 } });
+        expect(globalThis.state.shadeCloth.enabled).toBe(false);
+    });
+});

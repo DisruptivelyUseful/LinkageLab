@@ -6,6 +6,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { createDefaultCoverings } from './coverings-geometry.js';
 import { createDefaultFloor } from './floor-geometry.js';
+import { createDefaultShade } from './shade-cloth.js';
 
 /** Application state object containing all configuration parameters */
 export const state = {
@@ -96,6 +97,7 @@ export const state = {
     costPlywoodSheet: 45.00,   // per sheet (coverings)
     costFabricYard: 8.00,      // per linear yard at roll width (coverings)
     costGrommet: 0.25,         // each (coverings)
+    costShadeCloth: 60.00,     // per cloth (roof shade)
 
     // Weight constants (lbs)
     woodDensity: 0.018,     // Wood density in lbs per cubic inch (typical softwood: ~30-35 lbs/ft³ = ~0.017-0.020 lbs/in³)
@@ -212,6 +214,8 @@ export const state = {
     coverings: createDefaultCoverings(8),
     /** Raised floor: reciprocal floor beams on the bottom ring + plywood deck (floor-geometry.js) */
     floor: createDefaultFloor(),
+    /** Roof shade cloths: whole rectangles tiled over the top ring (shade-cloth.js) */
+    shadeCloth: createDefaultShade(),
     measurePoints: [],
     collisions: [],
     animation: {

@@ -395,6 +395,7 @@ export function collectParts(data) {
     push('panel', data && data.panels);
     push('wall', data && data.coverings && data.coverings.shapes);
     push('wall', data && data.floor && data.floor.deck ? [data.floor.deck] : null);
+    push('wall', data && data.shade && data.shade.shapes);
     return out;
 }
 

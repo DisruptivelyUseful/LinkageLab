@@ -1,0 +1,86 @@
+        <div class="group collapsed" data-group="shade">
+            <button type="button" class="group-title">Shade Cloths</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <label class="chk-label" title="Tile the roof with whole rectangular shade cloths"><input type="checkbox" id="chk-shade"> Enable Roof Shade Cloths</label>
+                </div>
+                <div id="shade-mode-hint" class="hint hint-accent" style="display:none;"></div>
+                <div id="shade-controls" style="display:none;">
+                    <div class="hint">Whole cloths in a grid over the top ring, overlapping each other and overhanging the edges. Nothing is cut; buy the count shown.</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Cloth size</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-shade-preset">
+                                <option value="10x10">10 × 10 ft</option>
+                                <option value="10x20" selected>10 × 20 ft</option>
+                                <option value="12x20">12 × 20 ft</option>
+                                <option value="20x20">20 × 20 ft</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Width × Length</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-shade-w" min="12" max="960" step="1" value="120">
+                            <span class="x">×</span>
+                            <input type="number" id="nb-shade-l" min="12" max="960" step="1" value="240">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Grid rotation</span><span class="unit">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-rot" min="-90" max="90" step="1" value="0">
+                            <input type="number" id="nb-shade-rot" min="-180" max="180" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Overlap between cloths</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-overlap" min="0" max="36" step="1" value="6">
+                            <input type="number" id="nb-shade-overlap" min="0" max="120" step="0.5" value="6">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Lift above beams</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-lift" min="0" max="24" step="0.5" value="2">
+                            <input type="number" id="nb-shade-lift" min="0" max="120" step="0.5" value="2">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Slide grid X / Z</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-shade-ox" min="-480" max="480" step="1" value="0">
+                            <span class="x">/</span>
+                            <input type="number" id="nb-shade-oz" min="-480" max="480" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Opacity</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-opacity" min="0.1" max="1" step="0.05" value="0.75">
+                            <input type="number" id="nb-shade-opacity" min="0.05" max="1" step="0.05" value="0.75">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Price per cloth</span><span class="unit">$</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-cost-shade" min="0" max="2000" step="1" value="60">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <label class="chk-label"><input type="checkbox" id="chk-shade-show" checked> Show cloths</label>
+                    </div>
+                    <div id="shade-readout" class="diag-panel">
+                        <div class="kv-grid">
+                            <span class="k">Cloths:</span><span id="shade-stat-count">0</span>
+                            <span class="k">Grid:</span><span id="shade-stat-grid">--</span>
+                            <span class="k">Roof coverage:</span><span id="shade-stat-coverage">--</span>
+                            <span class="k">Overhang:</span><span id="shade-stat-overhang">--</span>
+                            <span class="k">Cost:</span><span id="shade-stat-cost">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>

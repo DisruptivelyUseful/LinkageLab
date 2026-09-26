@@ -56,3 +56,17 @@ describe('svg-cut-file', () => {
         parse(svg);
     });
 });
+
+describe('shade layout svg', () => {
+    it('draws one rect per cloth over the roof polygon', async () => {
+        const { buildShadeLayoutSvg } = await import('../js/core/svg-cut-file.js');
+        const sd = { widthIn: 120, lengthIn: 240, cols: 2, rows: 3, rotationDeg: 0, coveragePct: 100,
+            polygon: { local: [{ x: -100, y: -100 }, { x: 100, y: -100 }, { x: 100, y: 100 }, { x: -100, y: 100 }] },
+            shapes: [{ spanIndex: 0, localRect: { x: -120, y: -60, w: 240, h: 120 } }, { spanIndex: 1, localRect: { x: -120, y: 54, w: 240, h: 120 } }] };
+        const svg = buildShadeLayoutSvg(sd);
+        const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
+        expect(doc.querySelector('parsererror')).toBeNull();
+        expect(doc.querySelectorAll('rect.fabric-cut')).toHaveLength(2);
+        expect(svg).toContain('2 cloths');
+    });
+});

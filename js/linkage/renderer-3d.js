@@ -35,6 +35,7 @@ const threeRenderer = {
     coveringWallGroup: null,
     coveringFabricGroup: null,
     coveringTableGroup: null,
+    coveringShadeGroup: null,
     coveringPickGroup: null,
     coveringDimGroup: null,
     measurementGroup: null,   // Group for 3D measurement lines
@@ -160,11 +161,13 @@ function initThreeJS() {
     threeRenderer.coveringWallGroup = new THREE.Group();
     threeRenderer.coveringFabricGroup = new THREE.Group();
     threeRenderer.coveringTableGroup = new THREE.Group();
+    threeRenderer.coveringShadeGroup = new THREE.Group();
     threeRenderer.coveringPickGroup = new THREE.Group();
     threeRenderer.coveringDimGroup = new THREE.Group();
     threeRenderer.coveringGroup.add(threeRenderer.coveringWallGroup);
     threeRenderer.coveringGroup.add(threeRenderer.coveringFabricGroup);
     threeRenderer.coveringGroup.add(threeRenderer.coveringTableGroup);
+    threeRenderer.coveringGroup.add(threeRenderer.coveringShadeGroup);
     threeRenderer.coveringGroup.add(threeRenderer.coveringPickGroup);
     threeRenderer.coveringGroup.add(threeRenderer.coveringDimGroup);
     threeRenderer.structureGroup.add(threeRenderer.coveringGroup);
@@ -1788,6 +1791,13 @@ function buildSlabGeometry(c) {
 }
 
 function coveringMaterialFor(kind) {
+    if (kind === 'shade') {
+        const op = Math.max(0.05, Math.min(1, (state.shadeCloth && state.shadeCloth.opacity) || 0.75));
+        return getCachedMaterial(`covering-shade-${Math.round(op * 100)}`, () => new THREE.MeshStandardMaterial({
+            color: 0x3f5a52, roughness: 1, metalness: 0,
+            transparent: op < 1, opacity: op, side: THREE.DoubleSide, depthWrite: op >= 0.95,
+        }));
+    }
     if (kind === 'fabric') {
         return getCachedMaterial('covering-fabric', () => new THREE.MeshStandardMaterial({
             color: COVERING_COLORS.fabric, roughness: 1, metalness: 0,
@@ -1811,10 +1821,10 @@ function createCoveringMesh(shape) {
     const mesh = new THREE.Mesh(buildSlabGeometry(corners), coveringMaterialFor(shape.kind));
     mesh.userData.covering = shape;
     mesh.userData.type = 'covering';
-    mesh.castShadow = (state.shadowsEnabled || false) && shape.kind !== 'fabric';
+    mesh.castShadow = (state.shadowsEnabled || false) && shape.kind !== 'fabric' && shape.kind !== 'shade';
     mesh.receiveShadow = state.shadowsEnabled || false;
-    mesh.renderOrder = shape.kind === 'fabric' ? 3 : 1;
-    // Edge outline so plywood reads as a sheet, not a blob
+    mesh.renderOrder = shape.kind === 'fabric' || shape.kind === 'shade' ? 3 : 1;
+    // Edge outline so plywood reads as a sheet, not a blob (shade cloths get a light seam line)
     if (shape.kind !== 'fabric') {
         const edges = new THREE.EdgesGeometry(mesh.geometry, 20);
         const line = new THREE.LineSegments(edges, getCachedMaterial('covering-edge', () =>

@@ -23,6 +23,7 @@ import {
 import { threeRenderer, updateMainCamera } from './renderer-3d.js';
 import { createDefaultCoverings, normalizeCoverings, resizeCoveringSpans, serializeCoverings } from './coverings-geometry.js';
 import { createDefaultFloor, normalizeFloor, serializeFloor } from './floor-geometry.js';
+import { createDefaultShade, normalizeShade, serializeShade } from './shade-cloth.js';
 import { syncUI } from './state-sync.js';
 
 // ============================================================================
@@ -313,6 +314,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (c.plywoodSheet !== undefined) state.costPlywoodSheet = c.plywoodSheet;
             if (c.fabricYard !== undefined) state.costFabricYard = c.fabricYard;
             if (c.grommet !== undefined) state.costGrommet = c.grommet;
+            if (c.shadeCloth !== undefined) state.costShadeCloth = c.shadeCloth;
             // Volume-based auto pricing settings
             if (c.autoLumber !== undefined) state.autoLumberPricing = c.autoLumber;
             if (c.refBeam) {
@@ -361,6 +363,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
 
         // Raised floor (same reset-to-defaults rule)
         state.floor = (config.floor && typeof config.floor === 'object') ? normalizeFloor(config.floor) : createDefaultFloor();
+        state.shadeCloth = (config.shadeCloth && typeof config.shadeCloth === 'object') ? normalizeShade(config.shadeCloth) : createDefaultShade();
     }
     
     /**
@@ -511,6 +514,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             coverings: serializeCoverings(state.coverings),
             // Raised floor
             floor: serializeFloor(state.floor),
+            // Roof shade cloths
+            shadeCloth: serializeShade(state.shadeCloth),
             
             // Solar panel configuration
             panels: {
@@ -657,6 +662,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 plywoodSheet: state.costPlywoodSheet,
                 fabricYard: state.costFabricYard,
                 grommet: state.costGrommet,
+                shadeCloth: state.costShadeCloth,
                 // Volume-based auto pricing settings
                 autoLumber: state.autoLumberPricing,
                 refBeam: {
@@ -1059,6 +1065,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             // Coverings sidebar (module loads after this one; global lookup avoids a cycle)
             if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
             if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
+            if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
             
             // Panel lift (top panels)
             const slPanelLift = document.getElementById('sl-panel-lift');

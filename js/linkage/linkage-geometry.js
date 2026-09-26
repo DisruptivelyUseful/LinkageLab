@@ -20,6 +20,7 @@ import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from 
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
 import { generateFloorBeams, computeFloorDeck } from './floor-geometry.js';
+import { calculateShadeCloths } from './shade-cloth.js';
 import { requestRender } from './render-app.js';
 import { showToast } from '../core/feedback.js';
 
@@ -3350,6 +3351,11 @@ import { showToast } from '../core/feedback.js';
                 thickness: p.thickness
             })) : [],
             coverings: data.coverings ? snapshotCoverings(data.coverings, roundVec3ForExport) : null,
+            shade: data.shade && data.shade.supported ? {
+                count: data.shade.count, widthIn: data.shade.widthIn, lengthIn: data.shade.lengthIn, rotationDeg: data.shade.rotationDeg,
+                coveragePct: data.shade.coveragePct, y: data.shade.y,
+                cloths: data.shade.shapes.map(s => ({ index: s.spanIndex, corners: s.corners3D.map(roundVec3ForExport) })),
+            } : null,
             floor: data.floor ? {
                 beamCount: (data.floor.beams || []).length,
                 deck: data.floor.deck ? {
@@ -3821,6 +3827,10 @@ import { showToast } from '../core/feedback.js';
                 console.warn('[Geometry] Could not compute floor deck:', e);
                 data.floor = { enabled: true, beams: data.floorBeams || [], deck: null, supported: false };
             }
+        }
+        data.shade = null;
+        if (options.includeCoverings !== false && state.shadeCloth && state.shadeCloth.enabled) {
+            try { data.shade = calculateShadeCloths(data, state.shadeCloth, state); } catch (e) { console.warn('[Geometry] Could not compute shade cloths:', e); data.shade = null; }
         }
         data.coverings = null;
         if (options.includeCoverings !== false && state.coverings && state.coverings.enabled) {

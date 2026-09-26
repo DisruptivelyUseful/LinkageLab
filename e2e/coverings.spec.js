@@ -262,3 +262,37 @@ test.describe('raised floor', () => {
         expect(errors).toEqual([]);
     });
 });
+
+test.describe('roof shade cloths', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.addInitScript(() => localStorage.clear());
+    });
+
+    test('cloths tile the roof, render, show in the guide and BOM, and persist', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        const group = page.locator('#sidebar .group[data-group="shade"]');
+        await group.locator('.group-title').click();
+        await page.locator('#chk-shade').check();
+        await expect(page.locator('#shade-controls')).toBeVisible();
+        const info = await page.evaluate(() => { const d = globalThis.buildLinkageGeometry({ useCache: true }); return { count: d.shade.count, cov: d.shade.coveragePct, meshes: globalThis.threeRenderer.coveringShadeGroup.children.length }; });
+        expect(info.count).toBeGreaterThanOrEqual(4);
+        expect(info.cov).toBeGreaterThanOrEqual(99);
+        expect(info.meshes).toBe(info.count);
+        await expect(page.locator('#shade-stat-count')).toHaveText(String(info.count));
+        // a preset change re-tiles
+        await page.selectOption('#sel-shade-preset', '20x20');
+        await expect.poll(() => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).shade.count)).toBeLessThan(info.count);
+        await page.evaluate(() => globalThis.showBuildGuide());
+        const guide = page.locator('#guide-content');
+        await expect(guide).toContainText('Roof Shade Cloths');
+        await expect(guide).toContainText('Shade cloths 20 × 20 ft');
+        const snap = await page.evaluate(() => globalThis.getConfigSnapshot());
+        expect(snap.shadeCloth.enabled).toBe(true);
+        expect(snap.shadeCloth.widthIn).toBe(240);
+        expect(errors).toEqual([]);
+    });
+});
