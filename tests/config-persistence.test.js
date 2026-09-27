@@ -182,6 +182,9 @@ describe('config-persistence: shade cloths', () => {
         globalThis.state.shadeCloth.enabled = true;
         globalThis.state.shadeCloth.rotationDeg = 22.5;
         globalThis.state.shadeCloth.widthIn = 144;
+        globalThis.state.shadeCloth.widthMode = 'custom';
+        globalThis.state.shadeCloth.staggerIn = 1.5;
+        globalThis.state.shadeCloth.color = '#2f6fb3';
         globalThis.state.costShadeCloth = 75;
         const snap = getConfigSnapshot();
         expect(snap.shadeCloth.enabled).toBe(true);
@@ -190,6 +193,9 @@ describe('config-persistence: shade cloths', () => {
         applyV30Config(JSON.parse(JSON.stringify(snap)));
         expect(globalThis.state.shadeCloth.rotationDeg).toBe(22.5);
         expect(globalThis.state.shadeCloth.widthIn).toBe(144);
+        expect(globalThis.state.shadeCloth.widthMode).toBe('custom');
+        expect(globalThis.state.shadeCloth.staggerIn).toBe(1.5);
+        expect(globalThis.state.shadeCloth.color).toBe('#2f6fb3');
         expect(globalThis.state.costShadeCloth).toBe(75);
         applyV30Config({ structure: { modules: 6 } });
         expect(globalThis.state.shadeCloth.enabled).toBe(false);

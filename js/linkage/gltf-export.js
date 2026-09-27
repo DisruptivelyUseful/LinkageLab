@@ -442,6 +442,9 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             .concat(data.floor && data.floor.deck ? [data.floor.deck] : [])
             .concat((data.shade && data.shade.supported && data.shade.shapes) || []);
         if (exportCoverShapes.length > 0) {
+            const sc = state.shadeCloth || {};
+            const shadeColor = typeof sc.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(sc.color) ? parseInt(sc.color.slice(1), 16) : 0x6f8f86;
+            const shadeOpacity = Math.max(0.05, Math.min(1, typeof sc.opacity === 'number' ? sc.opacity : 0.75));
             const coveringsGroup = new THREE.Group();
             coveringsGroup.name = 'Coverings';
             exportCoverShapes.forEach((shape, idx) => {
@@ -449,9 +452,9 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                     const corners = shape.slabCorners3D || []; // Z-up handled by the coordinate wrapper, like beams
                     if (corners.length < 6 || corners.length % 2) return;
                     const mesh = new THREE.Mesh(buildSlabGeometry(corners), new THREE.MeshStandardMaterial({
-                        color: shape.kind === 'shade' ? 0x3f5a52 : (shape.kind === 'fabric' ? 0xe6e2d3 : (shape.kind === 'table' ? 0xc9a86a : 0xd4b27a)),
+                        color: shape.kind === 'shade' ? shadeColor : (shape.kind === 'fabric' ? 0xe6e2d3 : (shape.kind === 'table' ? 0xc9a86a : 0xd4b27a)),
                         roughness: 0.9, metalness: 0,
-                        transparent: shape.kind === 'fabric' || shape.kind === 'shade', opacity: shape.kind === 'fabric' ? 0.6 : (shape.kind === 'shade' ? 0.8 : 1),
+                        transparent: shape.kind === 'fabric' || (shape.kind === 'shade' && shadeOpacity < 1), opacity: shape.kind === 'fabric' ? 0.6 : (shape.kind === 'shade' ? shadeOpacity : 1),
                     }));
                     mesh.name = `Covering_${shape.kind}_span${(shape.spanIndex ?? idx) + 1}_${shape.band}`;
                     offsetForExportPivot(mesh);

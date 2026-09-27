@@ -58,15 +58,18 @@ describe('svg-cut-file', () => {
 });
 
 describe('shade layout svg', () => {
-    it('draws one rect per cloth over the roof polygon', async () => {
+    it('draws one quad per tarp over the roof polygon in the tarp colour', async () => {
         const { buildShadeLayoutSvg } = await import('../js/core/svg-cut-file.js');
-        const sd = { widthIn: 120, lengthIn: 240, cols: 2, rows: 3, rotationDeg: 0, coveragePct: 100,
-            polygon: { local: [{ x: -100, y: -100 }, { x: 100, y: -100 }, { x: 100, y: 100 }, { x: -100, y: 100 }] },
-            shapes: [{ spanIndex: 0, localRect: { x: -120, y: -60, w: 240, h: 120 } }, { spanIndex: 1, localRect: { x: -120, y: 54, w: 240, h: 120 } }] };
+        const sd = { widthIn: 100, lengthIn: 150, rotationDeg: 0, coveragePct: 100, color: '#2f6fb3',
+            sizes: [{ widthIn: 100, lengthIn: 150, qty: 2 }],
+            polygon: { vertices: [{ x: -100, z: -100 }, { x: 100, z: -100 }, { x: 100, z: 100 }, { x: -100, z: 100 }] },
+            shapes: [{ spanIndex: 0, plan2D: [{ x: -50, z: -110 }, { x: 50, z: -110 }, { x: 50, z: 40 }, { x: -50, z: 40 }] },
+                     { spanIndex: 1, plan2D: [{ x: 110, z: -50 }, { x: 110, z: 50 }, { x: -40, z: 50 }, { x: -40, z: -50 }] }] };
         const svg = buildShadeLayoutSvg(sd);
         const doc = new DOMParser().parseFromString(svg, 'image/svg+xml');
         expect(doc.querySelector('parsererror')).toBeNull();
-        expect(doc.querySelectorAll('rect.fabric-cut')).toHaveLength(2);
-        expect(svg).toContain('2 cloths');
+        expect(doc.querySelectorAll('path.fabric-cut')).toHaveLength(2);
+        expect(svg).toContain('fill="#2f6fb3"');
+        expect(svg).toContain('2 tarps');
     });
 });

@@ -16,7 +16,7 @@ Work on feature branches is fast-forwarded into `main` when it is ready to test.
 
 Double-click **`dev-branch.bat`** (Windows) or run **`./dev-branch.sh`** (macOS/Linux) from your repo folder. It fetches and fast-forwards the branch named in `.dev-branch` (currently the Coverings feature branch), installs dependencies on the first run, opens http://localhost:8000 and serves the app. Edit `.dev-branch` to follow a different branch, or pass one as the first argument. It never discards local changes: if the working tree is dirty it stops and tells you. Hard-refresh (Ctrl+Shift+R) after each update so the browser drops its cached files.
 
-The **Coverings**, **Floor** and **Shade Cloths** sidebar groups turn the bare ring into an enclosed space: plywood or tensioned-fabric bands between the uprights (with tables), reciprocal floor beams on the bottom ring under a plywood deck, and whole shade cloths tiled over the roof. Every spinbox there takes a wide range including negatives; see `docs/COVERINGS_PLAN.md` for the geometry and the cut-file conventions.
+The **Coverings**, **Floor** and **Shade Cloths** sidebar groups turn the bare ring into an enclosed space: plywood or tensioned-fabric bands between the uprights (with tables), reciprocal floor beams on the bottom ring under a plywood deck, and one rectangular shade tarp per module fanned over the roof, in any colour and opacity. Every spinbox there takes a wide range including negatives; see `docs/COVERINGS_PLAN.md` for the geometry and the cut-file conventions.
 
 ## Running locally
 

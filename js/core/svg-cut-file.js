@@ -260,31 +260,39 @@ export function buildWallOverviewSvg(shape, nest, opts = {}) {
 }
 
 /**
- * Plan view of the roof polygon with the shade-cloth grid over it (inline use).
- * @param {Object} shadeData - calculateShadeCloths result (uses polygon.local + shapes[].localRect)
+ * Plan view of the roof polygon with the radial tarps over it (inline use).
+ * @param {Object} shadeData - calculateShadeCloths result (uses polygon.vertices (x,z) + shapes[].plan2D)
  */
 export function buildShadeLayoutSvg(shadeData, opts = {}) {
     const fmtIn = opts.fmtIn || fmtInDefault;
-    const poly = (shadeData && shadeData.polygon && shadeData.polygon.local) || [];
+    const polyXZ = (shadeData && shadeData.polygon && shadeData.polygon.vertices) || [];
     const cloths = (shadeData && shadeData.shapes) || [];
-    if (poly.length < 3) return svgDocument({ widthIn: 10, heightIn: 4, body: text(1, 2, 'no roof', { size: 1 }) });
-    const xs = poly.map(p => p.x).concat(cloths.flatMap(c => [c.localRect.x, c.localRect.x + c.localRect.w]));
-    const ys = poly.map(p => p.y).concat(cloths.flatMap(c => [c.localRect.y, c.localRect.y + c.localRect.h]));
-    const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+    if (polyXZ.length < 3) return svgDocument({ widthIn: 10, heightIn: 4, body: text(1, 2, 'no roof', { size: 1 }) });
+    // plan view: x → right, z → down (y-up in the SVG helper means we flip z)
+    const toPlan = (p) => ({ x: p.x, y: -p.z });
+    const poly = polyXZ.map(toPlan);
+    const quads = cloths.map(c => (c.plan2D || []).map(toPlan));
+    const allPts = poly.concat(...quads);
+    const minX = Math.min(...allPts.map(p => p.x)), maxX = Math.max(...allPts.map(p => p.x));
+    const minY = Math.min(...allPts.map(p => p.y)), maxY = Math.max(...allPts.map(p => p.y));
     const W = maxX - minX, H = maxY - minY;
     const fontIn = opts.fontIn || Math.max(3, W * 0.025);
     const pad = fontIn * 3;
     const ox = pad - minX, oy = pad;
     const fy = (y) => oy + H - (y - minY);
+    const fill = (shadeData && shadeData.color) || '#6f8f86';
     let body = '';
-    cloths.forEach(c => {
-        const r = c.localRect;
-        body += `<rect class="fabric-cut" x="${round(r.x + ox)}" y="${round(fy(r.y + r.h))}" width="${r.w}" height="${r.h}" fill-opacity="0.35"/>`;
-        body += text(r.x + ox + r.w / 2, fy(r.y + r.h / 2) + fontIn * 0.35, `${c.spanIndex + 1}`, { size: fontIn * 1.2, anchor: 'middle', cls: 'muted' });
+    quads.forEach((q, i) => {
+        if (q.length < 3) return;
+        body += pathFrom(q, fy, ox, 'fabric-cut').replace('class="fabric-cut"', `class="fabric-cut" fill="${fill}" fill-opacity="0.3" stroke="${fill}" stroke-width="0.4"`);
+        const cx = q.reduce((a, p) => a + p.x, 0) / q.length, cy = q.reduce((a, p) => a + p.y, 0) / q.length;
+        body += text(cx + ox, fy(cy) + fontIn * 0.35, `${(cloths[i].spanIndex ?? i) + 1}`, { size: fontIn * 1.2, anchor: 'middle', cls: 'muted' });
     });
     body += pathFrom(poly, fy, ox, 'grid').replace('class="grid"', 'class="grid" stroke="#4a3a22" stroke-width="0.25" stroke-dasharray="none"');
-    body += text(pad, pad - fontIn * 0.8, `${cloths.length} cloths ${fmtIn(shadeData.widthIn)} × ${fmtIn(shadeData.lengthIn)}, grid ${shadeData.cols} × ${shadeData.rows} at ${shadeData.rotationDeg}°, ${shadeData.coveragePct}% covered`, { size: fontIn, cls: 'title' });
-    return svgDocument({ widthIn: W + pad * 2, heightIn: H + pad * 2, body, title: 'Roof shade cloths' });
+    const sizes = (shadeData.sizes && shadeData.sizes.length ? shadeData.sizes : [{ widthIn: shadeData.widthIn, lengthIn: shadeData.lengthIn, qty: cloths.length }])
+        .map(sz => `${sz.qty} × ${fmtIn(sz.widthIn)} × ${fmtIn(sz.lengthIn)}`).join(', ');
+    body += text(pad, pad - fontIn * 0.8, `${cloths.length} tarps (${sizes}), array rotated ${shadeData.rotationDeg || 0}°, ${shadeData.coveragePct}% covered`, { size: fontIn, cls: 'title' });
+    return svgDocument({ widthIn: W + pad * 2, heightIn: H + pad * 2, body, title: 'Roof shade tarps' });
 }
 
 const _moduleExports = { escapeXml, svgDocument, svgForInline, buildSheetCutSvg, buildFabricPatternSvg, buildWallOverviewSvg, buildShadeLayoutSvg };

@@ -11,7 +11,7 @@ import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoveringCutPlan, coveringBomItems, coveringEnclosureCost, coveringEntryOverviewSvg } from './coverings-plan.js';
 import { describeMark } from './sheet-nesting.js';
 import { computeFloorBomContribution } from './floor-geometry.js';
-import { shadeBomItem } from './shade-cloth.js';
+import { shadeBomItems } from './shade-cloth.js';
 import { svgForInline, buildShadeLayoutSvg } from '../core/svg-cut-file.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
@@ -250,16 +250,21 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     function buildShadeGuideCardHtml(data) {
         const sd = data && data.shade;
         if (!sd || !sd.supported || !sd.count) return '';
-        const rows = sd.shapes.map(s => `<tr><td class="qty">${s.spanIndex + 1}</td><td>row ${s.row + 1}, col ${s.col + 1}</td><td>${formatNumber(s.insideAreaIn2 / 144, 1)} ft²</td><td>${formatNumber(s.overhangIn2 / 144, 1)} ft²</td></tr>`).join('');
+        const rows = sd.shapes.map(s => `<tr><td class="qty">${s.spanIndex + 1}</td><td>Module ${s.moduleIndex + 1}</td><td>${fr(s.widthIn)} × ${fr(s.lengthIn)}</td><td>${formatNumber(s.insideAreaIn2 / 144, 1)} ft²</td><td>${formatNumber(s.overhangIn2 / 144, 1)} ft²</td></tr>`).join('');
+        const sizesTxt = (sd.sizes || []).map(sz => `${sz.qty} × ${fr(sz.widthIn)} × ${fr(sz.lengthIn)}`).join(', ');
+        const widthTxt = sd.widthMode === 'auto' ? 'each as wide as its module\'s outer pivot spacing' : `${fr(sd.widthIn)} wide`;
+        const lengthTxt = sd.lengthMode === 'auto' ? 'running from past the outer pivots to beyond the ring centre' : `${fr(sd.lengthIn)} long`;
+        const staggerTxt = sd.staggerIn ? ` Every second tarp is lifted ${fr(Math.abs(sd.staggerIn))} so the overlaps drape ${sd.staggerIn > 0 ? 'over' : 'under'} their neighbours${sd.count % 2 ? ' (with an odd module count the first and last tarp share a level)' : ''}.` : '';
+        const gapTxt = (sd.warnings || []).some(w => w.code === 'gaps') ? ` <span style="color:#c0392b;font-weight:600;">Coverage is below 99%: add width trim, centre overlap or length to close the gaps.</span>` : '';
         return `
             <div class="guide-card guide-card-wide guide-coverings">
                 <div class="guide-card-header">Roof Shade Cloths</div>
                 <div class="guide-card-content">
-                    <p class="guide-cut-note"><b>${sd.count} cloths</b> of ${fr(sd.widthIn)} × ${fr(sd.lengthIn)} in a ${sd.cols} × ${sd.rows} grid rotated ${formatNumber(sd.rotationDeg, 1)}°, overlapping ${fr(sd.overlapIn)}, laid ${fr(sd.y)} above ground. They cover ${sd.coveragePct}% of the ${formatNumber(sd.canopyAreaIn2 / 144, 0)} ft² roof and overhang ${formatNumber(sd.overhangIn2 / 144, 0)} ft² in total. Nothing is cut: tie each corner to the nearest beam and let the overlaps shed water downhill.</p>
+                    <p class="guide-cut-note"><b>${sd.count} tarps</b>, one per module (${sizesTxt}), ${widthTxt}, ${lengthTxt}, outer edge ${fr(sd.overhangIn)} past the pivots, array rotated ${formatNumber(sd.rotationDeg, 1)}°, laid ${fr(sd.y)} above ground.${staggerTxt} They cover ${sd.coveragePct}% of the ${formatNumber(sd.canopyAreaIn2 / 144, 0)} ft² roof and overhang ${formatNumber(sd.overhangIn2 / 144, 0)} ft² in total.${gapTxt} Nothing is cut: tie each outer corner to the ring, run the tarp over the centre and let the overlaps shed water downhill.</p>
                     <div class="guide-cut-item">
                         <div class="guide-cut-svg">${svgForInline(buildShadeLayoutSvg(sd), { maxWidth: '100%' })}</div>
                         <table class="guide-table guide-cut-table" style="margin-top:10px;">
-                            <thead><tr><th>Cloth</th><th>Grid position</th><th>Over the roof</th><th>Overhang</th></tr></thead>
+                            <thead><tr><th>Tarp</th><th>Module</th><th>Width × Length</th><th>Over the roof</th><th>Overhang</th></tr></thead>
                             <tbody>${rows}</tbody>
                         </table>
                     </div>
@@ -543,8 +548,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost + floorBomForGuide.floorBeamCost;
         const coveringPlanForGuide = getCoveringPlanForGuide(data);
         const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
-        const shadeItemForGuide = shadeBomItem(data.shade, state);
-        if (shadeItemForGuide) enclosureItemsForGuide.push(shadeItemForGuide);
+        shadeBomItems(data.shade, state).forEach(it => enclosureItemsForGuide.push(it));
         const enclosureCostForGuide = enclosureItemsForGuide.reduce((a, it) => a + it.total, 0);
         const enclosureBOMGuideRows = enclosureItemsForGuide.length ? `
                                 <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE</td></tr>
@@ -2064,8 +2068,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost + floorBom.floorBeamCost;
         const coveringPlan = getCoveringPlanForGuide(data);
         const enclosureItems = coveringPlan ? coveringBomItems(coveringPlan, state) : [];
-        const shadeItem = shadeBomItem(data.shade, state);
-        if (shadeItem) enclosureItems.push(shadeItem);
+        shadeBomItems(data.shade, state).forEach(it => enclosureItems.push(it));
         const enclosureCost = enclosureItems.reduce((a, it) => a + it.total, 0);
         const totalCost = structureCost + solarPanelCost + enclosureCost;
     
@@ -2902,13 +2905,14 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             doc.setFont('helvetica', 'normal');
             doc.setFontSize(7.5);
             doc.setTextColor(...colors.text);
-            doc.text(`${sd.count} cloths ${formatInchesFraction(sd.widthIn, 16)} x ${formatInchesFraction(sd.lengthIn, 16)}, grid ${sd.cols} x ${sd.rows} at ${formatNumber(sd.rotationDeg, 1)} deg, overlap ${formatInchesFraction(sd.overlapIn, 16)}, ${sd.coveragePct}% of the roof covered`, margin, y);
+            const sizesPdf = (sd.sizes || []).map(sz => `${sz.qty} x ${formatInchesFraction(sz.widthIn, 16)} x ${formatInchesFraction(sz.lengthIn, 16)}`).join(', ');
+            doc.text(`${sd.count} tarps, one per module (${sizesPdf}), outer edge ${formatInchesFraction(sd.overhangIn, 16)} past the pivots, array at ${formatNumber(sd.rotationDeg, 1)} deg, ${sd.coveragePct}% of the roof covered`, margin, y);
             y += 5;
             doc.autoTable({
                 startY: y,
                 margin: { left: margin, right: margin },
-                head: [['Cloth', 'Grid position', 'Over the roof (ft2)', 'Overhang (ft2)']],
-                body: sd.shapes.map(s => [String(s.spanIndex + 1), `row ${s.row + 1}, col ${s.col + 1}`, formatNumber(s.insideAreaIn2 / 144, 1), formatNumber(s.overhangIn2 / 144, 1)]),
+                head: [['Tarp', 'Module', 'Width x Length', 'Over the roof (ft2)', 'Overhang (ft2)']],
+                body: sd.shapes.map(s => [String(s.spanIndex + 1), `Module ${s.moduleIndex + 1}`, `${formatInchesFraction(s.widthIn, 16)} x ${formatInchesFraction(s.lengthIn, 16)}`, formatNumber(s.insideAreaIn2 / 144, 1), formatNumber(s.overhangIn2 / 144, 1)]),
                 theme: 'grid',
                 headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7, cellPadding: 1.8 },
                 styles: { fontSize: 7, cellPadding: 1.6, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },

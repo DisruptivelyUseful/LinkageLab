@@ -915,7 +915,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     if (lowerFabric) coverStep('Hang the lower fabric bands', 'Grommet the lower fabric panels and lace them to the uprights, tensioning evenly.', { kind: 'wall', band: 'lower', coverType: 'fabric' }, 'radial');
     if (tables) coverStep('Fit the tables', 'Drop each table onto the top edge of its lower wall and fix it with cleats on the uprights.', { kind: 'wall', band: 'table' }, 'above');
     if (upper) coverStep('Install the upper coverings', 'Fit the upper plywood or fabric bands between the lower band and the top ring.', { kind: 'wall', band: 'upper' }, 'radial');
-    if (shade) coverStep('Spread the shade cloths', 'Unroll each shade cloth over the roof beams in its grid position, overlapping its neighbours, and tie the corners down.', { kind: 'wall', band: 'roof' }, 'above');
+    if (shade) coverStep('Spread the shade tarps', 'Unroll each tarp over its module from the outer pivots toward the centre, overlapping its neighbours at the middle, and tie the corners down.', { kind: 'wall', band: 'roof' }, 'above');
 
     return steps;
 }

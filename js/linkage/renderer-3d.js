@@ -1792,9 +1792,11 @@ function buildSlabGeometry(c) {
 
 function coveringMaterialFor(kind) {
     if (kind === 'shade') {
-        const op = Math.max(0.05, Math.min(1, (state.shadeCloth && state.shadeCloth.opacity) || 0.75));
-        return getCachedMaterial(`covering-shade-${Math.round(op * 100)}`, () => new THREE.MeshStandardMaterial({
-            color: 0x6f8f86, roughness: 1, metalness: 0,
+        const sc = state.shadeCloth || {};
+        const op = Math.max(0.05, Math.min(1, typeof sc.opacity === 'number' ? sc.opacity : 0.75));
+        const hex = typeof sc.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(sc.color) ? sc.color.toLowerCase() : '#6f8f86';
+        return getCachedMaterial(`covering-shade-${hex}-${Math.round(op * 100)}`, () => new THREE.MeshStandardMaterial({
+            color: parseInt(hex.slice(1), 16), roughness: 1, metalness: 0,
             transparent: op < 1, opacity: op, side: THREE.DoubleSide, depthWrite: op >= 0.95,
         }));
     }
@@ -1821,7 +1823,9 @@ function createCoveringMesh(shape) {
     const mesh = new THREE.Mesh(buildSlabGeometry(corners), coveringMaterialFor(shape.kind));
     mesh.userData.covering = shape;
     mesh.userData.type = 'covering';
-    mesh.castShadow = (state.shadowsEnabled || false) && shape.kind !== 'fabric' && shape.kind !== 'shade';
+    // opaque tarps shade the interior; translucent fabric and mesh do not cast
+    const shadeOpaque = shape.kind === 'shade' && state.shadeCloth && state.shadeCloth.opacity >= 0.95;
+    mesh.castShadow = (state.shadowsEnabled || false) && shape.kind !== 'fabric' && (shape.kind !== 'shade' || shadeOpaque);
     mesh.receiveShadow = state.shadowsEnabled || false;
     mesh.renderOrder = shape.kind === 'fabric' || shape.kind === 'shade' ? 3 : 1;
     // Edge outline so plywood reads as a sheet, not a blob (shade cloths get a light seam line)

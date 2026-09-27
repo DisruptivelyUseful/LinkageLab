@@ -190,7 +190,7 @@ export function describePart(obj, kind = partKind(obj)) {
             return `Solar panel ${num(obj.index, 0) + 1}`;
         case 'wall': {
             if (obj.band === 'floor') return 'Floor deck';
-            if (obj.band === 'roof') return `Shade cloth ${num(obj.spanIndex, 0) + 1}`;
+            if (obj.band === 'roof') return `Shade tarp ${num(obj.spanIndex, 0) + 1}`;
             const what = obj.band === 'table' ? 'Table' : `${obj.band === 'upper' ? 'Upper' : 'Lower'} ${obj.coverType === 'fabric' ? 'fabric' : 'plywood wall'}`;
             return `${what}, span ${num(obj.spanIndex, 0) + 1}`;
         }
@@ -489,7 +489,7 @@ export function selectorLabel(sel) {
     else if (kind === 'panel') parts.push(sel.index !== undefined && sel.index !== '*' ? `Solar panel ${sel.index + 1}` : 'Solar panels');
     else if (kind === 'wall') {
         if (sel.band === 'floor') { parts.push('Floor deck'); return parts.join(' · '); }
-        if (sel.band === 'roof') { parts.push('Shade cloths'); if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`#${sel.spanIndex + 1}`); return parts.join(' · '); }
+        if (sel.band === 'roof') { parts.push('Shade tarps'); if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`#${sel.spanIndex + 1}`); return parts.join(' · '); }
         const band = sel.band === 'table' ? 'Tables' : (sel.band === 'upper' ? 'Upper' : (sel.band === 'lower' ? 'Lower' : 'All')) + (sel.coverType === 'fabric' ? ' fabric' : (sel.coverType === 'plywood' ? ' walls' : ' coverings'));
         parts.push(band);
         if (sel.spanIndex !== undefined && sel.spanIndex !== '*') parts.push(`span ${sel.spanIndex + 1}`);

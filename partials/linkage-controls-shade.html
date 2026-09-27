@@ -1,44 +1,81 @@
         <div class="group collapsed" data-group="shade">
-            <button type="button" class="group-title">Shade Cloths</button>
+            <button type="button" class="group-title">Shade Tarps</button>
             <div class="group-content">
                 <div class="ctrl-row">
-                    <label class="chk-label" title="Tile the roof with whole rectangular shade cloths"><input type="checkbox" id="chk-shade"> Enable Roof Shade Cloths</label>
+                    <label class="chk-label" title="One rectangular tarp per module, laid radially over the roof"><input type="checkbox" id="chk-shade"> Enable Roof Shade Tarps</label>
                 </div>
                 <div id="shade-mode-hint" class="hint hint-accent" style="display:none;"></div>
                 <div id="shade-controls" style="display:none;">
-                    <div class="hint">Whole cloths in a grid over the top ring, overlapping each other and overhanging the edges. Nothing is cut; buy the count shown.</div>
+                    <div class="hint">One tarp per module: as wide as the module's outer pivot spacing, laid from just past the outer pivots toward the centre, so the tarps fan around the roof and overlap in the middle. Nothing is cut.</div>
+
+                    <div class="subhead">Size</div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Cloth size</span></div>
+                        <div class="ctrl-head"><span>Width</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap pair">
+                            <select id="sel-shade-width-mode" title="Auto: the distance between the module's outer pivots">
+                                <option value="auto" selected>Auto: outer pivot distance</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="nb-shade-w" min="0.05" max="2400" step="1" value="120" disabled>
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Width trim (+ overlap / − gap)</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-wtrim" min="-24" max="24" step="0.5" value="0">
+                            <input type="number" id="nb-shade-wtrim" min="-1200" max="1200" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap pair">
+                            <select id="sel-shade-length-mode" title="Auto: from the outer edge to the ring centre plus the centre overlap">
+                                <option value="auto" selected>Auto: reach the centre</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <input type="number" id="nb-shade-l" min="0.05" max="2400" step="1" value="240" disabled>
+                        </div>
+                    </div>
+                    <div class="ctrl-row" id="shade-center-row">
+                        <div class="ctrl-head"><span>Overlap past the centre</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-center" min="-24" max="60" step="1" value="12">
+                            <input type="number" id="nb-shade-center" min="-1200" max="1200" step="0.5" value="12">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Stock sizes (custom)</span></div>
                         <div class="input-wrap">
                             <select id="sel-shade-preset">
+                                <option value="" selected>Pick a stock tarp…</option>
                                 <option value="10x10">10 × 10 ft</option>
-                                <option value="10x20" selected>10 × 20 ft</option>
+                                <option value="10x20">10 × 20 ft</option>
                                 <option value="12x20">12 × 20 ft</option>
                                 <option value="20x20">20 × 20 ft</option>
-                                <option value="custom">Custom</option>
                             </select>
                         </div>
                     </div>
+
+                    <div class="subhead rule-above">Placement</div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Width × Length</span><span class="unit" data-fixed-unit>in</span></div>
-                        <div class="input-wrap pair">
-                            <input type="number" id="nb-shade-w" min="0.05" max="2400" step="1" value="120">
-                            <span class="x">×</span>
-                            <input type="number" id="nb-shade-l" min="0.05" max="2400" step="1" value="240">
+                        <div class="ctrl-head"><span>Outer overhang past the pivots</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-shade-overhang" min="-24" max="48" step="0.5" value="6">
+                            <input type="number" id="nb-shade-overhang" min="-1200" max="1200" step="0.5" value="6">
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Grid rotation</span><span class="unit">°</span></div>
+                        <div class="ctrl-head"><span>Array rotation</span><span class="unit">°</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-shade-rot" min="-90" max="90" step="1" value="0">
+                            <input type="range" id="sl-shade-rot" min="-90" max="90" step="0.5" value="0">
                             <input type="number" id="nb-shade-rot" min="-360" max="360" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Overlap between cloths (− = gap)</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="ctrl-head"><span>Stagger lift (every 2nd tarp)</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-shade-overlap" min="-36" max="36" step="1" value="6">
-                            <input type="number" id="nb-shade-overlap" min="-1200" max="1200" step="0.5" value="6">
+                            <input type="range" id="sl-shade-stagger" min="-6" max="6" step="0.25" value="0">
+                            <input type="number" id="nb-shade-stagger" min="-1200" max="1200" step="0.25" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -48,39 +85,42 @@
                             <input type="number" id="nb-shade-lift" min="-1200" max="1200" step="0.5" value="2">
                         </div>
                     </div>
+
+                    <div class="subhead rule-above">Look</div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Slide grid X / Z</span><span class="unit" data-fixed-unit>in</span></div>
-                        <div class="input-wrap pair">
-                            <input type="number" id="nb-shade-ox" min="-1200" max="1200" step="1" value="0">
-                            <span class="x">/</span>
-                            <input type="number" id="nb-shade-oz" min="-1200" max="1200" step="1" value="0">
+                        <div class="ctrl-head"><span>Colour</span></div>
+                        <div class="input-wrap shade-color-wrap">
+                            <input type="color" id="nb-shade-color" value="#6f8f86" title="Tarp colour">
+                            <div class="shade-swatches" id="shade-swatches"></div>
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Opacity</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-shade-opacity" min="0.1" max="1" step="0.05" value="0.75">
+                            <input type="range" id="sl-shade-opacity" min="0.05" max="1" step="0.05" value="0.75">
                             <input type="number" id="nb-shade-opacity" min="0.05" max="1" step="0.05" value="0.75">
                         </div>
                     </div>
+                    <div class="chk-grid">
+                        <label class="chk-label" title="Solid cover: fully opaque, casts shadows"><input type="checkbox" id="chk-shade-opaque"> Opaque cover</label>
+                        <label class="chk-label"><input type="checkbox" id="chk-shade-show" checked> Show tarps</label>
+                    </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Price per cloth</span><span class="unit">$</span></div>
+                        <div class="ctrl-head"><span>Price per tarp</span><span class="unit">$</span></div>
                         <div class="input-wrap">
                             <input type="number" id="nb-cost-shade" min="0" max="100000" step="1" value="60">
                         </div>
                     </div>
-                    <div class="ctrl-row">
-                        <label class="chk-label"><input type="checkbox" id="chk-shade-show" checked> Show cloths</label>
-                    </div>
                     <div id="shade-readout" class="diag-panel">
                         <div class="kv-grid">
-                            <span class="k">Cloths:</span><span id="shade-stat-count">0</span>
-                            <span class="k">Grid:</span><span id="shade-stat-grid">--</span>
+                            <span class="k">Tarps:</span><span id="shade-stat-count">0</span>
+                            <span class="k">Size:</span><span id="shade-stat-grid">--</span>
                             <span class="k">Roof coverage:</span><span id="shade-stat-coverage">--</span>
                             <span class="k">Overhang:</span><span id="shade-stat-overhang">--</span>
                             <span class="k">Cost:</span><span id="shade-stat-cost">--</span>
                         </div>
                     </div>
+                    <div id="shade-warnings" class="hint hint-accent" style="display:none;"></div>
                 </div>
             </div>
         </div>

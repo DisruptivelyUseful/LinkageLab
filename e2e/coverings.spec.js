@@ -294,21 +294,33 @@ test.describe('roof shade cloths', () => {
         await group.locator('.group-title').click();
         await page.locator('#chk-shade').check();
         await expect(page.locator('#shade-controls')).toBeVisible();
-        const info = await page.evaluate(() => { const d = globalThis.buildLinkageGeometry({ useCache: true }); return { count: d.shade.count, cov: d.shade.coveragePct, meshes: globalThis.threeRenderer.coveringShadeGroup.children.length }; });
-        expect(info.count).toBeGreaterThanOrEqual(4);
+        const modules = await page.evaluate(() => globalThis.state.modules);
+        const info = await page.evaluate(() => { const d = globalThis.buildLinkageGeometry({ useCache: true }); return { count: d.shade.count, cov: d.shade.coveragePct, meshes: globalThis.threeRenderer.coveringShadeGroup.children.length, modules: new Set(d.shade.shapes.map(s => s.moduleIndex)).size }; });
+        expect(info.count).toBe(modules);
+        expect(info.modules).toBe(modules);
         expect(info.cov).toBeGreaterThanOrEqual(99);
         expect(info.meshes).toBe(info.count);
         await expect(page.locator('#shade-stat-count')).toHaveText(String(info.count));
-        // a preset change re-tiles
+        // colour and opacity drive the material
+        await page.locator('#nb-shade-color').fill('#2f6fb3');
+        await page.locator('#nb-shade-color').dispatchEvent('change');
+        await expect.poll(() => page.evaluate(() => globalThis.threeRenderer.coveringShadeGroup.children[0].material.color.getHexString())).toBe('2f6fb3');
+        await page.locator('#chk-shade-opaque').check();
+        await expect.poll(() => page.evaluate(() => { const m = globalThis.threeRenderer.coveringShadeGroup.children[0].material; return [m.transparent, m.opacity]; })).toEqual([false, 1]);
+        // a stock preset switches to custom sizes
         await page.selectOption('#sel-shade-preset', '20x20');
-        await expect.poll(() => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).shade.count)).toBeLessThan(info.count);
+        await expect.poll(() => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).shade.shapes[0].widthIn)).toBe(240);
         await page.evaluate(() => globalThis.showBuildGuide());
         const guide = page.locator('#guide-content');
         await expect(guide).toContainText('Roof Shade Cloths');
-        await expect(guide).toContainText('Shade cloths 20 × 20 ft');
+        await expect(guide).toContainText('Shade tarps 20 × 20 ft');
+        await expect(guide).toContainText('Module 1');
         const snap = await page.evaluate(() => globalThis.getConfigSnapshot());
         expect(snap.shadeCloth.enabled).toBe(true);
+        expect(snap.shadeCloth.widthMode).toBe('custom');
         expect(snap.shadeCloth.widthIn).toBe(240);
+        expect(snap.shadeCloth.color).toBe('#2f6fb3');
+        expect(snap.shadeCloth.opacity).toBe(1);
         expect(errors).toEqual([]);
     });
 });

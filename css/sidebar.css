@@ -594,3 +594,36 @@
 .cov-warnings div + div {
     margin-top: 3px;
 }
+
+/* ---- Shade tarps: colour picker + swatches ---- */
+.shade-color-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.shade-color-wrap input[type="color"] {
+    width: 42px;
+    height: 26px;
+    padding: 0 2px;
+    border: 1px solid var(--border, #2a3644);
+    border-radius: 4px;
+    background: transparent;
+    cursor: pointer;
+}
+.shade-swatches {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+.shade-swatch {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    padding: 0;
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25) inset;
+}
+.shade-swatch.active {
+    border-color: var(--accent, #5fb3a1);
+}
