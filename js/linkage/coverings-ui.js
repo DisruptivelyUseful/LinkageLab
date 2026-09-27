@@ -251,6 +251,9 @@ function updateCoveringsReadout(data) {
     setText('cov-stat-grommets', pt && pt.grommets > 0 ? String(pt.grommets) : '--');
     const cost = plan ? coveringEnclosureCost(plan, state) : 0;
     setText('cov-stat-cost', cost > 0 ? `$${cost.toFixed(2)}` : '--');
+    const copies = covData.copyCount || 1;
+    document.querySelectorAll('.cov-copies-row').forEach(el => { el.style.display = copies > 1 ? '' : 'none'; });
+    setText('cov-stat-copies', copies > 1 ? `${copies} copies (quantities are per structure)` : '--');
     const cutBtn = $('btn-cov-cutfiles');
     if (cutBtn) cutBtn.disabled = !(plan && (plan.walls.length + plan.tables.length + plan.fabric.length) > 0);
     const w = $('cov-warnings');

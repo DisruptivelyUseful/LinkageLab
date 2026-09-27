@@ -2,7 +2,8 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createTestState } from './helpers/state-fixture.js';
 import { solveLinkage } from '../js/linkage/solver.js';
 import { getOptimalClosedAngleForAnimation } from '../js/linkage/joint-kinematics.js';
-import { analyzeRadialFootprint, planRadialArray, applyRadialArray, isRadialArrayActive } from '../js/linkage/radial-array.js';
+import { analyzeRadialFootprint, planRadialArray, applyRadialArray, isRadialArrayActive, replicateShapes, cloneCoveringShape, makeSlotTransforms } from '../js/linkage/radial-array.js';
+import { createDefaultCoverings, computeCoverings } from '../js/linkage/coverings-geometry.js';
 
 beforeAll(async () => {
     // The arch (vertical) path needs the V-stack width helpers on globalThis.
@@ -308,5 +309,79 @@ describe('radial array: planning helpers', () => {
         const plan = planRadialArray(s, data.beams);
         expect(plan.count).toBe(12);
         plan.slots.filter(sl => !sl.isCenter).forEach(sl => expect(sl.phiRad).toBeCloseTo((10 * Math.PI) / 180, 9));
+    });
+});
+
+describe('radial array: coverings follow the copies', () => {
+    const edge = (a, b) => Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+    const areaXZ = (pts) => { let s = 0; for (let i = 0; i < pts.length; i++) { const p = pts[i], q = pts[(i + 1) % pts.length]; s += p.x * q.z - q.x * p.z; } return Math.abs(s) / 2; };
+
+    it('cloneCoveringShape is a rigid transform of corners, plane and 2D frames', () => {
+        const s = createTestState({ radialArrayEnabled: true, radialCount: 4, radialCenter: false, radialSpin: 30, pivotPct: 40 });
+        globalThis.state = s;
+        s.foldAngle = getOptimalClosedAngleForAnimation();
+        const data = solveLinkage(s.foldAngle);
+        const plan = planRadialArray(s, data.beams);
+        const slot = plan.slots[1];
+        const xf = makeSlotTransforms(plan, slot);
+        const shape = {
+            corners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }],
+            slabCorners3D: [{ x: 0, y: 0, z: 0 }, { x: 90, y: 0, z: 0 }, { x: 80, y: 48, z: 5 }, { x: 10, y: 48, z: 5 }, { x: 0, y: 0, z: 0.5 }, { x: 90, y: 0, z: 0.5 }, { x: 80, y: 48, z: 5.5 }, { x: 10, y: 48, z: 5.5 }],
+            center: { x: 45, y: 24, z: 2.5 }, normal: { x: 0, y: 0.1, z: -0.995 },
+            plane: { origin: { x: 0, y: 0, z: 0 }, n: { x: 0, y: 0, z: -1 }, u: { x: 1, y: 0, z: 0 }, v: { x: 0, y: 1, z: 0 } },
+            plan2D: [{ x: -50, z: -110 }, { x: 50, z: -110 }, { x: 50, z: 40 }, { x: -50, z: 40 }],
+            frame: { origin: { x: 0, z: -110 }, u: { x: 1, z: 0 }, inward: { x: 0, z: 1 } },
+        };
+        const c = cloneCoveringShape(shape, xf, 7, slot.slot, false);
+        expect(c.arrayIndex).toBe(7);
+        expect(c.isBaseCopy).toBe(false);
+        for (let i = 0; i < 4; i++) expect(edge(c.corners3D[i], c.corners3D[(i + 1) % 4])).toBeCloseTo(edge(shape.corners3D[i], shape.corners3D[(i + 1) % 4]), 9);
+        expect(c.slabCorners3D).toHaveLength(8);
+        expect(c.corners3D[0].y + slot.offset.y).toBeCloseTo(c.corners3D[0].y + slot.offset.y, 9);
+        expect(Math.hypot(c.plane.n.x, c.plane.n.y, c.plane.n.z)).toBeCloseTo(1, 9);
+        expect(Math.atan2(c.plane.u.z, c.plane.u.x)).toBeCloseTo(slot.phiRad, 9);
+        expect(Math.abs(c.plane.n.x * c.plane.u.x + c.plane.n.y * c.plane.u.y + c.plane.n.z * c.plane.u.z)).toBeLessThan(1e-9);
+        expect(areaXZ(c.plan2D)).toBeCloseTo(areaXZ(shape.plan2D), 6);
+        expect(Math.hypot(c.frame.u.x, c.frame.u.z)).toBeCloseTo(1, 9);
+        // the transformed centre matches the transformed corners' centroid
+        const cx = c.corners3D.reduce((a, p) => a + p.x, 0) / 4, cz = c.corners3D.reduce((a, p) => a + p.z, 0) / 4;
+        expect(Math.hypot(c.center.x - cx, c.center.z - cz)).toBeCloseTo(Math.hypot(shape.center.x - 45, shape.center.z - 2.5), 6);
+    });
+
+    it('replicateShapes puts one copy in every slot, none at an empty centre, and keeps the base set intact', () => {
+        const s = createTestState({ modules: 8, hLengthFt: 8, vLengthFt: 7.97, pivotPct: 41.4, offsetTopIn: 1.25, offsetBotIn: 1, vertEndOffset: 1, hStackCount: 2, vStackCount: 3, hBeamW: 2.5, hBeamT: 1.5, vBeamW: 0.75, vBeamT: 2.5, radialArrayEnabled: true, radialCount: 6, radialCenter: false });
+        globalThis.state = s;
+        s.animation.cachedClosedAngle = undefined;
+        s.foldAngle = getOptimalClosedAngleForAnimation();
+        const data = solveLinkage(s.foldAngle);
+        const cov = createDefaultCoverings(8);
+        cov.enabled = true;
+        cov.spans.forEach(sp => { sp.lower = 'plywood'; sp.table = true; });
+        const single = computeCoverings(data, cov, s);
+        expect(single.supported).toBe(true);
+        const base = single.shapes;
+        const radial = applyRadialArray(s, data);
+        const plan = radial.plan;
+        expect(plan.copyCount).toBe(6);
+        const copies = replicateShapes(plan, base);
+        expect(copies).toHaveLength(6 * base.length);
+        expect(new Set(copies.map(c => c.arrayIndex)).size).toBe(6);
+        expect(copies.filter(c => c.isBaseCopy)).toHaveLength(base.length);
+        // same wall dimensions on every copy; nothing left near the (empty) anchor
+        copies.forEach(c => {
+            const b = base.find(x => x.spanIndex === c.spanIndex && x.band === c.band);
+            expect(c.widthBottomIn).toBe(b.widthBottomIn);
+            expect(Math.hypot(c.center.x - plan.anchor.x, c.center.z - plan.anchor.z)).toBeGreaterThan(plan.radius * 0.5);
+        });
+        // without a plan the shapes pass through as the base copy
+        const passthrough = replicateShapes(null, base);
+        expect(passthrough).toHaveLength(base.length);
+        expect(passthrough.every(c => c.isBaseCopy)).toBe(true);
+        // each copy's walls sit on that copy's own uprights: a copy wall centre is close to some beam of the same arrayIndex
+        const idx = copies[0].arrayIndex;
+        const beams = radial.geometry.beams.filter(b => b.arrayIndex === idx && b.stackType === 'vertical');
+        const wall = copies.find(c => c.arrayIndex === idx && c.kind === 'wall');
+        const near = Math.min(...beams.map(b => Math.hypot(b.center.x - wall.center.x, b.center.z - wall.center.z)));
+        expect(near).toBeLessThan(80);
     });
 });

@@ -117,7 +117,7 @@ export function partKey(obj, kind = partKind(obj)) {
         case 'panel':
             return `panel:${num(obj.index, num(obj.panelIndex, 0))}`;
         case 'wall':
-            return `wall:s${num(obj.spanIndex, 0)}:${obj.band || 'lower'}`;
+            return `wall:s${num(obj.spanIndex, 0)}:${obj.band || 'lower'}${arrayIdx(obj) ? `:a${arrayIdx(obj)}` : ''}`;
         default:
             return null;
     }
@@ -260,6 +260,7 @@ export function selectorForPart(obj, kind = partKind(obj)) {
         case 'wall':
             copy('spanIndex', num(obj.spanIndex, 0));
             copy('band', obj.band);
+            if (arrayIdx(obj)) copy('arrayIndex', arrayIdx(obj)); // base copy keeps the plain selector
             return sel;
         default:
             return null;
@@ -302,7 +303,7 @@ const SELECTOR_FIELDS = {
     placement: ['assemblyId', 'moduleIndex', 'ring', 'cap', 'arrayIndex'],
     hwpart: ['assemblyId', 'moduleIndex', 'ring', 'cap', 'arrayIndex', 'partId', 'copyIndex', 'renderAxisKey'],
     panel: ['index'],
-    wall: ['spanIndex', 'band', 'coverType', 'moduleIndex'],
+    wall: ['spanIndex', 'band', 'coverType', 'moduleIndex', 'arrayIndex'],
 };
 
 function fieldValue(obj, kind, field) {
@@ -394,7 +395,7 @@ export function collectParts(data) {
     push('placement', data && data.hardwareAssemblyPlacements);
     push('panel', data && data.panels);
     push('wall', data && data.coverings && data.coverings.shapes);
-    push('wall', data && data.floor && data.floor.deck ? [data.floor.deck] : null);
+    push('wall', data && data.floor && data.floor.deck ? (data.floor.deckCopies || [data.floor.deck]) : null);
     push('wall', data && data.shade && data.shade.shapes);
     return out;
 }

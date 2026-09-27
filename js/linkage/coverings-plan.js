@@ -17,7 +17,7 @@ let cache = { key: null, plan: null };
 const round = (v, p = 2) => +(+v).toFixed(p);
 
 function planKey(covData, cov, floorDeck) {
-    const shapes = ((covData && covData.shapes) || []).map(s => [s.kind, s.spanIndex, s.band, s.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])]);
+    const shapes = ((covData && (covData.baseShapes || covData.shapes)) || []).map(s => [s.kind, s.spanIndex, s.band, s.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])]);
     const deck = floorDeck ? [floorDeck.thicknessIn, floorDeck.corners2D.map(p => [round(p.s, 2), round(p.t, 2)])] : null;
     return JSON.stringify([shapes, cov.sheet, cov.fabric, cov.table, deck]);
 }
@@ -35,7 +35,7 @@ export function computeCoveringCutPlan(covData, cov, floorDeck = null) {
     const stock = { ...cov.sheet };
     const walls = [], tables = [], fabric = [];
     const floor = floorDeck ? { shape: floorDeck, nest: nestPolygonOnSheets(floorDeck.corners2D, { ...stock, thicknessIn: floorDeck.thicknessIn }) } : null;
-    ((haveCov && covData.shapes) || []).forEach(shape => {
+    ((haveCov && (covData.baseShapes || covData.shapes)) || []).forEach(shape => {
         if (shape.kind === 'wall') walls.push({ shape, nest: nestPolygonOnSheets(shape.corners2D, stock) });
         else if (shape.kind === 'table') tables.push({ shape, nest: nestPolygonOnSheets(shape.corners2D, { ...stock, thicknessIn: cov.table.thicknessIn }) });
         else if (shape.kind === 'fabric') fabric.push({ shape, pattern: buildFabricPattern(shape.corners2D, cov.fabric) });

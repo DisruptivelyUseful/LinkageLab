@@ -439,7 +439,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
 
         // Coverings (plywood walls / fabric / tables) as a separate group
         const exportCoverShapes = ((data.coverings && data.coverings.supported && data.coverings.shapes) || [])
-            .concat(data.floor && data.floor.deck ? [data.floor.deck] : [])
+            .concat(data.floor && data.floor.deck ? (data.floor.deckCopies || [data.floor.deck]) : [])
             .concat((data.shade && data.shade.supported && data.shade.shapes) || []);
         if (exportCoverShapes.length > 0) {
             const sc = state.shadeCloth || {};
@@ -456,7 +456,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                         roughness: 0.9, metalness: 0,
                         transparent: shape.kind === 'fabric' || (shape.kind === 'shade' && shadeOpacity < 1), opacity: shape.kind === 'fabric' ? 0.6 : (shape.kind === 'shade' ? shadeOpacity : 1),
                     }));
-                    mesh.name = `Covering_${shape.kind}_span${(shape.spanIndex ?? idx) + 1}_${shape.band}`;
+                    mesh.name = `Covering_${shape.kind}_span${(shape.spanIndex ?? idx) + 1}_${shape.band}${shape.arrayIndex ? `_copy${shape.arrayIndex}` : ''}`;
                     offsetForExportPivot(mesh);
                     coveringsGroup.add(mesh);
                     totalMeshes++;

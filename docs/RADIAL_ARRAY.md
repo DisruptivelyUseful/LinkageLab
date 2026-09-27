@@ -48,7 +48,8 @@ back the camera off in proportion to the pattern.
 
 - `js/linkage/radial-array.js` — pure geometry: footprint analysis, slot
   planning and rigid cloning of beams, brackets, bolts, washers, hardware
-  placements, support beams and panels. No DOM, no THREE.
+  placements, support beams and panels, plus `replicateShapes()` for the
+  covering-style shapes (walls, tables, fabric, floor deck, shade tarps). No DOM, no THREE.
 - `js/linkage/linkage-geometry.js` → `buildLinkageGeometry()` applies it as
   the **last** assembly step, after the arch transform, the linear array,
   support / reciprocal beams and solar panels. The solver itself stays

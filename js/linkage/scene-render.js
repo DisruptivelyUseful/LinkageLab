@@ -157,6 +157,7 @@ import { partKey } from './part-keys.js';
                 const off = (p) => ({ x: p.x - sc.x, y: p.y - sc.y, z: p.z - sc.z });
                 (cov.shapes || []).forEach(shape => {
                     if (!shown[shape.kind] || !shape.corners3D || shape.corners3D.length < 4) return;
+                    if (shape.isBaseCopy === false) return; // labels on one copy only
                     const [bl, br, tr, tl] = shape.corners3D.map(off);
                     const o = { markerRadius: 0.8, labelScale: 26, labelLift: 3 };
                     globalThis.createMeasurementLine3D(bl, br, fmt(shape.widthBottomIn), 0xf0ad4e, threeRenderer.coveringDimGroup, o);
@@ -177,9 +178,11 @@ import { partKey } from './part-keys.js';
         // Raised floor deck (an n-gon plywood slab; the floor beams are ordinary beams)
         if (!detail && data.floor && data.floor.deck && threeRenderer.coveringWallGroup
             && !(state.floor && state.floor.visibility && state.floor.visibility.deck === false)) {
-            const mesh = createCoveringMesh(data.floor.deck);
-            offsetMesh(mesh);
-            threeRenderer.coveringWallGroup.add(mesh);
+            (data.floor.deckCopies || [data.floor.deck]).forEach(deck => {
+                const mesh = createCoveringMesh(deck);
+                offsetMesh(mesh);
+                threeRenderer.coveringWallGroup.add(mesh);
+            });
         }
         // Roof shade cloths
         if (!detail && data.shade && data.shade.supported && threeRenderer.coveringShadeGroup && state.shadeCloth && state.shadeCloth.visible !== false) {

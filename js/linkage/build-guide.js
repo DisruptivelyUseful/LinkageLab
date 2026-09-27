@@ -250,7 +250,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     function buildShadeGuideCardHtml(data) {
         const sd = data && data.shade;
         if (!sd || !sd.supported || !sd.count) return '';
-        const rows = sd.shapes.map(s => `<tr><td class="qty">${s.spanIndex + 1}</td><td>Module ${s.moduleIndex + 1}</td><td>${fr(s.widthIn)} × ${fr(s.lengthIn)}</td><td>${formatNumber(s.insideAreaIn2 / 144, 1)} ft²</td><td>${formatNumber(s.overhangIn2 / 144, 1)} ft²</td></tr>`).join('');
+        const rows = (sd.baseShapes || sd.shapes).map(s => `<tr><td class="qty">${s.spanIndex + 1}</td><td>Module ${s.moduleIndex + 1}</td><td>${fr(s.widthIn)} × ${fr(s.lengthIn)}</td><td>${formatNumber(s.insideAreaIn2 / 144, 1)} ft²</td><td>${formatNumber(s.overhangIn2 / 144, 1)} ft²</td></tr>`).join('');
         const sizesTxt = (sd.sizes || []).map(sz => `${sz.qty} × ${fr(sz.widthIn)} × ${fr(sz.lengthIn)}`).join(', ');
         const widthTxt = sd.widthMode === 'auto' ? 'each as wide as its module\'s outer pivot spacing' : `${fr(sd.widthIn)} wide`;
         const lengthTxt = sd.lengthMode === 'auto' ? 'running from past the outer pivots to beyond the ring centre' : `${fr(sd.lengthIn)} long`;
@@ -550,8 +550,9 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
         shadeBomItems(data.shade, state).forEach(it => enclosureItemsForGuide.push(it));
         const enclosureCostForGuide = enclosureItemsForGuide.reduce((a, it) => a + it.total, 0);
+        const arrayCopiesForGuide = (data.radialArray && data.radialArray.copyCount) || 1;
         const enclosureBOMGuideRows = enclosureItemsForGuide.length ? `
-                                <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE</td></tr>
+                                <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE${arrayCopiesForGuide > 1 ? ` <span style="font-weight:400;text-transform:none;">(per structure; the radial array places ${arrayCopiesForGuide} copies)</span>` : ''}</td></tr>
                                 ${enclosureItemsForGuide.map(it => `
                                 <tr data-bom-section="enclosure">
                                     <td class="qty">${it.qty}×</td>
@@ -2912,7 +2913,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                 startY: y,
                 margin: { left: margin, right: margin },
                 head: [['Tarp', 'Module', 'Width x Length', 'Over the roof (ft2)', 'Overhang (ft2)']],
-                body: sd.shapes.map(s => [String(s.spanIndex + 1), `Module ${s.moduleIndex + 1}`, `${formatInchesFraction(s.widthIn, 16)} x ${formatInchesFraction(s.lengthIn, 16)}`, formatNumber(s.insideAreaIn2 / 144, 1), formatNumber(s.overhangIn2 / 144, 1)]),
+                body: (sd.baseShapes || sd.shapes).map(s => [String(s.spanIndex + 1), `Module ${s.moduleIndex + 1}`, `${formatInchesFraction(s.widthIn, 16)} x ${formatInchesFraction(s.lengthIn, 16)}`, formatNumber(s.insideAreaIn2 / 144, 1), formatNumber(s.overhangIn2 / 144, 1)]),
                 theme: 'grid',
                 headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7, cellPadding: 1.8 },
                 styles: { fontSize: 7, cellPadding: 1.6, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },

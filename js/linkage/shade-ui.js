@@ -96,7 +96,7 @@ function updateShadeReadout(data) {
         if (warn) warn.style.display = 'none';
         return;
     }
-    setText('shade-stat-count', String(sd.count));
+    setText('shade-stat-count', sd.copyCount > 1 ? `${sd.count} per structure × ${sd.copyCount}` : String(sd.count));
     const sizes = (sd.sizes || []).map(sz => `${sz.qty} × ${formatInchesFraction(sz.widthIn, 4)} × ${formatInchesFraction(sz.lengthIn, 4)}`).join(', ');
     setText('shade-stat-grid', sizes || '--');
     setText('shade-stat-coverage', `${sd.coveragePct}% of ${(sd.canopyAreaIn2 / 144).toFixed(0)} ft²`);

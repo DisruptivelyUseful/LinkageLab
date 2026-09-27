@@ -207,6 +207,16 @@ describe('part-keys: coverings (wall kind)', () => {
         expect(describePart(walls[1].obj)).toBe('Upper fabric, span 1');
         expect(describePart(walls[2].obj)).toBe('Table, span 1');
         expect(partKey(walls[3].obj)).toBe('wall:s3:lower');
+        // radial-array copies get distinct keys; the base copy keeps the plain key
+        const copy = { ...wall(3, 'lower'), arrayIndex: 2 };
+        expect(partKey(copy)).toBe('wall:s3:lower:a2');
+        expect(partKey({ ...wall(3, 'lower'), arrayIndex: 0 })).toBe('wall:s3:lower');
+        const withCopies = data();
+        withCopies.coverings.shapes = withCopies.coverings.shapes.concat(withCopies.coverings.shapes.map(w => ({ ...w, arrayIndex: 1 })));
+        const keys = collectParts(withCopies).filter(p => p.kind === 'wall').map(p => p.key);
+        expect(new Set(keys).size).toBe(keys.length);
+        expect(resolveTargets(withCopies, [{ kind: 'wall', band: 'lower', coverType: 'plywood' }]).walls).toHaveLength(4);
+        expect(resolveTargets(withCopies, [{ kind: 'wall', band: 'lower', coverType: 'plywood', arrayIndex: 1 }]).walls).toHaveLength(2);
     });
 
     it('selectors match by band, cover type and span', () => {

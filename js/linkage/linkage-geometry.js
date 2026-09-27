@@ -16,7 +16,7 @@ import {
 } from './math.js';
 import { Beam3D } from './geometry-classes.js';
 import { solveLinkage } from './solver.js';
-import { applyRadialArray, isRadialArrayActive } from './radial-array.js';
+import { applyRadialArray, isRadialArrayActive, replicateShapes } from './radial-array.js';
 import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
@@ -3853,6 +3853,7 @@ import { showToast } from '../core/feedback.js';
         // The anchor is the single ring's own centre, which the shift above put at the
         // world origin in the deployed pose. See js/linkage/radial-array.js.
         data.radialArray = null;
+        data.baseBeams = data.beams;
         if (options.applyRadialArray !== false && isRadialArrayActive(state)) {
             const radial = applyRadialArray(state, data);
             if (radial) {
@@ -3863,6 +3864,27 @@ import { showToast } from '../core/feedback.js';
                 data.structureCenter = data.structureBounds.center;
                 data.fullBounds = calculateBeamBounds(data.beams);
             }
+        }
+        // Coverings, floor deck and shade tarps follow the array: the single-structure
+        // results stay under base* (cut plans, readouts, BOM are per structure), the
+        // rendered / exported / build-step shapes are one copy per slot.
+        const plan = data.radialArray;
+        const copyCount = plan ? plan.copyCount : 1;
+        if (data.coverings && data.coverings.supported) {
+            data.coverings.baseShapes = data.coverings.shapes;
+            data.coverings.basePickQuads = data.coverings.pickQuads;
+            data.coverings.shapes = replicateShapes(plan, data.coverings.shapes);
+            data.coverings.pickQuads = replicateShapes(plan, data.coverings.pickQuads);
+            data.coverings.copyCount = copyCount;
+        }
+        if (data.floor) {
+            data.floor.deckCopies = data.floor.deck ? replicateShapes(plan, [data.floor.deck]) : [];
+            data.floor.copyCount = copyCount;
+        }
+        if (data.shade && data.shade.supported) {
+            data.shade.baseShapes = data.shade.shapes;
+            data.shade.shapes = replicateShapes(plan, data.shade.shapes);
+            data.shade.copyCount = copyCount;
         }
 
         return data;

@@ -220,6 +220,66 @@ test.describe('coverings: build steps, 3D pick and dimensions', () => {
     });
 });
 
+test.describe('coverings follow the radial array', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.addInitScript(() => localStorage.clear());
+    });
+
+    test('every array copy gets the same walls, tables, deck and tarps; none at an empty centre', async ({ page }) => {
+        const errors = [];
+        page.on('pageerror', (e) => errors.push(String(e)));
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        const modules = await page.evaluate(() => globalThis.state.modules);
+        await page.evaluate(() => {
+            globalThis.state.coverings.enabled = true;
+            globalThis.state.coverings.spans.forEach(sp => { sp.lower = 'plywood'; sp.upper = 'fabric'; sp.table = true; });
+            globalThis.state.floor.enabled = true;
+            globalThis.state.shadeCloth.enabled = true;
+            globalThis.state.radialArrayEnabled = true;
+            globalThis.state.radialCount = 6;
+            globalThis.state.radialCenter = false;
+            globalThis.invalidateGeometryCache && globalThis.invalidateGeometryCache();
+            globalThis.syncCoveringsUIFromState && globalThis.syncCoveringsUIFromState();
+            globalThis.requestRender();
+        });
+        const info = () => page.evaluate(() => {
+            const d = globalThis.buildLinkageGeometry({ useCache: true });
+            const tr = globalThis.threeRenderer;
+            const anchor = d.radialArray.anchor;
+            const nearAnchor = d.coverings.shapes.filter(s => Math.hypot(s.center.x - anchor.x, s.center.z - anchor.z) < d.radialArray.radius * 0.5).length;
+            return {
+                copies: d.radialArray.copyCount,
+                base: d.coverings.baseShapes.length,
+                shapes: d.coverings.shapes.length,
+                walls: tr.coveringWallGroup.children.filter(m => m.userData.covering && m.userData.covering.band !== 'floor').length,
+                decks: d.floor.deckCopies.length,
+                deckMeshes: tr.coveringWallGroup.children.filter(m => m.userData.covering && m.userData.covering.band === 'floor').length,
+                tarps: d.shade.shapes.length, tarpBase: d.shade.baseShapes.length,
+                nearAnchor,
+            };
+        });
+        await expect.poll(async () => (await info()).copies).toBe(6);
+        const i1 = await info();
+        expect(i1.base).toBe(3 * modules);
+        expect(i1.shapes).toBe(6 * i1.base);
+        expect(i1.walls).toBe(6 * modules);
+        expect(i1.decks).toBe(6);
+        expect(i1.deckMeshes).toBe(6);
+        expect(i1.tarps).toBe(6 * i1.tarpBase);
+        expect(i1.nearAnchor).toBe(0);
+        // changing one span changes it on every copy
+        await page.evaluate(() => { globalThis.cycleSpanBand(1, 'lower'); });
+        await expect.poll(async () => (await info()).walls).toBe(6 * (modules - 1));
+        // per-structure quantities are labelled with the copy count
+        await expect(page.locator('#cov-stat-copies')).toContainText('6 copies');
+        await page.evaluate(() => globalThis.showBuildGuide());
+        await expect(page.locator('#guide-content')).toContainText('radial array places 6 copies');
+        expect(errors).toEqual([]);
+    });
+});
+
 test.describe('raised floor', () => {
     test.beforeEach(async ({ page }) => {
         await installOfflineCdn(page);

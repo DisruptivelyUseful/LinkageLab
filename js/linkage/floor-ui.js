@@ -97,11 +97,12 @@ function updateFloorReadout(data) {
     updateVisibility();
     const fl = data && data.floor;
     const beams = fl ? (fl.beams || []).length : 0;
-    setText('floor-stat-beams', String(beams));
+    const floorCopies = (fl && fl.copyCount) || 1;
+    setText('floor-stat-beams', floorCopies > 1 ? `${beams} per structure × ${floorCopies}` : String(beams));
     let seatTxt = '--';
     if (fl && beams) {
         try {
-            const seat = describeFloorSeating(data, fl.beams, state.modules);
+            const seat = describeFloorSeating({ beams: data.baseBeams || data.beams }, fl.beams, state.modules);
             const parts = [];
             const fmtGap = (g) => (Math.abs(g) < 0.01 ? 'on the leg' : `${g > 0 ? '+' : '−'}${formatInchesFraction(Math.abs(g))} ${g > 0 ? 'above' : 'into'}`);
             if (seat.A) parts.push(`A ${fmtGap(seat.A.gapIn)}`);

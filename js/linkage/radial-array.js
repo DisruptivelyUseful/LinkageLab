@@ -327,6 +327,54 @@ function clonePanel(panel, xf, arrayIndex) {
     return out;
 }
 
+/** Rigid copy of a covering-style shape (wall / table / fabric / floor deck / shade tarp). */
+function cloneCoveringShape(shape, xf, arrayIndex, slotIndex, isBaseCopy) {
+    if (!shape || typeof shape !== 'object') return shape;
+    const out = { ...shape, arrayIndex, slotIndex, isBaseCopy };
+    if (shape.corners3D) out.corners3D = shape.corners3D.map(xf.point);
+    if (shape.slabCorners3D) out.slabCorners3D = shape.slabCorners3D.map(xf.point);
+    if (shape.center) out.center = xf.point(shape.center);
+    if (shape.normal) out.normal = xf.dir(shape.normal);
+    if (shape.plane) {
+        out.plane = {
+            ...shape.plane,
+            origin: shape.plane.origin ? xf.point(shape.plane.origin) : shape.plane.origin,
+            n: shape.plane.n ? xf.dir(shape.plane.n) : shape.plane.n,
+            u: shape.plane.u ? xf.dir(shape.plane.u) : shape.plane.u,
+            v: shape.plane.v ? xf.dir(shape.plane.v) : shape.plane.v,
+        };
+    }
+    if (shape.plan2D) out.plan2D = shape.plan2D.map(q => { const r = xf.point({ x: q.x, y: 0, z: q.z }); return { ...q, x: r.x, z: r.z }; });
+    if (shape.frame) {
+        const f = shape.frame;
+        out.frame = {
+            ...f,
+            origin: f.origin ? (() => { const r = xf.point({ x: f.origin.x, y: 0, z: f.origin.z }); return { ...f.origin, x: r.x, z: r.z }; })() : f.origin,
+            u: f.u ? (() => { const r = xf.dir({ x: f.u.x, y: 0, z: f.u.z }); return { ...f.u, x: r.x, z: r.z }; })() : f.u,
+            inward: f.inward ? (() => { const r = xf.dir({ x: f.inward.x, y: 0, z: f.inward.z }); return { ...f.inward, x: r.x, z: r.z }; })() : f.inward,
+        };
+    }
+    return out;
+}
+
+/**
+ * Replicates covering-style shapes (or pick quads) into every slot of a plan,
+ * tagging each copy with `arrayIndex`, `slotIndex` and `isBaseCopy` (first slot).
+ * Returns the input array untouched (with `isBaseCopy: true`) when there is no plan.
+ */
+function replicateShapes(plan, shapes) {
+    const list = Array.isArray(shapes) ? shapes.filter(Boolean) : [];
+    if (!plan || !plan.slots || !plan.slots.length) return list.map(sh => ({ ...sh, isBaseCopy: true }));
+    const linearCount = Math.max(1, plan.linearCount | 0);
+    const out = [];
+    plan.slots.forEach((slot, i) => {
+        const xf = makeSlotTransforms(plan, slot);
+        const arrayIndex = slot.slot * linearCount;
+        list.forEach(sh => out.push(cloneCoveringShape(sh, xf, arrayIndex, slot.slot, i === 0)));
+    });
+    return out;
+}
+
 /**
  * Applies the radial array to an assembled geometry set.
  * Each input copy (linear array index a, 0 when none) becomes
@@ -397,6 +445,9 @@ const _moduleExports = {
     analyzeRadialFootprint,
     planRadialArray,
     applyRadialArray,
+    makeSlotTransforms,
+    cloneCoveringShape,
+    replicateShapes,
 };
 
 bridgeGlobals(_moduleExports, 'radialArray');
@@ -409,4 +460,7 @@ export {
     analyzeRadialFootprint,
     planRadialArray,
     applyRadialArray,
+    makeSlotTransforms,
+    cloneCoveringShape,
+    replicateShapes,
 };
