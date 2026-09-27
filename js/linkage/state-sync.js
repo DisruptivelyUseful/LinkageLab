@@ -81,8 +81,9 @@ import { resizeCoveringSpans } from './coverings-geometry.js';
                                   'bracketHeight', 'hStackGap', 'vStackGap', 'hBeamW', 'hBeamT', 'vBeamW', 'vBeamT',
                                   'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT', 'vBeamDimensionsLinked', 'foldAngle', 'orientation', 
                                   'archCapUprights', 'useFixedBeams', 'archFlipVertical', 'archRotation', 'arrayCount',
-                                  'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 
-                                  'bracketHoleDiameter', 'bracketHoleDistance'];
+                                  'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth',
+                                  'bracketHoleDiameter', 'bracketHoleDistance',
+                                  'radialCount', 'radialRadius', 'radialSpacing', 'radialStartAngle', 'radialSpin', 'radialHeightOffset'];
             // Any structural parameter change (module count, beam lengths, etc.) moves
             // the top ring â€” the reciprocal crossing references must be re-seeded.
             // foldAngle is explicitly excluded: crossing refs are fold-angle-independent.
@@ -182,8 +183,10 @@ import { resizeCoveringSpans } from './coverings-geometry.js';
             if (inputs[k].sl) inputs[k].sl.value = v;
             if (inputs[k].nb) {
                 let decimals = 1;
-                if (key === 'modules' || key === 'hStackCount' || key === 'vStackCount') {
+                if (key === 'modules' || key === 'hStackCount' || key === 'vStackCount' || key === 'radialCount') {
                     decimals = 0;
+                } else if (key === 'radialRadius' || key === 'radialSpacing' || key === 'radialHeightOffset') {
+                    decimals = 2;
                 } else if (key.startsWith('cost')) {
                     decimals = 2;
                 } else if (key.startsWith('bracket') || key === 'vStackGap' || key === 'hStackGap') {

@@ -18,6 +18,7 @@ import {
 } from '../core/project-export.js';
 import { exportGameBundleFile } from '../core/export-game-bundle.js';
 import { bindNumericInput } from './numeric-input.js';
+import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -970,6 +971,8 @@ import { bindNumericInput } from './numeric-input.js';
             document.getElementById('arch-orientation-group').style.display = isVertical ? 'block' : 'none';
             // Update solar panel UI for arch vs cylinder mode
             updateArchWallFacesUI();
+            // Radial array hint text differs between honeycomb (cylinder) and toroid (arch)
+            syncRadialArrayUI();
             invalidateGeometryCache();
             requestRender();
         };
@@ -1057,6 +1060,8 @@ import { bindNumericInput } from './numeric-input.js';
             invalidateGeometryCache();
             requestRender();
         };
+        // Radial array group (checkboxes + performance guards; numbers go through idMap)
+        initRadialArrayUI();
         document.getElementById('btn-vbeam-dim-link')?.addEventListener('click', () => {
             if (!needsSplitVBeamDimensions()) return;
             state.vBeamDimensionsLinked = !isVBeamDimensionsLinked();
@@ -1160,7 +1165,16 @@ import { bindNumericInput } from './numeric-input.js';
         // Button event listeners
         document.getElementById('btn-reset').onclick = () => location.reload();
         document.getElementById('btn-fit').onclick = () => {
-            state.cam = { yaw: 0.4, pitch: 0.14, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 };
+            let dist = DEFAULT_CAM_DIST;
+            // A radial array can be many times wider than the single structure the
+            // default distance is tuned for: back off in proportion to its footprint.
+            try {
+                const plan = buildLinkageGeometry({ useCache: true }).radialArray;
+                if (plan && plan.baseMaxRad > 0 && plan.maxRad > plan.baseMaxRad) {
+                    dist = DEFAULT_CAM_DIST * (plan.maxRad / plan.baseMaxRad);
+                }
+            } catch (e) { /* keep the default distance */ }
+            state.cam = { yaw: 0.4, pitch: 0.14, dist, panX: 0, panY: 0 };
             requestRender();
         };
         

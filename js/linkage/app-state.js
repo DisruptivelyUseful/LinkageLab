@@ -173,7 +173,21 @@ export const state = {
     
     // Array duplication for tunnel/tube mode
     arrayCount: 1,              // Number of structure copies in array (1 = single structure)
-    
+
+    // Radial (polar) array: copies of the whole structure around a central anchor.
+    // Horizontal rings tile the ground plane (honeycomb); arches sweep a toroid.
+    // See js/linkage/radial-array.js (RADIAL_ARRAY_DEFAULTS mirrors these).
+    radialArrayEnabled: false,
+    radialCount: 6,             // Copies around the anchor (1..12)
+    radialCenter: true,         // Keep a structure at the anchor point
+    radialRotateCopies: true,   // Rotate each copy with its position on the ring
+    radialRadiusAuto: true,     // Ring radius follows the structure footprint
+    radialRadius: 0,            // Manual ring radius (inches) when auto is off
+    radialSpacing: 0,           // Extra radial offset added to the radius (inches)
+    radialStartAngle: 0,        // Rotates the whole pattern (degrees)
+    radialSpin: 0,              // Extra spin of each copy about its own axis (degrees)
+    radialHeightOffset: 0,      // Vertical offset of ring copies vs. the centre (inches)
+
     // Actuator animation state
     actuatorAnimation: {
         enabled: false,

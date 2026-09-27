@@ -104,7 +104,8 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             }
             
             updateHUD(data);
-    
+            if (typeof globalThis.updateRadialArrayReadout === 'function') globalThis.updateRadialArrayReadout(data);
+
             const currentCenter = data.structureCenter || calculateBeamBounds(data.beams, { mainStructureOnly: true }).center;
             
             // For the main 3D view: use fixed center during animation to prevent auto-repositioning
