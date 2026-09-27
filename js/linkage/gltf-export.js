@@ -4,6 +4,9 @@ import { bridgeGlobals } from './global-bridge.js';
 import { showToast } from '../core/feedback.js';
 import { state } from './app-state.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
+import { getEffectiveMinFoldAngle } from './solver.js';
+import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { degToRad, radToDeg } from './math.js';
 
     // ============================================================================
     // GLTF EXPORT SYSTEM
@@ -30,6 +33,14 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         const shouldDownload = options.download !== false;
         const isSilent = options.silent === true;
         const isSketchUpExport = options.target === 'sketchup' || options.bakeTransforms === true;
+        // Fold animation: sample the linkage from its minimum fold angle to the deployed/stop
+        // angle and bake node transforms into a glTF animation clip named "Fold".
+        const animate = options.animate === true && !isSketchUpExport;
+        const animationSamples = Math.max(2, Math.min(240, parseInt(options.animationSamples, 10) || 32));
+        const animationDuration = Math.max(0.5, Number(options.animationDuration) || 12);
+        // Sampled scenes only need node transforms, and drilled beams are expensive, so animated
+        // exports use solid beam boxes throughout (keeps base and sample hierarchies identical).
+        const solidBeams = animate;
         // Check if GLTFExporter is available
         if (typeof THREE === 'undefined' || typeof THREE.GLTFExporter === 'undefined') {
             showToast('GLTFExporter not available. Please check your internet connection.', 'error');
@@ -59,17 +70,30 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                 break;
         }
         
+        /**
+         * Builds the export scene for one fold angle (undefined = current state.foldAngle).
+         * Returns null when there is nothing to export.
+         */
+        const buildExportScene = (foldAngleRad) => {
+            const savedFoldAngle = state.foldAngle;
+            if (foldAngleRad !== undefined) state.foldAngle = foldAngleRad;
+            try {
+                return buildExportSceneInner(foldAngleRad);
+            } finally {
+                state.foldAngle = savedFoldAngle;
+            }
+        };
+        
+        const buildExportSceneInner = (foldAngleRad) => {
         // Get current geometry data using the same assembled component set as the live viewport.
         const data = buildLinkageGeometry({
             includeSupportBeams: true,
             includePanels: !!(state.solarPanels && state.solarPanels.enabled),
+            foldAngle: foldAngleRad,
             useCache: false
         });
         
-        if (!data || !data.beams || data.beams.length === 0) {
-            showToast('No geometry to export. Please create a structure first.', 'error');
-            return Promise.reject(new Error('No geometry to export'));
-        }
+        if (!data || !data.beams || data.beams.length === 0) return null;
         
         // Helper functions for coordinate transformation (Y-up to Z-up)
         // Transform: Y → Z, Z → -Y (rotate 90° around X axis)
@@ -260,7 +284,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             
             // Add beams for this module — pass data.bolts so each beam mesh
             // includes its actual bolt through-holes for SketchUp / glTF.
-            const exportBolts = data.bolts || [];
+            const exportBolts = solidBeams ? null : (data.bolts || []);
             if (beamsByModule[i]) {
                 // Horizontal top beams
                 beamsByModule[i].horizontalTop.forEach((beam, idx) => {
@@ -331,7 +355,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                     try {
                         const mesh = createBoltMeshForExport(bolt, isZup);
                         if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
-                            mesh.name = `Bolt_${idx}`;
+                            mesh.name = bolt.boltType ? `Bolt_${bolt.boltType}_${idx}` : `Bolt_${idx}`;
                             offsetForExportPivot(mesh);
                             boltsGroup.add(mesh);
                             totalMeshes++;
@@ -355,6 +379,18 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             }
         }
     
+        // Animated exports keep the roof/support beams outside the moving structure root so
+        // they can be stacked beside the IBC and flown into place after the linkage opens.
+        let supportFrame = null;
+        const getSupportFrame = () => {
+            if (!supportFrame) {
+                supportFrame = new THREE.Group();
+                supportFrame.name = 'SupportFrame';
+                coordWrapper.add(supportFrame);
+            }
+            return supportFrame;
+        };
+
         if (supportBeamsForExport.length > 0) {
             const supportGroup = new THREE.Group();
             supportGroup.name = 'SupportBeams';
@@ -364,7 +400,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             const reciprocalGroup = new THREE.Group();
             reciprocalGroup.name = 'ReciprocalSupportBeams';
             
-            const supportExportBolts = data.bolts || [];
+            const supportExportBolts = solidBeams ? null : (data.bolts || []);
             supportBeamsForExport.forEach((beam, idx) => {
                 try {
                     const mesh = createBeamMeshForExport(beam, isZup, supportExportBolts);
@@ -382,7 +418,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             
             if (radialGroup.children.length > 0) supportGroup.add(radialGroup);
             if (reciprocalGroup.children.length > 0) supportGroup.add(reciprocalGroup);
-            if (supportGroup.children.length > 0) rootGroup.add(supportGroup);
+            if (supportGroup.children.length > 0) (animate ? getSupportFrame() : rootGroup).add(supportGroup);
         }
     
         if (data.bolts) {
@@ -403,13 +439,23 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                         console.warn(`[GLTF Export] Failed to create RcpBolt_${idx}:`, e);
                     }
                 });
-                if (rcpBoltGroup.children.length > 0) rootGroup.add(rcpBoltGroup);
+                if (rcpBoltGroup.children.length > 0) (animate ? getSupportFrame() : rootGroup).add(rcpBoltGroup);
             }
         }
     
         const ibcExportGroup = createIbcExportGroup(data, exportCenter);
+        let ibcFrame = null;
         if (ibcExportGroup) {
-            rootGroup.add(ibcExportGroup);
+            if (animate) {
+                // Animated exports keep the IBC stack fixed at the structure centre while the
+                // beam assembly folds and packs, so it lives beside Structure, not inside it.
+                ibcFrame = new THREE.Group();
+                ibcFrame.name = 'IBCFrame';
+                ibcFrame.add(ibcExportGroup);
+                coordWrapper.add(ibcFrame);
+            } else {
+                rootGroup.add(ibcExportGroup);
+            }
             totalMeshes += countMeshesInObject(ibcExportGroup);
         }
         
@@ -469,10 +515,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         
         console.log(`[GLTF Export] Created ${totalMeshes} meshes in ${rootGroup.children.length} modules`);
         
-        if (totalMeshes === 0) {
-            showToast('No valid geometry to export.', 'error');
-            return;
-        }
+        if (totalMeshes === 0) return null;
         
         // Apply structure rotation around the same center used by the viewport.
         rootGroup.position.set(
@@ -509,8 +552,65 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             }
         }
         
+        if (animate) {
+            // Keep the structure's lowest beam on the ground plane at every fold angle so the
+            // baked animation folds in place instead of drifting around its centre.
+            const upKey = isZup ? 'z' : 'y';
+            const lift = -((exportBounds.min && exportBounds.min[upKey]) || 0) * scaleFactor;
+            rootGroup.position[upKey] += lift;
+            const panelsGroupForLift = coordWrapper.children.find(child => child.name === 'SolarPanels');
+            if (panelsGroupForLift) panelsGroupForLift.position[upKey] += lift;
+            // IBC and roof beams share the structure root's frame (centre offset, rotation,
+            // unit scale, ground lift) but do not move with it.
+            [ibcFrame, supportFrame].forEach(frame => {
+                if (!frame) return;
+                frame.position.copy(rootGroup.position);
+                frame.quaternion.copy(rootGroup.quaternion);
+                frame.scale.copy(rootGroup.scale);
+            });
+        }
+        
         // Force update matrices for all objects
         exportScene.updateMatrixWorld(true);
+        return { exportScene, data, moduleCount, exportBounds };
+        };
+        
+        const foldRange = animate ? computeFoldAnimationRange() : null;
+        const built = buildExportScene(animate ? foldRange.max : undefined);
+        if (!built) {
+            if (!isSilent) showToast('No geometry to export. Please create a structure first.', 'error');
+            return Promise.reject(new Error('No geometry to export'));
+        }
+        const { exportScene, data, moduleCount } = built;
+        
+        let foldAnimation = null;
+        if (animate) {
+            try {
+                foldAnimation = buildFoldAnimationClip(exportScene, buildExportScene, foldRange, animationSamples, animationDuration, scaleFactor);
+            } catch (err) {
+                console.warn('[GLTF Export] Fold animation failed; exporting static model instead', err);
+            }
+            if (foldAnimation) {
+                const meta = {
+                    clip: foldAnimation.clip.name,
+                    minFoldDeg: +radToDeg(foldRange.min).toFixed(2),
+                    maxFoldDeg: +radToDeg(foldRange.max).toFixed(2),
+                    samples: animationSamples,
+                    durationSec: animationDuration,
+                    groundAnchored: true,
+                    animatedNodes: foldAnimation.animatedNodes,
+                    timeline: foldAnimation.timeline,
+                    ibcGapIn: foldAnimation.ibcGapIn,
+                    supportCount: foldAnimation.supportCount,
+                    panelCount: foldAnimation.panelCount
+                };
+                exportScene.userData.foldAnimation = meta;
+                const structureRoot = exportScene.getObjectByName('Structure');
+                if (structureRoot) structureRoot.userData.foldAnimation = meta;
+                console.log(`[GLTF Export] Baked deploy animation: ${animationSamples} samples, ${foldAnimation.animatedNodes} animated nodes, ${meta.minFoldDeg}° → ${meta.maxFoldDeg}°`);
+            }
+        }
+        const animationMeta = exportScene.userData.foldAnimation || null;
     
         const sceneForExport = isSketchUpExport ? createBakedSketchUpExportScene(exportScene) : exportScene;
         if (isSketchUpExport) {
@@ -527,6 +627,10 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
             truncateDrawRange: true,
             includeCustomExtensions: false
         };
+        if (foldAnimation) {
+            exporterOptions.animations = [foldAnimation.clip];
+            exporterOptions.trs = true; // animated nodes must use TRS, not matrices
+        }
         
         return new Promise((resolve, reject) => {
             try {
@@ -563,7 +667,7 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                         }
                         console.log(`[GLTF Export] Successfully exported ${moduleCount} modules with ${data.beams?.length || 0} beams, ${data.brackets?.length || 0} brackets, ${data.bolts?.length || 0} bolts`);
                         
-                        resolve({ blob, format, filename, result });
+                        resolve({ blob, format, filename, result, animation: animationMeta });
                     } catch (e) {
                         console.error('GLTF Export download error:', e);
                         if (!isSilent) {
@@ -602,6 +706,413 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         });
     }
     
+    /**
+     * Fold range used for baked animations: from the effective minimum fold angle
+     * (V-beam contact) to the animation stop angle or optimal closed angle.
+     */
+    function computeFoldAnimationRange() {
+        const min = getEffectiveMinFoldAngle();
+        const closed = getOptimalClosedAngleForAnimation();
+        const stopDeg = state.animation ? state.animation.stopAngle : null;
+        const stop = (stopDeg !== null && stopDeg !== undefined) ? degToRad(stopDeg) : closed;
+        let max = Math.min(stop, closed);
+        if (!(max > min)) max = Math.max(min + degToRad(1), state.foldAngle || min);
+        return { min, max };
+    }
+
+    /**
+     * Stable path for a node inside an export scene, e.g.
+     * "CoordSystem/Structure/Module_2/VerticalBeams/VBeam_1" ("#i" for unnamed children).
+     */
+    function exportNodePath(obj, root) {
+        const parts = [];
+        let n = obj;
+        while (n && n !== root) {
+            const idx = n.parent ? n.parent.children.indexOf(n) : 0;
+            parts.unshift(n.name ? n.name : `#${idx}`);
+            n = n.parent;
+        }
+        return parts.join('/');
+    }
+
+    // Timeline of the baked clip, as fractions of the total duration. Forward time is
+    // deployment: the packed bundle climbs out of the IBC stack and lies flat, the scissor
+    // linkage unfolds, then the panels fly from their stack onto the ring one at a time.
+    const FOLD_TIMELINE = {
+        rise:      [0.00, 0.07],   // bundle rises vertically out of the IBC column
+        carry:     [0.07, 0.14],   // bundle carried sideways to its folded ground position
+        lower:     [0.14, 0.18],   // bundle lowered to stand on the ground
+        lay:       [0.18, 0.24],   // bundle tips over to lie flat (folded rest pose)
+        fold:      [0.24, 0.52],   // scissor linkage unfolds (kinematic samples)
+        support:   [0.52, 0.72],   // radial then reciprocal roof beams fly from their pile
+        panels:    [0.72, 1.00],   // panels mount one by one
+        ibcGap:    [0.08, 0.13]    // top IBC settles back down once the bundle is clear
+    };
+
+    /**
+     * Measures the folded beam bundle along its own beam direction (the folded stack
+     * usually lies on a diagonal, so an axis-aligned box would over-estimate it).
+     * @returns {{dir: THREE.Vector3, L: number, H: number, W: number, center: THREE.Vector3, minY: number}}
+     */
+    function measureFoldedBundle(root) {
+        const UP = new THREE.Vector3(0, 1, 0);
+        const dir = new THREE.Vector3();
+        const tmpQ = new THREE.Quaternion();
+        const z = new THREE.Vector3();
+        root.traverse(o => {
+            if (!o.isMesh || !/Beam/.test(o.name || '')) return;
+            o.getWorldQuaternion(tmpQ);
+            z.set(0, 0, 1).applyQuaternion(tmpQ);     // beam length runs along local Z
+            z.y = 0;
+            if (z.lengthSq() < 1e-8) return;
+            z.normalize();
+            if (dir.lengthSq() > 0 && dir.dot(z) < 0) z.negate();
+            dir.add(z);
+        });
+        if (dir.lengthSq() < 1e-8) dir.set(1, 0, 0);
+        dir.normalize();
+        const yaw = Math.atan2(dir.z, dir.x);
+        const unyaw = new THREE.Matrix4().makeRotationY(-yaw);   // maps dir → +X
+        const box = new THREE.Box3();
+        const v = new THREE.Vector3();
+        root.traverse(o => {
+            if (!o.isMesh || !o.geometry) return;
+            if (!o.geometry.boundingBox) o.geometry.computeBoundingBox();
+            const bb = o.geometry.boundingBox;
+            for (let i = 0; i < 8; i++) {
+                v.set(i & 1 ? bb.max.x : bb.min.x, i & 2 ? bb.max.y : bb.min.y, i & 4 ? bb.max.z : bb.min.z);
+                v.applyMatrix4(o.matrixWorld).applyMatrix4(unyaw);
+                box.expandByPoint(v);
+            }
+        });
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3()).applyMatrix4(new THREE.Matrix4().makeRotationY(yaw));
+        void UP;
+        return { dir, L: size.x, H: size.y, W: size.z, center, minY: box.min.y };
+    }
+
+    const smoothstep = (u) => { u = Math.min(1, Math.max(0, u)); return u * u * (3 - 2 * u); };
+    const phaseU = (t, D, span) => (t / D - span[0]) / (span[1] - span[0]);
+
+    /**
+     * Bakes the full pack/deploy sequence into a clip named "Deploy" (see FOLD_TIMELINE).
+     * Beam parts are sampled from the linkage solver across the fold range; the bundle's
+     * rigid stand-up/insertion, the panel flights and the IBC gap are synthesised here.
+     * Parts that do not exist at a given fold angle (support beams below their visibility
+     * angle) are collapsed with a stepped scale of 0, since glTF has no visibility track.
+     *
+     * @returns {{clip: THREE.AnimationClip, animatedNodes: number, timeline: object, ibcGapIn: number, panelCount: number} | null}
+     */
+    function buildFoldAnimationClip(baseScene, buildSceneAtAngle, range, samples, durationSec, unitScale) {
+        const D = durationSec;
+        const TL = FOLD_TIMELINE;
+        const inch = unitScale || 1;               // scene units per inch
+        const UP = new THREE.Vector3(0, 1, 0);
+        const STRUCT_PATH = 'CoordSystem/Structure';
+
+        baseScene.updateMatrixWorld(true);
+        const baseByPath = new Map();
+        baseScene.traverse(o => { if (o !== baseScene) baseByPath.set(exportNodePath(o, baseScene), o); });
+        const structureRoot = baseScene.getObjectByName('Structure');
+        const panelsGroup = baseScene.getObjectByName('SolarPanels');
+        const ibcGroup = baseScene.getObjectByName('IBCReference');
+        if (!structureRoot) return null;
+
+        const readTRS = (o) => ({
+            p: [o.position.x, o.position.y, o.position.z],
+            q: [o.quaternion.x, o.quaternion.y, o.quaternion.z, o.quaternion.w],
+            s: [o.scale.x, o.scale.y, o.scale.z]
+        });
+
+        // ---- Keyframe records ------------------------------------------------------
+        const records = new Map();
+        const addKey = (path, t, trs) => {
+            const node = baseByPath.get(path);
+            if (!node) return;
+            let rec = records.get(path);
+            if (!rec) { rec = { node, keys: [] }; records.set(path, rec); }
+            rec.keys.push({ t, p: trs.p, q: trs.q, s: trs.s });
+        };
+
+        // ---- 1. Kinematic samples across the fold range ---------------------------------
+        const kin = [];
+        let folded = null;
+        let foldedRootTRS = null;
+        for (let j = 0; j < samples; j++) {
+            const f = samples === 1 ? 1 : j / (samples - 1);
+            const angle = range.min + (range.max - range.min) * f;
+            const built = buildSceneAtAngle(angle);
+            if (!built || !built.exportScene) continue;
+            const sc = built.exportScene;
+            sc.updateMatrixWorld(true);
+            const nodes = new Map();
+            sc.traverse(o => {
+                if (o === sc) return;
+                const path = exportNodePath(o, sc);
+                if (path !== STRUCT_PATH && !path.startsWith(STRUCT_PATH + '/')) return;
+                nodes.set(path, readTRS(o));
+            });
+            if (kin.length === 0) {
+                const root = sc.getObjectByName('Structure');
+                folded = measureFoldedBundle(root);
+                foldedRootTRS = readTRS(root);
+            }
+            kin.push({ angle, f, nodes });
+            disposeExportSceneResources(sc);
+        }
+        if (kin.length < 2 || !folded) return null;
+
+        const kinTRS = (k, path) => {
+            const hit = kin[k].nodes.get(path);
+            if (hit) return hit;
+            const node = baseByPath.get(path);
+            const b = readTRS(node);
+            return { p: b.p, q: b.q, s: [0, 0, 0] };   // absent at this angle → collapsed
+        };
+        const tFold = (k) => D * (TL.fold[0] + (TL.fold[1] - TL.fold[0]) * kin[k].f);
+
+        // ---- 2. Structure children: hold folded, unfold, hold deployed ------------------
+        baseByPath.forEach((node, path) => {
+            if (!path.startsWith(STRUCT_PATH + '/')) return;
+            addKey(path, 0, kinTRS(0, path));
+            addKey(path, D * TL.fold[0], kinTRS(0, path));
+            for (let k = 0; k < kin.length; k++) addKey(path, tFold(k), kinTRS(k, path));
+            addKey(path, D, kinTRS(kin.length - 1, path));
+        });
+
+        // ---- 3. Bundle geometry & IBC column -----------------------------------------------
+        const c0 = folded.center;
+        const L = folded.L;                                          // bundle length (becomes height)
+        // Rotating the beam direction about (dir × up) by +90° points it straight up.
+        const standAxis = new THREE.Vector3(-folded.dir.z, 0, folded.dir.x).normalize();
+        const standSign = 1;
+
+        let ibcBox = null, ibcCenter = null, groundY = folded.minY;
+        if (ibcGroup) {
+            ibcBox = new THREE.Box3().setFromObject(ibcGroup);
+            ibcCenter = ibcBox.getCenter(new THREE.Vector3());
+            groundY = Math.min(groundY, ibcBox.min.y);
+        }
+        const origin = ibcCenter ? new THREE.Vector3(ibcCenter.x, groundY, ibcCenter.z) : new THREE.Vector3(0, groundY, 0);
+        const margin = 2 * inch;
+        const ibcHeight = ibcBox ? (ibcBox.max.y - ibcBox.min.y) : 0;
+        const ibcGap = ibcBox ? Math.max(0, L + 2 * margin - ibcHeight) : 0;   // widen the column to fit
+        const stackTop = (ibcBox ? ibcBox.max.y : groundY) + ibcGap;
+        const packedCenterY = groundY + margin + L / 2;
+        const clearY = stackTop + margin + L / 2;
+
+        // Height of the bundle centre so its (rotated) box rests on the ground at tilt θ.
+        const restHeight = (theta) => groundY + (L * Math.abs(Math.sin(theta)) + folded.H * Math.abs(Math.cos(theta))) / 2;
+
+        // Rigid pose of the bundle → structure root local TRS.
+        const W0 = new THREE.Matrix4().compose(
+            new THREE.Vector3().fromArray(foldedRootTRS.p),
+            new THREE.Quaternion().fromArray(foldedRootTRS.q),
+            new THREE.Vector3().fromArray(foldedRootTRS.s));
+        const rootPoseTRS = (theta, center) => {
+            const q = new THREE.Quaternion().setFromAxisAngle(standAxis, standSign * theta);
+            const M = new THREE.Matrix4().makeTranslation(center.x, center.y, center.z)
+                .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q))
+                .multiply(new THREE.Matrix4().makeTranslation(-c0.x, -c0.y, -c0.z))
+                .multiply(W0);
+            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+            M.decompose(pos, quat, scl);
+            return { p: pos.toArray(), q: quat.toArray(), s: scl.toArray() };
+        };
+
+        // ---- 4. Structure root: rise → carry → lower → lay, then kinematic root motion --------
+        const restXZ = new THREE.Vector3(c0.x, 0, c0.z);
+        const STEPS = 12;
+        const rootSpan = (span, fn) => {
+            for (let i = 0; i <= STEPS; i++) {
+                const u = i / STEPS;
+                const t = D * (span[0] + (span[1] - span[0]) * u);
+                addKey(STRUCT_PATH, t, fn(smoothstep(u)));
+            }
+        };
+        rootSpan(TL.rise,  (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(origin.x, packedCenterY + (clearY - packedCenterY) * e, origin.z)));
+        rootSpan(TL.carry, (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(origin.x + (restXZ.x - origin.x) * e, clearY, origin.z + (restXZ.z - origin.z) * e)));
+        rootSpan(TL.lower, (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(restXZ.x, clearY + (restHeight(Math.PI / 2) - clearY) * e, restXZ.z)));
+        rootSpan(TL.lay,   (e) => { const th = (Math.PI / 2) * (1 - e); return rootPoseTRS(th, new THREE.Vector3(restXZ.x, restHeight(th), restXZ.z)); });
+        for (let k = 0; k < kin.length; k++) addKey(STRUCT_PATH, tFold(k), kinTRS(k, STRUCT_PATH));
+        addKey(STRUCT_PATH, D, kinTRS(kin.length - 1, STRUCT_PATH));
+
+        // ---- 5. IBC: top tank lifts by the gap while the bundle is inside -------------------
+        if (ibcGroup && ibcGap > 0) {
+            const topTank = ibcGroup.getObjectByName('IBC_Tank_1');
+            if (topTank) {
+                const path = exportNodePath(topTank, baseScene);
+                const base = readTRS(topTank);
+                const gapLocal = ibcGap / inch;      // tank offsets are authored in inches
+                const raised = { p: [base.p[0], base.p[1] + gapLocal, base.p[2]], q: base.q, s: base.s };
+                addKey(path, 0, raised);
+                addKey(path, D * TL.ibcGap[0], raised);
+                addKey(path, D * TL.ibcGap[1], base);
+                addKey(path, D, base);
+            }
+        }
+
+        // ---- 6. Flights: parts stacked beside the IBC, flown into place one at a time -----------
+        const FLIGHT_STEPS = 14;
+        const worldToLocalTRS = (parentInv, pos, quat, scl) => {
+            const M = new THREE.Matrix4().compose(pos, quat, scl).premultiply(parentInv);
+            const p = new THREE.Vector3(), q = new THREE.Quaternion(), sc = new THREE.Vector3();
+            M.decompose(p, q, sc);
+            return { p: p.toArray(), q: q.toArray(), s: sc.toArray() };
+        };
+        /** Keys a node: parked at stackPos/stackQuat until `start`, then an eased arc to its mounted pose. */
+        const bakeFlight = (node, stackPos, stackQuat, start, flight, arc) => {
+            const path = exportNodePath(node, baseScene);
+            const parentInv = new THREE.Matrix4().copy(node.parent.matrixWorld).invert();
+            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+            node.matrixWorld.decompose(pos, quat, scl);
+            const stackTRS = worldToLocalTRS(parentInv, stackPos, stackQuat, scl);
+            const mountTRS = readTRS(node);
+            addKey(path, 0, stackTRS);
+            addKey(path, start, stackTRS);
+            for (let i = 1; i < FLIGHT_STEPS; i++) {
+                const u = i / FLIGHT_STEPS;
+                const e = smoothstep(u);
+                const p = stackPos.clone().lerp(pos, e).addScaledVector(UP, arc * Math.sin(Math.PI * u));
+                const q = stackQuat.clone().slerp(quat, e);
+                addKey(path, start + flight * u, worldToLocalTRS(parentInv, p, q, scl));
+            }
+            addKey(path, start + flight, mountTRS);
+            addKey(path, D, mountTRS);
+        };
+        const localDims = (mesh) => {
+            if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+            const bb = mesh.geometry.boundingBox;
+            return { w: bb.max.x - bb.min.x, t: bb.max.y - bb.min.y, len: bb.max.z - bb.min.z };
+        };
+
+        // Stack sites: panels on the far side of the IBC from the folded bundle, roof beams to the side.
+        const away = new THREE.Vector3(origin.x - c0.x, 0, origin.z - c0.z);
+        if (away.lengthSq() < 1e-8) away.set(1, 0, 0);
+        away.normalize();
+        const side = new THREE.Vector3(-away.z, 0, away.x);
+        const ibcHalf = ibcBox ? Math.max(ibcBox.max.x - ibcBox.min.x, ibcBox.max.z - ibcBox.min.z) / 2 : 24 * inch;
+
+        // ---- 6a. Roof beams (radial first, then reciprocal) piled beside the IBC ----------------
+        let supportCount = 0;
+        const supportFrame = baseScene.getObjectByName('SupportFrame');
+        const supportGroup = supportFrame && supportFrame.getObjectByName('SupportBeams');
+        if (supportGroup) {
+            const radial = supportGroup.getObjectByName('RadialSupportBeams');
+            const rcp = supportGroup.getObjectByName('ReciprocalSupportBeams');
+            const beams = [...(radial ? radial.children : []), ...(rcp ? rcp.children : [])].filter(b => b.isMesh);
+            supportCount = beams.length;
+            if (beams.length) {
+                const dims = beams.map(localDims);
+                const layerH = Math.max(...dims.map(d => Math.min(d.w, d.t))) * inch + 0.15 * inch;
+                const pitch = Math.max(...dims.map(d => Math.max(d.w, d.t))) * inch + 0.5 * inch;
+                const perLayer = 4;
+                const pileCenter = origin.clone().add(side.clone().multiplyScalar(ibcHalf + (perLayer * pitch) / 2 + 8 * inch));
+                const xAxis = new THREE.Vector3().crossVectors(UP, away).normalize();
+                const flatQuat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, UP, away));
+                const roll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
+                const span = TL.support;
+                const phaseLen = (span[1] - span[0]) * D;
+                const flight = phaseLen * 0.25;
+                beams.forEach((beam, m) => {
+                    const d = dims[m];
+                    const stackIdx = beams.length - 1 - m;             // first to mount sits on top
+                    const layer = Math.floor(stackIdx / perLayer);
+                    const col = stackIdx % perLayer;
+                    const stackPos = pileCenter.clone()
+                        .addScaledVector(side, (col - (perLayer - 1) / 2) * pitch)
+                        .setY(groundY + layerH * (layer + 0.5));
+                    const stackQuat = flatQuat.clone();
+                    if (d.t > d.w) stackQuat.multiply(roll);            // wide face down
+                    const start = span[0] * D + (beams.length === 1 ? 0 : m / (beams.length - 1)) * (phaseLen - flight);
+                    const mountPos = new THREE.Vector3().setFromMatrixPosition(beam.matrixWorld);
+                    const arc = 0.3 * stackPos.distanceTo(mountPos) + 12 * inch;
+                    bakeFlight(beam, stackPos, stackQuat, start, flight, arc);
+                });
+            }
+            // Reciprocal crossing bolts appear once the roof beams are in place.
+            const rcpBolts = supportFrame.getObjectByName('ReciprocalSupportBolts_Bolts');
+            if (rcpBolts) {
+                const path = exportNodePath(rcpBolts, baseScene);
+                const base = readTRS(rcpBolts);
+                addKey(path, 0, { p: base.p, q: base.q, s: [0, 0, 0] });
+                addKey(path, D * TL.support[1], base);
+                addKey(path, D, base);
+            }
+        }
+
+        // ---- 6b. Panels: stacked flat beside the IBC, flown onto the ring one at a time ----------
+        let panelCount = 0;
+        if (panelsGroup && panelsGroup.children.length) {
+            const panels = panelsGroup.children.slice();
+            panelCount = panels.length;
+            const panelBoxes = panels.map(pn => new THREE.Box3().setFromObject(pn));
+            const footprint = panelBoxes.reduce((m, bx) => { const sz = bx.getSize(new THREE.Vector3()); return Math.max(m, sz.x, sz.z); }, 0);
+            const thickness = panelBoxes.reduce((m, bx) => Math.max(m, bx.getSize(new THREE.Vector3()).y), 0) || inch;
+            const stackCenter = origin.clone().add(away.clone().multiplyScalar(ibcHalf + footprint / 2 + 8 * inch));
+            const span = TL.panels;
+            const phaseLen = (span[1] - span[0]) * D;
+            const flight = phaseLen * 0.3;
+            panels.forEach((pn, k) => {
+                const pos = new THREE.Vector3(), quat = new THREE.Quaternion();
+                pn.matrixWorld.decompose(pos, quat, new THREE.Vector3());
+                // Stack pose: same yaw as mounted, but flat, at layer k (k = removal order, 0 = bottom).
+                const zWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(quat);
+                const yaw = Math.atan2(zWorld.x, zWorld.z);
+                const stackQuat = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
+                const stackPos = new THREE.Vector3(stackCenter.x, groundY + thickness * (k + 0.5), stackCenter.z);
+                const mountOrder = panelCount - 1 - k;                 // last removed mounts first
+                const start = span[0] * D + (panelCount === 1 ? 0 : mountOrder / (panelCount - 1)) * (phaseLen - flight);
+                const arc = Math.max(0.35 * stackPos.distanceTo(pos), footprint * 0.6);
+                bakeFlight(pn, stackPos, stackQuat, start, flight, arc);
+            });
+        }
+
+        // ---- 7. Tracks --------------------------------------------------------------------------
+        const varies = (arr, stride) => {
+            for (let k = 0; k < stride; k++) {
+                const first = arr[k];
+                for (let j = k + stride; j < arr.length; j += stride) {
+                    if (Math.abs(arr[j] - first) > 1e-6) return true;
+                }
+            }
+            return false;
+        };
+        const tracks = [];
+        let animatedNodes = 0;
+        records.forEach(rec => {
+            rec.keys.sort((x, y) => x.t - y.t);
+            const times = [], pos = [], quat = [], scl = [];
+            let lastT = -1;
+            rec.keys.forEach(kf => {
+                if (kf.t - lastT < 1e-4) return;   // drop duplicate timestamps
+                lastT = kf.t;
+                times.push(kf.t); pos.push(...kf.p); quat.push(...kf.q); scl.push(...kf.s);
+            });
+            if (times.length < 2) return;
+            const id = rec.node.uuid;
+            let used = false;
+            if (varies(pos, 3)) { tracks.push(new THREE.VectorKeyframeTrack(`${id}.position`, times, pos)); used = true; }
+            if (varies(quat, 4)) { tracks.push(new THREE.QuaternionKeyframeTrack(`${id}.quaternion`, times, quat)); used = true; }
+            if (varies(scl, 3)) {
+                const st = new THREE.VectorKeyframeTrack(`${id}.scale`, times, scl);
+                st.setInterpolation(THREE.InterpolateDiscrete);
+                tracks.push(st);
+                used = true;
+            }
+            if (used) animatedNodes++;
+        });
+        if (tracks.length === 0) return null;
+        return {
+            clip: new THREE.AnimationClip('Deploy', D, tracks),
+            animatedNodes,
+            timeline: { unpack: [TL.rise[0], TL.lay[1]], fold: TL.fold, support: TL.support, panels: TL.panels },
+            ibcGapIn: +(ibcGap / inch).toFixed(2),
+            supportCount,
+            panelCount
+        };
+    }
+
     function disposeExportSceneResources(scene) {
         if (!scene || !scene.traverse) return;
         scene.traverse((obj) => {
@@ -1278,6 +1789,23 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                                 Standard exports can use either option. SketchUp 2026 mode always uses Y-Up internally to avoid double up-axis conversion.
                             </p>
                         </div>
+                        <div style="margin-bottom: 16px;" id="gltf-anim-section">
+                            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 600;">
+                                <input type="checkbox" id="gltf-animate">
+                                <span>Include deploy animation</span>
+                            </label>
+                            <div style="display: flex; gap: 14px; margin-top: 8px; font-size: 0.85rem; color: var(--text-secondary);">
+                                <label style="display: flex; align-items: center; gap: 6px;">Samples
+                                    <input type="number" id="gltf-anim-samples" value="32" min="4" max="240" style="width: 64px;">
+                                </label>
+                                <label style="display: flex; align-items: center; gap: 6px;">Duration (s)
+                                    <input type="number" id="gltf-anim-duration" value="12" min="0.5" step="0.5" style="width: 64px;">
+                                </label>
+                            </div>
+                            <p style="margin-top: 8px; font-size: 0.8rem; color: var(--text-muted);">
+                                Bakes a <code>Deploy</code> clip: the packed beam bundle rises out of the IBC column and lies flat, the linkage unfolds from its minimum angle to the deployed / stop angle, the roof beams fly from a pile beside the IBC, then the panels mount from their stack one by one. The IBC stays at the structure centre (its top tank lifts to fit the bundle). Beams export as solid boxes. Standard profile only.
+                            </p>
+                        </div>
                         <div style="background: var(--bg-tertiary); padding: 12px; border-radius: 6px; font-size: 0.85rem;">
                             <strong>Hierarchy:</strong><br>
                             <code style="font-size: 0.8rem; color: var(--text-secondary);">
@@ -1316,6 +1844,8 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
                     const yUp = modal.querySelector('input[name="gltf-coordsys"][value="yup"]');
                     if (yUp) yUp.checked = true;
                 }
+                const animSection = modal.querySelector('#gltf-anim-section');
+                if (animSection) animSection.style.opacity = (radio.value === 'sketchup' && radio.checked) ? '0.45' : '1';
             };
         });
     }
@@ -1346,8 +1876,15 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
         // Exporting pre-rotated Z-up data here causes a second conversion and tips the model/panels over.
         const coordSys = profile === 'sketchup' ? 'yup' : (coordSysRadio ? coordSysRadio.value : 'yup');
         
+        const animateBox = document.getElementById('gltf-animate');
+        const animate = !!(animateBox && animateBox.checked) && profile !== 'sketchup';
+        const samplesInput = document.getElementById('gltf-anim-samples');
+        const durationInput = document.getElementById('gltf-anim-duration');
+        const animationSamples = samplesInput ? parseInt(samplesInput.value, 10) || 32 : 32;
+        const animationDuration = durationInput ? Number(durationInput.value) || 12 : 12;
+
         closeGLTFExportModal();
-        exportToGLTF(format, units, coordSys, { target: profile });
+        exportToGLTF(format, units, coordSys, { target: profile, animate, animationSamples, animationDuration });
     }
 
 

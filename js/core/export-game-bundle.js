@@ -88,7 +88,8 @@ export function deriveLocationBundleInfo(project) {
  * Build a Godot-ready game bundle from current app state.
  * @returns {Promise<object>}
  */
-export async function buildGameBundle() {
+export async function buildGameBundle(options = {}) {
+    const animate = options.animate !== false; // bake the deploy animation by default
     const project = buildProjectExport();
     const name = generateDefaultFilename();
 
@@ -99,10 +100,17 @@ export async function buildGameBundle() {
         base64: '',
         bounds: null,
         heightM: 0,
+        animation: null,
     };
 
     try {
-        const glbResult = await exportToGLTF('glb', 'meters', 'yup', { download: false, silent: true });
+        const glbResult = await exportToGLTF('glb', 'meters', 'yup', {
+            download: false,
+            silent: true,
+            animate,
+            animationSamples: options.animationSamples || 32,
+            animationDuration: options.animationDuration || 12,
+        });
         if (glbResult?.blob) {
             const glbBase64 = await new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -111,6 +119,7 @@ export async function buildGameBundle() {
                 reader.readAsDataURL(glbResult.blob);
             });
             model.base64 = glbBase64;
+            model.animation = glbResult.animation || null;
             const geom = project.geometrySnapshot || project.handoff?.linkage?.structureGeometry;
             if (geom?.bounds) {
                 const b = geom.bounds;
@@ -165,7 +174,11 @@ export async function exportGameBundleFile() {
         <p style="margin:0 0 12px 0;color:#8899a6;font-size:0.9rem;">One file bundles the 3D model, electrical circuit, solar specs, and location for import into the Godot simulator.</p>
         <input type="text" id="game-bundle-filename" value="${defaultName}"
                style="width:100%;padding:10px;border:1px solid #38444d;border-radius:4px;background:#15202b;color:#e1e8ed;font-size:1rem;box-sizing:border-box;">
-        <p style="margin:8px 0 16px 0;color:#657786;font-size:0.8rem;">.gamebundle.json extension will be added automatically</p>
+        <p style="margin:8px 0 12px 0;color:#657786;font-size:0.8rem;">.gamebundle.json extension will be added automatically</p>
+        <label style="display:flex;align-items:center;gap:8px;margin:0 0 16px 0;font-size:0.9rem;cursor:pointer;">
+            <input type="checkbox" id="game-bundle-animate" checked>
+            <span>Include deploy animation (baked "Deploy" clip: unpack from IBC → unfold → roof beams → panels)</span>
+        </label>
         <div style="display:flex;gap:12px;justify-content:flex-end;">
             <button id="game-bundle-cancel" style="padding:8px 16px;border:1px solid #38444d;border-radius:4px;background:transparent;color:#e1e8ed;cursor:pointer;">Cancel</button>
             <button id="game-bundle-confirm" style="padding:8px 16px;border:none;border-radius:4px;background:#1da1f2;color:white;cursor:pointer;font-weight:500;">Export</button>
@@ -188,7 +201,8 @@ export async function exportGameBundleFile() {
 
         try {
             showToast('Building game bundle (embedding 3D model)…', 'info');
-            const bundle = await buildGameBundle();
+            const animateBox = document.getElementById('game-bundle-animate');
+            const bundle = await buildGameBundle({ animate: !animateBox || animateBox.checked });
             const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement('a');
