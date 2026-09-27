@@ -62,6 +62,70 @@
             </div>
         </div>
 
+        <div id="radial-array-group" class="group collapsed" data-group="radial-array">
+            <button type="button" class="group-title">Radial Array</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <label class="chk-label" title="Repeat the whole structure around a central anchor point"><input type="checkbox" id="chk-radial-arr-enabled"> Enable Radial Array</label>
+                </div>
+                <div id="radial-array-mode-hint" class="hint">Horizontal structures tile around the anchor (e.g. 6 hexagons around a 7th = honeycomb).</div>
+                <div id="radial-array-controls" style="display:none;">
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Ring Count</span><span class="unit">copies</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-radial-arr-count" min="1" max="12" step="1" value="6">
+                            <input type="number" id="nb-radial-arr-count" min="1" max="12" step="1" value="6">
+                        </div>
+                    </div>
+                    <div class="chk-grid">
+                        <label class="chk-label" title="Keep a structure at the anchor point (the 7th hexagon of a honeycomb)"><input type="checkbox" id="chk-radial-arr-center" checked> Structure at Center</label>
+                        <label class="chk-label" title="Rotate each copy with its position on the ring (off = translate only)"><input type="checkbox" id="chk-radial-arr-rotate" checked> Rotate Copies</label>
+                    </div>
+                    <div class="ctrl-row rule-above">
+                        <label class="chk-label" title="Ring radius follows the structure footprint so neighbours just touch"><input type="checkbox" id="chk-radial-arr-auto-radius" checked> Auto Ring Radius</label>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Ring Radius</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-radial-arr-radius" min="0" max="5000" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Spacing Offset</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-radial-arr-spacing" min="-120" max="120" step="0.5" value="0">
+                            <input type="number" id="nb-radial-arr-spacing" min="-1000" max="1000" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Start Angle</span><span class="unit">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-radial-arr-start" min="-180" max="180" step="1" value="0">
+                            <input type="number" id="nb-radial-arr-start" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Copy Spin</span><span class="unit">°</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-radial-arr-spin" min="-180" max="180" step="1" value="0">
+                            <input type="number" id="nb-radial-arr-spin" min="-180" max="180" step="1" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Height Offset</span><span class="unit">in</span></div>
+                        <div class="input-wrap">
+                            <input type="range" id="sl-radial-arr-height" min="-120" max="120" step="0.5" value="0">
+                            <input type="number" id="nb-radial-arr-height" min="-1000" max="1000" step="0.5" value="0">
+                        </div>
+                    </div>
+                    <div id="radial-array-readout" class="hint"></div>
+                    <div id="radial-array-perf-note" class="hint">
+                        <strong>Full Detail</strong> and <strong>Shadows</strong> are switched off while the radial array is active to keep rendering responsive. They are restored when you disable the array. Press <strong>F</strong> to fit the whole pattern in view.
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="arch-orientation-group" class="group" data-group="arch" style="display:none;">
             <button type="button" class="group-title">Arch Orientation</button>
             <div class="group-content">

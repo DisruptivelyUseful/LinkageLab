@@ -26,7 +26,10 @@ const idMap = {
     'off-top': 'offsetTopIn', 'off-bot': 'offsetBotIn', 'vert-end': 'vertEndOffset',
     'bracket-width': 'bracketWidth', 'bracket-depth': 'bracketDepth', 'bracket-height': 'bracketHeight',
     'bracket-wall': 'bracketWallThickness', 'bracket-inner': 'bracketInnerWidth', 'bracket-hole-distance': 'bracketHoleDistance',
-    'cost-hbeam': 'costHBeam', 'cost-vbeam': 'costVBeam', 'cost-brack': 'costBracket', 'cost-solar': 'costSolarPanel'
+    'cost-hbeam': 'costHBeam', 'cost-vbeam': 'costVBeam', 'cost-brack': 'costBracket', 'cost-solar': 'costSolarPanel',
+    // Radial array (see radial-array.js)
+    'radial-arr-count': 'radialCount', 'radial-arr-radius': 'radialRadius', 'radial-arr-spacing': 'radialSpacing',
+    'radial-arr-start': 'radialStartAngle', 'radial-arr-spin': 'radialSpin', 'radial-arr-height': 'radialHeightOffset'
 };
 
 Object.keys(idMap).forEach(k => {

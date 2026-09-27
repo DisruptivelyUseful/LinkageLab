@@ -64,6 +64,49 @@ describe('config-persistence', () => {
         expect(globalThis.state.arrayCount).toBe(2);
     });
 
+    it('saves and loads the radial array under mode.radialArray', () => {
+        globalThis.state = createTestState({
+            radialArrayEnabled: true,
+            radialCount: 5,
+            radialCenter: false,
+            radialRotateCopies: false,
+            radialRadiusAuto: false,
+            radialRadius: 321.5,
+            radialSpacing: -4,
+            radialStartAngle: 30,
+            radialSpin: -12,
+            radialHeightOffset: 6,
+        });
+
+        const snapshot = getConfigSnapshot();
+        expect(snapshot.mode.radialArray).toEqual({
+            enabled: true, count: 5, center: false, rotateCopies: false, radiusAuto: false,
+            radius: 321.5, spacing: -4, startAngle: 30, spin: -12, heightOffset: 6,
+        });
+
+        globalThis.state = createTestState();
+        applyV30Config(snapshot);
+        const s = globalThis.state;
+        expect(s.radialArrayEnabled).toBe(true);
+        expect(s.radialCount).toBe(5);
+        expect(s.radialCenter).toBe(false);
+        expect(s.radialRotateCopies).toBe(false);
+        expect(s.radialRadiusAuto).toBe(false);
+        expect(s.radialRadius).toBe(321.5);
+        expect(s.radialSpacing).toBe(-4);
+        expect(s.radialStartAngle).toBe(30);
+        expect(s.radialSpin).toBe(-12);
+        expect(s.radialHeightOffset).toBe(6);
+    });
+
+    it('leaves radial array state untouched for configs saved before the feature existed', () => {
+        globalThis.state = createTestState({ radialArrayEnabled: true, radialCount: 4 });
+        applyV30Config({ structure: { modules: 7 }, mode: { type: 'cylinder', arrayCount: 1 } });
+        expect(globalThis.state.modules).toBe(7);
+        expect(globalThis.state.radialArrayEnabled).toBe(true);
+        expect(globalThis.state.radialCount).toBe(4);
+    });
+
     it('round-trips structure fields through snapshot and apply', () => {
         globalThis.state = createTestState({
             modules: 9,

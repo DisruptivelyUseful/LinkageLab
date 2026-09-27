@@ -46,7 +46,14 @@ import { clamp } from './math.js';
         refBeamThick: { min: 0.5, max: 12 },
         refBeamLength: { min: 1, max: 24 },
         refBeamPrice: { min: 0.01, max: 1000 },
-        foldAngle: { min: 5, max: 175 }
+        foldAngle: { min: 5, max: 175 },
+        // Radial array of the whole structure (see radial-array.js)
+        radialCount: { min: 1, max: 12 },
+        radialRadius: { min: 0, max: 5000 },
+        radialSpacing: { min: -1000, max: 1000 },
+        radialStartAngle: { min: -180, max: 180 },
+        radialSpin: { min: -180, max: 180 },
+        radialHeightOffset: { min: -1000, max: 1000 }
     };
     
     /**

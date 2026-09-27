@@ -16,6 +16,7 @@ import {
 } from './math.js';
 import { Beam3D } from './geometry-classes.js';
 import { solveLinkage } from './solver.js';
+import { applyRadialArray, isRadialArrayActive } from './radial-array.js';
 import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { requestRender } from './render-app.js';
@@ -3774,7 +3775,24 @@ import { showToast } from '../core/feedback.js';
             data.structureCenter = data.structureBounds.center;
             data.fullBounds = calculateBeamBounds(data.beams);
         }
-    
+
+        // Radial (polar) array: the last step, so every copy is a rigid transform of the
+        // complete single structure (support / reciprocal beams and panels included).
+        // The anchor is the single ring's own centre, which the shift above put at the
+        // world origin in the deployed pose. See js/linkage/radial-array.js.
+        data.radialArray = null;
+        if (options.applyRadialArray !== false && isRadialArrayActive(state)) {
+            const radial = applyRadialArray(state, data);
+            if (radial) {
+                Object.assign(data, radial.geometry);
+                data.radialArray = radial.plan;
+                data.maxRad = radial.plan.maxRad;
+                data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+                data.structureCenter = data.structureBounds.center;
+                data.fullBounds = calculateBeamBounds(data.beams);
+            }
+        }
+
         return data;
     }
 

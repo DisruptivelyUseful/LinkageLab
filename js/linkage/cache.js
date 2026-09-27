@@ -72,7 +72,18 @@ function computeGeometryHash() {
             ? JSON.stringify(globalThis.serializeHardwareAssembliesForConfig())
             : '',
         state.foldAngle.toFixed(6),
-        state.orientation
+        state.orientation,
+        // Radial array parameters change solver output directly
+        !!state.radialArrayEnabled,
+        state.radialCount,
+        !!state.radialCenter,
+        !!state.radialRotateCopies,
+        !!state.radialRadiusAuto,
+        state.radialRadius,
+        state.radialSpacing,
+        state.radialStartAngle,
+        state.radialSpin,
+        state.radialHeightOffset
     ];
     return params.join('|');
 }

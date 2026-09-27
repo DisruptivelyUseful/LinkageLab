@@ -12,6 +12,10 @@ The app is static files, so GitHub Pages serves it directly from `main` with no 
 
 Work on feature branches is fast-forwarded into `main` when it is ready to test.
 
+## Features worth knowing
+
+- **Radial Array** (sidebar → Structure → Radial Array): repeat the whole structure around a central anchor — six hexagons around a seventh for a honeycomb, or N arches on radial planes for a toroid. See [docs/RADIAL_ARRAY.md](docs/RADIAL_ARRAY.md).
+
 ## Running locally
 
 ```

@@ -38,8 +38,24 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
         'vBeamInnerW', 'vBeamInnerT', 'vBeamOuterW', 'vBeamOuterT', 'vBeamDimensionsLinked',
         'bracketWidth', 'bracketDepth', 'bracketHeight', 'bracketWallThickness', 'bracketInnerWidth', 'bracketHoleDistance',
         'costHBeam', 'costVBeam', 'costBolt', 'costBracket', 'costSolarPanel', 'orientation', 'archCapUprights',
-        'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams'
+        'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams',
+        'radialArrayEnabled', 'radialCount', 'radialCenter', 'radialRotateCopies', 'radialRadiusAuto',
+        'radialRadius', 'radialSpacing', 'radialStartAngle', 'radialSpin', 'radialHeightOffset'
     ];
+
+    /** mode.radialArray <-> state key mapping (radial array of the whole structure) */
+    const RADIAL_ARRAY_CONFIG_MAP = {
+        enabled: 'radialArrayEnabled',
+        count: 'radialCount',
+        center: 'radialCenter',
+        rotateCopies: 'radialRotateCopies',
+        radiusAuto: 'radialRadiusAuto',
+        radius: 'radialRadius',
+        spacing: 'radialSpacing',
+        startAngle: 'radialStartAngle',
+        spin: 'radialSpin',
+        heightOffset: 'radialHeightOffset'
+    };
     
     /** Solar panel configuration keys (saved separately as nested object) */
     const SOLAR_PANEL_KEYS = [
@@ -165,6 +181,11 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (m.useFixedBeams !== undefined) state.useFixedBeams = m.useFixedBeams;
             if (m.capUprights !== undefined) state.archCapUprights = m.capUprights;
             if (m.arrayCount !== undefined) state.arrayCount = m.arrayCount;
+            if (m.radialArray && typeof m.radialArray === 'object') {
+                Object.entries(RADIAL_ARRAY_CONFIG_MAP).forEach(([cfgKey, stateKey]) => {
+                    if (m.radialArray[cfgKey] !== undefined) state[stateKey] = m.radialArray[cfgKey];
+                });
+            }
         }
         
         // Visibility settings
@@ -461,7 +482,10 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 rotation: state.archRotation,
                 useFixedBeams: state.useFixedBeams,
                 capUprights: state.archCapUprights,
-                arrayCount: state.arrayCount
+                arrayCount: state.arrayCount,
+                radialArray: Object.fromEntries(
+                    Object.entries(RADIAL_ARRAY_CONFIG_MAP).map(([cfgKey, stateKey]) => [cfgKey, state[stateKey]])
+                )
             },
             
             // Hardware assembly detail (parametric editable hardware stacks)
@@ -748,9 +772,15 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
         
         // Invalidate geometry cache
         invalidateGeometryCache();
-        
+
+        // A loaded design with the radial array on must not carry heavy render
+        // options (Full Detail, Shadows); the UI guard below handles the
+        // checkboxes, this keeps headless state consistent too.
+        if (typeof globalThis.normalizeRadialArrayState === 'function') globalThis.normalizeRadialArrayState();
+
         if (updateUI) {
             Object.keys(idMap).forEach(k => syncUI(idMap[k]));
+            if (typeof globalThis.syncRadialArrayUI === 'function') globalThis.syncRadialArrayUI();
             // Sync checkbox states
             const vstackReverseChk = document.getElementById('chk-vstack-reverse');
             if (vstackReverseChk) vstackReverseChk.checked = state.vStackReverse;

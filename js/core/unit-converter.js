@@ -186,6 +186,7 @@ const STATE_UNIT_MAP = {
     bracketWidth: 'in', bracketDepth: 'in', bracketHeight: 'in',
     bracketWallThickness: 'in', bracketInnerWidth: 'in',
     bracketHoleDiameter: 'in', bracketHoleDistance: 'in',
+    radialRadius: 'in', radialSpacing: 'in', radialHeightOffset: 'in',
 };
 
 /** Imperial unit for each input element ID (covers inputs outside idMap too) */
@@ -211,6 +212,9 @@ const INPUT_UNIT_MAP = {
     'nb-vwasher-id': 'in', 'nb-vwasher-od': 'in', 'nb-vwasher-thickness': 'in',
     'nb-hwasher-id': 'in', 'nb-hwasher-od': 'in', 'nb-hwasher-thickness': 'in',
     'nb-ref-beam-w': 'in', 'nb-ref-beam-t': 'in',
+    'nb-radial-arr-radius': 'in',
+    'sl-radial-arr-spacing': 'in', 'nb-radial-arr-spacing': 'in',
+    'sl-radial-arr-height': 'in', 'nb-radial-arr-height': 'in',
 };
 
 /** Metric equivalent for imperial units */

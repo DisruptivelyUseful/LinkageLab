@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it, beforeAll } from 'vitest';
 import { createTestState } from './helpers/state-fixture.js';
 import { solveLinkage } from '../js/linkage/solver.js';
+import { applyRadialArray } from '../js/linkage/radial-array.js';
 import {
     collectParts,
     describePart,
@@ -43,7 +44,10 @@ function solveWith(overrides) {
     // module is generated; use a deployed pose so every part type exists.
     globalThis.state = createTestState({ showBolts: true, showBrackets: true, foldAngle: (100 * Math.PI) / 180, ...overrides });
     if (globalThis.state.showHardwareFullDetail && ensureHardwareAssemblies) ensureHardwareAssemblies();
-    return solveLinkage(globalThis.state.foldAngle);
+    const data = solveLinkage(globalThis.state.foldAngle);
+    // The radial array is applied by buildLinkageGeometry after the solver; mirror that here.
+    const radial = applyRadialArray(globalThis.state, data);
+    return radial ? { ...data, ...radial.geometry } : data;
 }
 
 function expectUniqueKeys(data, label) {
@@ -69,6 +73,8 @@ describe('part-keys: uniqueness over solver output', () => {
         ['even stacks 4/4', { hStackCount: 4, vStackCount: 4 }],
         ['odd stacks 5/3 with reverse', { hStackCount: 5, vStackCount: 3, vStackReverse: true }],
         ['array of 2', { arrayCount: 2, modules: 4 }],
+        ['radial array 3 + center', { radialArrayEnabled: true, radialCount: 3, radialCenter: true, modules: 4 }],
+        ['radial array over tunnel of 2', { orientation: 'vertical', arrayCount: 2, radialArrayEnabled: true, radialCount: 2, radialCenter: false, modules: 4 }],
         ['arch with cap uprights', { orientation: 'vertical', archCapUprights: true, modules: 5 }],
         ['arch with fixed beams and caps', { orientation: 'vertical', useFixedBeams: true, archCapUprights: true, modules: 5 }],
         ['washers with thickness', { vWasherThickness: 0.0625, hWasherThickness: 0.0625 }],
