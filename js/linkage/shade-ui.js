@@ -6,7 +6,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { requestRender } from './render-app.js';
 import { saveStateToHistory } from './history.js';
-import { createDefaultShade, SHADE_PRESETS, shadeBomItem } from './shade-cloth.js';
+import { createDefaultShade, SHADE_PRESETS, shadeBomItem, OFF_MAX, LEN_MIN, LEN_MAX, PRICE_MAX } from './shade-cloth.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -112,15 +112,15 @@ function initShadeUI() {
         if (l) l.value = p.lengthIn;
         commit();
     };
-    bindNumber('nb-shade-w', () => shade().widthIn, (v) => { shade().widthIn = v; syncPreset(); }, { min: 12, max: 960 });
-    bindNumber('nb-shade-l', () => shade().lengthIn, (v) => { shade().lengthIn = v; syncPreset(); }, { min: 12, max: 960 });
-    bindPair('sl-shade-rot', 'nb-shade-rot', () => shade().rotationDeg, (v) => { shade().rotationDeg = v; }, { min: -180, max: 180 });
-    bindPair('sl-shade-overlap', 'nb-shade-overlap', () => shade().overlapIn, (v) => { shade().overlapIn = v; }, { min: 0, max: 120 });
-    bindPair('sl-shade-lift', 'nb-shade-lift', () => shade().liftIn, (v) => { shade().liftIn = v; }, { min: 0, max: 120 });
+    bindNumber('nb-shade-w', () => shade().widthIn, (v) => { shade().widthIn = v; syncPreset(); }, { min: LEN_MIN, max: LEN_MAX });
+    bindNumber('nb-shade-l', () => shade().lengthIn, (v) => { shade().lengthIn = v; syncPreset(); }, { min: LEN_MIN, max: LEN_MAX });
+    bindPair('sl-shade-rot', 'nb-shade-rot', () => shade().rotationDeg, (v) => { shade().rotationDeg = v; }, { min: -360, max: 360 });
+    bindPair('sl-shade-overlap', 'nb-shade-overlap', () => shade().overlapIn, (v) => { shade().overlapIn = v; }, { min: -OFF_MAX, max: OFF_MAX });
+    bindPair('sl-shade-lift', 'nb-shade-lift', () => shade().liftIn, (v) => { shade().liftIn = v; }, { min: -OFF_MAX, max: OFF_MAX });
     bindPair('sl-shade-opacity', 'nb-shade-opacity', () => shade().opacity, (v) => { shade().opacity = v; }, { min: 0.05, max: 1 });
-    bindNumber('nb-shade-ox', () => shade().offsetXIn, (v) => { shade().offsetXIn = v; }, { min: -480, max: 480 });
-    bindNumber('nb-shade-oz', () => shade().offsetZIn, (v) => { shade().offsetZIn = v; }, { min: -480, max: 480 });
-    bindNumber('nb-cost-shade', () => state.costShadeCloth, (v) => { state.costShadeCloth = v; }, { min: 0, max: 2000 });
+    bindNumber('nb-shade-ox', () => shade().offsetXIn, (v) => { shade().offsetXIn = v; }, { min: -OFF_MAX, max: OFF_MAX });
+    bindNumber('nb-shade-oz', () => shade().offsetZIn, (v) => { shade().offsetZIn = v; }, { min: -OFF_MAX, max: OFF_MAX });
+    bindNumber('nb-cost-shade', () => state.costShadeCloth, (v) => { state.costShadeCloth = v; }, { min: 0, max: PRICE_MAX });
     syncShadeUIFromState();
 }
 

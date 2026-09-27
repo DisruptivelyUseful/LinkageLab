@@ -566,7 +566,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const vBeamWeight = calculateVBeamTotalWeight();
         const bracketWeight = uBrackets * state.weightBracket;
         const boltWeight = nBolts * state.weightBolt;
-        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight;
+        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight + floorBomForGuide.floorBeamWeight;
         
         // Calculate solar panel weight
         const solarWeightSummary = getSolarPanelWeightSummary(data);
@@ -849,6 +849,10 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                 ${sbForGuide.supportBeamWeight > 0 ? `
                                 <span>Support beams &amp; hardware</span>
                                 <span style="text-align: right;">${unitConverter.formatWeightWithUnit(sbForGuide.supportBeamWeight)}</span>
+                                ` : ''}
+                                ${floorBomForGuide.floorBeamWeight > 0 ? `
+                                <span>Floor beams</span>
+                                <span style="text-align: right;">${unitConverter.formatWeightWithUnit(floorBomForGuide.floorBeamWeight)}</span>
                                 ` : ''}
                                 ${solarEnabled && solarPanelWeight > 0 ? `
                                 <span>Solar Panels</span>

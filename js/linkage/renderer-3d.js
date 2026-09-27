@@ -1794,7 +1794,7 @@ function coveringMaterialFor(kind) {
     if (kind === 'shade') {
         const op = Math.max(0.05, Math.min(1, (state.shadeCloth && state.shadeCloth.opacity) || 0.75));
         return getCachedMaterial(`covering-shade-${Math.round(op * 100)}`, () => new THREE.MeshStandardMaterial({
-            color: 0x3f5a52, roughness: 1, metalness: 0,
+            color: 0x6f8f86, roughness: 1, metalness: 0,
             transparent: op < 1, opacity: op, side: THREE.DoubleSide, depthWrite: op >= 0.95,
         }));
     }

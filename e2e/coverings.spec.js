@@ -245,9 +245,24 @@ test.describe('raised floor', () => {
         await expect.poll(() => page.evaluate(() => globalThis.threeRenderer.coveringWallGroup.children.filter(m => m.userData.covering && m.userData.covering.band === 'floor').length)).toBe(1);
         await expect(page.locator('#floor-stat-beams')).toHaveText(String(2 * modules));
         await expect(page.locator('#floor-stat-sheets')).not.toHaveText('--');
+        // each reciprocal beam's bottom face sits on the top face of the leg it crosses (A on A, B on B)
+        const seating = await page.evaluate(() => {
+            const d = globalThis.buildLinkageGeometry({ useCache: true });
+            const legTop = (pat) => Math.max(...d.beams.filter(b => b.stackType === 'horizontal-bottom' && b.patternId === pat).flatMap(b => b.corners.map(c => c.y)));
+            return d.floorBeams.filter(b => b.stackType === 'floor-beam-reciprocal').map(b => Math.abs(Math.min(...b.corners.map(c => c.y)) - legTop(b.patternId)));
+        });
+        expect(seating).toHaveLength(2 * modules);
+        seating.forEach(gap => expect(gap).toBeLessThan(0.01));
         // radial beams toggle adds one per module
         await page.locator('#chk-floor-radial').check();
         await expect.poll(() => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).floorBeams.length)).toBe(3 * modules);
+        // the vertical-offset spinbox accepts a negative value and drops the radial beams by that much
+        const radialY = () => page.evaluate(() => globalThis.buildLinkageGeometry({ useCache: true }).floorBeams.find(b => b.stackType === 'floor-beam').center.y);
+        const y0 = await radialY();
+        await page.locator('#nb-floor-rad-voff').fill('-3');
+        await page.locator('#nb-floor-rad-voff').dispatchEvent('change');
+        await expect.poll(radialY).toBeCloseTo(y0 - 3, 3);
+        expect(await page.evaluate(() => globalThis.state.floor.beams.offsetV)).toBe(-3);
         // guide + BOM
         await page.evaluate(() => globalThis.showBuildGuide());
         const guide = page.locator('#guide-content');
@@ -259,6 +274,7 @@ test.describe('raised floor', () => {
         const snap = await page.evaluate(() => globalThis.getConfigSnapshot());
         expect(snap.floor.enabled).toBe(true);
         expect(snap.floor.beams.radialEnabled).toBe(true);
+        expect(snap.floor.beams.offsetV).toBe(-3);
         expect(errors).toEqual([]);
     });
 });

@@ -24,12 +24,11 @@ describe('floor-geometry', () => {
         const beams = generateFloorBeams(data, floor, st);
         expect(beams).toHaveLength(16);
         expect(beams.every(b => b.stackType === 'floor-beam-reciprocal')).toBe(true);
-        const ringTop = Math.max(...data.beams.filter(b => b.stackType === 'horizontal-bottom').flatMap(b => b.corners.map(c => c.y)));
-        const bBeams = beams.filter(b => b.patternId === 'B');
-        const aBeams = beams.filter(b => b.patternId === 'A');
-        // B beams rest on the ring; A beams ride one thickness higher (the weave)
-        bBeams.forEach(b => expect(b.center.y).toBeCloseTo(ringTop + 0.75, 1));
-        aBeams.forEach(b => expect(b.center.y).toBeCloseTo(ringTop + 0.75 + 1.5, 1));
+        // Each beam's bottom face sits exactly on the top face of the leg it crosses (A on A, B on B),
+        // which in a 2-layer bottom ring puts the B beam one H-beam thickness above the A beam.
+        const legTop = (pat) => Math.max(...data.beams.filter(b => b.stackType === 'horizontal-bottom' && b.patternId === pat).flatMap(b => b.corners.map(c => c.y)));
+        expect(legTop('B') - legTop('A')).toBeCloseTo(1.5, 3);
+        beams.forEach(b => expect(b.center.y - 0.75).toBeCloseTo(legTop(b.patternId), 3));
         // every beam is horizontal and 96" long
         beams.forEach(b => {
             expect(Math.abs(b.p1.y - b.p2.y)).toBeLessThan(1e-6);
@@ -47,12 +46,12 @@ describe('floor-geometry', () => {
         });
     });
 
-    it('optional radial beams, lift and swing are honoured; disabled/arch produce nothing', () => {
+    it('optional radial beams, vertical offset and swing are honoured; disabled/arch produce nothing', () => {
         const { st, data } = ring();
         const floor = createDefaultFloor();
         floor.enabled = true;
         floor.beams.radialEnabled = true;
-        floor.beams.liftIn = 2;
+        floor.beams.parallelOffsetV = 2;
         floor.beams.parallelSwingAngle = 15;
         const beams = generateFloorBeams(data, floor, st);
         expect(beams.filter(b => b.stackType === 'floor-beam')).toHaveLength(8);
@@ -64,6 +63,67 @@ describe('floor-geometry', () => {
         expect(beams.find(b => b.patternId === 'B').center.y).toBeCloseTo(ringTop + 2 + 0.75, 1);
         expect(generateFloorBeams(data, { ...floor, enabled: false }, st)).toHaveLength(0);
         expect(generateFloorBeams(data, floor, { ...st, orientation: 'vertical' })).toHaveLength(0);
+    });
+
+    it('seating modes, A/B split and the signed anchor / radial offsets move the beams as labelled', () => {
+        const { st, data } = ring();
+        const base = createDefaultFloor();
+        base.enabled = true;
+        base.beams.radialEnabled = true;
+        const gen = (over) => generateFloorBeams(data, { ...base, beams: { ...base.beams, ...over } }, st);
+        const ringTop = Math.max(...data.beams.filter(b => b.stackType === 'horizontal-bottom').flatMap(b => b.corners.map(c => c.y)));
+        const ref = gen({});
+        const rcp = (bs, pat) => bs.filter(b => b.stackType === 'floor-beam-reciprocal' && b.patternId === pat);
+        const rad = (bs) => bs.filter(b => b.stackType === 'floor-beam');
+        // ring-top seating puts both patterns on the ring's highest face
+        const onRing = gen({ seat: 'ringTop' });
+        rcp(onRing, 'A').concat(rcp(onRing, 'B')).forEach(b => expect(b.center.y - 0.75).toBeCloseTo(ringTop, 3));
+        // split: A up by half, B down by half
+        const split = gen({ parallelVOffset: 2 });
+        expect(rcp(split, 'A')[0].center.y - rcp(ref, 'A')[0].center.y).toBeCloseTo(1, 6);
+        expect(rcp(split, 'B')[0].center.y - rcp(ref, 'B')[0].center.y).toBeCloseTo(-1, 6);
+        // negative vertical offsets lower the beams
+        expect(rcp(gen({ parallelOffsetV: -3 }), 'A')[0].center.y - rcp(ref, 'A')[0].center.y).toBeCloseTo(-3, 6);
+        expect(rad(gen({ offsetV: -3 }))[0].center.y - rad(ref)[0].center.y).toBeCloseTo(-3, 6);
+        expect(rad(ref)[0].center.y - 3.5 / 2).toBeCloseTo(ringTop, 6);
+        // side-to-side shift of a radial beam: 4" along the ring tangent, perpendicular to its own direction
+        const shifted = rad(gen({ offsetT: 4 }))[0], r0 = rad(ref)[0];
+        const dx = shifted.p1.x - r0.p1.x, dz = shifted.p1.z - r0.p1.z;
+        const ux = r0.p2.x - r0.p1.x, uz = r0.p2.z - r0.p1.z, ul = Math.hypot(ux, uz);
+        expect(Math.hypot(dx, dz)).toBeCloseTo(4, 6);
+        expect(Math.abs(dx * ux + dz * uz) / ul).toBeLessThan(1e-6);
+        // anchor across the leg: 3" perpendicular to the beam's own (unswung) direction, mirrored per side
+        const side = gen({ anchorSideIn: 3 });
+        ['A', 'B'].forEach(pat => {
+            const a = rcp(side, pat)[0], b = rcp(ref, pat)[0];
+            const ddx = a.p1.x - b.p1.x, ddz = a.p1.z - b.p1.z;
+            const vx = b.p2.x - b.p1.x, vz = b.p2.z - b.p1.z, vl = Math.hypot(vx, vz);
+            expect(Math.hypot(ddx, ddz)).toBeCloseTo(3, 6);
+            expect(Math.abs(ddx * vx + ddz * vz) / vl).toBeLessThan(1e-6);
+        });
+        // negative anchor distance walks back past the crossing along the same leg line
+        const back = rcp(gen({ anchorDist: -10 }), 'A')[0], fwd = rcp(ref, 'A')[0];
+        expect(Math.hypot(back.p1.x - fwd.p1.x, back.p1.z - fwd.p1.z)).toBeCloseTo(30, 6);
+    });
+
+    it('normalizeFloor maps legacy liftIn / one-sided A lift onto ring-top seating and accepts wide signed values', () => {
+        const legacy = normalizeFloor({ enabled: true, beams: { liftIn: 2, parallelVOffset: 1.5 } });
+        expect(legacy.beams.seat).toBe('ringTop');
+        expect(legacy.beams.parallelOffsetV).toBeCloseTo(2.75, 6);
+        expect(legacy.beams.parallelVOffset).toBeCloseTo(1.5, 6);
+        expect(legacy.beams.offsetV).toBeCloseTo(2, 6);
+        expect(legacy.beams.liftIn).toBeUndefined();
+        const { st, data } = ring();
+        // the legacy mapping reproduces the Phase-4 heights: B on the ring top, A one 1.5" beam higher
+        const beams = generateFloorBeams(data, normalizeFloor({ enabled: true, beams: { liftIn: 0, parallelVOffset: 1.5 } }), st);
+        const ringTop = Math.max(...data.beams.filter(b => b.stackType === 'horizontal-bottom').flatMap(b => b.corners.map(c => c.y)));
+        expect(beams.find(b => b.patternId === 'B').center.y).toBeCloseTo(ringTop + 0.75, 6);
+        expect(beams.find(b => b.patternId === 'A').center.y).toBeCloseTo(ringTop + 2.25, 6);
+        const wide = normalizeFloor({ beams: { offsetV: -300, offsetT: -50, anchorDist: -20, anchorSideIn: -8, rcpEndOffset: -6, parallelSwingAngle: -200, parallelOffsetV: -9 }, deck: { insetIn: -4 } });
+        expect(wide.beams.seat).toBe('leg');
+        expect(wide.beams).toMatchObject({ offsetV: -300, offsetT: -50, anchorDist: -20, anchorSideIn: -8, rcpEndOffset: -6, parallelSwingAngle: -200, parallelOffsetV: -9 });
+        expect(wide.deck.insetIn).toBe(-4);
+        expect(normalizeFloor({ beams: { offsetV: -99999 } }).beams.offsetV).toBe(-1200);
     });
 
     it('deck is the inner octagon on top of the beams and nests into several sheets', () => {
@@ -104,9 +164,9 @@ describe('floor-geometry', () => {
     it('normalizeFloor and BOM rows', () => {
         const f = normalizeFloor({ enabled: 1, beams: { parallelLength: 5000, radialEnabled: true }, deck: { thicknessIn: 0 } });
         expect(f.enabled).toBe(true);
-        expect(f.beams.parallelLength).toBe(480);
+        expect(f.beams.parallelLength).toBe(2400);
         expect(f.beams.radialEnabled).toBe(true);
-        expect(f.deck.thicknessIn).toBe(0.1);
+        expect(f.deck.thicknessIn).toBe(0.05);
         const st = { orientation: 'horizontal', costHBeam: 10, costVBeam: 8, woodDensity: 0.02 };
         const bom = computeFloorBomContribution(f, 8, st);
         expect(bom.structureItems).toHaveLength(2);

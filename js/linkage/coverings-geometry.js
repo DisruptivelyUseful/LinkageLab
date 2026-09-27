@@ -36,7 +36,12 @@ export const SHEET_PRESETS = {
 /** Ring closes when the last→first upright gap is within this many degrees of the mean gap. */
 const CLOSURE_TOLERANCE_DEG = 1.0;
 /** Wall planes tilted more than this from vertical are rejected (degenerate bands). */
-const MAX_TILT_DEG = 80;
+const MAX_TILT_DEG = 360;
+// Wide input ranges (5b): signed offsets up to ±OFF_MAX, lengths and thicknesses just positive.
+export const OFF_MAX = 1200;
+export const LEN_MIN = 0.05, LEN_MAX = 2400;
+export const SECTION_MIN = 0.05, SECTION_MAX = 48;
+export const PRICE_MAX = 100000;
 /** Warn when the four guide-line endpoints miss the fitted plane by more than this. */
 const PLANARITY_WARN_IN = 0.25;
 
@@ -48,12 +53,13 @@ export const DEFAULT_COVERINGS = Object.freeze({
     upperTiltDeg: 0,
     splitHeightIn: 48,
     bottomIn: 0,
+    bottomMode: 'ground',    // 'ground': bottomIn is measured from y=0; 'floor': from the top of the raised-floor deck
     topClearanceIn: 1,
     edgeGapIn: 0.25,
     mount: 'outside',
     sheet: { widthIn: 48, lengthIn: 96, thicknessIn: 0.5, orientation: 'auto', align: 'center', kerfIn: 0.125 },
     fabric: { rollWidthIn: 60, hemIn: 1, seamIn: 0.5, stretchPct: 2, grommetSpacingIn: 12 },
-    table: { depthIn: 24, thicknessIn: 0.75, slideIn: 0 },   // slideIn: + toward the centre, − overhangs outward
+    table: { depthIn: 24, thicknessIn: 0.75, slideIn: 0, heightOffsetIn: 0 },   // slideIn: + toward the centre; heightOffsetIn: signed, from the split height
     spans: [],
     visibility: { walls: true, fabric: true, tables: true },
     showDimensions: false,
@@ -110,30 +116,32 @@ export function normalizeCoverings(raw, n) {
         lowerTiltDeg: clampNum(r.lowerTiltDeg !== undefined ? r.lowerTiltDeg : r.customTiltDeg, d.lowerTiltDeg, -MAX_TILT_DEG, MAX_TILT_DEG),
         upperLean: pick(r.upperLean, LEAN_MODES, d.upperLean),
         upperTiltDeg: clampNum(r.upperTiltDeg, d.upperTiltDeg, -MAX_TILT_DEG, MAX_TILT_DEG),
-        splitHeightIn: clampNum(r.splitHeightIn, d.splitHeightIn, 1, 600),
-        bottomIn: clampNum(r.bottomIn, d.bottomIn, 0, 600),
-        topClearanceIn: clampNum(r.topClearanceIn, d.topClearanceIn, 0, 60),
-        edgeGapIn: clampNum(r.edgeGapIn, d.edgeGapIn, 0, 6),
+        splitHeightIn: clampNum(r.splitHeightIn, d.splitHeightIn, -OFF_MAX, OFF_MAX),
+        bottomIn: clampNum(r.bottomIn, d.bottomIn, -OFF_MAX, OFF_MAX),
+        bottomMode: r.bottomMode === 'floor' ? 'floor' : 'ground',
+        topClearanceIn: clampNum(r.topClearanceIn, d.topClearanceIn, -OFF_MAX, OFF_MAX),
+        edgeGapIn: clampNum(r.edgeGapIn, d.edgeGapIn, -OFF_MAX, OFF_MAX),
         mount: pick(r.mount, MOUNT_MODES, d.mount),
         sheet: {
-            widthIn: clampNum(sheet.widthIn, d.sheet.widthIn, 6, 240),
-            lengthIn: clampNum(sheet.lengthIn, d.sheet.lengthIn, 6, 480),
-            thicknessIn: clampNum(sheet.thicknessIn, d.sheet.thicknessIn, 0.1, 3),
+            widthIn: clampNum(sheet.widthIn, d.sheet.widthIn, LEN_MIN, LEN_MAX),
+            lengthIn: clampNum(sheet.lengthIn, d.sheet.lengthIn, LEN_MIN, LEN_MAX),
+            thicknessIn: clampNum(sheet.thicknessIn, d.sheet.thicknessIn, SECTION_MIN, SECTION_MAX),
             orientation: pick(sheet.orientation, ['auto', 'landscape', 'portrait'], d.sheet.orientation),
             align: pick(sheet.align, ['center', 'left'], d.sheet.align),
-            kerfIn: clampNum(sheet.kerfIn, d.sheet.kerfIn, 0, 1),
+            kerfIn: clampNum(sheet.kerfIn, d.sheet.kerfIn, 0, SECTION_MAX),
         },
         fabric: {
-            rollWidthIn: clampNum(fabric.rollWidthIn, d.fabric.rollWidthIn, 12, 240),
-            hemIn: clampNum(fabric.hemIn, d.fabric.hemIn, 0, 12),
-            seamIn: clampNum(fabric.seamIn, d.fabric.seamIn, 0, 6),
-            stretchPct: clampNum(fabric.stretchPct, d.fabric.stretchPct, 0, 20),
-            grommetSpacingIn: clampNum(fabric.grommetSpacingIn, d.fabric.grommetSpacingIn, 2, 120),
+            rollWidthIn: clampNum(fabric.rollWidthIn, d.fabric.rollWidthIn, LEN_MIN, LEN_MAX),
+            hemIn: clampNum(fabric.hemIn, d.fabric.hemIn, 0, LEN_MAX),
+            seamIn: clampNum(fabric.seamIn, d.fabric.seamIn, 0, LEN_MAX),
+            stretchPct: clampNum(fabric.stretchPct, d.fabric.stretchPct, -50, 90),
+            grommetSpacingIn: clampNum(fabric.grommetSpacingIn, d.fabric.grommetSpacingIn, 0.5, LEN_MAX),
         },
         table: {
-            depthIn: clampNum(table.depthIn, d.table.depthIn, 1, 240),
-            thicknessIn: clampNum(table.thicknessIn, d.table.thicknessIn, 0.1, 3),
-            slideIn: clampNum(table.slideIn, d.table.slideIn, -120, 240),
+            depthIn: clampNum(table.depthIn, d.table.depthIn, LEN_MIN, LEN_MAX),
+            thicknessIn: clampNum(table.thicknessIn, d.table.thicknessIn, SECTION_MIN, SECTION_MAX),
+            slideIn: clampNum(table.slideIn, d.table.slideIn, -OFF_MAX, OFF_MAX),
+            heightOffsetIn: clampNum(table.heightOffsetIn, d.table.heightOffsetIn, -OFF_MAX, OFF_MAX),
         },
         spans: Array.isArray(r.spans) ? r.spans.map(normalizeSpan) : [],
         visibility: {
@@ -639,8 +647,9 @@ function emptyTotals() {
  * @param {Object} data - buildLinkageGeometry output (after recentering)
  * @param {Object} cov - state.coverings
  * @param {Object} st - app state (orientation, useFixedBeams, vertEndOffset, modules)
+ * @param {Object} [opts] - { floorTopY }: top of the raised-floor deck, used when bottomMode is 'floor'
  */
-export function computeCoverings(data, cov, st) {
+export function computeCoverings(data, cov, st, opts = {}) {
     const c = cov || DEFAULT_COVERINGS;
     if (!st || st.orientation === 'vertical') return unsupported('arch', c);
     if (st.useFixedBeams) return unsupported('fixed-beams', c);
@@ -671,9 +680,15 @@ export function computeCoverings(data, cov, st) {
     const totals = emptyTotals();
     const sheetThick = num(c.sheet && c.sheet.thicknessIn, 0.5);
     const fabricThick = 0.1;
-    const bottomIn = num(c.bottomIn, 0);
+    // Band limits. The bottom is measured from the ground, or from the floor deck's top
+    // when the walls should start on the raised floor. The split is only clamped here, at
+    // compute time, so the stored value can be anything (it just has to leave 1" per band).
+    const floorTopY = num(opts.floorTopY, NaN);
+    const onFloor = c.bottomMode === 'floor' && Number.isFinite(floorTopY);
+    const bottomIn = (onFloor ? floorTopY : 0) + num(c.bottomIn, 0);
     const upperTop = ringUndersideY - num(c.topClearanceIn, 0);
-    const splitIn = Math.min(num(c.splitHeightIn, 48), upperTop - 6);
+    const splitIn = Math.max(bottomIn + 1, Math.min(num(c.splitHeightIn, 48), upperTop - 1));
+    const tableY = splitIn + num(c.table && c.table.heightOffsetIn, 0);
     const BANDS = ['lower', 'upper'];
     const leanOf = (band) => (band === 'upper' ? c.upperLean : c.lowerLean) || 'inward';
     const tiltOf = (band) => num(band === 'upper' ? c.upperTiltDeg : c.lowerTiltDeg, 0);
@@ -821,7 +836,7 @@ export function computeCoverings(data, cov, st) {
                 plane: span.plane, L, R,
                 edgeGapIn: num(c.edgeGapIn, 0),
                 wallInnerOffsetIn: wallInner,
-                ySurface: splitIn,
+                ySurface: tableY,
                 depthIn: num(c.table && c.table.depthIn, 24),
                 thicknessIn: num(c.table && c.table.thicknessIn, 0.75),
                 slideIn: num(c.table && c.table.slideIn, 0),
@@ -865,6 +880,9 @@ export function computeCoverings(data, cov, st) {
         ringTopY: round(ringTopY),
         ringUndersideY: round(ringUndersideY),
         splitHeightIn: round(splitIn),
+        bottomIn: round(bottomIn),
+        bottomMode: onFloor ? 'floor' : 'ground',
+        tableHeightIn: round(tableY),
         upperTopIn: round(upperTop),
         uprights,
         spans,

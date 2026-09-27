@@ -22,38 +22,38 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Width × Length</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap pair">
-                            <input type="number" id="nb-shade-w" min="12" max="960" step="1" value="120">
+                            <input type="number" id="nb-shade-w" min="0.05" max="2400" step="1" value="120">
                             <span class="x">×</span>
-                            <input type="number" id="nb-shade-l" min="12" max="960" step="1" value="240">
+                            <input type="number" id="nb-shade-l" min="0.05" max="2400" step="1" value="240">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Grid rotation</span><span class="unit">°</span></div>
                         <div class="input-wrap">
                             <input type="range" id="sl-shade-rot" min="-90" max="90" step="1" value="0">
-                            <input type="number" id="nb-shade-rot" min="-180" max="180" step="0.5" value="0">
+                            <input type="number" id="nb-shade-rot" min="-360" max="360" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Overlap between cloths</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="ctrl-head"><span>Overlap between cloths (− = gap)</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-shade-overlap" min="0" max="36" step="1" value="6">
-                            <input type="number" id="nb-shade-overlap" min="0" max="120" step="0.5" value="6">
+                            <input type="range" id="sl-shade-overlap" min="-36" max="36" step="1" value="6">
+                            <input type="number" id="nb-shade-overlap" min="-1200" max="1200" step="0.5" value="6">
                         </div>
                     </div>
                     <div class="ctrl-row">
-                        <div class="ctrl-head"><span>Lift above beams</span><span class="unit" data-fixed-unit>in</span></div>
+                        <div class="ctrl-head"><span>Lift above beams (− = lower)</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-shade-lift" min="0" max="24" step="0.5" value="2">
-                            <input type="number" id="nb-shade-lift" min="0" max="120" step="0.5" value="2">
+                            <input type="range" id="sl-shade-lift" min="-24" max="24" step="0.5" value="2">
+                            <input type="number" id="nb-shade-lift" min="-1200" max="1200" step="0.5" value="2">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Slide grid X / Z</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap pair">
-                            <input type="number" id="nb-shade-ox" min="-480" max="480" step="1" value="0">
+                            <input type="number" id="nb-shade-ox" min="-1200" max="1200" step="1" value="0">
                             <span class="x">/</span>
-                            <input type="number" id="nb-shade-oz" min="-480" max="480" step="1" value="0">
+                            <input type="number" id="nb-shade-oz" min="-1200" max="1200" step="1" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -66,7 +66,7 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Price per cloth</span><span class="unit">$</span></div>
                         <div class="input-wrap">
-                            <input type="number" id="nb-cost-shade" min="0" max="2000" step="1" value="60">
+                            <input type="number" id="nb-cost-shade" min="0" max="100000" step="1" value="60">
                         </div>
                     </div>
                     <div class="ctrl-row">

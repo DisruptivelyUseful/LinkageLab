@@ -35,6 +35,9 @@ export const SHADE_PRESETS = {
 const clone = (o) => JSON.parse(JSON.stringify(o));
 const num = (v, def) => (typeof v === 'number' && Number.isFinite(v)) ? v : def;
 const clampNum = (v, def, min, max) => Math.max(min, Math.min(max, num(v, def)));
+export const OFF_MAX = 1200;
+export const LEN_MIN = 0.05, LEN_MAX = 2400;
+export const PRICE_MAX = 100000;
 const round = (v, p = 3) => +(+v).toFixed(p);
 
 export function createDefaultShade() {
@@ -46,13 +49,13 @@ export function normalizeShade(raw) {
     const r = raw && typeof raw === 'object' ? raw : {};
     return {
         enabled: !!r.enabled,
-        widthIn: clampNum(r.widthIn, d.widthIn, 12, 960),
-        lengthIn: clampNum(r.lengthIn, d.lengthIn, 12, 960),
-        rotationDeg: clampNum(r.rotationDeg, d.rotationDeg, -180, 180),
-        overlapIn: clampNum(r.overlapIn, d.overlapIn, 0, 120),
-        liftIn: clampNum(r.liftIn, d.liftIn, 0, 120),
-        offsetXIn: clampNum(r.offsetXIn, d.offsetXIn, -480, 480),
-        offsetZIn: clampNum(r.offsetZIn, d.offsetZIn, -480, 480),
+        widthIn: clampNum(r.widthIn, d.widthIn, LEN_MIN, LEN_MAX),
+        lengthIn: clampNum(r.lengthIn, d.lengthIn, LEN_MIN, LEN_MAX),
+        rotationDeg: clampNum(r.rotationDeg, d.rotationDeg, -360, 360),
+        overlapIn: clampNum(r.overlapIn, d.overlapIn, -OFF_MAX, OFF_MAX),
+        liftIn: clampNum(r.liftIn, d.liftIn, -OFF_MAX, OFF_MAX),
+        offsetXIn: clampNum(r.offsetXIn, d.offsetXIn, -OFF_MAX, OFF_MAX),
+        offsetZIn: clampNum(r.offsetZIn, d.offsetZIn, -OFF_MAX, OFF_MAX),
         opacity: clampNum(r.opacity, d.opacity, 0.05, 1),
         visible: r.visible !== false,
     };
@@ -113,7 +116,7 @@ export function calculateRoofPolygon(data, numModules) {
  * @param {Object} shade - state.shadeCloth
  * @param {Object} st - app state
  */
-export function calculateShadeCloths(data, shade, st) {
+export function calculateShadeCloths(data, shade, st, opts = {}) {
     const empty = { enabled: !!(shade && shade.enabled), supported: false, shapes: [], count: 0, coveragePct: 0, overhangIn2: 0, canopyAreaIn2: 0, polygon: null };
     if (!shade || !shade.enabled || !st || st.orientation === 'vertical') return { ...empty, unsupportedReason: st && st.orientation === 'vertical' ? 'arch' : null };
     const roof = calculateRoofPolygon(data, st.modules);
@@ -126,7 +129,9 @@ export function calculateShadeCloths(data, shade, st) {
     // Cloth Y: above the support / reciprocal beams when present, else the ring's top face
     const beams = (data && data.beams) || [];
     const overBeams = beams.filter(b => b.stackType && b.stackType.startsWith('support-beam'));
-    const baseY = overBeams.length ? Math.max(...overBeams.map(beamTopY)) : roof.topY;
+    let baseY = overBeams.length ? Math.max(...overBeams.map(beamTopY)) : roof.topY;
+    // ...and never below the top edge of the upper wall/fabric bands when those reach higher
+    if (Number.isFinite(num(opts.coveringsTopY, NaN))) baseY = Math.max(baseY, opts.coveringsTopY);
     const y = baseY + num(shade.liftIn, 0);
 
     // Work in a frame rotated by −rot about the roof centre (cloth edges axis-aligned)
@@ -230,5 +235,5 @@ export function shadeBomItem(shadeData, st) {
     };
 }
 
-const _moduleExports = { DEFAULT_SHADE, SHADE_PRESETS, createDefaultShade, normalizeShade, serializeShade, calculateRoofPolygon, calculateShadeCloths, shadeBomItem };
+const _moduleExports = { DEFAULT_SHADE, SHADE_PRESETS, createDefaultShade, normalizeShade, serializeShade, calculateRoofPolygon, calculateShadeCloths, shadeBomItem, OFF_MAX, LEN_MIN, LEN_MAX, PRICE_MAX };
 bridgeGlobals(_moduleExports, 'shadeCloth');

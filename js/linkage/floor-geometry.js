@@ -25,16 +25,20 @@ export const DEFAULT_FLOOR = Object.freeze({
         length: 120,
         width: 1.5,
         thickness: 3.5,
-        offsetH: -46.5,
+        offsetH: -46.5,         // along the inward radial from the upright's foot (signed)
+        offsetV: 0,             // signed vertical shift of the radial beams (negative drops them)
+        offsetT: 0,             // signed side-to-side shift along the ring tangent
         parallelEnabled: true,
         parallelLength: 96,
         parallelWidth: 2.5,
         parallelThickness: 1.5,
         parallelSwingAngle: 0,
-        parallelVOffset: 1.5,   // vertical split between the A and B beams so they weave (A rides over B)
-        anchorDist: 20,
-        rcpEndOffset: 0,
-        liftIn: 0,              // gap between the bottom ring's top face and the lowest beam
+        seat: 'leg',            // 'leg': each beam sits on its own scissor leg's top face; 'ringTop': on the ring's highest face
+        parallelOffsetV: 0,     // signed vertical shift of both reciprocal beams (legacy `liftIn`)
+        parallelVOffset: 0,     // signed A/B split: A rises by half, B drops by half (negative = the reverse)
+        anchorDist: 20,         // along the leg from the crossing toward its inner end (signed)
+        anchorSideIn: 0,        // perpendicular to the leg in plan, mirrored for the two sides (signed)
+        rcpEndOffset: 0,        // how far the beam extends back past its anchor (signed)
     },
     deck: {
         enabled: true,
@@ -49,6 +53,11 @@ const num = (v, def) => (typeof v === 'number' && Number.isFinite(v)) ? v : def;
 const clampNum = (v, def, min, max) => Math.max(min, Math.min(max, num(v, def)));
 const round = (v, p = 3) => +(+v).toFixed(p);
 
+// Wide input ranges: offsets and shifts are signed, lengths and sections just have to be positive.
+export const OFF_MAX = 1200;
+export const LEN_MIN = 0.05, LEN_MAX = 2400;
+export const SECTION_MIN = 0.05, SECTION_MAX = 48;
+
 export function createDefaultFloor() {
     return clone(DEFAULT_FLOOR);
 }
@@ -59,28 +68,36 @@ export function normalizeFloor(raw) {
     const b = r.beams || {};
     const k = r.deck || {};
     const v = r.visibility || {};
+    // Phase-4 configs had `liftIn` and seated every beam on the ring's top face with a
+    // one-sided A lift (`parallelVOffset` raised A only). Keep those loading as they looked.
+    const legacy = b.liftIn !== undefined && b.seat === undefined;
+    const legacyLift = legacy ? (num(b.liftIn, 0) + (num(b.parallelVOffset, 0) / 2)) : undefined;
     return {
         enabled: !!r.enabled,
         beams: {
             radialEnabled: !!b.radialEnabled,
-            length: clampNum(b.length, d.beams.length, 12, 480),
-            width: clampNum(b.width, d.beams.width, 0.5, 12),
-            thickness: clampNum(b.thickness, d.beams.thickness, 0.5, 12),
-            offsetH: clampNum(b.offsetH, d.beams.offsetH, -240, 240),
+            length: clampNum(b.length, d.beams.length, LEN_MIN, LEN_MAX),
+            width: clampNum(b.width, d.beams.width, SECTION_MIN, SECTION_MAX),
+            thickness: clampNum(b.thickness, d.beams.thickness, SECTION_MIN, SECTION_MAX),
+            offsetH: clampNum(b.offsetH, d.beams.offsetH, -OFF_MAX, OFF_MAX),
+            offsetV: clampNum(b.offsetV !== undefined ? b.offsetV : (legacy ? num(b.liftIn, 0) : undefined), d.beams.offsetV, -OFF_MAX, OFF_MAX),
+            offsetT: clampNum(b.offsetT, d.beams.offsetT, -OFF_MAX, OFF_MAX),
             parallelEnabled: b.parallelEnabled !== false,
-            parallelLength: clampNum(b.parallelLength, d.beams.parallelLength, 12, 480),
-            parallelWidth: clampNum(b.parallelWidth, d.beams.parallelWidth, 0.5, 12),
-            parallelThickness: clampNum(b.parallelThickness, d.beams.parallelThickness, 0.5, 12),
-            parallelSwingAngle: clampNum(b.parallelSwingAngle, d.beams.parallelSwingAngle, -90, 90),
-            parallelVOffset: clampNum(b.parallelVOffset, d.beams.parallelVOffset, 0, 12),
-            anchorDist: clampNum(b.anchorDist, d.beams.anchorDist, 0, 240),
-            rcpEndOffset: clampNum(b.rcpEndOffset, d.beams.rcpEndOffset, 0, 48),
-            liftIn: clampNum(b.liftIn, d.beams.liftIn, 0, 48),
+            parallelLength: clampNum(b.parallelLength, d.beams.parallelLength, LEN_MIN, LEN_MAX),
+            parallelWidth: clampNum(b.parallelWidth, d.beams.parallelWidth, SECTION_MIN, SECTION_MAX),
+            parallelThickness: clampNum(b.parallelThickness, d.beams.parallelThickness, SECTION_MIN, SECTION_MAX),
+            parallelSwingAngle: clampNum(b.parallelSwingAngle, d.beams.parallelSwingAngle, -360, 360),
+            seat: b.seat === 'ringTop' ? 'ringTop' : (legacy ? 'ringTop' : 'leg'),
+            parallelOffsetV: clampNum(b.parallelOffsetV !== undefined ? b.parallelOffsetV : legacyLift, d.beams.parallelOffsetV, -OFF_MAX, OFF_MAX),
+            parallelVOffset: clampNum(b.parallelVOffset !== undefined ? b.parallelVOffset : undefined, d.beams.parallelVOffset, -OFF_MAX, OFF_MAX),
+            anchorDist: clampNum(b.anchorDist, d.beams.anchorDist, -OFF_MAX, OFF_MAX),
+            anchorSideIn: clampNum(b.anchorSideIn, d.beams.anchorSideIn, -OFF_MAX, OFF_MAX),
+            rcpEndOffset: clampNum(b.rcpEndOffset, d.beams.rcpEndOffset, -OFF_MAX, OFF_MAX),
         },
         deck: {
             enabled: k.enabled !== false,
-            thicknessIn: clampNum(k.thicknessIn, d.deck.thicknessIn, 0.1, 3),
-            insetIn: clampNum(k.insetIn, d.deck.insetIn, 0, 24),
+            thicknessIn: clampNum(k.thicknessIn, d.deck.thicknessIn, SECTION_MIN, SECTION_MAX),
+            insetIn: clampNum(k.insetIn, d.deck.insetIn, -OFF_MAX, OFF_MAX),
         },
         visibility: { beams: v.beams !== false, deck: v.deck !== false },
     };
@@ -111,6 +128,10 @@ function rotateXZ(dx, dz, rad) {
 function beamTopY(b) {
     if (b.corners && b.corners.length) return Math.max(...b.corners.map(p => p.y));
     return Math.max(b.p1.y, b.p2.y);
+}
+function beamBottomY(b) {
+    if (b.corners && b.corners.length) return Math.min(...b.corners.map(p => p.y));
+    return Math.min(b.p1.y, b.p2.y);
 }
 
 /**
@@ -201,12 +222,14 @@ export function generateFloorBeams(data, floor, st) {
     const { frames, ringTopY } = extractFloorFrames(data, st.modules);
     if (!frames.length) return out;
 
-    const lift = num(cfg.liftIn, 0);
+    const tangentOf = (f) => ({ x: -f.inDir.z, z: f.inDir.x }); // +90° from the inward radial in plan
     if (cfg.radialEnabled) {
         const L = num(cfg.length, 120), w = num(cfg.width, 1.5), t = num(cfg.thickness, 3.5);
-        const y = ringTopY + lift + t / 2;
+        const y = ringTopY + num(cfg.offsetV, 0) + t / 2;
+        const oh = num(cfg.offsetH, 0), ot = num(cfg.offsetT, 0);
         frames.forEach(f => {
-            const start = { x: f.foot.x + f.inDir.x * num(cfg.offsetH, 0), y, z: f.foot.z + f.inDir.z * num(cfg.offsetH, 0) };
+            const tg = tangentOf(f);
+            const start = { x: f.foot.x + f.inDir.x * oh + tg.x * ot, y, z: f.foot.z + f.inDir.z * oh + tg.z * ot };
             const end = { x: start.x + f.inDir.x * L, y, z: start.z + f.inDir.z * L };
             out.push(new Beam3D(start, end, w, t, WOOD_COLOR, { moduleIndex: f.moduleIndex, stackType: 'floor-beam', stackId: FLOOR_STACK_ID_BASE + f.moduleIndex }));
         });
@@ -214,16 +237,27 @@ export function generateFloorBeams(data, floor, st) {
     if (cfg.parallelEnabled !== false) {
         const L = num(cfg.parallelLength, 96), w = num(cfg.parallelWidth, 2.5), t = num(cfg.parallelThickness, 1.5);
         const swing = degToRad(num(cfg.parallelSwingAngle, 0));
-        const vOff = num(cfg.parallelVOffset, 0);
+        const split = num(cfg.parallelVOffset, 0);
+        const offV = num(cfg.parallelOffsetV, 0);
         const endOff = num(cfg.rcpEndOffset, 0);
+        const sideIn = num(cfg.anchorSideIn, 0);
+        const seatOnLeg = cfg.seat !== 'ringTop';
         frames.forEach(f => {
             for (let side = 0; side < 2; side++) {
                 const sc = side === 0 ? f.scissorA : f.scissorB;
-                const dist = Math.max(0, Math.min(num(cfg.anchorDist, 0), sc.maxDist));
-                const ax = f.hCenter.x + sc.dirX * dist, az = f.hCenter.z + sc.dirZ * dist;
-                // B sits on the ring, A rides over B (the weave), like the top-ring reciprocal pair
-                const y = ringTopY + lift + t / 2 + (side === 0 ? vOff : 0);
-                const d = rotateXZ(sc.dirX, sc.dirZ, swing * (side === 0 ? 1 : -1));
+                const leg = side === 0 ? f.beamA : f.beamB;
+                const sign = side === 0 ? 1 : -1;
+                const dist = num(cfg.anchorDist, 0);
+                // perpendicular to the leg in plan, mirrored so both sides move the same way relative to their leg
+                const px = -sc.dirZ * sign, pz = sc.dirX * sign;
+                const ax = f.hCenter.x + sc.dirX * dist + px * sideIn;
+                const az = f.hCenter.z + sc.dirZ * dist + pz * sideIn;
+                // Seat: the top face of the leg this beam rides (A and B layers sit at different
+                // heights in the bottom ring), or the ring's highest face; then the shared shift
+                // and the A/B split (A up by half, B down by half).
+                const seatY = seatOnLeg ? beamTopY(leg) : ringTopY;
+                const y = seatY + t / 2 + offV + sign * split / 2;
+                const d = rotateXZ(sc.dirX, sc.dirZ, swing * sign);
                 const p1 = { x: ax - d.x * endOff, y, z: az - d.z * endOff };
                 const p2 = { x: ax + d.x * L, y, z: az + d.z * L };
                 out.push(new Beam3D(p1, p2, w, t, WOOD_COLOR, {
@@ -354,6 +388,29 @@ export function computeFloorDeck(data, floor, st) {
     };
 }
 
+/**
+ * Seat summary for the readout: per pattern, the height of the beam's bottom face
+ * and of the leg it should rest on (from a list of floor beams + the solved data).
+ */
+export function describeFloorSeating(data, floorBeams, numModules) {
+    const { frames, ringTopY } = extractFloorFrames(data, numModules);
+    const out = { ringTopY: round(ringTopY), A: null, B: null, radial: null };
+    if (!frames.length) return out;
+    const legTop = (pat) => round(Math.max(...frames.map(f => beamTopY(pat === 'A' ? f.beamA : f.beamB))));
+    ['A', 'B'].forEach(pat => {
+        const bs = (floorBeams || []).filter(b => b.stackType === 'floor-beam-reciprocal' && b.patternId === pat);
+        if (!bs.length) return;
+        const bottom = round(Math.min(...bs.map(beamBottomY)));
+        out[pat] = { legTopY: legTop(pat), bottomY: bottom, gapIn: round(bottom - legTop(pat)) };
+    });
+    const rad = (floorBeams || []).filter(b => b.stackType === 'floor-beam');
+    if (rad.length) {
+        const bottom = round(Math.min(...rad.map(beamBottomY)));
+        out.radial = { bottomY: bottom, gapIn: round(bottom - ringTopY) };
+    }
+    return out;
+}
+
 /** Structure BOM rows for the floor beams (mirrors computeSupportBomContribution). */
 export function computeFloorBomContribution(floor, moduleCount, st) {
     const items = [];
@@ -393,7 +450,9 @@ const _moduleExports = {
     generateFloorBeams,
     calculateFloorPolygon,
     computeFloorDeck,
+    describeFloorSeating,
     computeFloorBomContribution,
+    OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX,
 };
 
 bridgeGlobals(_moduleExports, 'floorGeometry');

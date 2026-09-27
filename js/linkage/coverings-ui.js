@@ -14,6 +14,7 @@ import {
     resizeCoveringSpans,
     splitHeightForOneSheet,
     wrapDeg,
+    OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX, PRICE_MAX,
 } from './coverings-geometry.js';
 import { computeCoveringCutPlan, coveringEnclosureCost, coveringEntrySvg, coveringEntryFilename } from './coverings-plan.js';
 import { downloadTextSequence } from '../core/download.js';
@@ -394,6 +395,8 @@ function syncCoveringsUIFromState() {
     setPair('sl-cov-tilt-upper', 'nb-cov-tilt-upper', c.upperTiltDeg);
     setPair('sl-cov-table-depth', 'nb-cov-table-depth', c.table.depthIn);
     setPair('sl-cov-table-slide', 'nb-cov-table-slide', c.table.slideIn || 0);
+    setPair('sl-cov-table-h', 'nb-cov-table-h', c.table.heightOffsetIn || 0);
+    const chkFl = $('chk-cov-on-floor'); if (chkFl) chkFl.checked = c.bottomMode === 'floor';
     const lean = $('sel-cov-lean'); if (lean) lean.value = c.lowerLean;
     const tiltRow = $('cov-tilt-row'); if (tiltRow) tiltRow.style.display = c.lowerLean === 'custom' ? '' : 'none';
     const leanU = $('sel-cov-lean-upper'); if (leanU) leanU.value = c.upperLean;
@@ -478,14 +481,17 @@ function initCoveringsUI() {
     on('btn-cov-pick', () => setCoveringsPickMode(!cov().pickMode));
     bindCoveringPick();
 
-    bindPair('sl-cov-split', 'nb-cov-split', () => cov().splitHeightIn, (v) => { cov().splitHeightIn = v; }, { min: 1, max: 600 });
-    bindPair('sl-cov-bottom', 'nb-cov-bottom', () => cov().bottomIn, (v) => { cov().bottomIn = v; }, { min: 0, max: 600 });
-    bindPair('sl-cov-top-clear', 'nb-cov-top-clear', () => cov().topClearanceIn, (v) => { cov().topClearanceIn = v; }, { min: 0, max: 60 });
-    bindPair('sl-cov-edge-gap', 'nb-cov-edge-gap', () => cov().edgeGapIn, (v) => { cov().edgeGapIn = v; }, { min: 0, max: 6 });
-    bindPair('sl-cov-tilt', 'nb-cov-tilt', () => cov().lowerTiltDeg, (v) => { cov().lowerTiltDeg = v; }, { min: -80, max: 80 });
-    bindPair('sl-cov-tilt-upper', 'nb-cov-tilt-upper', () => cov().upperTiltDeg, (v) => { cov().upperTiltDeg = v; }, { min: -80, max: 80 });
-    bindPair('sl-cov-table-depth', 'nb-cov-table-depth', () => cov().table.depthIn, (v) => { cov().table.depthIn = v; }, { min: 1, max: 240 });
-    bindPair('sl-cov-table-slide', 'nb-cov-table-slide', () => cov().table.slideIn || 0, (v) => { cov().table.slideIn = v; }, { min: -120, max: 240 });
+    const OFF = { min: -OFF_MAX, max: OFF_MAX }, LEN = { min: LEN_MIN, max: LEN_MAX }, SEC = { min: SECTION_MIN, max: SECTION_MAX }, ANG = { min: -360, max: 360 }, PRICE = { min: 0, max: PRICE_MAX };
+    bindPair('sl-cov-split', 'nb-cov-split', () => cov().splitHeightIn, (v) => { cov().splitHeightIn = v; }, OFF);
+    bindPair('sl-cov-bottom', 'nb-cov-bottom', () => cov().bottomIn, (v) => { cov().bottomIn = v; }, OFF);
+    bindCheck('chk-cov-on-floor', () => cov().bottomMode === 'floor', (v) => { cov().bottomMode = v ? 'floor' : 'ground'; });
+    bindPair('sl-cov-top-clear', 'nb-cov-top-clear', () => cov().topClearanceIn, (v) => { cov().topClearanceIn = v; }, OFF);
+    bindPair('sl-cov-edge-gap', 'nb-cov-edge-gap', () => cov().edgeGapIn, (v) => { cov().edgeGapIn = v; }, OFF);
+    bindPair('sl-cov-tilt', 'nb-cov-tilt', () => cov().lowerTiltDeg, (v) => { cov().lowerTiltDeg = v; }, ANG);
+    bindPair('sl-cov-tilt-upper', 'nb-cov-tilt-upper', () => cov().upperTiltDeg, (v) => { cov().upperTiltDeg = v; }, ANG);
+    bindPair('sl-cov-table-depth', 'nb-cov-table-depth', () => cov().table.depthIn, (v) => { cov().table.depthIn = v; }, LEN);
+    bindPair('sl-cov-table-slide', 'nb-cov-table-slide', () => cov().table.slideIn || 0, (v) => { cov().table.slideIn = v; }, OFF);
+    bindPair('sl-cov-table-h', 'nb-cov-table-h', () => cov().table.heightOffsetIn || 0, (v) => { cov().table.heightOffsetIn = v; }, OFF);
 
     bindSelect('sel-cov-lean', () => cov().lowerLean, (v) => {
         cov().lowerLean = v;
@@ -506,21 +512,21 @@ function initCoveringsUI() {
         if (w) w.value = p.widthIn;
         if (l) l.value = p.lengthIn;
     });
-    bindNumber('nb-cov-sheet-w', () => cov().sheet.widthIn, (v) => { cov().sheet.widthIn = v; syncSheetPresetSelect(cov()); }, { min: 6, max: 240 });
-    bindNumber('nb-cov-sheet-l', () => cov().sheet.lengthIn, (v) => { cov().sheet.lengthIn = v; syncSheetPresetSelect(cov()); }, { min: 6, max: 480 });
-    bindNumber('nb-cov-sheet-t', () => cov().sheet.thicknessIn, (v) => { cov().sheet.thicknessIn = v; }, { min: 0.1, max: 3 });
+    bindNumber('nb-cov-sheet-w', () => cov().sheet.widthIn, (v) => { cov().sheet.widthIn = v; syncSheetPresetSelect(cov()); }, LEN);
+    bindNumber('nb-cov-sheet-l', () => cov().sheet.lengthIn, (v) => { cov().sheet.lengthIn = v; syncSheetPresetSelect(cov()); }, LEN);
+    bindNumber('nb-cov-sheet-t', () => cov().sheet.thicknessIn, (v) => { cov().sheet.thicknessIn = v; }, SEC);
     bindSelect('sel-cov-sheet-orient', () => cov().sheet.orientation, (v) => { cov().sheet.orientation = v; });
-    bindNumber('nb-cov-kerf', () => cov().sheet.kerfIn, (v) => { cov().sheet.kerfIn = v; }, { min: 0, max: 1 });
-    bindNumber('nb-cost-plywood', () => state.costPlywoodSheet, (v) => { state.costPlywoodSheet = v; }, { min: 0, max: 1000 });
+    bindNumber('nb-cov-kerf', () => cov().sheet.kerfIn, (v) => { cov().sheet.kerfIn = v; }, { min: 0, max: SECTION_MAX });
+    bindNumber('nb-cost-plywood', () => state.costPlywoodSheet, (v) => { state.costPlywoodSheet = v; }, PRICE);
 
-    bindNumber('nb-cov-roll', () => cov().fabric.rollWidthIn, (v) => { cov().fabric.rollWidthIn = v; }, { min: 12, max: 240 });
-    bindNumber('nb-cov-hem', () => cov().fabric.hemIn, (v) => { cov().fabric.hemIn = v; }, { min: 0, max: 12 });
-    bindNumber('nb-cov-seam', () => cov().fabric.seamIn, (v) => { cov().fabric.seamIn = v; }, { min: 0, max: 6 });
-    bindNumber('nb-cov-stretch', () => cov().fabric.stretchPct, (v) => { cov().fabric.stretchPct = v; }, { min: 0, max: 20 });
-    bindNumber('nb-cov-grommet', () => cov().fabric.grommetSpacingIn, (v) => { cov().fabric.grommetSpacingIn = v; }, { min: 2, max: 120 });
-    bindNumber('nb-cost-fabric', () => state.costFabricYard, (v) => { state.costFabricYard = v; }, { min: 0, max: 500 });
-    bindNumber('nb-cost-grommet', () => state.costGrommet, (v) => { state.costGrommet = v; }, { min: 0, max: 50 });
-    bindNumber('nb-cov-table-t', () => cov().table.thicknessIn, (v) => { cov().table.thicknessIn = v; }, { min: 0.1, max: 3 });
+    bindNumber('nb-cov-roll', () => cov().fabric.rollWidthIn, (v) => { cov().fabric.rollWidthIn = v; }, LEN);
+    bindNumber('nb-cov-hem', () => cov().fabric.hemIn, (v) => { cov().fabric.hemIn = v; }, { min: 0, max: LEN_MAX });
+    bindNumber('nb-cov-seam', () => cov().fabric.seamIn, (v) => { cov().fabric.seamIn = v; }, { min: 0, max: LEN_MAX });
+    bindNumber('nb-cov-stretch', () => cov().fabric.stretchPct, (v) => { cov().fabric.stretchPct = v; }, { min: -50, max: 90 });
+    bindNumber('nb-cov-grommet', () => cov().fabric.grommetSpacingIn, (v) => { cov().fabric.grommetSpacingIn = v; }, { min: 0.5, max: LEN_MAX });
+    bindNumber('nb-cost-fabric', () => state.costFabricYard, (v) => { state.costFabricYard = v; }, PRICE);
+    bindNumber('nb-cost-grommet', () => state.costGrommet, (v) => { state.costGrommet = v; }, PRICE);
+    bindNumber('nb-cov-table-t', () => cov().table.thicknessIn, (v) => { cov().table.thicknessIn = v; }, SEC);
 
     bindCheck('chk-cov-show-walls', () => cov().visibility.walls, (v) => { cov().visibility.walls = v; });
     bindCheck('chk-cov-show-fabric', () => cov().visibility.fabric, (v) => { cov().visibility.fabric = v; });

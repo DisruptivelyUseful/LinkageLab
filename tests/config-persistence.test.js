@@ -154,6 +154,12 @@ describe('config-persistence: floor', () => {
         globalThis.state.floor.beams.parallelSwingAngle = 12;
         globalThis.state.floor.beams.radialEnabled = true;
         globalThis.state.floor.deck.insetIn = 3;
+        globalThis.state.floor.beams.offsetV = -4;
+        globalThis.state.floor.beams.offsetT = 2.5;
+        globalThis.state.floor.beams.anchorSideIn = -1;
+        globalThis.state.floor.beams.seat = 'ringTop';
+        globalThis.state.coverings.bottomMode = 'floor';
+        globalThis.state.coverings.table.heightOffsetIn = -3;
         const snap = getConfigSnapshot();
         expect(snap.floor.enabled).toBe(true);
         globalThis.state = createTestState({ modules: 8 });
@@ -162,6 +168,9 @@ describe('config-persistence: floor', () => {
         expect(globalThis.state.floor.beams.parallelSwingAngle).toBe(12);
         expect(globalThis.state.floor.beams.radialEnabled).toBe(true);
         expect(globalThis.state.floor.deck.insetIn).toBe(3);
+        expect(globalThis.state.floor.beams).toMatchObject({ offsetV: -4, offsetT: 2.5, anchorSideIn: -1, seat: 'ringTop' });
+        expect(globalThis.state.coverings.bottomMode).toBe('floor');
+        expect(globalThis.state.coverings.table.heightOffsetIn).toBe(-3);
         applyV30Config({ structure: { modules: 6 } });
         expect(globalThis.state.floor.enabled).toBe(false);
     });

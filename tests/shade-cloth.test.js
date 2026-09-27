@@ -65,16 +65,23 @@ describe('shade-cloth', () => {
         const e0 = a.shapes[0];
         const dx0 = e0.corners3D[1].x - e0.corners3D[0].x, dz0 = e0.corners3D[1].z - e0.corners3D[0].z;
         expect(Math.abs(dx * dx0 + dz * dz0)).toBeLessThan(1e-6); // perpendicular
+        // a negative lift lowers the cloths; a higher coverings top edge raises the base
+        const y0 = calculateShadeCloths(data, shade, st).shapes[0].corners3D[0].y;
+        expect(calculateShadeCloths(data, { ...shade, liftIn: shade.liftIn - 5 }, st).shapes[0].corners3D[0].y).toBeCloseTo(y0 - 5, 6);
+        expect(calculateShadeCloths(data, shade, st, { coveringsTopY: y0 + 20 }).shapes[0].corners3D[0].y).toBeCloseTo(y0 + 20 + shade.liftIn, 6);
+        expect(calculateShadeCloths(data, shade, st, { coveringsTopY: 1 }).shapes[0].corners3D[0].y).toBeCloseTo(y0, 6);
         expect(calculateShadeCloths(data, { ...shade, enabled: false }, st).count).toBe(0);
         expect(calculateShadeCloths(data, shade, { ...st, orientation: 'vertical' }).unsupportedReason).toBe('arch');
     });
 
     it('normalize and BOM item', () => {
-        const s = normalizeShade({ enabled: 1, widthIn: 5, opacity: 3, rotationDeg: 400 });
+        const s = normalizeShade({ enabled: 1, widthIn: 0.001, opacity: 3, rotationDeg: 4000, liftIn: -30, overlapIn: -4 });
         expect(s.enabled).toBe(true);
-        expect(s.widthIn).toBe(12);
+        expect(s.widthIn).toBe(0.05);
         expect(s.opacity).toBe(1);
-        expect(s.rotationDeg).toBe(180);
+        expect(s.rotationDeg).toBe(360);
+        expect(s.liftIn).toBe(-30);
+        expect(s.overlapIn).toBe(-4);
         const item = shadeBomItem({ count: 6, widthIn: 120, lengthIn: 240, coveragePct: 100 }, { costShadeCloth: 55 });
         expect(item.qty).toBe(6);
         expect(item.total).toBe(330);

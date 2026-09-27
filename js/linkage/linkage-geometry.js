@@ -3828,18 +3828,23 @@ import { showToast } from '../core/feedback.js';
                 data.floor = { enabled: true, beams: data.floorBeams || [], deck: null, supported: false };
             }
         }
-        data.shade = null;
-        if (options.includeCoverings !== false && state.shadeCloth && state.shadeCloth.enabled) {
-            try { data.shade = calculateShadeCloths(data, state.shadeCloth, state); } catch (e) { console.warn('[Geometry] Could not compute shade cloths:', e); data.shade = null; }
-        }
         data.coverings = null;
         if (options.includeCoverings !== false && state.coverings && state.coverings.enabled) {
             try {
-                data.coverings = computeCoverings(data, state.coverings, state);
+                const floorTopY = data.floor && data.floor.deck ? data.floor.deck.yTop : undefined;
+                data.coverings = computeCoverings(data, state.coverings, state, { floorTopY });
             } catch (e) {
                 console.warn('[Geometry] Could not compute coverings:', e);
                 data.coverings = null;
             }
+        }
+        data.shade = null;
+        if (options.includeCoverings !== false && state.shadeCloth && state.shadeCloth.enabled) {
+            try {
+                const covShapes = data.coverings && data.coverings.supported ? data.coverings.shapes.filter(sh => sh.band === 'upper' || sh.band === 'lower') : [];
+                const coveringsTopY = covShapes.length ? Math.max(...covShapes.map(sh => sh.yTop)) : undefined;
+                data.shade = calculateShadeCloths(data, state.shadeCloth, state, { coveringsTopY });
+            } catch (e) { console.warn('[Geometry] Could not compute shade cloths:', e); data.shade = null; }
         }
     
         return data;

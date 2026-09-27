@@ -30,8 +30,8 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Split height</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-cov-split" min="12" max="120" step="0.25" value="48">
-                            <input type="number" id="nb-cov-split" min="1" max="600" step="0.25" value="48">
+                            <input type="range" id="sl-cov-split" min="0" max="120" step="0.25" value="48">
+                            <input type="number" id="nb-cov-split" min="-1200" max="1200" step="0.25" value="48">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -40,22 +40,25 @@
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Bottom</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-cov-bottom" min="0" max="24" step="0.25" value="0">
-                            <input type="number" id="nb-cov-bottom" min="0" max="600" step="0.25" value="0">
+                            <input type="range" id="sl-cov-bottom" min="-24" max="24" step="0.25" value="0">
+                            <input type="number" id="nb-cov-bottom" min="-1200" max="1200" step="0.25" value="0">
                         </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <label class="chk-label" title="Measure the bottom of the lower band from the top of the raised-floor deck instead of the ground (needs the Floor group enabled with a deck)"><input type="checkbox" id="chk-cov-on-floor"> Start the lower band at the floor deck</label>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Top clearance</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-cov-top-clear" min="0" max="12" step="0.25" value="1">
-                            <input type="number" id="nb-cov-top-clear" min="0" max="60" step="0.25" value="1">
+                            <input type="range" id="sl-cov-top-clear" min="-12" max="12" step="0.25" value="1">
+                            <input type="number" id="nb-cov-top-clear" min="-1200" max="1200" step="0.25" value="1">
                         </div>
                     </div>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Edge gap to upright</span><span class="unit" data-fixed-unit>in</span></div>
                         <div class="input-wrap">
-                            <input type="range" id="sl-cov-edge-gap" min="0" max="2" step="0.0625" value="0.25">
-                            <input type="number" id="nb-cov-edge-gap" min="0" max="6" step="0.0625" value="0.25">
+                            <input type="range" id="sl-cov-edge-gap" min="-2" max="2" step="0.0625" value="0.25">
+                            <input type="number" id="nb-cov-edge-gap" min="-1200" max="1200" step="0.0625" value="0.25">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -73,7 +76,7 @@
                         <div class="ctrl-head"><span>Lower tilt (+ = top inward)</span><span class="unit">°</span></div>
                         <div class="input-wrap">
                             <input type="range" id="sl-cov-tilt" min="-60" max="60" step="0.5" value="0">
-                            <input type="number" id="nb-cov-tilt" min="-80" max="80" step="0.5" value="0">
+                            <input type="number" id="nb-cov-tilt" min="-360" max="360" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -91,7 +94,7 @@
                         <div class="ctrl-head"><span>Upper tilt (+ = top inward)</span><span class="unit">°</span></div>
                         <div class="input-wrap">
                             <input type="range" id="sl-cov-tilt-upper" min="-60" max="60" step="0.5" value="0">
-                            <input type="number" id="nb-cov-tilt-upper" min="-80" max="80" step="0.5" value="0">
+                            <input type="number" id="nb-cov-tilt-upper" min="-360" max="360" step="0.5" value="0">
                         </div>
                     </div>
                     <div class="ctrl-row">
@@ -121,15 +124,15 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Width × Length</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-cov-sheet-w" min="6" max="240" step="0.5" value="48">
+                                <input type="number" id="nb-cov-sheet-w" min="0.05" max="2400" step="0.5" value="48">
                                 <span class="x">×</span>
-                                <input type="number" id="nb-cov-sheet-l" min="6" max="480" step="0.5" value="96">
+                                <input type="number" id="nb-cov-sheet-l" min="0.05" max="2400" step="0.5" value="96">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Thickness</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-sheet-t" min="0.1" max="3" step="0.125" value="0.5">
+                                <input type="number" id="nb-cov-sheet-t" min="0.05" max="48" step="0.125" value="0.5">
                             </div>
                         </div>
                         <div class="ctrl-row">
@@ -145,13 +148,13 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Kerf</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-kerf" min="0" max="1" step="0.03125" value="0.125">
+                                <input type="number" id="nb-cov-kerf" min="0" max="48" step="0.03125" value="0.125">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Price per sheet</span><span class="unit">$</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cost-plywood" min="0" max="1000" step="0.5" value="45">
+                                <input type="number" id="nb-cost-plywood" min="0" max="100000" step="0.5" value="45">
                             </div>
                         </div>
                     </div>
@@ -161,35 +164,35 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Roll width</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-roll" min="12" max="240" step="1" value="60">
+                                <input type="number" id="nb-cov-roll" min="0.05" max="2400" step="1" value="60">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Hem / Seam</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-cov-hem" min="0" max="12" step="0.25" value="1">
+                                <input type="number" id="nb-cov-hem" min="0" max="2400" step="0.25" value="1">
                                 <span class="x">/</span>
-                                <input type="number" id="nb-cov-seam" min="0" max="6" step="0.125" value="0.5">
+                                <input type="number" id="nb-cov-seam" min="0" max="2400" step="0.125" value="0.5">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Tension shrink</span><span class="unit">%</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-stretch" min="0" max="20" step="0.5" value="2">
+                                <input type="number" id="nb-cov-stretch" min="-50" max="90" step="0.5" value="2">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Grommet spacing</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-grommet" min="2" max="120" step="1" value="12">
+                                <input type="number" id="nb-cov-grommet" min="0.5" max="2400" step="1" value="12">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Price per yard / grommet</span><span class="unit">$</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-cost-fabric" min="0" max="500" step="0.25" value="8">
+                                <input type="number" id="nb-cost-fabric" min="0" max="100000" step="0.25" value="8">
                                 <span class="x">/</span>
-                                <input type="number" id="nb-cost-grommet" min="0" max="50" step="0.05" value="0.25">
+                                <input type="number" id="nb-cost-grommet" min="0" max="100000" step="0.05" value="0.25">
                             </div>
                         </div>
                     </div>
@@ -199,21 +202,28 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Depth (inward)</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-cov-table-depth" min="6" max="60" step="0.5" value="24">
-                                <input type="number" id="nb-cov-table-depth" min="1" max="240" step="0.5" value="24">
+                                <input type="range" id="sl-cov-table-depth" min="1" max="60" step="0.5" value="24">
+                                <input type="number" id="nb-cov-table-depth" min="0.05" max="2400" step="0.5" value="24">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Slide in / out (+ = toward centre)</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-cov-table-slide" min="-24" max="48" step="0.5" value="0">
-                                <input type="number" id="nb-cov-table-slide" min="-120" max="240" step="0.5" value="0">
+                                <input type="number" id="nb-cov-table-slide" min="-1200" max="1200" step="0.5" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Height from split (+ = up)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-cov-table-h" min="-24" max="24" step="0.5" value="0">
+                                <input type="number" id="nb-cov-table-h" min="-1200" max="1200" step="0.5" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Thickness</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-cov-table-t" min="0.1" max="3" step="0.125" value="0.75">
+                                <input type="number" id="nb-cov-table-t" min="0.05" max="48" step="0.125" value="0.75">
                             </div>
                         </div>
                     </div>

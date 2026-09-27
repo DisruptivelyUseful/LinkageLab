@@ -6,7 +6,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { requestRender } from './render-app.js';
 import { saveStateToHistory } from './history.js';
-import { createDefaultFloor, computeFloorBomContribution } from './floor-geometry.js';
+import { createDefaultFloor, computeFloorBomContribution, describeFloorSeating, OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX } from './floor-geometry.js';
 import { computeCoveringCutPlan } from './coverings-plan.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
@@ -72,11 +72,15 @@ function syncFloorUIFromState() {
     setPair('sl-floor-rcp-length', 'nb-floor-rcp-length', f.beams.parallelLength);
     setPair('sl-floor-rcp-swing', 'nb-floor-rcp-swing', f.beams.parallelSwingAngle);
     setPair('sl-floor-rcp-anchor', 'nb-floor-rcp-anchor', f.beams.anchorDist);
-    setPair('sl-floor-lift', 'nb-floor-lift', f.beams.liftIn);
+    setPair('sl-floor-rcp-side', 'nb-floor-rcp-side', f.beams.anchorSideIn || 0);
+    setPair('sl-floor-lift', 'nb-floor-lift', f.beams.parallelOffsetV || 0);
     setPair('sl-floor-rad-length', 'nb-floor-rad-length', f.beams.length);
     setPair('sl-floor-rad-offset', 'nb-floor-rad-offset', f.beams.offsetH);
+    setPair('sl-floor-rad-voff', 'nb-floor-rad-voff', f.beams.offsetV || 0);
+    setPair('sl-floor-rad-toff', 'nb-floor-rad-toff', f.beams.offsetT || 0);
     setPair('sl-floor-deck-inset', 'nb-floor-deck-inset', f.deck.insetIn);
     const set = (id, v) => { const el = $(id); if (el) el.value = v; };
+    set('sel-floor-seat', f.beams.seat === 'ringTop' ? 'ringTop' : 'leg');
     set('nb-floor-rcp-width', f.beams.parallelWidth);
     set('nb-floor-rcp-thickness', f.beams.parallelThickness);
     set('nb-floor-rcp-end', f.beams.rcpEndOffset);
@@ -94,6 +98,19 @@ function updateFloorReadout(data) {
     const fl = data && data.floor;
     const beams = fl ? (fl.beams || []).length : 0;
     setText('floor-stat-beams', String(beams));
+    let seatTxt = '--';
+    if (fl && beams) {
+        try {
+            const seat = describeFloorSeating(data, fl.beams, state.modules);
+            const parts = [];
+            const fmtGap = (g) => (Math.abs(g) < 0.01 ? 'on the leg' : `${g > 0 ? '+' : '−'}${formatInchesFraction(Math.abs(g))} ${g > 0 ? 'above' : 'into'}`);
+            if (seat.A) parts.push(`A ${fmtGap(seat.A.gapIn)}`);
+            if (seat.B) parts.push(`B ${fmtGap(seat.B.gapIn)}`);
+            if (seat.radial) parts.push(`radial ${seat.radial.gapIn >= 0 ? '+' : '−'}${formatInchesFraction(Math.abs(seat.radial.gapIn))} vs ring top`);
+            if (parts.length) seatTxt = parts.join(' · ');
+        } catch (e) { /* readout only */ }
+    }
+    setText('floor-stat-seat', seatTxt);
     const deck = fl && fl.deck;
     setText('floor-stat-height', deck ? `${formatInchesFraction(deck.yTop)} above ground` : '--');
     setText('floor-stat-area', deck ? `${(deck.areaIn2 / 144).toFixed(1)} ft²` : '--');
@@ -118,20 +135,26 @@ function initFloorUI() {
     bindCheck('chk-floor-show-beams', (v) => { floor().visibility.beams = v; });
     bindCheck('chk-floor-show-deck', (v) => { floor().visibility.deck = v; });
     const b = () => floor().beams;
-    bindPair('sl-floor-rcp-length', 'nb-floor-rcp-length', () => b().parallelLength, (v) => { b().parallelLength = v; }, { min: 12, max: 480 });
-    bindPair('sl-floor-rcp-swing', 'nb-floor-rcp-swing', () => b().parallelSwingAngle, (v) => { b().parallelSwingAngle = v; }, { min: -90, max: 90 });
-    bindPair('sl-floor-rcp-anchor', 'nb-floor-rcp-anchor', () => b().anchorDist, (v) => { b().anchorDist = v; }, { min: 0, max: 240 });
-    bindPair('sl-floor-lift', 'nb-floor-lift', () => b().liftIn, (v) => { b().liftIn = v; }, { min: 0, max: 48 });
-    bindPair('sl-floor-rad-length', 'nb-floor-rad-length', () => b().length, (v) => { b().length = v; }, { min: 12, max: 480 });
-    bindPair('sl-floor-rad-offset', 'nb-floor-rad-offset', () => b().offsetH, (v) => { b().offsetH = v; }, { min: -240, max: 240 });
-    bindPair('sl-floor-deck-inset', 'nb-floor-deck-inset', () => floor().deck.insetIn, (v) => { floor().deck.insetIn = v; }, { min: 0, max: 24 });
-    bindNumber('nb-floor-rcp-width', () => b().parallelWidth, (v) => { b().parallelWidth = v; }, { min: 0.5, max: 12 });
-    bindNumber('nb-floor-rcp-thickness', () => b().parallelThickness, (v) => { b().parallelThickness = v; }, { min: 0.5, max: 12 });
-    bindNumber('nb-floor-rcp-end', () => b().rcpEndOffset, (v) => { b().rcpEndOffset = v; }, { min: 0, max: 48 });
-    bindNumber('nb-floor-rcp-voff', () => b().parallelVOffset, (v) => { b().parallelVOffset = v; }, { min: 0, max: 12 });
-    bindNumber('nb-floor-rad-width', () => b().width, (v) => { b().width = v; }, { min: 0.5, max: 12 });
-    bindNumber('nb-floor-rad-thickness', () => b().thickness, (v) => { b().thickness = v; }, { min: 0.5, max: 12 });
-    bindNumber('nb-floor-deck-t', () => floor().deck.thicknessIn, (v) => { floor().deck.thicknessIn = v; }, { min: 0.1, max: 3 });
+    const OFF = { min: -OFF_MAX, max: OFF_MAX }, LEN = { min: LEN_MIN, max: LEN_MAX }, SEC = { min: SECTION_MIN, max: SECTION_MAX };
+    const seatSel = $('sel-floor-seat');
+    if (seatSel) seatSel.onchange = (e) => { b().seat = e.target.value === 'ringTop' ? 'ringTop' : 'leg'; commit(); };
+    bindPair('sl-floor-rcp-length', 'nb-floor-rcp-length', () => b().parallelLength, (v) => { b().parallelLength = v; }, LEN);
+    bindPair('sl-floor-rcp-swing', 'nb-floor-rcp-swing', () => b().parallelSwingAngle, (v) => { b().parallelSwingAngle = v; }, { min: -360, max: 360 });
+    bindPair('sl-floor-rcp-anchor', 'nb-floor-rcp-anchor', () => b().anchorDist, (v) => { b().anchorDist = v; }, OFF);
+    bindPair('sl-floor-rcp-side', 'nb-floor-rcp-side', () => b().anchorSideIn || 0, (v) => { b().anchorSideIn = v; }, OFF);
+    bindPair('sl-floor-lift', 'nb-floor-lift', () => b().parallelOffsetV || 0, (v) => { b().parallelOffsetV = v; }, OFF);
+    bindPair('sl-floor-rad-length', 'nb-floor-rad-length', () => b().length, (v) => { b().length = v; }, LEN);
+    bindPair('sl-floor-rad-offset', 'nb-floor-rad-offset', () => b().offsetH, (v) => { b().offsetH = v; }, OFF);
+    bindPair('sl-floor-rad-voff', 'nb-floor-rad-voff', () => b().offsetV || 0, (v) => { b().offsetV = v; }, OFF);
+    bindPair('sl-floor-rad-toff', 'nb-floor-rad-toff', () => b().offsetT || 0, (v) => { b().offsetT = v; }, OFF);
+    bindPair('sl-floor-deck-inset', 'nb-floor-deck-inset', () => floor().deck.insetIn, (v) => { floor().deck.insetIn = v; }, OFF);
+    bindNumber('nb-floor-rcp-width', () => b().parallelWidth, (v) => { b().parallelWidth = v; }, SEC);
+    bindNumber('nb-floor-rcp-thickness', () => b().parallelThickness, (v) => { b().parallelThickness = v; }, SEC);
+    bindNumber('nb-floor-rcp-end', () => b().rcpEndOffset, (v) => { b().rcpEndOffset = v; }, OFF);
+    bindNumber('nb-floor-rcp-voff', () => b().parallelVOffset, (v) => { b().parallelVOffset = v; }, OFF);
+    bindNumber('nb-floor-rad-width', () => b().width, (v) => { b().width = v; }, SEC);
+    bindNumber('nb-floor-rad-thickness', () => b().thickness, (v) => { b().thickness = v; }, SEC);
+    bindNumber('nb-floor-deck-t', () => floor().deck.thicknessIn, (v) => { floor().deck.thicknessIn = v; }, SEC);
     syncFloorUIFromState();
 }
 

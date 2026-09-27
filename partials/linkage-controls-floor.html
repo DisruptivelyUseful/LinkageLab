@@ -14,47 +14,63 @@
                     </div>
                     <div class="sub-block" id="floor-rcp-controls">
                         <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Seat each beam on</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-floor-seat" title="The A and B layers of the bottom ring sit at different heights; seating per leg lands each beam on the leg it crosses">
+                                    <option value="leg" selected>Its own scissor leg (A on A, B on B)</option>
+                                    <option value="ringTop">The ring's highest face</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
                             <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-floor-rcp-length" min="24" max="240" step="1" value="96">
-                                <input type="number" id="nb-floor-rcp-length" min="12" max="480" step="1" value="96">
+                                <input type="number" id="nb-floor-rcp-length" min="0.05" max="2400" step="1" value="96">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Width × Thickness</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-floor-rcp-width" min="0.5" max="12" step="0.25" value="2.5">
+                                <input type="number" id="nb-floor-rcp-width" min="0.05" max="48" step="0.25" value="2.5">
                                 <span class="x">×</span>
-                                <input type="number" id="nb-floor-rcp-thickness" min="0.5" max="12" step="0.25" value="1.5">
+                                <input type="number" id="nb-floor-rcp-thickness" min="0.05" max="48" step="0.25" value="1.5">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Swing angle</span><span class="unit">°</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-floor-rcp-swing" min="-60" max="60" step="0.5" value="0">
-                                <input type="number" id="nb-floor-rcp-swing" min="-90" max="90" step="0.5" value="0">
+                                <input type="number" id="nb-floor-rcp-swing" min="-360" max="360" step="0.5" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Anchor from crossing</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="ctrl-head"><span>Anchor along the leg (from the crossing)</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-floor-rcp-anchor" min="0" max="60" step="0.5" value="20">
-                                <input type="number" id="nb-floor-rcp-anchor" min="0" max="240" step="0.5" value="20">
+                                <input type="range" id="sl-floor-rcp-anchor" min="-60" max="60" step="0.5" value="20">
+                                <input type="number" id="nb-floor-rcp-anchor" min="-1200" max="1200" step="0.5" value="20">
                             </div>
                         </div>
                         <div class="ctrl-row">
-                            <div class="ctrl-head"><span>End overhang / A-over-B lift</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="ctrl-head"><span>Anchor across the leg (side-to-side)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rcp-side" min="-24" max="24" step="0.25" value="0">
+                                <input type="number" id="nb-floor-rcp-side" min="-1200" max="1200" step="0.25" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Vertical offset (both beams)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-lift" min="-12" max="12" step="0.25" value="0">
+                                <input type="number" id="nb-floor-lift" min="-1200" max="1200" step="0.25" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Back overhang / A-B split (+ = A up, B down)</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-floor-rcp-end" min="0" max="48" step="0.5" value="0">
+                                <input type="number" id="nb-floor-rcp-end" min="-1200" max="1200" step="0.5" value="0">
                                 <span class="x">/</span>
-                                <input type="number" id="nb-floor-rcp-voff" min="0" max="12" step="0.25" value="1.5">
-                            </div>
-                        </div>
-                        <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Lift above ring</span><span class="unit" data-fixed-unit>in</span></div>
-                            <div class="input-wrap">
-                                <input type="range" id="sl-floor-lift" min="0" max="12" step="0.25" value="0">
-                                <input type="number" id="nb-floor-lift" min="0" max="48" step="0.25" value="0">
+                                <input type="number" id="nb-floor-rcp-voff" min="-1200" max="1200" step="0.25" value="0">
                             </div>
                         </div>
                     </div>
@@ -67,22 +83,36 @@
                             <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-floor-rad-length" min="24" max="240" step="1" value="120">
-                                <input type="number" id="nb-floor-rad-length" min="12" max="480" step="1" value="120">
+                                <input type="number" id="nb-floor-rad-length" min="0.05" max="2400" step="1" value="120">
                             </div>
                         </div>
                         <div class="ctrl-row">
-                            <div class="ctrl-head"><span>Radial offset</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="ctrl-head"><span>Radial offset (+ = toward centre)</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-floor-rad-offset" min="-240" max="240" step="0.5" value="-46.5">
-                                <input type="number" id="nb-floor-rad-offset" min="-240" max="240" step="0.5" value="-46.5">
+                                <input type="number" id="nb-floor-rad-offset" min="-1200" max="1200" step="0.5" value="-46.5">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Vertical offset (− = lower)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rad-voff" min="-24" max="24" step="0.25" value="0">
+                                <input type="number" id="nb-floor-rad-voff" min="-1200" max="1200" step="0.25" value="0">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Side-to-side offset (along the ring)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-floor-rad-toff" min="-48" max="48" step="0.25" value="0">
+                                <input type="number" id="nb-floor-rad-toff" min="-1200" max="1200" step="0.25" value="0">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Width × Thickness</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap pair">
-                                <input type="number" id="nb-floor-rad-width" min="0.5" max="12" step="0.25" value="1.5">
+                                <input type="number" id="nb-floor-rad-width" min="0.05" max="48" step="0.25" value="1.5">
                                 <span class="x">×</span>
-                                <input type="number" id="nb-floor-rad-thickness" min="0.5" max="12" step="0.25" value="3.5">
+                                <input type="number" id="nb-floor-rad-thickness" min="0.05" max="48" step="0.25" value="3.5">
                             </div>
                         </div>
                     </div>
@@ -95,14 +125,14 @@
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Thickness</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="number" id="nb-floor-deck-t" min="0.1" max="3" step="0.125" value="0.75">
+                                <input type="number" id="nb-floor-deck-t" min="0.05" max="48" step="0.125" value="0.75">
                             </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Edge inset from pivots</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
-                                <input type="range" id="sl-floor-deck-inset" min="0" max="12" step="0.25" value="0.5">
-                                <input type="number" id="nb-floor-deck-inset" min="0" max="24" step="0.25" value="0.5">
+                                <input type="range" id="sl-floor-deck-inset" min="-12" max="12" step="0.25" value="0.5">
+                                <input type="number" id="nb-floor-deck-inset" min="-1200" max="1200" step="0.25" value="0.5">
                             </div>
                         </div>
                         <div class="hint">Sheet size, kerf and price come from the Coverings group's plywood stock.</div>
@@ -117,6 +147,7 @@
                     <div id="floor-readout" class="diag-panel">
                         <div class="kv-grid">
                             <span class="k">Floor beams:</span><span id="floor-stat-beams">0</span>
+                            <span class="k">Beam seating:</span><span id="floor-stat-seat">--</span>
                             <span class="k">Deck height:</span><span id="floor-stat-height">--</span>
                             <span class="k">Deck area:</span><span id="floor-stat-area">--</span>
                             <span class="k">Deck sheets:</span><span id="floor-stat-sheets">--</span>

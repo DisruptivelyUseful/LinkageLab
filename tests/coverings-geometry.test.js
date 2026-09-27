@@ -70,11 +70,18 @@ describe('coverings-geometry: state helpers', () => {
     });
 
     it('normalizeCoverings clamps and falls back to defaults', () => {
-        const cov = normalizeCoverings({ enabled: 1, lean: 'sideways', splitHeightIn: -5, spans: [{ lower: 'steel', upper: 'fabric', table: 'yes' }], pickMode: true }, 3);
+        const cov = normalizeCoverings({ enabled: 1, lean: 'sideways', splitHeightIn: -5000, spans: [{ lower: 'steel', upper: 'fabric', table: 'yes' }], pickMode: true }, 3);
         expect(cov.enabled).toBe(true);
         expect(cov.lowerLean).toBe('inward');
         expect(cov.upperLean).toBe('outward');
-        expect(cov.splitHeightIn).toBe(1);
+        expect(cov.splitHeightIn).toBe(-1200);
+        expect(cov.bottomMode).toBe('ground');
+        expect(cov.table.heightOffsetIn).toBe(0);
+        // wide, signed inputs survive untouched
+        const wide = normalizeCoverings({ splitHeightIn: -5, bottomIn: -30, topClearanceIn: -2, edgeGapIn: -1, lowerTiltDeg: -200, bottomMode: 'floor', table: { slideIn: -300, heightOffsetIn: -12 }, sheet: { widthIn: 1000 } }, 2);
+        expect(wide).toMatchObject({ splitHeightIn: -5, bottomIn: -30, topClearanceIn: -2, edgeGapIn: -1, lowerTiltDeg: -200, bottomMode: 'floor' });
+        expect(wide.table).toMatchObject({ slideIn: -300, heightOffsetIn: -12 });
+        expect(wide.sheet.widthIn).toBe(1000);
         expect(cov.spans).toHaveLength(3);
         expect(cov.spans[0]).toEqual({ lower: 'none', upper: 'fabric', table: true });
         expect(cov.pickMode).toBe(false);
@@ -231,6 +238,46 @@ describe('coverings-geometry: variants', () => {
         baseTable.corners3D.forEach((p, i) => expect(rad(p)).toBeGreaterThan(rad(slidTable.corners3D[i]) + 9));
         expect(slidTable.depthIn).toBe(baseTable.depthIn);
         expect(slidTable.widthOuterIn).toBeLessThan(baseTable.widthOuterIn);
+    });
+
+    it('table height offset moves the table surface; the split is only clamped at compute time', () => {
+        const st = makeRingState();
+        const { data } = solveClosed(st);
+        const cov = enclosed(8);
+        cov.spans.forEach(sp => { sp.lower = 'plywood'; sp.table = true; });
+        const base = computeCoverings(data, cov, st);
+        const t0 = base.shapes.find(s => s.kind === 'table');
+        cov.table.heightOffsetIn = -6;
+        const low = computeCoverings(data, cov, st);
+        const t1 = low.shapes.find(s => s.kind === 'table');
+        expect(t1.yTop - t0.yTop).toBeCloseTo(-6, 3);
+        expect(low.tableHeightIn).toBeCloseTo(base.splitHeightIn - 6, 3);
+        // an absurd split height is clamped to leave 1" per band, without touching the stored value
+        cov.table.heightOffsetIn = 0;
+        cov.splitHeightIn = -40;
+        const clamped = computeCoverings(data, cov, st);
+        expect(cov.splitHeightIn).toBe(-40);
+        expect(clamped.splitHeightIn).toBeCloseTo(1, 3);
+        cov.splitHeightIn = 5000;
+        expect(computeCoverings(data, cov, st).splitHeightIn).toBeCloseTo(clamped.upperTopIn - 1, 3);
+    });
+
+    it('bottomMode "floor" starts the lower band on the floor deck', () => {
+        const st = makeRingState();
+        const { data } = solveClosed(st);
+        const cov = enclosed(8);
+        const ground = computeCoverings(data, cov, st, { floorTopY: 6.25 });
+        expect(ground.bottomMode).toBe('ground');
+        cov.bottomMode = 'floor';
+        cov.bottomIn = 0.5;
+        const onFloor = computeCoverings(data, cov, st, { floorTopY: 6.25 });
+        expect(onFloor.bottomMode).toBe('floor');
+        expect(onFloor.bottomIn).toBeCloseTo(6.75, 3);
+        const lower = onFloor.shapes.find(s => s.band === 'lower');
+        expect(lower.yBottom).toBeCloseTo(6.75, 2);
+        expect(lower.verticalHeightIn).toBeCloseTo(ground.splitHeightIn - 6.75, 2);
+        // without a floor to stand on it falls back to the ground
+        expect(computeCoverings(data, cov, st).bottomMode).toBe('ground');
     });
 
     it('two-layer stacks solve the same wall plane as three-layer stacks', () => {
