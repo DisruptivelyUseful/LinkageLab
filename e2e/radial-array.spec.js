@@ -172,3 +172,90 @@ test.describe('Radial array', () => {
         expect(parseFloat(restored.spacingBox)).toBeCloseTo(12, 1);
     });
 });
+
+test.describe('Radial array: copies and 3D export', () => {
+    test.beforeEach(async ({ page }) => {
+        await installOfflineCdn(page);
+        await page.goto('/index.html');
+        await waitForAppReady(page);
+        await openSidebar(page);
+    });
+
+    test('the 3D export button opens a visible dialog and exporting downloads a GLB of the whole array', async ({ page }) => {
+        await page.locator('#chk-radial-arr-enabled').check();
+        const count = page.locator('#nb-radial-arr-count');
+        await count.fill('3');
+        await count.dispatchEvent('change');
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialCount)).toBe(3);
+
+        await page.locator('#btn-export-gltf').click();
+        const dialog = page.locator('#gltf-export-modal');
+        await expect(dialog).toBeVisible();
+        await expect(dialog.locator('.modal')).toBeInViewport();
+        await expect(dialog.getByText('Export 3D Model')).toBeVisible();
+
+        const download = page.waitForEvent('download');
+        await dialog.getByRole('button', { name: 'Export', exact: true }).click();
+        const file = await download;
+        expect(file.suggestedFilename()).toMatch(/^LinkageLab_Export_\d+\.glb$/);
+        await expect(dialog).toBeHidden();
+
+        // The exported scene groups every visible copy under its own Structure_* node
+        const names = await page.evaluate(async () => {
+            const res = await globalThis.exportToGLTF('gltf', 'meters', 'yup', { download: false, silent: true });
+            const nodes = res.result.nodes || [];
+            return nodes.map(n => n.name).filter(n => /^Structure_/.test(n)).sort();
+        });
+        expect(names).toEqual(['Structure_1', 'Structure_2', 'Structure_3', 'Structure_Center']);
+    });
+
+    test('individual copies can be hidden, which the viewport and the export both honour', async ({ page }) => {
+        const before = await beamCount(page);
+        await page.locator('#chk-radial-arr-enabled').check();
+        const count = page.locator('#nb-radial-arr-count');
+        await count.fill('2');
+        await count.dispatchEvent('change');
+        await expect.poll(() => beamCount(page)).toBe(before * 3);
+
+        const grid = page.locator('#radial-copy-toggles');
+        await expect(grid.locator('input')).toHaveCount(3);
+        await expect(grid).toContainText('Center');
+        await expect(grid).toContainText('Copy 1');
+        await expect(grid).toContainText('Copy 2');
+
+        await page.locator('#chk-radial-copy-1').uncheck();
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialHiddenSlots)).toEqual([1]);
+        await expect.poll(() => beamCount(page)).toBe(before * 2);
+        await expect(page.locator('#radial-array-readout')).toContainText('1 hidden');
+
+        // The export only carries the visible copies
+        const exported = await page.evaluate(async () => {
+            const res = await globalThis.exportToGLTF('gltf', 'meters', 'yup', { download: false, silent: true });
+            return (res.result.nodes || []).map(n => n.name).filter(n => /^Structure_/.test(n)).sort();
+        });
+        expect(exported).toEqual(['Structure_2', 'Structure_Center']);
+
+        // Centre only, then the last visible copy cannot be hidden, then show all
+        await page.locator('#btn-radial-copies-center').click();
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialHiddenSlots)).toEqual([1, 2]);
+        await expect.poll(() => beamCount(page)).toBe(before);
+        // A plain click: the guard re-checks the box, which uncheck() would report as a failure
+        await page.locator('#chk-radial-copy-0').click();
+        await expect(page.locator('#chk-radial-copy-0')).toBeChecked();
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialHiddenSlots)).toEqual([1, 2]);
+        await page.locator('#btn-radial-copies-all').click();
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialHiddenSlots)).toEqual([]);
+        await expect.poll(() => beamCount(page)).toBe(before * 3);
+
+        // Hidden copies survive a save / load round trip
+        await page.locator('#chk-radial-copy-2').uncheck();
+        const restored = await page.evaluate(() => {
+            const snapshot = globalThis.getConfigSnapshot();
+            globalThis.state.radialHiddenSlots = [];
+            globalThis.applyConfig(snapshot, true);
+            return { saved: snapshot.mode.radialArray.hiddenSlots, hidden: globalThis.state.radialHiddenSlots,
+                     box: document.getElementById('chk-radial-copy-2').checked };
+        });
+        expect(restored).toEqual({ saved: [2], hidden: [2], box: false });
+    });
+});

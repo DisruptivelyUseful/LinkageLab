@@ -24,6 +24,7 @@ designed structure around a central anchor point.
 | Start Angle | `radialStartAngle` | Rotates the whole pattern about the anchor. |
 | Copy Spin | `radialSpin` | Extra rotation of every copy about its own axis. |
 | Height Offset | `radialHeightOffset` | Raises or lowers the ring copies relative to the centre. |
+| Display grid (Center, Copy 1…N) | `radialHiddenSlots` | Show or hide individual structures. Hidden copies are left out of the viewport, the BOM and the 3D export. **Show all** / **Center only** are shortcuts; the last visible copy cannot be hidden. |
 
 ### Auto radius
 
@@ -65,6 +66,13 @@ back the camera off in proportion to the pattern.
 - Every copy tags its parts with `arrayIndex = slot × linearCount + linearIndex`,
   so part keys (`part-keys.js`) stay unique and build steps can address a
   single copy.
+
+## 3D export
+
+The glTF/GLB export goes through `buildLinkageGeometry`, so it carries every
+visible copy. With the array on, each copy is its own node
+(`Structure_Center`, `Structure_1`, …) holding that copy's `Module_*` groups;
+support beams and coverings carry the copy in their names.
 
 Tests: `tests/radial-array.test.js` (geometry), `tests/config-persistence.test.js`
 and `tests/part-keys.test.js` (round trip, unique keys), `e2e/radial-array.spec.js`

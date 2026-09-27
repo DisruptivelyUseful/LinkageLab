@@ -83,7 +83,8 @@ function computeGeometryHash() {
         state.radialSpacing,
         state.radialStartAngle,
         state.radialSpin,
-        state.radialHeightOffset
+        state.radialHeightOffset,
+        Array.isArray(state.radialHiddenSlots) ? state.radialHiddenSlots.join(',') : ''
     ];
     return params.join('|');
 }

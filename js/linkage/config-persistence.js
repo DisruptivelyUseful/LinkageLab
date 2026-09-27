@@ -43,7 +43,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
         'costHBeam', 'costVBeam', 'costBolt', 'costBracket', 'costSolarPanel', 'orientation', 'archCapUprights',
         'archFlipVertical', 'archRotation', 'arrayCount', 'useFixedBeams',
         'radialArrayEnabled', 'radialCount', 'radialCenter', 'radialRotateCopies', 'radialRadiusAuto',
-        'radialRadius', 'radialSpacing', 'radialStartAngle', 'radialSpin', 'radialHeightOffset'
+        'radialRadius', 'radialSpacing', 'radialStartAngle', 'radialSpin', 'radialHeightOffset', 'radialHiddenSlots'
     ];
 
     /** mode.radialArray <-> state key mapping (radial array of the whole structure) */
@@ -57,7 +57,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
         spacing: 'radialSpacing',
         startAngle: 'radialStartAngle',
         spin: 'radialSpin',
-        heightOffset: 'radialHeightOffset'
+        heightOffset: 'radialHeightOffset',
+        hiddenSlots: 'radialHiddenSlots'
     };
     
     /** Solar panel configuration keys (saved separately as nested object) */
@@ -186,7 +187,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (m.arrayCount !== undefined) state.arrayCount = m.arrayCount;
             if (m.radialArray && typeof m.radialArray === 'object') {
                 Object.entries(RADIAL_ARRAY_CONFIG_MAP).forEach(([cfgKey, stateKey]) => {
-                    if (m.radialArray[cfgKey] !== undefined) state[stateKey] = m.radialArray[cfgKey];
+                    const v = m.radialArray[cfgKey];
+                    if (v !== undefined) state[stateKey] = Array.isArray(v) ? v.slice() : v;
                 });
             }
         }
@@ -504,7 +506,10 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 capUprights: state.archCapUprights,
                 arrayCount: state.arrayCount,
                 radialArray: Object.fromEntries(
-                    Object.entries(RADIAL_ARRAY_CONFIG_MAP).map(([cfgKey, stateKey]) => [cfgKey, state[stateKey]])
+                    Object.entries(RADIAL_ARRAY_CONFIG_MAP).map(([cfgKey, stateKey]) => {
+                        const v = state[stateKey];
+                        return [cfgKey, Array.isArray(v) ? v.slice() : v];
+                    })
                 )
             },
             

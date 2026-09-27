@@ -187,6 +187,7 @@ export const state = {
     radialStartAngle: 0,        // Rotates the whole pattern (degrees)
     radialSpin: 0,              // Extra spin of each copy about its own axis (degrees)
     radialHeightOffset: 0,      // Vertical offset of ring copies vs. the centre (inches)
+    radialHiddenSlots: [],      // Copies hidden from the view and export (slot indices)
 
     // Actuator animation state
     actuatorAnimation: {

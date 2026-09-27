@@ -28,6 +28,7 @@ const RADIAL_ARRAY_DEFAULTS = Object.freeze({
     radialStartAngle: 0,       // rotates the whole pattern (degrees)
     radialSpin: 0,             // extra spin of each copy about its own axis (degrees)
     radialHeightOffset: 0,     // vertical offset of ring copies vs. the centre (inches)
+    radialHiddenSlots: [],     // slot indices (0 = first copy) hidden from the view/export
 });
 
 const RADIAL_COUNT_MIN = 1;
@@ -36,6 +37,18 @@ const RADIAL_COUNT_MAX = 12;
 /** True when the array should be applied for this state. */
 function isRadialArrayActive(s = globalThis.state) {
     return !!(s && s.radialArrayEnabled && (s.radialCount | 0) >= RADIAL_COUNT_MIN);
+}
+
+/** Normalised set of hidden slot indices from state (ignores junk values). */
+function hiddenSlotSet(s) {
+    const list = s && Array.isArray(s.radialHiddenSlots) ? s.radialHiddenSlots : [];
+    return new Set(list.filter(v => Number.isInteger(v) && v >= 0));
+}
+
+/** Slot index of a part from its arrayIndex (see applyRadialArray). */
+function slotOfArrayIndex(arrayIndex, linearCount) {
+    const lc = Math.max(1, linearCount | 0);
+    return Math.floor((arrayIndex || 0) / lc);
 }
 
 // ---------------------------------------------------------------------------
@@ -211,7 +224,15 @@ function planRadialArray(s, beams) {
             offset: { x: radius * Math.cos(theta), y: heightOffset, z: radius * Math.sin(theta) },
         });
     }
+    // Per-copy visibility: hidden slots are planned (stable numbering) but not emitted.
+    // If the user somehow hid every copy, show them all rather than an empty scene.
+    const hidden = hiddenSlotSet(s);
+    const anyVisible = slots.some(sl => !hidden.has(sl.slot));
+    slots.forEach(sl => { sl.hidden = anyVisible && hidden.has(sl.slot); });
+    const hiddenSlots = slots.filter(sl => sl.hidden).map(sl => sl.slot);
     return {
+        hiddenSlots,
+        visibleCount: slots.length - hiddenSlots.length,
         orientation,
         count,
         anchor: { x: analysis.anchor.x, y: 0, z: analysis.anchor.z },
@@ -367,10 +388,13 @@ function replicateShapes(plan, shapes) {
     if (!plan || !plan.slots || !plan.slots.length) return list.map(sh => ({ ...sh, isBaseCopy: true }));
     const linearCount = Math.max(1, plan.linearCount | 0);
     const out = [];
-    plan.slots.forEach((slot, i) => {
+    let first = true;
+    plan.slots.forEach((slot) => {
+        if (slot.hidden) return;
         const xf = makeSlotTransforms(plan, slot);
         const arrayIndex = slot.slot * linearCount;
-        list.forEach(sh => out.push(cloneCoveringShape(sh, xf, arrayIndex, slot.slot, i === 0)));
+        list.forEach(sh => out.push(cloneCoveringShape(sh, xf, arrayIndex, slot.slot, first)));
+        first = false;
     });
     return out;
 }
@@ -404,6 +428,7 @@ function applyRadialArray(s, geo) {
     if (geo.panels) out.panels = [];
     if (geo.supportBeams) out.supportBeams = [];
     plan.slots.forEach(slot => {
+        if (slot.hidden) return;
         const xf = makeSlotTransforms(plan, slot);
         xf.phiRad = slot.phiRad;
         const idx = (o) => slot.slot * linearCount + (o.arrayIndex !== undefined ? o.arrayIndex : 0);
@@ -442,6 +467,8 @@ const _moduleExports = {
     RADIAL_COUNT_MIN,
     RADIAL_COUNT_MAX,
     isRadialArrayActive,
+    hiddenSlotSet,
+    slotOfArrayIndex,
     analyzeRadialFootprint,
     planRadialArray,
     applyRadialArray,
@@ -457,6 +484,8 @@ export {
     RADIAL_COUNT_MIN,
     RADIAL_COUNT_MAX,
     isRadialArrayActive,
+    hiddenSlotSet,
+    slotOfArrayIndex,
     analyzeRadialFootprint,
     planRadialArray,
     applyRadialArray,

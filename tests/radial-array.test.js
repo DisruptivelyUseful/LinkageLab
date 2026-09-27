@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { createTestState } from './helpers/state-fixture.js';
 import { solveLinkage } from '../js/linkage/solver.js';
 import { getOptimalClosedAngleForAnimation } from '../js/linkage/joint-kinematics.js';
-import { analyzeRadialFootprint, planRadialArray, applyRadialArray, isRadialArrayActive, replicateShapes, cloneCoveringShape, makeSlotTransforms } from '../js/linkage/radial-array.js';
+import { analyzeRadialFootprint, planRadialArray, applyRadialArray, isRadialArrayActive, replicateShapes, cloneCoveringShape, makeSlotTransforms, slotOfArrayIndex } from '../js/linkage/radial-array.js';
 import { createDefaultCoverings, computeCoverings } from '../js/linkage/coverings-geometry.js';
 
 beforeAll(async () => {
@@ -383,5 +383,43 @@ describe('radial array: coverings follow the copies', () => {
         const wall = copies.find(c => c.arrayIndex === idx && c.kind === 'wall');
         const near = Math.min(...beams.map(b => Math.hypot(b.center.x - wall.center.x, b.center.z - wall.center.z)));
         expect(near).toBeLessThan(80);
+    });
+});
+
+describe('radial array: per-copy visibility', () => {
+    it('hidden slots are planned (stable numbering) but not emitted, for parts and covering shapes', () => {
+        const full = solveWith({ modules: 6, radialArrayEnabled: true, radialCount: 3, radialCenter: true });
+        const partial = solveWith({ modules: 6, radialArrayEnabled: true, radialCount: 3, radialCenter: true, radialHiddenSlots: [0, 2] });
+        expect(partial.radialArray.copyCount).toBe(4);
+        expect(partial.radialArray.hiddenSlots).toEqual([0, 2]);
+        expect(partial.radialArray.visibleCount).toBe(2);
+        const perCopy = full.beams.length / 4;
+        expect(partial.beams.length).toBe(perCopy * 2);
+        // Remaining copies keep their original slot numbering in arrayIndex
+        expect([...new Set(partial.beams.map(b => b.arrayIndex))].sort()).toEqual([1, 3]);
+        // A visible copy is byte-identical to the same copy in the full array
+        const c1full = full.beams.filter(b => b.arrayIndex === 1)[0];
+        const c1part = partial.beams.filter(b => b.arrayIndex === 1)[0];
+        expect(c1part.center).toEqual(c1full.center);
+        // Covering-style shapes follow the same rule, with the base copy = first visible
+        const shapes = replicateShapes(partial.radialArray, [{ kind: 'wall', corners3D: [{ x: 1, y: 0, z: 0 }] }]);
+        expect(shapes.map(sh => sh.slotIndex)).toEqual([1, 3]);
+        expect(shapes.map(sh => sh.isBaseCopy)).toEqual([true, false]);
+    });
+
+    it('ignores a hidden list that would hide every copy, and junk entries', () => {
+        const all = solveWith({ modules: 6, radialArrayEnabled: true, radialCount: 2, radialCenter: false, radialHiddenSlots: [0, 1] });
+        expect(all.radialArray.hiddenSlots).toEqual([]);
+        expect(all.radialArray.visibleCount).toBe(2);
+        const junk = solveWith({ modules: 6, radialArrayEnabled: true, radialCount: 2, radialCenter: false, radialHiddenSlots: [-3, 'x', 9] });
+        expect(junk.radialArray.hiddenSlots).toEqual([]);
+        expect(junk.beams.length).toBe(all.beams.length);
+    });
+
+    it('slotOfArrayIndex undoes the arrayIndex packing with a linear array', () => {
+        expect(slotOfArrayIndex(0, 3)).toBe(0);
+        expect(slotOfArrayIndex(2, 3)).toBe(0);
+        expect(slotOfArrayIndex(3, 3)).toBe(1);
+        expect(slotOfArrayIndex(7, 1)).toBe(7);
     });
 });

@@ -76,13 +76,16 @@ describe('config-persistence', () => {
             radialStartAngle: 30,
             radialSpin: -12,
             radialHeightOffset: 6,
+            radialHiddenSlots: [1, 3],
         });
 
         const snapshot = getConfigSnapshot();
         expect(snapshot.mode.radialArray).toEqual({
             enabled: true, count: 5, center: false, rotateCopies: false, radiusAuto: false,
-            radius: 321.5, spacing: -4, startAngle: 30, spin: -12, heightOffset: 6,
+            radius: 321.5, spacing: -4, startAngle: 30, spin: -12, heightOffset: 6, hiddenSlots: [1, 3],
         });
+        // The snapshot holds its own copy of the hidden list
+        expect(snapshot.mode.radialArray.hiddenSlots).not.toBe(globalThis.state.radialHiddenSlots);
 
         globalThis.state = createTestState();
         applyV30Config(snapshot);
@@ -97,6 +100,8 @@ describe('config-persistence', () => {
         expect(s.radialStartAngle).toBe(30);
         expect(s.radialSpin).toBe(-12);
         expect(s.radialHeightOffset).toBe(6);
+        expect(s.radialHiddenSlots).toEqual([1, 3]);
+        expect(s.radialHiddenSlots).not.toBe(snapshot.mode.radialArray.hiddenSlots);
     });
 
     it('leaves radial array state untouched for configs saved before the feature existed', () => {

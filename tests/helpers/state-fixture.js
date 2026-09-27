@@ -129,6 +129,7 @@ export function createTestState(overrides = {}) {
         radialStartAngle: 0,
         radialSpin: 0,
         radialHeightOffset: 0,
+        radialHiddenSlots: [],
         foldAngle: Math.PI / 4,
         enforceCollision: false,
         animation: {

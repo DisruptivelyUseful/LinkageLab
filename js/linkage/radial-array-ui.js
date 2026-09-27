@@ -15,7 +15,7 @@ import { syncUI } from './state-sync.js';
 import { saveStateToHistory } from './history.js';
 import { formatNumber } from './math.js';
 import { setNumericInputValue } from './numeric-input.js';
-import { isRadialArrayActive } from './radial-array.js';
+import { isRadialArrayActive, hiddenSlotSet } from './radial-array.js';
 
 /**
  * Render options that are too heavy to keep on for N copies of the structure.
@@ -153,13 +153,69 @@ function updateRadialArrayReadout(data) {
     if (readout) {
         const copies = plan.copyCount;
         const shape = plan.orientation === 'vertical' ? 'toroid' : 'ring';
+        const hiddenCount = plan.hiddenSlots ? plan.hiddenSlots.length : 0;
         readout.textContent =
             `${copies} ${copies === 1 ? 'copy' : 'copies'} (${plan.count} on the ${shape}` +
             `${state.radialCenter !== false ? ' + center' : ''}) · ring radius ` +
             `${formatNumber(toDisplay(plan.radius), 1)} ${unit}` +
             `${state.radialRadiusAuto !== false ? ' (auto)' : ''} · ` +
-            `${data.beams ? data.beams.length : 0} beams`;
+            `${data.beams ? data.beams.length : 0} beams` +
+            `${hiddenCount ? ` · ${hiddenCount} hidden` : ''}`;
     }
+    renderCopyToggles(plan);
+}
+
+// ---------------------------------------------------------------------------
+// Per-copy visibility (one checkbox per structure, like the coverings Display grid)
+// ---------------------------------------------------------------------------
+
+function slotLabel(slot) {
+    return slot.isCenter ? 'Center' : `Copy ${slot.ringIndex + 1}`;
+}
+
+/** Commit a new hidden-slot list (keeps at least one copy visible). */
+function setHiddenSlots(list, totalSlots) {
+    const next = [...new Set(list.map(v => v | 0).filter(v => v >= 0))].sort((a, b) => a - b);
+    if (totalSlots && next.length >= totalSlots) return false; // never hide everything
+    state.radialHiddenSlots = next;
+    commitAndRender();
+    return true;
+}
+
+/** Build (or refresh) the checkbox grid for the plan's slots. */
+function renderCopyToggles(plan) {
+    const grid = $('radial-copy-toggles');
+    if (!grid) return;
+    const hidden = hiddenSlotSet(state);
+    const signature = plan.slots.map(slotLabel).join('|');
+    if (grid.dataset.signature !== signature) {
+        grid.dataset.signature = signature;
+        grid.innerHTML = '';
+        plan.slots.forEach(slot => {
+            const label = document.createElement('label');
+            label.className = 'chk-label';
+            const input = document.createElement('input');
+            input.type = 'checkbox';
+            input.dataset.slot = String(slot.slot);
+            input.id = `chk-radial-copy-${slot.slot}`;
+            input.onchange = (e) => {
+                const idx = slot.slot;
+                const cur = hiddenSlotSet(state);
+                if (e.target.checked) cur.delete(idx); else cur.add(idx);
+                if (!setHiddenSlots([...cur], plan.slots.length)) {
+                    e.target.checked = true; // refused: it was the last visible copy
+                }
+            };
+            label.appendChild(input);
+            label.appendChild(document.createTextNode(' ' + slotLabel(slot)));
+            grid.appendChild(label);
+        });
+    }
+    plan.slots.forEach(slot => {
+        const el = $(`chk-radial-copy-${slot.slot}`);
+        if (el) el.checked = !hidden.has(slot.slot);
+    });
+    grid.dataset.slotCount = String(plan.slots.length);
 }
 
 function commitAndRender() {
@@ -195,6 +251,16 @@ function initRadialArrayUI() {
         }
         syncRadialArrayUI();
         commitAndRender();
+    };
+    const btnAll = $('btn-radial-copies-all');
+    if (btnAll) btnAll.onclick = () => setHiddenSlots([], 0);
+    const btnCenter = $('btn-radial-copies-center');
+    if (btnCenter) btnCenter.onclick = () => {
+        const grid = $('radial-copy-toggles');
+        const total = grid ? parseInt(grid.dataset.slotCount, 10) || 0 : 0;
+        if (total < 2) return;
+        // Keep slot 0 (the centre when present, otherwise the first ring copy)
+        setHiddenSlots(Array.from({ length: total - 1 }, (_, i) => i + 1), total);
     };
     syncRadialArrayUI();
 }

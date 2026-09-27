@@ -211,8 +211,22 @@ import { degToRad, radToDeg } from './math.js';
             return obj;
         };
         
-        // Group beams by module index; support beams use moduleIndex -1 and need their own group.
-        const beamsByModule = {};
+        // Radial array: every visible copy gets its own Structure_<n> node holding that
+        // copy's modules, so the exported hierarchy matches the viewport one-to-one.
+        const radialPlan = data.radialArray || null;
+        const radialLinearCount = radialPlan ? Math.max(1, radialPlan.linearCount | 0) : 1;
+        const slotOf = (o) => radialPlan ? Math.floor(((o && o.arrayIndex) || 0) / radialLinearCount) : 0;
+        const copySlots = radialPlan
+            ? radialPlan.slots.filter(sl => !sl.hidden).map(sl => sl.slot)
+            : [0];
+        const copyGroupName = (slot) => {
+            const sl = radialPlan && radialPlan.slots.find(x => x.slot === slot);
+            return sl && sl.isCenter ? 'Structure_Center' : `Structure_${slot}`;
+        };
+        const byCopy = (map, slot) => (map[slot] || (map[slot] = {}));
+
+        // Group beams by copy and module index; support beams use moduleIndex -1 and need their own group.
+        const beamsByCopy = {};
         const supportBeamsForExport = [];
         if (data.beams) {
             data.beams.forEach(beam => {
@@ -221,6 +235,7 @@ import { degToRad, radToDeg } from './math.js';
                     return;
                 }
                 
+                const beamsByModule = byCopy(beamsByCopy, slotOf(beam));
                 const modIdx = beam.moduleIndex !== undefined ? beam.moduleIndex : 0;
                 if (!beamsByModule[modIdx]) {
                     beamsByModule[modIdx] = {
@@ -240,28 +255,36 @@ import { degToRad, radToDeg } from './math.js';
             });
         }
         
-        // Group brackets by module index
-        const bracketsByModule = {};
+        // Group brackets by copy and module index
+        const bracketsByCopy = {};
         if (data.brackets) {
             data.brackets.forEach(bracket => {
+                const bracketsByModule = byCopy(bracketsByCopy, slotOf(bracket));
                 const modIdx = bracket.moduleIndex !== undefined ? bracket.moduleIndex : 0;
                 if (!bracketsByModule[modIdx]) bracketsByModule[modIdx] = [];
                 bracketsByModule[modIdx].push(bracket);
             });
         }
         
-        // Group bolts by module index
-        const boltsByModule = {};
+        // Group bolts by copy and module index
+        const boltsByCopy = {};
         if (data.bolts) {
             data.bolts.forEach(bolt => {
+                const boltsByModule = byCopy(boltsByCopy, slotOf(bolt));
                 const modIdx = bolt.moduleIndex !== undefined ? bolt.moduleIndex : 0;
                 if (!boltsByModule[modIdx]) boltsByModule[modIdx] = [];
                 boltsByModule[modIdx].push(bolt);
             });
         }
         
-        // Create module groups with hierarchical structure
+        // Create module groups with hierarchical structure (per array copy when arrayed)
         const moduleCount = state.modules || 1;
+        for (const copySlot of copySlots) {
+        const beamsByModule = beamsByCopy[copySlot] || {};
+        const bracketsByModule = bracketsByCopy[copySlot] || {};
+        const boltsByModule = boltsByCopy[copySlot] || {};
+        const copyGroup = radialPlan ? new THREE.Group() : rootGroup;
+        if (radialPlan) copyGroup.name = copyGroupName(copySlot);
         for (let i = 0; i < moduleCount; i++) {
             const moduleGroup = new THREE.Group();
             moduleGroup.name = `Module_${i}`;
@@ -375,9 +398,11 @@ import { degToRad, radToDeg } from './math.js';
             
             // Only add module if it has content
             if (moduleGroup.children.length > 0) {
-                rootGroup.add(moduleGroup);
+                copyGroup.add(moduleGroup);
             }
         }
+        if (radialPlan && copyGroup.children.length > 0) rootGroup.add(copyGroup);
+        } // end per-copy loop
     
         // Animated exports keep the roof/support beams outside the moving structure root so
         // they can be stacked beside the IBC and flown into place after the linkage opens.
@@ -406,7 +431,8 @@ import { degToRad, radToDeg } from './math.js';
                     const mesh = createBeamMeshForExport(beam, isZup, supportExportBolts);
                     if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
                         const isReciprocal = beam.stackType === 'support-beam-reciprocal';
-                        mesh.name = isReciprocal ? `SupportBeam_Reciprocal_${idx}` : `SupportBeam_Radial_${idx}`;
+                        const copyTag = radialPlan ? `_${copyGroupName(slotOf(beam))}` : '';
+                        mesh.name = (isReciprocal ? `SupportBeam_Reciprocal_${idx}` : `SupportBeam_Radial_${idx}`) + copyTag;
                         offsetForExportPivot(mesh);
                         (isReciprocal ? reciprocalGroup : radialGroup).add(mesh);
                         totalMeshes++;
@@ -1716,9 +1742,14 @@ import { degToRad, radToDeg } from './math.js';
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'gltf-export-modal';
-            modal.className = 'modal';
+            // The overlay class is the fixed, full-screen backdrop; the dialog box
+            // inside carries the .modal styling. (A bare .modal div sits in normal
+            // document flow below the app shell, i.e. invisible.)
+            modal.className = 'modal-overlay';
+            modal.style.display = 'none';
+            modal.addEventListener('click', (e) => { if (e.target === modal) closeGLTFExportModal(); });
             modal.innerHTML = `
-                <div class="modal-content" style="max-width: 450px;">
+                <div class="modal modal-content" style="max-width: 450px;">
                     <div class="modal-header">
                         <h3>Export 3D Model</h3>
                         <button class="modal-close" onclick="closeGLTFExportModal()">&times;</button>
@@ -1818,6 +1849,7 @@ import { degToRad, radToDeg } from './math.js';
                             &nbsp;&nbsp;&nbsp;&nbsp;Bolts/<br>
                             &nbsp;&nbsp;Module_1/...<br>
                             &nbsp;&nbsp;SupportBeams/<br>
+                            &nbsp;&nbsp;Structure_1/, Structure_2/... <span style="color: var(--text-muted);">(radial array copies, each with its own modules)</span><br>
                             &nbsp;&nbsp;IBCReference/ <span style="color: var(--text-muted);">(when visible)</span><br>
                             &nbsp;&nbsp;SolarPanels/
                             </code>
