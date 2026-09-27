@@ -7,6 +7,20 @@ import { buildLinkageGeometry } from './linkage-geometry.js';
 import { getEffectiveMinFoldAngle } from './solver.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { degToRad, radToDeg } from './math.js';
+import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './materials.js';
+
+    // Material mode for the scene builders below: 'export' = plain untextured
+    // MeshStandardMaterials (small GLBs; downstream viewers re-materialise),
+    // 'view' = the viewport's textured studio materials (deploy preview).
+    let _sceneMaterialMode = 'view';
+    function sceneMaterialOpts() {
+        return { forExport: _sceneMaterialMode === 'export' };
+    }
+    function withSceneMaterialMode(mode, fn) {
+        const prev = _sceneMaterialMode;
+        _sceneMaterialMode = mode;
+        try { return fn(); } finally { _sceneMaterialMode = prev; }
+    }
 
     // ============================================================================
     // GLTF EXPORT SYSTEM
@@ -33,14 +47,8 @@ import { degToRad, radToDeg } from './math.js';
         const shouldDownload = options.download !== false;
         const isSilent = options.silent === true;
         const isSketchUpExport = options.target === 'sketchup' || options.bakeTransforms === true;
-        // Fold animation: sample the linkage from its minimum fold angle to the deployed/stop
-        // angle and bake node transforms into a glTF animation clip named "Fold".
-        const animate = options.animate === true && !isSketchUpExport;
-        const animationSamples = Math.max(2, Math.min(240, parseInt(options.animationSamples, 10) || 32));
-        const animationDuration = Math.max(0.5, Number(options.animationDuration) || 12);
-        // Sampled scenes only need node transforms, and drilled beams are expensive, so animated
-        // exports use solid beam boxes throughout (keeps base and sample hierarchies identical).
-        const solidBeams = animate;
+        // Fold animation (options.animate): prepareExportScene samples the linkage from its
+        // minimum fold angle to the deployed/stop angle and bakes a "Deploy" clip.
         // Check if GLTFExporter is available
         if (typeof THREE === 'undefined' || typeof THREE.GLTFExporter === 'undefined') {
             showToast('GLTFExporter not available. Please check your internet connection.', 'error');
@@ -48,6 +56,121 @@ import { degToRad, radToDeg } from './math.js';
             return Promise.reject(new Error('GLTFExporter not available'));
         }
         
+        const prepared = prepareExportScene(units, coordSys, options);
+        if (!prepared) {
+            if (!isSilent) showToast('No geometry to export. Please create a structure first.', 'error');
+            return Promise.reject(new Error('No geometry to export'));
+        }
+        const { exportScene, data, moduleCount, foldAnimation, animationMeta } = prepared;
+    
+        const sceneForExport = isSketchUpExport ? createBakedSketchUpExportScene(exportScene) : exportScene;
+        if (isSketchUpExport) {
+            console.log('[GLTF Export] Created SketchUp baked export scene with flattened mesh transforms');
+        }
+        
+        // Export using GLTFExporter
+        const exporter = new THREE.GLTFExporter();
+        
+        const exporterOptions = {
+            binary: format === 'glb',
+            trs: !isSketchUpExport,  // SketchUp import is more reliable with baked geometry and no TRS stack
+            onlyVisible: true,
+            truncateDrawRange: true,
+            includeCustomExtensions: false
+        };
+        if (foldAnimation) {
+            exporterOptions.animations = [foldAnimation.clip];
+            exporterOptions.trs = true; // animated nodes must use TRS, not matrices
+        }
+        
+        return new Promise((resolve, reject) => {
+            try {
+                const handleExportResult = (result) => {
+                    // Download the file
+                    const filename = `LinkageLab_Export_${Date.now()}.${format}`;
+                    let blob = null;
+                    let output = null;
+                    
+                    try {
+                        if (format === 'glb') {
+                            // Binary format
+                            if (!(result instanceof ArrayBuffer)) {
+                                throw new Error('GLB export did not return binary data. Check GLTFExporter options/signature.');
+                            }
+                            if (!isValidGlbArrayBuffer(result)) {
+                                throw new Error('GLB export returned invalid binary data.');
+                            }
+                            blob = new Blob([result], { type: 'application/octet-stream' });
+                            if (shouldDownload) {
+                                downloadBlob(blob, filename);
+                            }
+                        } else {
+                            // JSON format (gltf)
+                            output = JSON.stringify(result, null, 2);
+                            blob = new Blob([output], { type: 'application/json' });
+                            if (shouldDownload) {
+                                downloadBlob(blob, filename);
+                            }
+                        }
+                        
+                        if (!isSilent) {
+                            showToast(`Exported 3D model as ${filename}`, 'success');
+                        }
+                        console.log(`[GLTF Export] Successfully exported ${moduleCount} modules with ${data.beams?.length || 0} beams, ${data.brackets?.length || 0} brackets, ${data.bolts?.length || 0} bolts`);
+                        
+                        resolve({ blob, format, filename, result, animation: animationMeta });
+                    } catch (e) {
+                        console.error('GLTF Export download error:', e);
+                        if (!isSilent) {
+                            showToast('Failed to export 3D model: ' + e.message, 'error');
+                        }
+                        reject(e);
+                    } finally {
+                        // Clean up export scene after export completes
+                        disposeExportSceneResources(sceneForExport);
+                        if (sceneForExport !== exportScene) {
+                            disposeExportSceneResources(exportScene);
+                        }
+                    }
+                };
+    
+                const handleExportError = (error) => {
+                    console.error('GLTF Export parse error:', error);
+                    if (!isSilent) {
+                        showToast('Failed to export 3D model: ' + error.message, 'error');
+                    }
+                    reject(error);
+                };
+                
+                if (exporter.parse.length >= 4) {
+                    exporter.parse(sceneForExport, handleExportResult, handleExportError, exporterOptions);
+                } else {
+                    exporter.parse(sceneForExport, handleExportResult, exporterOptions);
+                }
+            } catch (error) {
+                console.error('GLTF Export error:', error);
+                if (!isSilent) {
+                    showToast('Failed to export 3D model: ' + error.message, 'error');
+                }
+                reject(error);
+            }
+        });
+    }
+    
+    /**
+     * Builds the export scene and, with options.animate, bakes the "Deploy" clip —
+     * without exporting anything. Shared by exportToGLTF and the deploy preview
+     * (which passes units 'inches', coordSys 'yup' and viewportMaterials: true).
+     * @returns {{exportScene, data, moduleCount, foldAnimation, foldRange, animationMeta, scaleFactor}|null}
+     */
+    function prepareExportScene(units = 'meters', coordSys = 'yup', options = {}) {
+        const isSketchUpExport = options.target === 'sketchup' || options.bakeTransforms === true;
+        const animate = options.animate === true && !isSketchUpExport;
+        const animationSamples = Math.max(2, Math.min(240, parseInt(options.animationSamples, 10) || 32));
+        const animationDuration = Math.max(0.5, Number(options.animationDuration) || 12);
+        // Sampled scenes only need node transforms, and drilled beams are expensive, so animated
+        // scenes use solid beam boxes throughout (keeps base and sample hierarchies identical).
+        const solidBeams = animate;
         console.log('[GLTF Export] Starting export with units:', units, 'coordSys:', coordSys);
         
         // Calculate scale factor based on export units
@@ -74,11 +197,12 @@ import { degToRad, radToDeg } from './math.js';
          * Builds the export scene for one fold angle (undefined = current state.foldAngle).
          * Returns null when there is nothing to export.
          */
+        const materialMode = options.viewportMaterials ? 'view' : 'export';
         const buildExportScene = (foldAngleRad) => {
             const savedFoldAngle = state.foldAngle;
             if (foldAngleRad !== undefined) state.foldAngle = foldAngleRad;
             try {
-                return buildExportSceneInner(foldAngleRad);
+                return withSceneMaterialMode(materialMode, () => buildExportSceneInner(foldAngleRad));
             } finally {
                 state.foldAngle = savedFoldAngle;
             }
@@ -603,18 +727,23 @@ import { degToRad, radToDeg } from './math.js';
         
         const foldRange = animate ? computeFoldAnimationRange() : null;
         const built = buildExportScene(animate ? foldRange.max : undefined);
-        if (!built) {
-            if (!isSilent) showToast('No geometry to export. Please create a structure first.', 'error');
-            return Promise.reject(new Error('No geometry to export'));
-        }
+        if (!built) return null;
         const { exportScene, data, moduleCount } = built;
         
         let foldAnimation = null;
         if (animate) {
+            // Sampling the linkage across the fold range re-solves the reciprocal roof
+            // topology per sample; keep the live editor's solution and its diagnostics panel.
+            const sb = state.supportBeams || {};
+            const rcpSnapshot = { rcpCrossings: sb.rcpCrossings, rcpFinalTopology: sb.rcpFinalTopology, rcpHoleTsByBeam: sb.rcpHoleTsByBeam, _lastPhi: sb._lastPhi };
+            globalThis.__suppressRcpDiagnosticsUI = true;
             try {
                 foldAnimation = buildFoldAnimationClip(exportScene, buildExportScene, foldRange, animationSamples, animationDuration, scaleFactor);
             } catch (err) {
                 console.warn('[GLTF Export] Fold animation failed; exporting static model instead', err);
+            } finally {
+                globalThis.__suppressRcpDiagnosticsUI = false;
+                if (state.supportBeams) Object.assign(state.supportBeams, rcpSnapshot);
             }
             if (foldAnimation) {
                 const meta = {
@@ -637,99 +766,7 @@ import { degToRad, radToDeg } from './math.js';
             }
         }
         const animationMeta = exportScene.userData.foldAnimation || null;
-    
-        const sceneForExport = isSketchUpExport ? createBakedSketchUpExportScene(exportScene) : exportScene;
-        if (isSketchUpExport) {
-            console.log('[GLTF Export] Created SketchUp baked export scene with flattened mesh transforms');
-        }
-        
-        // Export using GLTFExporter
-        const exporter = new THREE.GLTFExporter();
-        
-        const exporterOptions = {
-            binary: format === 'glb',
-            trs: !isSketchUpExport,  // SketchUp import is more reliable with baked geometry and no TRS stack
-            onlyVisible: true,
-            truncateDrawRange: true,
-            includeCustomExtensions: false
-        };
-        if (foldAnimation) {
-            exporterOptions.animations = [foldAnimation.clip];
-            exporterOptions.trs = true; // animated nodes must use TRS, not matrices
-        }
-        
-        return new Promise((resolve, reject) => {
-            try {
-                const handleExportResult = (result) => {
-                    // Download the file
-                    const filename = `LinkageLab_Export_${Date.now()}.${format}`;
-                    let blob = null;
-                    let output = null;
-                    
-                    try {
-                        if (format === 'glb') {
-                            // Binary format
-                            if (!(result instanceof ArrayBuffer)) {
-                                throw new Error('GLB export did not return binary data. Check GLTFExporter options/signature.');
-                            }
-                            if (!isValidGlbArrayBuffer(result)) {
-                                throw new Error('GLB export returned invalid binary data.');
-                            }
-                            blob = new Blob([result], { type: 'application/octet-stream' });
-                            if (shouldDownload) {
-                                downloadBlob(blob, filename);
-                            }
-                        } else {
-                            // JSON format (gltf)
-                            output = JSON.stringify(result, null, 2);
-                            blob = new Blob([output], { type: 'application/json' });
-                            if (shouldDownload) {
-                                downloadBlob(blob, filename);
-                            }
-                        }
-                        
-                        if (!isSilent) {
-                            showToast(`Exported 3D model as ${filename}`, 'success');
-                        }
-                        console.log(`[GLTF Export] Successfully exported ${moduleCount} modules with ${data.beams?.length || 0} beams, ${data.brackets?.length || 0} brackets, ${data.bolts?.length || 0} bolts`);
-                        
-                        resolve({ blob, format, filename, result, animation: animationMeta });
-                    } catch (e) {
-                        console.error('GLTF Export download error:', e);
-                        if (!isSilent) {
-                            showToast('Failed to export 3D model: ' + e.message, 'error');
-                        }
-                        reject(e);
-                    } finally {
-                        // Clean up export scene after export completes
-                        disposeExportSceneResources(sceneForExport);
-                        if (sceneForExport !== exportScene) {
-                            disposeExportSceneResources(exportScene);
-                        }
-                    }
-                };
-    
-                const handleExportError = (error) => {
-                    console.error('GLTF Export parse error:', error);
-                    if (!isSilent) {
-                        showToast('Failed to export 3D model: ' + error.message, 'error');
-                    }
-                    reject(error);
-                };
-                
-                if (exporter.parse.length >= 4) {
-                    exporter.parse(sceneForExport, handleExportResult, handleExportError, exporterOptions);
-                } else {
-                    exporter.parse(sceneForExport, handleExportResult, exporterOptions);
-                }
-            } catch (error) {
-                console.error('GLTF Export error:', error);
-                if (!isSilent) {
-                    showToast('Failed to export 3D model: ' + error.message, 'error');
-                }
-                reject(error);
-            }
-        });
+        return { exportScene, data, moduleCount, foldAnimation, foldRange, animationMeta, scaleFactor };
     }
     
     /**
@@ -1145,8 +1182,8 @@ import { degToRad, radToDeg } from './math.js';
             if (obj.geometry) obj.geometry.dispose();
             if (obj.material) {
                 if (Array.isArray(obj.material)) {
-                    obj.material.forEach(m => { if (m && m.dispose) m.dispose(); });
-                } else if (obj.material.dispose) {
+                    obj.material.forEach(m => { if (m && m.dispose && !m._cacheKey) m.dispose(); });
+                } else if (obj.material.dispose && !obj.material._cacheKey) {
                     obj.material.dispose();
                 }
             }
@@ -1307,19 +1344,8 @@ import { degToRad, radToDeg } from './math.js';
             thickVec = edge1.clone().normalize();
         }
         
-        // Wood color material
-        const base = beam.colorBase || { r: 139, g: 90, b: 43 };
-        const woodColor = new THREE.Color(
-            Math.max(0, (base.r * 0.7 - 20)) / 255,
-            Math.max(0, (base.g * 0.65 - 15)) / 255,
-            Math.max(0, (base.b * 0.5 - 10)) / 255
-        );
-        
-        const material = new THREE.MeshStandardMaterial({
-            color: woodColor,
-            roughness: 0.8,
-            metalness: 0.0
-        });
+        // Wood material (shared, cached: same colour formula as the viewport)
+        const material = getWoodMaterial(beam, false, sceneMaterialOpts());
     
         // Try to drill bolt through-holes whenever any bolt passes through this
         // beam. Falls back silently to a solid BoxGeometry on any failure so a
@@ -1376,11 +1402,9 @@ import { degToRad, radToDeg } from './math.js';
             return new THREE.Group();
         }
         
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x555555,
-            roughness: 0.5,
-            metalness: 0.7
-        });
+        const material = _sceneMaterialMode === 'view'
+            ? getHardwareMaterial('bracket', 0x1a1a1a, { polygonOffset: 0.5, metalness: 0.7, roughness: 0.45 })
+            : getHardwareMaterial('bracket-export', 0x555555, { metalness: 0.7, roughness: 0.5 });
         
         const width = Math.max(bracket.width || state.bracketWidth || 3.5, 0.1);
         const height = Math.max(bracket.height || state.bracketHeight || 2.5, 0.1);
@@ -1580,11 +1604,9 @@ import { degToRad, radToDeg } from './math.js';
         const boltRadius = bolt.radius || (state.boltDiameter ? state.boltDiameter / 2 : 0.1875);
         const boltLength = bolt.length || 2;
         
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x1a1a1a,
-            roughness: 0.3,
-            metalness: 0.8
-        });
+        const material = _sceneMaterialMode === 'view'
+            ? getHardwareMaterial('bolt-', 0x1a1a1a, { polygonOffset: -1, metalness: 0.8, roughness: 0.35 })
+            : getHardwareMaterial('bolt-export', 0x1a1a1a, { metalness: 0.8, roughness: 0.3 });
         
         const boltGroup = new THREE.Group();
         
@@ -1597,7 +1619,7 @@ import { degToRad, radToDeg } from './math.js';
         const hexRadius = boltRadius * 1.8;
         const hexHeight = boltRadius * 1.2;
         const hexGeometry = new THREE.CylinderGeometry(hexRadius, hexRadius, hexHeight, 6);
-        const hexMesh = new THREE.Mesh(hexGeometry, material.clone());
+        const hexMesh = new THREE.Mesh(hexGeometry, material);
         hexMesh.position.y = boltLength / 2 + hexHeight / 2;
         boltGroup.add(hexMesh);
         
@@ -1648,11 +1670,12 @@ import { degToRad, radToDeg } from './math.js';
             Math.max(length, 0.1)
         );
         
-        const material = new THREE.MeshStandardMaterial({
-            color: 0x1a3a5a,
-            roughness: 0.3,
-            metalness: 0.5
-        });
+        // BoxGeometry face order: +x −x +y −y +z −z; local +Y is the cell side
+        // (the orientation below maps it to the panel's bottom→top normal).
+        const mats = getPanelMaterials(width, length, sceneMaterialOpts());
+        const material = _sceneMaterialMode === 'view'
+            ? [mats.frame, mats.frame, mats.cell, mats.back, mats.frame, mats.frame]
+            : mats.cell;
         
         const mesh = new THREE.Mesh(geometry, material);
         
@@ -1922,6 +1945,9 @@ import { degToRad, radToDeg } from './math.js';
 
 const _moduleExports = {
     exportToGLTF,
+    prepareExportScene,
+    disposeExportSceneResources,
+    sceneMaterialOpts,
     cloneIbcTemplateForExport,
     showGLTFExportDialog,
     closeGLTFExportModal,
@@ -1930,4 +1956,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'gltfExport');
 
-export { exportToGLTF, cloneIbcTemplateForExport, showGLTFExportDialog, closeGLTFExportModal, executeGLTFExport };
+export { exportToGLTF, prepareExportScene, disposeExportSceneResources, cloneIbcTemplateForExport, showGLTFExportDialog, closeGLTFExportModal, executeGLTFExport };

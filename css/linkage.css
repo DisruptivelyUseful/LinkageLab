@@ -42,11 +42,11 @@ body:not(.solar-mode) #right-sidebar {
     bottom: 0;
     background-color: var(--bg-canvas);
     overflow: hidden;
+    /* Sky behind the transparent WebGL canvas; the studio sets --sky-top/--sky-bottom by time of day */
     background-image:
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-    background-size: 40px 40px;
-    transition: left var(--transition-med), right var(--transition-med);
+        radial-gradient(ellipse at 50% 120%, rgba(34, 211, 238, 0.12) 0%, transparent 60%),
+        linear-gradient(180deg, var(--sky-top, var(--space-800)) 0%, var(--sky-bottom, var(--space-900)) 100%);
+    transition: left var(--transition-med), right var(--transition-med), background-image 0.4s linear;
     touch-action: none;
     -webkit-user-select: none;
     user-select: none;
@@ -1756,11 +1756,10 @@ input.error {
     flex: 1;
     min-width: 0;
     position: relative;
+    /* Same sky treatment as #viewport: the WebGL canvas is reparented here in part view */
     background:
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        radial-gradient(circle at 50% 40%, var(--space-600) 0%, var(--space-900) 75%);
-    background-size: 40px 40px, 40px 40px, auto;
+        radial-gradient(circle at 50% 40%, rgba(34, 211, 238, 0.10) 0%, transparent 70%),
+        linear-gradient(180deg, var(--sky-top, var(--space-800)) 0%, var(--sky-bottom, var(--space-900)) 100%);
 }
 
 .hw-viewport canvas {
@@ -2324,3 +2323,17 @@ input.error {
 .guide-cut-warnings li + li {
     margin-top: 3px;
 }
+
+/* Deploy preview ---------------------------------------------------------- */
+.topbar-btn.is-active {
+    background: var(--cyan-500, #22d3ee);
+    color: var(--space-900, #0b1226);
+    border-color: var(--cyan-500, #22d3ee);
+}
+.deploy-preview-panel {
+    padding: 6px 0 10px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid var(--space-600, #253152);
+}
+.deploy-preview-panel .btn-secondary { width: 100%; margin-top: 6px; }
+body.deploy-preview .topbar-fold-row { opacity: 0.5; }

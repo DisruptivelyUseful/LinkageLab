@@ -19,6 +19,8 @@ import {
 import { exportGameBundleFile } from '../core/export-game-bundle.js';
 import { bindNumericInput } from './numeric-input.js';
 import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
+import { flyCameraTo } from './render-loop.js';
+import { isDeployPreviewActive, toggleDeployPlay, playDeploy, pauseDeploy, reverseDeploy, initDeployPreviewUI } from './deploy-preview.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -445,6 +447,10 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
                         globalThis.togglePlay();
                         break;
                     }
+                    if (isDeployPreviewActive()) {
+                        toggleDeployPlay();
+                        break;
+                    }
                     if (state.animation.playing) {
                         document.getElementById('btn-anim-pause').click();
                     } else {
@@ -662,16 +668,16 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
         document.getElementById('sl-sun-time').oninput = e => {
             const val = parseFloat(e.target.value);
             state.sunTime = val;
-            updateSunPosition(); // This will also call updateSkyColor
-            requestRender();
+            updateSunPosition(); // lights, sky gradient, stars and moon
+            // Moving the sun only needs a redraw, not a geometry rebuild
+            if (typeof globalThis.renderFrameOnly !== 'function' || !globalThis.renderFrameOnly()) requestRender();
         };
         
         // Shadows toggle
         document.getElementById('chk-shadows').onchange = e => {
             state.shadowsEnabled = e.target.checked;
-            updateSunPosition();
-            updateGroundPlane();
-            updateGridVisibility();
+            updateSunPosition(); // re-applies the sky model, which owns sun/moon castShadow
+            if (threeRenderer.studio && threeRenderer.studio.ground) threeRenderer.studio.ground.receiveShadow = true;
             
             // Enable/disable shadows on all meshes
             if (threeRenderer.beamGroup) {
@@ -1174,9 +1180,10 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
                     dist = DEFAULT_CAM_DIST * (plan.maxRad / plan.baseMaxRad);
                 }
             } catch (e) { /* keep the default distance */ }
-            state.cam = { yaw: 0.4, pitch: 0.14, dist, panX: 0, panY: 0 };
-            requestRender();
+            if (state.cam && state.cam.target) delete state.cam.target;
+            flyCameraTo({ yaw: 0.4, pitch: 0.14, dist, panX: 0, panY: 0 });
         };
+        initDeployPreviewUI();
         
         // Topbar Save/Export buttons — unified project (all modes)
         document.getElementById('btn-save-top').onclick = () => saveProject();
@@ -1274,6 +1281,7 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
         
         // Animation controls
         document.getElementById('btn-anim-play').onclick = () => {
+            if (isDeployPreviewActive()) { playDeploy(); return; }
             if (hasFoldingSolarPanels()) {
                 state.animation.foldingPanelPhase = 'idle';
                 state.animation.foldingPanelDeploy = 0;
@@ -1290,6 +1298,7 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
             requestAnimationFrame(animateFold);
         };
         document.getElementById('btn-anim-pause').onclick = () => {
+            if (isDeployPreviewActive()) { pauseDeploy(); return; }
             state.animation.playing = false;
             if (state.animation.frameId) {
                 cancelAnimationFrame(state.animation.frameId);
@@ -1298,6 +1307,7 @@ import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
             requestRender();
         };
         document.getElementById('btn-anim-reverse').onclick = () => {
+            if (isDeployPreviewActive()) { reverseDeploy(); return; }
             state.animation.direction *= -1;
             updateAnimationStatus();
             showToast(`Animation direction: ${state.animation.direction > 0 ? 'Expanding' : 'Collapsing'}`, 'info');

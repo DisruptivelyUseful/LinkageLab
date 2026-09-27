@@ -786,14 +786,23 @@ function meshPartKey(obj) {
 
 /** Close-up steps fade the parts that are already installed so the joint reads clearly. */
 const GHOST_OPACITY = 0.18;
+/** Clone a material or material array (shared, cached materials must never be mutated in place). */
+function cloneMats(material) {
+    if (Array.isArray(material)) return material.map(m => (m && m.clone ? m.clone() : m));
+    return material && material.clone ? material.clone() : material;
+}
+
 function ghostMesh(root) {
     root.traverse(ch => {
         if (!ch.isMesh || !ch.material) return;
-        const mat = ch.material.clone();
-        mat.transparent = true;
-        mat.opacity = GHOST_OPACITY;
-        mat.depthWrite = false;
-        ch.material = mat;
+        const mats = cloneMats(ch.material);
+        (Array.isArray(mats) ? mats : [mats]).forEach(mat => {
+            if (!mat) return;
+            mat.transparent = true;
+            mat.opacity = GHOST_OPACITY;
+            mat.depthWrite = false;
+        });
+        ch.material = mats;
         ch.userData.buildGhosted = true;
     });
 }
@@ -802,9 +811,11 @@ function highlightMesh(root) {
     root.traverse(ch => {
         if (!ch.isMesh || !ch.material) return;
         // Shared (cached) materials must be cloned before we tint them
-        const mat = ch.material.clone();
-        if (mat.emissive) mat.emissive.setHex(HIGHLIGHT_EMISSIVE);
-        ch.material = mat;
+        const mats = cloneMats(ch.material);
+        (Array.isArray(mats) ? mats : [mats]).forEach(mat => {
+            if (mat && mat.emissive) mat.emissive.setHex(HIGHLIGHT_EMISSIVE);
+        });
+        ch.material = mats;
         ch.userData.buildHighlighted = true;
     });
 }

@@ -3,6 +3,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { INCHES_PER_FOOT } from './constants.js';
 import { formatNumber } from './math.js';
+import { applyIbcPowerMaterials, setIbcPowerBottles, collectIbcBottles, tagIbcBottles } from './ibc-power.js';
 
 const unitConverter = globalThis.unitConverter;
 if (!unitConverter) {
@@ -625,12 +626,15 @@ if (!unitConverter) {
     // --- IBC “lit from inside” green glow (emissive + soft local fill light) ---
     const IBC_INTERIOR_GLOW_COLOR = 0x2dff8a;
     const IBC_INTERIOR_GLOW_INTENSITY = 0.52;
-    const IBC_FILL_LIGHT_COLOR = 0x55ffaa;
-    const IBC_FILL_LIGHT_INTENSITY = 0.32;
     
     /** Clone / upgrade materials so black albedo tanks read as self-lit green (does not mutate GLTF originals on disk). */
     function applyIbcInteriorGlow(root) {
         if (!root || typeof THREE === 'undefined') return;
+        if (typeof applyIbcPowerMaterials === 'function') {
+            // Studio look: battery-gauge bottle, dark cage, white pallet (ibc-power.js)
+            applyIbcPowerMaterials(root);
+            return;
+        }
         const glow = new THREE.Color(IBC_INTERIOR_GLOW_COLOR);
         root.traverse((ch) => {
             if (!ch.isMesh || !ch.material) return;
@@ -692,26 +696,7 @@ if (!unitConverter) {
             pivot.remove(ch);
         }
         ibcGlbState.fillLight = null;
-    }
-    
-    function addIbcGreenFillLightOnPivot(pivot) {
-        if (!pivot || typeof THREE === 'undefined') return;
-        pivot.updateMatrixWorld(true);
-        const box = new THREE.Box3().setFromObject(pivot);
-        if (box.isEmpty()) return;
-        const h = Math.max(1, box.max.y - box.min.y);
-        const wc = new THREE.Vector3();
-        box.getCenter(wc);
-        const local = wc.clone();
-        pivot.worldToLocal(local);
-        if (ibcGlbState.fillLight && ibcGlbState.fillLight.parent) {
-            ibcGlbState.fillLight.parent.remove(ibcGlbState.fillLight);
-        }
-        const light = new THREE.PointLight(IBC_FILL_LIGHT_COLOR, IBC_FILL_LIGHT_INTENSITY, h * 4, 2);
-        light.position.copy(local);
-        light.userData.ibcFillLight = true;
-        pivot.add(light);
-        ibcGlbState.fillLight = light;
+        setIbcPowerBottles([]);
     }
     
     /** Bottom tank: scale, center XZ, ground at y=0 in pivot space; returns max Y for stacking */
@@ -786,7 +771,8 @@ if (!unitConverter) {
             pivot.add(top);
         }
     
-        addIbcGreenFillLightOnPivot(pivot);
+        // Night glow / battery gauge rig follows the live bottles (replaces the old fill light)
+        setIbcPowerBottles(collectIbcBottles(pivot));
     }
     
     function tagIbcTankMeshes(tankRoot, tankName) {
@@ -919,6 +905,7 @@ if (!unitConverter) {
             (gltf) => {
                 ibcGlbState.loading = false;
                 ibcGlbState.gltf = gltf;
+                try { tagIbcBottles(gltf.scene); } catch (e) { console.warn('[IBC GLB] bottle tagging failed:', e); }
                 if (onLoaded) onLoaded(gltf);
             },
             undefined,

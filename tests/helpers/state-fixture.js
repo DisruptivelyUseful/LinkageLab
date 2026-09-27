@@ -79,6 +79,11 @@ export function createTestState(overrides = {}) {
         showBolts: false,
         showHardwareFullDetail: false,
         structureRotation: 0,
+        sunTime: 50,
+        shadowsEnabled: false,
+        simulationLatitude: 35,
+        simulationDayOfYear: 172,
+        hwDetailMode: false,
         cam: { yaw: 0.4, pitch: 0.14, dist: DEFAULT_CAM_DIST, panX: 0, panY: 0 },
         supportBeams: {
             enabled: false,

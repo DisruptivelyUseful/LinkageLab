@@ -2,6 +2,10 @@
 
 import { bridgeGlobals } from './global-bridge.js';
 import { clearMeshStructureCache } from './cache.js';
+import { configureRenderer, installStudio, applySkyModel, updateStudioFrame } from './render-studio.js';
+import { skyModelForState, studioModel } from './sky-model.js';
+import { updateIbcPower } from './ibc-power.js';
+import { getWoodMaterial, getHardwareMaterial, getPanelMaterials, woodUvScale, cloneMaterialForMutation } from './materials.js';
 
 // ============================================================================
 // THREE.JS RENDERER SYSTEM
@@ -105,23 +109,20 @@ function initThreeJS() {
         threeRenderer.main = new THREE.WebGLRenderer({
             canvas: mainWebGLCanvas,
             antialias: true,
-            alpha: false,
+            alpha: true,                  // transparent: the CSS sky gradient shows through
             logarithmicDepthBuffer: true  // Better depth precision for close objects
         });
-        threeRenderer.main.setPixelRatio(window.devicePixelRatio);
-        threeRenderer.main.setClearColor(0x15202b); // Match background color
-        threeRenderer.main.sortObjects = true;  // Ensure objects are sorted by depth
-        threeRenderer.main.shadowMap.enabled = true;
-        threeRenderer.main.shadowMap.type = THREE.PCFSoftShadowMap;
+        // sRGB output, ACES tone mapping, physical light units, soft shadows, capped DPR
+        configureRenderer(threeRenderer.main);
         
     } catch (e) {
         console.error('Failed to create WebGL renderers:', e);
         return;
     }
     
-    // Create scenes with background colors
+    // Scene background stays null: the sky is a CSS gradient behind the transparent canvas
     threeRenderer.mainScene = new THREE.Scene();
-    threeRenderer.mainScene.background = new THREE.Color(0x15202b);
+    threeRenderer.mainScene.background = null;
     
     // Create object groups for organization
     threeRenderer.beamGroup = new THREE.Group();
@@ -184,11 +185,10 @@ function initThreeJS() {
     // Setup cameras
     createMainCamera();
     
-    // Setup lighting
-    setupThreeJSLighting();
-    
-    // Create grid
-    createGridMesh();
+    // Lights, environment map, ground, grid, stars and moon (render-studio.js),
+    // then the time-of-day model from the sun slider.
+    installStudio(threeRenderer);
+    updateSunPosition();
     
     threeRenderer.initialized = true;
     console.log('Three.js initialized successfully');
@@ -200,8 +200,8 @@ function initThreeJS() {
 function createMainCamera() {
     const viewport = document.getElementById('viewport');
     const aspect = viewport ? (viewport.clientWidth / viewport.clientHeight) : 1.5;
-    // Near plane at 10 gives better depth precision, far at 5000 is sufficient
-    threeRenderer.mainCamera = new THREE.PerspectiveCamera(45, aspect, 10, 5000);
+    // Near plane at 10 gives better depth precision (log depth buffer); far clears the star dome
+    threeRenderer.mainCamera = new THREE.PerspectiveCamera(45, aspect, 10, 20000);
     updateMainCamera();
 }
 
@@ -259,399 +259,62 @@ function updateMainCamera(structureCenter = null) {
 }
 
 /**
- * Sets up lighting for all Three.js scenes
+ * Sets up lighting for the main scene. The rig now lives in render-studio.js;
+ * this remains for callers that expect the legacy entry point.
  */
 function setupThreeJSLighting() {
-    // === MAIN SUN LIGHT - user controllable ===
-    // Bright directional light simulating the sun
-    threeRenderer.sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    threeRenderer.sunLight.castShadow = false; // Will be enabled when shadows toggle is on
-    threeRenderer.sunLight.shadow.camera.left = -200;
-    threeRenderer.sunLight.shadow.camera.right = 200;
-    threeRenderer.sunLight.shadow.camera.top = 200;
-    threeRenderer.sunLight.shadow.camera.bottom = -200;
-    threeRenderer.sunLight.shadow.camera.near = 0.1;
-    threeRenderer.sunLight.shadow.camera.far = 2000;
-    threeRenderer.sunLight.shadow.mapSize.width = 2048;
-    threeRenderer.sunLight.shadow.mapSize.height = 2048;
-    threeRenderer.sunLight.shadow.bias = -0.0001;
-    updateSunPosition(); // Set initial position based on time
-    
-    // Fill light - cooler, softer from opposite side (sky bounce)
-    const fillLight = new THREE.DirectionalLight(0xb0c4de, 0.4);
-    fillLight.position.set(-100, 50, -100);
-    
-    // Ambient light for base illumination (prevents pitch black shadows)
-    const ambientLight = new THREE.AmbientLight(0x404050, 0.6);
-    
-    // Hemisphere light - sky blue from above, ground reflection from below
-    const hemiLight = new THREE.HemisphereLight(0x87ceeb, 0x444444, 0.4);
-    
-    // Add to main scene
-    threeRenderer.mainScene.add(threeRenderer.sunLight);
-    threeRenderer.mainScene.add(fillLight);
-    threeRenderer.mainScene.add(ambientLight);
-    threeRenderer.mainScene.add(hemiLight);
+    installStudio(threeRenderer);
+    updateSunPosition();
 }
 
 /**
- * Calculate daylight hours based on latitude and day of year
- */
-function getDaylightHours(latitude, dayOfYear) {
-    // Solar declination angle (simplified equation)
-    const declination = 23.45 * Math.sin((360/365) * (dayOfYear - 81) * Math.PI / 180);
-    const latRad = latitude * Math.PI / 180;
-    const decRad = declination * Math.PI / 180;
-    
-    // Hour angle at sunrise/sunset
-    const cosHourAngle = -Math.tan(latRad) * Math.tan(decRad);
-    
-    // Handle polar regions
-    if (cosHourAngle > 1) return 0;   // Polar night
-    if (cosHourAngle < -1) return 24; // Midnight sun
-    
-    const hourAngle = Math.acos(cosHourAngle) * 180 / Math.PI;
-    const daylightHours = 2 * hourAngle / 15;
-    
-    return daylightHours;
-}
-
-/**
- * Get sunrise and sunset times
- */
-function getSunriseSunset(latitude, dayOfYear) {
-    const daylight = getDaylightHours(latitude, dayOfYear);
-    const solarNoon = 12; // Simplified (ignores longitude/timezone)
-    
-    return {
-        sunrise: Math.max(0, solarNoon - daylight / 2),
-        sunset: Math.min(24, solarNoon + daylight / 2),
-        daylight: daylight
-    };
-}
-
-/**
- * Calculate solar position from time of day
- */
-function calculateSolarPosition(latitude, dayOfYear, hourOfDay) {
-    const declination = 23.45 * Math.sin((360/365) * (dayOfYear - 81) * Math.PI / 180);
-    const latRad = latitude * Math.PI / 180;
-    const decRad = declination * Math.PI / 180;
-    
-    // Hour angle (15 degrees per hour from solar noon)
-    const hourAngle = (hourOfDay - 12) * 15 * Math.PI / 180;
-    
-    // Solar elevation angle
-    const sinElevation = Math.sin(latRad) * Math.sin(decRad) + 
-                         Math.cos(latRad) * Math.cos(decRad) * Math.cos(hourAngle);
-    
-    // Return default if sun is below horizon
-    if (sinElevation <= 0) {
-        return { elevation: 0, azimuth: 180 };
-    }
-    
-    const elevation = Math.asin(sinElevation) * 180 / Math.PI;
-    
-    // Solar azimuth angle (0 = North, 90 = East, 180 = South, 270 = West)
-    const sinAzimuth = Math.sin(hourAngle) * Math.cos(decRad) / Math.cos(Math.asin(sinElevation));
-    const cosAzimuth = (Math.sin(decRad) - Math.sin(latRad) * sinElevation) / 
-                       (Math.cos(latRad) * Math.cos(Math.asin(sinElevation)));
-    
-    // Calculate azimuth using atan2 for proper quadrant handling
-    let azimuth = Math.atan2(sinAzimuth, cosAzimuth) * 180 / Math.PI;
-    
-    // Convert from -180 to 180 range to 0 to 360 range
-    if (azimuth < 0) {
-        azimuth += 360;
-    }
-    
-    return { elevation, azimuth };
-}
-
-/**
- * Updates sun light position based on time of day
+ * Applies the time of day (state.sunTime, 0-100 over a 24 h clock) to the light
+ * rig: real solar azimuth/elevation for the configured latitude and day of year,
+ * then the StarShade-style sky model (sun colour and strength, moon, hemisphere,
+ * exposure, environment scale, sky gradient, stars). Part view uses neutral studio light.
  */
 function updateSunPosition() {
-    if (!threeRenderer.sunLight) return;
-    
-    // Get time from slider (0-100 maps to sunrise-sunset)
-    const timePercent = state.sunTime || 50;
-    const latitude = state.simulationLatitude || 35;
-    const dayOfYear = state.simulationDayOfYear || 172;
-    
-    // Get sunrise and sunset times
-    const { sunrise, sunset } = getSunriseSunset(latitude, dayOfYear);
-    const dayLength = sunset - sunrise;
-    
-    // Map slider (0-100) to hour of day
-    const hourOfDay = sunrise + (timePercent / 100) * dayLength;
-    
-    // Calculate solar position
-    const solarPos = calculateSolarPosition(latitude, dayOfYear, hourOfDay);
-    const azimuth = solarPos.azimuth;     // Degrees from north (0=N, 90=E, 180=S, 270=W)
-    const elevation = solarPos.elevation; // Degrees above horizon
-    
-    // Update time display
+    if (!threeRenderer.studio) return;
+    const model = state.hwDetailMode ? studioModel() : skyModelForState(state);
+    applySkyModel(model, threeRenderer);
+    updateIbcPower();
     const timeDisplay = document.getElementById('sun-time-display');
-    if (timeDisplay) {
-        const hours = Math.floor(hourOfDay);
-        const minutes = Math.floor((hourOfDay - hours) * 60);
-        const ampm = hours >= 12 ? 'PM' : 'AM';
-        const displayHours = hours > 12 ? hours - 12 : (hours === 0 ? 12 : hours);
-        timeDisplay.textContent = `${displayHours}:${minutes.toString().padStart(2, '0')} ${ampm}`;
-    }
-    
-    // Convert to radians
-    const azRad = (azimuth - 90) * Math.PI / 180;  // Adjust so 0 = East
-    const elRad = elevation * Math.PI / 180;
-    
-    // Calculate sun position on unit sphere, then scale
-    const dist = 500;
-    const x = dist * Math.cos(elRad) * Math.cos(azRad);
-    const y = dist * Math.sin(elRad);
-    const z = dist * Math.cos(elRad) * Math.sin(azRad);
-    
-    threeRenderer.sunLight.position.set(x, y, z);
-    
-    // Adjust intensity based on elevation (dimmer near horizon)
-    const intensityFactor = 0.5 + 0.5 * Math.sin(elRad);
-    threeRenderer.sunLight.intensity = 1.2 * intensityFactor;
-    
-    // Warm up color near horizon (sunrise/sunset effect)
-    if (elevation < 30) {
-        const warmth = 1 - (elevation / 30);
-        const r = 1;
-        const g = 1 - warmth * 0.3;
-        const b = 1 - warmth * 0.5;
-        threeRenderer.sunLight.color.setRGB(r, g, b);
-    } else {
-        threeRenderer.sunLight.color.setHex(0xffffff);
-    }
-    
-    // Update shadows if enabled
-    if (state.shadowsEnabled && threeRenderer.sunLight) {
-        threeRenderer.sunLight.castShadow = true;
-        // Update shadow camera to follow sun
-        if (threeRenderer.sunLight.shadow) {
-            threeRenderer.sunLight.shadow.camera.left = -200;
-            threeRenderer.sunLight.shadow.camera.right = 200;
-            threeRenderer.sunLight.shadow.camera.top = 200;
-            threeRenderer.sunLight.shadow.camera.bottom = -200;
-            threeRenderer.sunLight.shadow.camera.near = 0.1;
-            threeRenderer.sunLight.shadow.camera.far = 2000;
-            threeRenderer.sunLight.shadow.mapSize.width = 2048;
-            threeRenderer.sunLight.shadow.mapSize.height = 2048;
-            threeRenderer.sunLight.shadow.bias = -0.0001;
-        }
-    } else if (threeRenderer.sunLight) {
-        threeRenderer.sunLight.castShadow = false;
-    }
-    
-    // Update sky color based on time of day
-    updateSkyColor(elevation, hourOfDay);
+    if (timeDisplay && model.clock) timeDisplay.textContent = model.clock;
 }
 
 /**
- * Updates the scene background color based on sun elevation and time
+ * Legacy hook: the sky is now driven by updateSunPosition() / applySkyModel().
  */
-function updateSkyColor(elevation, hourOfDay) {
-    if (!threeRenderer.mainScene) return;
-    
-    if (state.shadowsEnabled) {
-        // Realistic sky colors based on sun elevation
-        let r, g, b;
-        
-        if (elevation > 45) {
-            // Midday - bright blue sky
-            r = 135;
-            g = 206;
-            b = 250; // Sky blue
-        } else if (elevation > 20) {
-            // Morning/afternoon - lighter blue
-            const factor = (elevation - 20) / 25;
-            r = Math.floor(135 + (255 - 135) * (1 - factor));
-            g = Math.floor(206 + (200 - 206) * (1 - factor));
-            b = Math.floor(250 + (100 - 250) * (1 - factor));
-        } else if (elevation > 5) {
-            // Sunrise/sunset - warm colors
-            const factor = (elevation - 5) / 15;
-            r = Math.floor(255 - (255 - 135) * factor);
-            g = Math.floor(200 - (200 - 100) * factor);
-            b = Math.floor(100 - (100 - 50) * factor);
-        } else {
-            // Below horizon - dark blue/purple
-            r = 25;
-            g = 25;
-            b = 50;
-        }
-        
-        threeRenderer.mainScene.background = new THREE.Color(r / 255, g / 255, b / 255);
-    } else {
-        // Default dark background when shadows are off
-        threeRenderer.mainScene.background = new THREE.Color(0x15202b);
-    }
+function updateSkyColor() {
+    if (threeRenderer.mainScene) threeRenderer.mainScene.background = null;
 }
 
 /**
- * Creates a grass texture using canvas
- */
-function createGrassTexture() {
-    const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
-    const ctx = canvas.getContext('2d');
-    
-    // Base grass color
-    ctx.fillStyle = '#2d5016';
-    ctx.fillRect(0, 0, 512, 512);
-    
-    // Add texture variation with darker and lighter patches
-    for (let i = 0; i < 200; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const size = 20 + Math.random() * 40;
-        const brightness = 0.7 + Math.random() * 0.3;
-        
-        ctx.fillStyle = `rgba(${Math.floor(45 * brightness)}, ${Math.floor(80 * brightness)}, ${Math.floor(22 * brightness)}, 0.3)`;
-        ctx.beginPath();
-        ctx.arc(x, y, size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
-    // Add fine grass blade texture
-    ctx.strokeStyle = 'rgba(34, 68, 17, 0.4)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 500; i++) {
-        const x = Math.random() * 512;
-        const y = Math.random() * 512;
-        const length = 5 + Math.random() * 10;
-        const angle = Math.random() * Math.PI * 2;
-        
-        ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(
-            x + Math.cos(angle) * length,
-            y + Math.sin(angle) * length
-        );
-        ctx.stroke();
-    }
-    
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.wrapS = THREE.RepeatWrapping;
-    texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(4, 4);
-    
-    return texture;
-}
-
-/**
- * Creates an octagon shape for the ground plane
- */
-function createOctagonGeometry(size) {
-    const shape = new THREE.Shape();
-    const radius = size / 2;
-    const segments = 8;
-    
-    // Start at first point
-    const firstAngle = -Math.PI / 2; // Start at top
-    const firstX = radius * Math.cos(firstAngle);
-    const firstY = radius * Math.sin(firstAngle);
-    shape.moveTo(firstX, firstY);
-    
-    // Create octagon points
-    for (let i = 1; i <= segments; i++) {
-        const angle = firstAngle + (i * 2 * Math.PI / segments);
-        const x = radius * Math.cos(angle);
-        const y = radius * Math.sin(angle);
-        shape.lineTo(x, y);
-    }
-    
-    return new THREE.ShapeGeometry(shape);
-}
-
-/**
- * Creates or updates the ground plane for shadows
+ * Legacy hook: the permanent shadow-catcher ground lives in render-studio.js.
  */
 function updateGroundPlane() {
-    if (!threeRenderer.mainScene) return;
-    
-    // Remove existing ground plane if it exists
-    if (threeRenderer.groundPlane) {
-        threeRenderer.mainScene.remove(threeRenderer.groundPlane);
-        if (threeRenderer.groundPlane.geometry) threeRenderer.groundPlane.geometry.dispose();
-        if (threeRenderer.groundPlane.material) {
-            if (threeRenderer.groundPlane.material.map) {
-                threeRenderer.groundPlane.material.map.dispose();
-            }
-            threeRenderer.groundPlane.material.dispose();
-        }
-        threeRenderer.groundPlane = null;
-    }
-    
-    // Create ground plane if shadows are enabled
-    if (state.shadowsEnabled) {
-        const groundSize = 2000;
-        const groundGeometry = createOctagonGeometry(groundSize);
-        const grassTexture = createGrassTexture();
-        
-        const groundMaterial = new THREE.MeshStandardMaterial({
-            map: grassTexture,
-            color: 0x2d5016, // Base grass color
-            roughness: 0.9,
-            metalness: 0.0
-        });
-        
-        threeRenderer.groundPlane = new THREE.Mesh(groundGeometry, groundMaterial);
-        threeRenderer.groundPlane.rotation.x = -Math.PI / 2; // Rotate to horizontal
-        // Position at -1.5" (beam thickness) to account for structure resting on beam bottom faces
-        const beamThickness = state.hBeamT || 1.5;
-        threeRenderer.groundPlane.position.y = -beamThickness;
-        threeRenderer.groundPlane.receiveShadow = true;
-        
-        threeRenderer.mainScene.add(threeRenderer.groundPlane);
-    }
+    /* ground is permanent; kept for callers */
 }
 
 /**
- * Creates the ground grid mesh
+ * Legacy hook: the tinted grid is created by render-studio.js and stays visible.
  */
 function createGridMesh() {
-    const gridSize = GRID_RANGE * 2;
-    const gridDivisions = (GRID_RANGE * 2) / GRID_SPACING;
-    
-    threeRenderer.gridHelper = new THREE.GridHelper(
-        gridSize,
-        gridDivisions,
-        0x00a8a0,  // Center line color (teal)
-        0x00a8a0   // Grid line color (teal)
-    );
-    threeRenderer.gridHelper.material.opacity = 0.2;
-    threeRenderer.gridHelper.material.transparent = true;
-    threeRenderer.gridHelper.material.depthWrite = false; // Prevent grid from occluding objects
-    threeRenderer.gridHelper.renderOrder = -1; // Render grid first (behind everything)
-    
-    threeRenderer.mainScene.add(threeRenderer.gridHelper);
-    
-    // Update grid visibility based on shadows
-    updateGridVisibility();
+    installStudio(threeRenderer);
 }
 
 /**
- * Updates grid visibility based on shadows setting
+ * Legacy hook: the grid no longer hides when shadows are on.
  */
 function updateGridVisibility() {
-    if (threeRenderer.gridHelper) {
-        threeRenderer.gridHelper.visible = !state.shadowsEnabled;
-    }
+    if (threeRenderer.gridHelper) threeRenderer.gridHelper.visible = true;
 }
 
 /**
  * Updates grid position based on structure center
  */
-function updateGridPosition(structureCenter) {
-    if (threeRenderer.gridHelper && structureCenter) {
-        threeRenderer.gridHelper.position.set(structureCenter.x, 0, structureCenter.z);
-    }
+function updateGridPosition(structureCenter, radius, groundY) {
+    if (structureCenter) updateStudioFrame(structureCenter, radius, threeRenderer, groundY);
 }
 
 /**
@@ -861,12 +524,16 @@ function buildBeamMeshWithHoles(beam, intersections, material) {
     // ---------- Build attributes ----------
     const positions = [];
     const normals = [];
+    const uvs = [];
     const indices = [];
 
+    // Planar UVs: u runs along the beam length (grain), v across the section.
+    const uScale = woodUvScale(beamLen) / Math.max(beamLen, 1e-6);
     function pushVertex(x, y, z, nx, ny, nz) {
         const i = positions.length / 3;
         positions.push(x, y, z);
         normals.push(nx, ny, nz);
+        uvs.push((x + halfL) * uScale, ((y + halfOther) / Math.max(2 * halfOther, 1e-6) + (z + halfD) / Math.max(2 * halfD, 1e-6)) * 0.5);
         return i;
     }
 
@@ -944,9 +611,8 @@ function buildBeamMeshWithHoles(beam, intersections, material) {
     const geometry = new THREE.BufferGeometry();
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
-    // Zero UVs for every vertex — required by some glTF importers (notably
-    // SketchUp's Centaur importer) but harmless for an untextured material.
-    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(totalVerts * 2), 2));
+    // Planar UVs (grain along the beam); some glTF importers (SketchUp) also require a uv attribute.
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
 
     const IndexArray = totalVerts > 65535 ? Uint32Array : Uint16Array;
     geometry.setIndex(new THREE.BufferAttribute(IndexArray.from(indices), 1));
@@ -980,9 +646,12 @@ function createBeamMesh(beam, isColliding = false, allBolts = null) {
     const geometry = new THREE.BufferGeometry();
     const c = beam.corners;
     
-    // Build vertices and normals for each face separately
+    // Build vertices, normals and planar UVs (grain along the beam) for each face separately
     const positions = [];
     const normals = [];
+    const uvs = [];
+    const beamLen = Math.hypot(c[4].x - c[0].x, c[4].y - c[0].y, c[4].z - c[0].z);
+    const uL = woodUvScale(beamLen);   // u at the far end of the beam
     
     // Helper to calculate face normal - ensure it points outward from beam center
     function calcOutwardNormal(p0, p1, p2, faceCenter, beamCenter) {
@@ -1011,61 +680,51 @@ function createBeamMesh(beam, isColliding = false, allBolts = null) {
     for (let i = 0; i < 8; i++) { cx += c[i].x; cy += c[i].y; cz += c[i].z; }
     const beamCenter = { x: cx / 8, y: cy / 8, z: cz / 8 };
     
-    // Helper to add a quad with outward-facing normal
-    function addQuad(p0, p1, p2, p3) {
+    // Helper to add a quad with outward-facing normal and per-corner UVs
+    function addQuad(p0, p1, p2, p3, uv) {
         const faceCenter = {
             x: (p0.x + p1.x + p2.x + p3.x) / 4,
             y: (p0.y + p1.y + p2.y + p3.y) / 4,
             z: (p0.z + p1.z + p2.z + p3.z) / 4
         };
         const n = calcOutwardNormal(p0, p1, p2, faceCenter, beamCenter);
+        // Keep the winding consistent with the outward normal: double-sided lighting
+        // flips the normal on back faces, so a reversed quad would render unlit.
+        const wx = (p1.y - p0.y) * (p2.z - p0.z) - (p1.z - p0.z) * (p2.y - p0.y);
+        const wy = (p1.z - p0.z) * (p2.x - p0.x) - (p1.x - p0.x) * (p2.z - p0.z);
+        const wz = (p1.x - p0.x) * (p2.y - p0.y) - (p1.y - p0.y) * (p2.x - p0.x);
+        if (wx * n.x + wy * n.y + wz * n.z < 0) {
+            const t = p1; p1 = p3; p3 = t;
+            uv = [uv[0], uv[3], uv[2], uv[1]];
+        }
         
         // Triangle 1: p0, p1, p2
         positions.push(p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
         normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+        uvs.push(uv[0][0], uv[0][1], uv[1][0], uv[1][1], uv[2][0], uv[2][1]);
         // Triangle 2: p0, p2, p3
         positions.push(p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z);
         normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+        uvs.push(uv[0][0], uv[0][1], uv[2][0], uv[2][1], uv[3][0], uv[3][1]);
     }
     
-    // Add all 6 faces - winding order doesn't matter now since we force outward normals
-    addQuad(c[0], c[1], c[2], c[3]); // Near end
-    addQuad(c[4], c[7], c[6], c[5]); // Far end
-    addQuad(c[0], c[4], c[5], c[1]); // Bottom
-    addQuad(c[2], c[6], c[7], c[3]); // Top
-    addQuad(c[0], c[3], c[7], c[4]); // Left
-    addQuad(c[1], c[5], c[6], c[2]); // Right
+    // Add all 6 faces - winding order doesn't matter now since we force outward normals.
+    // Corners 0-3 are the near end, 4-7 the far end (c[i+4] is c[i] moved along the beam).
+    const END_UV = [[0, 0], [0.12, 0], [0.12, 1], [0, 1]];
+    addQuad(c[0], c[1], c[2], c[3], END_UV);                              // Near end
+    addQuad(c[4], c[7], c[6], c[5], END_UV);                              // Far end
+    addQuad(c[0], c[4], c[5], c[1], [[0, 0], [uL, 0], [uL, 1], [0, 1]]);  // Bottom
+    addQuad(c[2], c[6], c[7], c[3], [[0, 0], [uL, 0], [uL, 1], [0, 1]]);  // Top
+    addQuad(c[0], c[3], c[7], c[4], [[0, 0], [0, 1], [uL, 1], [uL, 0]]);  // Left
+    addQuad(c[1], c[5], c[6], c[2], [[0, 0], [uL, 0], [uL, 1], [0, 1]]);  // Right
     
     geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
     geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
     
-    // Create material - darker, warmer wood tone
-    let woodColor;
-    if (isColliding) {
-        woodColor = new THREE.Color(0.9, 0.2, 0.1);
-    } else if (beam.kinematicState === 'error') {
-        woodColor = new THREE.Color(0.82, 0.28, 0.18);
-    } else if (beam.kinematicState === 'warning') {
-        woodColor = new THREE.Color(0.72, 0.52, 0.18);
-    } else {
-        // Darken and warm up the base color
-        const base = beam.colorBase;
-        woodColor = new THREE.Color(
-            Math.max(0, (base.r * 0.7 - 20)) / 255,
-            Math.max(0, (base.g * 0.65 - 15)) / 255,
-            Math.max(0, (base.b * 0.5 - 10)) / 255
-        );
-    }
-    
-    const material = new THREE.MeshLambertMaterial({
-        color: woodColor,
-        side: THREE.DoubleSide,  // Render both sides to prevent x-ray effect
-    });
-    
-    // Use polygon offset to prevent z-fighting
-    material.polygonOffset = true;
-    material.polygonOffsetFactor = 1;
-    material.polygonOffsetUnits = 1;
+    // Shared wood material (grain texture, PBR) keyed by the beam's state colour.
+    // Cached: callers that fade/tint a beam clone the material first.
+    const material = getWoodMaterial(beam, isColliding);
 
     // If bolt list provided, drill cylindrical through-holes for any bolt that
     // physically passes through this beam. Falls back to the solid box geometry
@@ -1096,283 +755,87 @@ function createBeamMesh(beam, isColliding = false, allBolts = null) {
 }
 
 /**
- * Creates a Three.js mesh from a Panel3D object
- * Creates realistic solar panel with:
- * - Shiny reflective blue/black front face with cell grid
- * - White backsheet with black border (1.5" inset)
- * - Black border on front (0.25" inset)
- * - Dark aluminum frame edges
+ * Builds a closed box from a panel's 8 corners (0-3 bottom face, 4-7 top face,
+ * corner k+4 above corner k) with per-face UVs and three material groups:
+ * 0 = top (cells), 1 = bottom (backsheet), 2 = the four frame sides.
+ */
+function buildPanelBoxGeometry(c) {
+    const positions = [], normals = [], uvs = [];
+    let cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < 8; i++) { cx += c[i].x; cy += c[i].y; cz += c[i].z; }
+    const center = { x: cx / 8, y: cy / 8, z: cz / 8 };
+    const addQuad = (q0, q1, q2, q3, uvIn) => {
+        let p = [q0, q1, q2, q3], uv = uvIn;
+        const faceNormal = (a, b, c) => {
+            const ax = b.x - a.x, ay = b.y - a.y, az = b.z - a.z;
+            const bx = c.x - a.x, by = c.y - a.y, bz = c.z - a.z;
+            const nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
+            const len = Math.hypot(nx, ny, nz) || 1;
+            return { x: nx / len, y: ny / len, z: nz / len };
+        };
+        let n = faceNormal(p[0], p[1], p[2]);
+        const fx = (q0.x + q1.x + q2.x + q3.x) / 4, fy = (q0.y + q1.y + q2.y + q3.y) / 4, fz = (q0.z + q1.z + q2.z + q3.z) / 4;
+        // Winding must agree with the outward normal (double-sided lighting flips by gl_FrontFacing)
+        if (n.x * (center.x - fx) + n.y * (center.y - fy) + n.z * (center.z - fz) > 0) {
+            p = [q0, q3, q2, q1];
+            uv = [uvIn[0], uvIn[3], uvIn[2], uvIn[1]];
+            n = faceNormal(p[0], p[1], p[2]);
+        }
+        const tri = (a, b, d, ua, ub, ud) => {
+            positions.push(a.x, a.y, a.z, b.x, b.y, b.z, d.x, d.y, d.z);
+            normals.push(n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z);
+            uvs.push(ua[0], ua[1], ub[0], ub[1], ud[0], ud[1]);
+        };
+        tri(p[0], p[1], p[2], uv[0], uv[1], uv[2]);
+        tri(p[0], p[2], p[3], uv[0], uv[2], uv[3]);
+    };
+    const FULL = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    const SIDE = [[0, 0], [1, 0], [1, 0.08], [0, 0.08]];
+    addQuad(c[4], c[5], c[6], c[7], FULL);   // top: cells (u along width, v along length)
+    addQuad(c[0], c[1], c[2], c[3], FULL);   // bottom: backsheet
+    addQuad(c[0], c[1], c[5], c[4], SIDE);   // sides: frame
+    addQuad(c[1], c[2], c[6], c[5], SIDE);
+    addQuad(c[2], c[3], c[7], c[6], SIDE);
+    addQuad(c[3], c[0], c[4], c[7], SIDE);
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
+    geometry.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
+    geometry.setAttribute('uv', new THREE.BufferAttribute(new Float32Array(uvs), 2));
+    geometry.addGroup(0, 6, 0);
+    geometry.addGroup(6, 6, 1);
+    geometry.addGroup(12, 24, 2);
+    return geometry;
+}
+
+/**
+ * Creates a Three.js mesh from a Panel3D object: one box mesh with the
+ * procedural cell sheet (clearcoat glass) on top, an anodised frame on the
+ * sides and a white backsheet underneath. Keeps userData.panel / type on the
+ * top-level object for pickers, build steps and coverings.
  */
 function createPanelMesh(panel) {
     if (panel.formFactor === 'folding') return createFoldingPanelMesh(panel);
     if (panel.formFactor === 'flexible') return createFlexiblePanelMesh(panel);
-
-    const group = new THREE.Group();
     const c = panel.corners;
-    
-    // Border insets in inches
-    const FRONT_BORDER = 0.5;
-    const BACK_BORDER = 1.5;
-    
-    // Calculate panel center
-    let cx = 0, cy = 0, cz = 0;
-    for (let i = 0; i < 8; i++) { cx += c[i].x; cy += c[i].y; cz += c[i].z; }
-    const panelCenter = { x: cx / 8, y: cy / 8, z: cz / 8 };
-    
-    // Helper to calculate outward normal
-    function calcOutwardNormal(p0, p1, p2, faceCenter) {
-        const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
-        const bx = p2.x - p0.x, by = p2.y - p0.y, bz = p2.z - p0.z;
-        let nx = ay * bz - az * by;
-        let ny = az * bx - ax * bz;
-        let nz = ax * by - ay * bx;
-        const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
-        nx /= len; ny /= len; nz /= len;
-        
-        const toCenterX = panelCenter.x - faceCenter.x;
-        const toCenterY = panelCenter.y - faceCenter.y;
-        const toCenterZ = panelCenter.z - faceCenter.z;
-        if (nx * toCenterX + ny * toCenterY + nz * toCenterZ > 0) {
-            nx = -nx; ny = -ny; nz = -nz;
-        }
-        return { x: nx, y: ny, z: nz };
-    }
-    
-    // Helper to create a quad mesh
-    function createQuadMesh(p0, p1, p2, p3, material) {
-        const geo = new THREE.BufferGeometry();
-        const positions = [
-            p0.x, p0.y, p0.z, p1.x, p1.y, p1.z, p2.x, p2.y, p2.z,
-            p0.x, p0.y, p0.z, p2.x, p2.y, p2.z, p3.x, p3.y, p3.z
-        ];
-        const faceCenter = {
-            x: (p0.x + p1.x + p2.x + p3.x) / 4,
-            y: (p0.y + p1.y + p2.y + p3.y) / 4,
-            z: (p0.z + p1.z + p2.z + p3.z) / 4
-        };
-        const n = calcOutwardNormal(p0, p1, p2, faceCenter);
-        const normals = [n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z,
-                        n.x, n.y, n.z, n.x, n.y, n.z, n.x, n.y, n.z];
-        geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
-        geo.setAttribute('normal', new THREE.BufferAttribute(new Float32Array(normals), 3));
-        return new THREE.Mesh(geo, material);
-    }
-    
-    // Helper to interpolate between two points
-    function lerp(p0, p1, t) {
-        return { x: p0.x + (p1.x - p0.x) * t, y: p0.y + (p1.y - p0.y) * t, z: p0.z + (p1.z - p0.z) * t };
-    }
-    
-    // Helper to create inset corners for a face
-    function getInsetCorners(corners, inset) {
-        // corners = [p0, p1, p2, p3] defining a quad
-        // Calculate edge lengths to determine inset ratios
-        const edge01 = Math.sqrt(
-            Math.pow(corners[1].x - corners[0].x, 2) +
-            Math.pow(corners[1].y - corners[0].y, 2) +
-            Math.pow(corners[1].z - corners[0].z, 2)
-        );
-        const edge03 = Math.sqrt(
-            Math.pow(corners[3].x - corners[0].x, 2) +
-            Math.pow(corners[3].y - corners[0].y, 2) +
-            Math.pow(corners[3].z - corners[0].z, 2)
-        );
-        
-        const t01 = Math.min(0.4, inset / edge01); // Ratio along 0->1 edge
-        const t03 = Math.min(0.4, inset / edge03); // Ratio along 0->3 edge
-        
-        // Inset each corner
-        return [
-            lerp(lerp(corners[0], corners[1], t01), lerp(corners[0], corners[3], t03), 0.5),
-            lerp(lerp(corners[1], corners[0], t01), lerp(corners[1], corners[2], t03), 0.5),
-            lerp(lerp(corners[2], corners[3], t01), lerp(corners[2], corners[1], t03), 0.5),
-            lerp(lerp(corners[3], corners[2], t01), lerp(corners[3], corners[0], t03), 0.5)
-        ].map((p, i) => {
-            // Proper inset calculation
-            const c0 = corners[i];
-            const c1 = corners[(i + 1) % 4];
-            const c3 = corners[(i + 3) % 4];
-            const dir01 = { x: c1.x - c0.x, y: c1.y - c0.y, z: c1.z - c0.z };
-            const dir03 = { x: c3.x - c0.x, y: c3.y - c0.y, z: c3.z - c0.z };
-            const len01 = Math.sqrt(dir01.x * dir01.x + dir01.y * dir01.y + dir01.z * dir01.z) || 1;
-            const len03 = Math.sqrt(dir03.x * dir03.x + dir03.y * dir03.y + dir03.z * dir03.z) || 1;
-            return {
-                x: c0.x + (dir01.x / len01) * inset + (dir03.x / len03) * inset,
-                y: c0.y + (dir01.y / len01) * inset + (dir03.y / len03) * inset,
-                z: c0.z + (dir01.z / len01) * inset + (dir03.z / len03) * inset
-            };
-        });
-    }
-    
-    // Materials
-    const cellColor = rgbToThreeColor(panel.colorBase);
-    
-    // Front face material - SHINY reflective solar cells (glass-like)
-    const frontMaterial = new THREE.MeshPhongMaterial({
-        color: cellColor,
-        specular: 0x888899,
-        shininess: 80,
-        reflectivity: 0.8,
-        side: THREE.DoubleSide,
-    });
-    frontMaterial.polygonOffset = true;
-    frontMaterial.polygonOffsetFactor = 2;
-    frontMaterial.polygonOffsetUnits = 2;
-    
-    // Back face material - matte white backsheet
-    const backMaterial = new THREE.MeshLambertMaterial({
-        color: 0xf5f5f5,
-        side: THREE.DoubleSide,
-    });
-    backMaterial.polygonOffset = true;
-    backMaterial.polygonOffsetFactor = 2;
-    backMaterial.polygonOffsetUnits = 2;
-    
-    // Black border/bevel material
-    const borderMaterial = new THREE.MeshLambertMaterial({
-        color: 0x151518,
-        side: THREE.DoubleSide,
-    });
-    borderMaterial.polygonOffset = true;
-    borderMaterial.polygonOffsetFactor = 1.8;
-    borderMaterial.polygonOffsetUnits = 1.8;
-    
-    // Edge material - dark aluminum frame (slightly reflective)
-    const edgeMaterial = new THREE.MeshPhongMaterial({
-        color: 0x404045,
-        specular: 0x333333,
-        shininess: 20,
-        side: THREE.DoubleSide,
-    });
-    edgeMaterial.polygonOffset = true;
-    edgeMaterial.polygonOffsetFactor = 1.5;
-    edgeMaterial.polygonOffsetUnits = 1.5;
-    
-    // === BACK FACE (corners 0,1,2,3) - white backsheet with black border ===
-    const backCorners = [c[0], c[1], c[2], c[3]];
-    const backInset = getInsetCorners(backCorners, BACK_BORDER);
-    
-    // Inner white area
-    group.add(createQuadMesh(backInset[0], backInset[1], backInset[2], backInset[3], backMaterial));
-    
-    // Black border strips (4 trapezoids around the edge)
-    group.add(createQuadMesh(backCorners[0], backCorners[1], backInset[1], backInset[0], borderMaterial));
-    group.add(createQuadMesh(backCorners[1], backCorners[2], backInset[2], backInset[1], borderMaterial));
-    group.add(createQuadMesh(backCorners[2], backCorners[3], backInset[3], backInset[2], borderMaterial));
-    group.add(createQuadMesh(backCorners[3], backCorners[0], backInset[0], backInset[3], borderMaterial));
-    
-    // === FRONT FACE (corners 4,5,6,7) - blue solar cells with black border ===
-    const frontCorners = [c[4], c[7], c[6], c[5]]; // Note: different winding for front
-    const frontInset = getInsetCorners(frontCorners, FRONT_BORDER);
-    
-    // Inner blue solar cell area
-    group.add(createQuadMesh(frontInset[0], frontInset[1], frontInset[2], frontInset[3], frontMaterial));
-    
-    // Black border strips
-    group.add(createQuadMesh(frontCorners[0], frontCorners[1], frontInset[1], frontInset[0], borderMaterial));
-    group.add(createQuadMesh(frontCorners[1], frontCorners[2], frontInset[2], frontInset[1], borderMaterial));
-    group.add(createQuadMesh(frontCorners[2], frontCorners[3], frontInset[3], frontInset[2], borderMaterial));
-    group.add(createQuadMesh(frontCorners[3], frontCorners[0], frontInset[0], frontInset[3], borderMaterial));
-    
-    // === EDGE FACES - aluminum frame ===
-    group.add(createQuadMesh(c[0], c[4], c[5], c[1], edgeMaterial)); // Bottom edge
-    group.add(createQuadMesh(c[2], c[6], c[7], c[3], edgeMaterial)); // Top edge
-    group.add(createQuadMesh(c[0], c[3], c[7], c[4], edgeMaterial)); // Left edge
-    group.add(createQuadMesh(c[1], c[5], c[6], c[2], edgeMaterial)); // Right edge
-    
-    // Add cell grid lines on the front face (inside the border)
-    const gridLines = createCellGridLines(frontInset[0], frontInset[3], frontInset[2], frontInset[1], panel);
-    if (gridLines) group.add(gridLines);
-    
-    group.userData.panel = panel;
-    group.userData.type = 'panel';
-    group.renderOrder = 2;
-    
-    // Enable shadows on all meshes in the group
-    group.traverse((child) => {
-        if (child.isMesh) {
-            child.castShadow = state.shadowsEnabled || false;
-            child.receiveShadow = state.shadowsEnabled || false;
-        }
-    });
-    
-    return group;
-}
-
-/**
- * Creates grid lines to represent solar cells on a panel face
- */
-function createCellGridLines(p0, p1, p2, p3, panel) {
-    // Create line segments for cell divisions
-    const positions = [];
-    
-    // Number of cell divisions (creates a grid pattern)
-    const cellsX = 6; // Number of cell columns
-    const cellsY = 10; // Number of cell rows
-    
-    // Calculate edge vectors
-    const edgeX = { x: p1.x - p0.x, y: p1.y - p0.y, z: p1.z - p0.z };
-    const edgeY = { x: p3.x - p0.x, y: p3.y - p0.y, z: p3.z - p0.z };
-    
-    // Calculate normal for slight offset above surface
-    const ax = p1.x - p0.x, ay = p1.y - p0.y, az = p1.z - p0.z;
-    const bx = p3.x - p0.x, by = p3.y - p0.y, bz = p3.z - p0.z;
-    let nx = ay * bz - az * by, ny = az * bx - ax * bz, nz = ax * by - ay * bx;
-    const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
-    nx /= nLen; ny /= nLen; nz /= nLen;
-    const offset = 0.03; // Small offset above surface
-    
-    // Horizontal lines (across width, dividing rows)
-    for (let i = 1; i < cellsY; i++) {
-        const t = i / cellsY;
-        const startX = p0.x + edgeY.x * t + nx * offset;
-        const startY = p0.y + edgeY.y * t + ny * offset;
-        const startZ = p0.z + edgeY.z * t + nz * offset;
-        const endX = startX + edgeX.x;
-        const endY = startY + edgeX.y;
-        const endZ = startZ + edgeX.z;
-        positions.push(startX, startY, startZ, endX, endY, endZ);
-    }
-    
-    // Vertical lines (across height, dividing columns)
-    for (let i = 1; i < cellsX; i++) {
-        const t = i / cellsX;
-        const startX = p0.x + edgeX.x * t + nx * offset;
-        const startY = p0.y + edgeX.y * t + ny * offset;
-        const startZ = p0.z + edgeX.z * t + nz * offset;
-        const endX = startX + edgeY.x;
-        const endY = startY + edgeY.y;
-        const endZ = startZ + edgeY.z;
-        positions.push(startX, startY, startZ, endX, endY, endZ);
-    }
-    
-    if (positions.length === 0) return null;
-    
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(positions), 3));
-    
-    // Subtle dark lines for cell divisions
-    const material = new THREE.LineBasicMaterial({
-        color: 0x101520,
-        linewidth: 1,
-        transparent: true,
-        opacity: 0.5,
-    });
-    
-    return new THREE.LineSegments(geometry, material);
+    if (!c || c.length < 8) return new THREE.Group();
+    const dist = (a, b) => Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
+    const extentU = panel.width || dist(c[4], c[5]);
+    const extentV = panel.length || dist(c[4], c[7]);
+    const mats = getPanelMaterials(extentU, extentV);
+    const mesh = new THREE.Mesh(buildPanelBoxGeometry(c), [mats.cell, mats.back, mats.frame]);
+    mesh.userData.panel = panel;
+    mesh.userData.type = 'panel';
+    mesh.renderOrder = 2;
+    mesh.castShadow = state.shadowsEnabled || false;
+    mesh.receiveShadow = state.shadowsEnabled || false;
+    return mesh;
 }
 
 /**
  * Creates a Three.js mesh for a bracket
  */
 function createBracketMesh(bracket) {
-    const material = getCachedMaterial('bracket', () => {
-        const m = new THREE.MeshLambertMaterial({ color: 0x1a1a1a });
-        m.polygonOffset = true;
-        m.polygonOffsetFactor = 0.5;
-        m.polygonOffsetUnits = 0.5;
-        return m;
-    });
+    const material = getHardwareMaterial('bracket', 0x1a1a1a, { polygonOffset: 0.5, metalness: 0.7, roughness: 0.45 });
     
     // Get bracket dimensions
     const width = bracket.width || state.bracketWidth || 2.0;
@@ -1559,14 +1022,7 @@ function createBoltMesh(bolt) {
     } else if (bolt.boltType === 'rcp-ring') {
         boltColor = 0x1a4ea0;
     }
-    const materialKey = 'bolt_' + boltColor + '_' + (bolt.diagnosticState || '');
-    const material = getCachedMaterial(materialKey, () => {
-        const m = new THREE.MeshLambertMaterial({ color: boltColor });
-        m.polygonOffset = true;
-        m.polygonOffsetFactor = -1;
-        m.polygonOffsetUnits = -1;
-        return m;
-    });
+    const material = getHardwareMaterial('bolt-' + (bolt.diagnosticState || ''), boltColor, { polygonOffset: -1, metalness: 0.8, roughness: 0.35 });
     
     const boltGroup = new THREE.Group();
     
@@ -1641,13 +1097,7 @@ function createWasherMesh(washer) {
     
     if (thickness <= 0) return new THREE.Group();
     
-    const material = getCachedMaterial('washer', () => {
-        const m = new THREE.MeshLambertMaterial({ color: 0x2a2a2a });
-        m.polygonOffset = true;
-        m.polygonOffsetFactor = -1;
-        m.polygonOffsetUnits = -1;
-        return m;
-    });
+    const material = getHardwareMaterial('washer', 0x2a2a2a, { polygonOffset: -1, metalness: 0.75, roughness: 0.4 });
     
     const washerGroup = new THREE.Group();
     
@@ -1795,21 +1245,35 @@ function coveringMaterialFor(kind) {
         const sc = state.shadeCloth || {};
         const op = Math.max(0.05, Math.min(1, typeof sc.opacity === 'number' ? sc.opacity : 0.75));
         const hex = typeof sc.color === 'string' && /^#[0-9a-fA-F]{6}$/.test(sc.color) ? sc.color.toLowerCase() : '#6f8f86';
-        return getCachedMaterial(`covering-shade-${hex}-${Math.round(op * 100)}`, () => new THREE.MeshStandardMaterial({
-            color: parseInt(hex.slice(1), 16), roughness: 1, metalness: 0,
-            transparent: op < 1, opacity: op, side: THREE.DoubleSide, depthWrite: op >= 0.95,
-        }));
+        return getCachedMaterial(`covering-shade-${hex}-${Math.round(op * 100)}`, () => {
+            // The colour stays the raw user hex (readouts and tests compare it); only the
+            // environment contribution is tamed so the tarp does not blow out at noon.
+            const m = new THREE.MeshStandardMaterial({
+                color: parseInt(hex.slice(1), 16), roughness: 1, metalness: 0,
+                transparent: op < 1, opacity: op, side: THREE.DoubleSide, depthWrite: op >= 0.95,
+            });
+            m.envMapIntensity = 0.25;
+            return m;
+        });
     }
     if (kind === 'fabric') {
-        return getCachedMaterial('covering-fabric', () => new THREE.MeshStandardMaterial({
-            color: COVERING_COLORS.fabric, roughness: 1, metalness: 0,
-            transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false,
-        }));
+        return getCachedMaterial('covering-fabric', () => {
+            const m = new THREE.MeshStandardMaterial({
+                color: new THREE.Color(COVERING_COLORS.fabric).convertSRGBToLinear(), roughness: 1, metalness: 0,
+                transparent: true, opacity: 0.62, side: THREE.DoubleSide, depthWrite: false,
+            });
+            m.envMapIntensity = 0.3;
+            return m;
+        });
     }
     const color = kind === 'table' ? COVERING_COLORS.table : COVERING_COLORS.wall;
-    return getCachedMaterial(`covering-${kind}`, () => new THREE.MeshStandardMaterial({
-        color, roughness: 0.85, metalness: 0, side: THREE.DoubleSide,
-    }));
+    return getCachedMaterial(`covering-${kind}`, () => {
+        const m = new THREE.MeshStandardMaterial({
+            color: new THREE.Color(color).convertSRGBToLinear(), roughness: 0.85, metalness: 0, side: THREE.DoubleSide,
+        });
+        m.envMapIntensity = 0.3;
+        return m;
+    });
 }
 
 /**

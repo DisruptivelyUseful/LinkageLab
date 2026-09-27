@@ -101,6 +101,8 @@ function invalidateGeometryCache() {
     cachedCollisionFoldAngle = null;
     clearMeshStructureCache();
     state._deployedRingCenter = null;
+    // A structure edit invalidates the deploy preview's bake (deploy-preview.js)
+    if (typeof globalThis.onGeometryInvalidated === 'function') globalThis.onGeometryInvalidated();
 }
 
 function invalidateRcpCrossings() {

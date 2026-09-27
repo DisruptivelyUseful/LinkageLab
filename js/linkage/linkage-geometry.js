@@ -2374,6 +2374,7 @@ import { showToast } from '../core/feedback.js';
     }
     
     function updateRcpDiagnosticsUI() {
+        if (globalThis.__suppressRcpDiagnosticsUI) return;   // deploy bake samples many angles
         const panel = document.getElementById('rcp-diagnostics-panel');
         const cfg = state.supportBeams;
         if (!panel || !cfg) return;

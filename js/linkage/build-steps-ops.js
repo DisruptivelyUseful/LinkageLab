@@ -42,12 +42,12 @@ function getBenchGroup() {
 }
 
 const mat = {
-    plane: () => getCachedMaterial('bench_plane', () => new THREE.MeshLambertMaterial({ color: 0x3b3f46 })),
-    kerf: () => getCachedMaterial('bench_kerf', () => new THREE.MeshLambertMaterial({ color: 0x1a1208 })),
+    plane: () => getCachedMaterial('bench_plane', () => new THREE.MeshStandardMaterial({ color: 0x3b3f46, roughness: 0.9, metalness: 0.05 })),
+    kerf: () => getCachedMaterial('bench_kerf', () => new THREE.MeshStandardMaterial({ color: 0x1a1208, roughness: 1, metalness: 0 })),
     steel: () => getCachedMaterial('tool_steel', () => new THREE.MeshStandardMaterial({ color: 0xb8bcc2, metalness: 0.85, roughness: 0.35 })),
     dark: () => getCachedMaterial('tool_dark', () => new THREE.MeshStandardMaterial({ color: 0x2a2d31, metalness: 0.4, roughness: 0.6 })),
-    guard: () => getCachedMaterial('tool_guard', () => new THREE.MeshLambertMaterial({ color: 0xe8792b })),
-    body: () => getCachedMaterial('tool_body', () => new THREE.MeshLambertMaterial({ color: 0x2f7fc1 })),
+    guard: () => getCachedMaterial('tool_guard', () => new THREE.MeshStandardMaterial({ color: 0xe8792b, roughness: 0.6, metalness: 0.1 })),
+    body: () => getCachedMaterial('tool_body', () => new THREE.MeshStandardMaterial({ color: 0x2f7fc1, roughness: 0.55, metalness: 0.1 })),
 };
 
 /** A synthetic beam lying along +X on the bench (width across Z, thickness up Y). */

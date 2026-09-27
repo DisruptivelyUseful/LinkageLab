@@ -211,6 +211,10 @@ export const state = {
     // Sun position for lighting simulation
     sunAzimuth: 135,    // Degrees from north (0=N, 90=E, 180=S, 270=W) - default: SE
     sunElevation: 45,   // Degrees above horizon (0-90)
+    sunTime: 50,               // Time-of-day slider: 0-100 over a 24 h clock (50 = noon)
+    shadowsEnabled: false,     // Sun/moon shadow casting (heavy; forced off by the radial array)
+    simulationLatitude: 35,    // Degrees north, for the solar arc
+    simulationDayOfYear: 172,  // Day of year, for the solar arc (172 = June solstice)
     
     // New state properties
     measureMode: false,

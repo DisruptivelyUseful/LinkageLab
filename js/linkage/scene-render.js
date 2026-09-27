@@ -3,6 +3,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { calculateJointPositions } from './joint-kinematics.js';
 import { partKey } from './part-keys.js';
+import { cloneMaterialForMutation } from './materials.js';
 
     // Radius (inches) around the focused assembly within which structure beams
     // are drawn semi-transparent in hardware detail ("part view") mode so the
@@ -119,11 +120,14 @@ import { partKey } from './part-keys.js';
                 // hardware and washer stack inside are readable through the beam.
                 if (detail && hwFocus && hwBeamNearPoint(beam, hwFocus.xf.position, HW_DETAIL_BEAM_RADIUS)) {
                     mesh.traverse(ch => {
-                        if (ch.isMesh && ch.material) {
-                            ch.material.transparent = true;
-                            ch.material.opacity = 0.26;
-                            ch.material.depthWrite = false;
-                        }
+                        if (!ch.isMesh || !ch.material) return;
+                        // Materials are shared (cached): clone before fading this beam
+                        ch.material = cloneMaterialForMutation(ch.material);
+                        (Array.isArray(ch.material) ? ch.material : [ch.material]).forEach(m => {
+                            m.transparent = true;
+                            m.opacity = 0.26;
+                            m.depthWrite = false;
+                        });
                     });
                     mesh.renderOrder = 0;
                 }
@@ -319,9 +323,9 @@ import { partKey } from './part-keys.js';
 
             // Optional IBC GLB at structure footprint center
             updateIbcGlbReference(data, sc);
+            updateIbcPower();
 
             // Update ground plane for shadows
-            updateGroundPlane();
 
             // Skip ortho scene mesh rebuilds during animation / build-step playback (major perf win)
         }
@@ -518,14 +522,16 @@ import { partKey } from './part-keys.js';
             const w = mainSizeEl.clientWidth;
             const h = mainSizeEl.clientHeight;
             if (w > 0 && h > 0) {
-                mainWebGLCanvas.width = w;
-                mainWebGLCanvas.height = h;
-                threeRenderer.main.setSize(w, h, false);
+                // Only reallocate the drawing buffer when the box actually changed
+                const cur = threeRenderer.main.getSize(new THREE.Vector2());
+                if (cur.x !== w || cur.y !== h) threeRenderer.main.setSize(w, h, false);
             }
         }
         
         // Update scenes with structure center for proper rotation pivot
         updateThreeJSScenes(data, structureCenter);
+        // Deploy preview: the baked sequence stands in for the live structure
+        if (typeof globalThis.applyDeployPreviewVisibility === 'function') globalThis.applyDeployPreviewVisibility();
         
         // In part view, orbit/frame around the focused assembly instead of the structure center.
         const camCenter = (state.hwDetailMode && threeRenderer._hwFocusTarget)
@@ -533,8 +539,12 @@ import { partKey } from './part-keys.js';
             : structureCenter;
         threeRenderer._lastMainCenter = camCenter;
         updateMainCamera(camCenter);
-        updateGridPosition(structureCenter);
+        // Ground, grid, star dome and shadow frustum follow the structure footprint
+        const footprint = data && data.structureBounds ? data.structureBounds.maxRadius : undefined;
+        const groundY = data && data.structureBounds && data.structureBounds.min ? data.structureBounds.min.y : undefined;
+        updateGridPosition(structureCenter, footprint, groundY);
         threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
+        threeRenderer._lastRenderTs = performance.now();
         
         return true;
     }
@@ -551,6 +561,7 @@ import { partKey } from './part-keys.js';
         const center = structureCenter || threeRenderer._lastMainCenter || { x: 0, y: 0, z: 0 };
         updateMainCamera(center);
         threeRenderer.main.render(threeRenderer.mainScene, threeRenderer.mainCamera);
+        threeRenderer._lastRenderTs = performance.now();
         return true;
     }
 

@@ -480,7 +480,19 @@ function applyPanelAxesToThreeGroup(group, panel) {
     group.quaternion.setFromRotationMatrix(mat);
 }
 
-function getPanelSurfaceMaterials(panel) {
+/**
+ * Panel surface materials. Uses the shared material studio (materials.js, via the
+ * global bridge so this module stays THREE-free at import time); falls back to
+ * plain materials if the studio is not loaded.
+ * @param {object} panel
+ * @param {number} [segLen] length of one folding segment (cells are sized per segment)
+ */
+function getPanelSurfaceMaterials(panel, segLen) {
+    if (typeof globalThis.getPanelMaterials === 'function') {
+        const opts = typeof globalThis.sceneMaterialOpts === 'function' ? globalThis.sceneMaterialOpts() : {};
+        const set = globalThis.getPanelMaterials(panel.width || 40, segLen || panel.length || 65, opts);
+        return { cell: set.cell, back: set.back, edge: set.frame, hinge: set.hinge };
+    }
     const cellColor = rgbToThreeColor(panel.colorBase);
     return {
         cell: new THREE.MeshPhongMaterial({ color: cellColor, specular: 0x888899, shininess: 80, side: THREE.DoubleSide }),
@@ -505,7 +517,9 @@ function createFoldingPanelMesh(panel) {
     const deploy = Math.max(0, Math.min(1, panel.foldDeploy != null ? panel.foldDeploy : 1));
     const segLen = panel.length / n;
     const foldAngle = (1 - deploy) * Math.PI;
-    const mats = getPanelSurfaceMaterials(panel);
+    const mats = getPanelSurfaceMaterials(panel, segLen);
+    // BoxGeometry face order is +x, -x, +y, -y, +z, -z: cells on top, backsheet below, frame around
+    const segMaterials = [mats.edge, mats.edge, mats.cell, mats.back, mats.edge, mats.edge];
     const flip = (panel.foldDirection != null ? panel.foldDirection : 1) < 0;
 
     let arm = root;
@@ -521,7 +535,7 @@ function createFoldingPanelMesh(panel) {
         arm.add(pivot);
 
         const segGeo = new THREE.BoxGeometry(panel.width, panel.thickness, segLen);
-        const segMesh = new THREE.Mesh(segGeo, mats.cell);
+        const segMesh = new THREE.Mesh(segGeo, segMaterials);
         segMesh.position.z = flip ? -segLen / 2 : segLen / 2;
         pivot.add(segMesh);
 

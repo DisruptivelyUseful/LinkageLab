@@ -462,6 +462,26 @@ body:not(.anim-playing) #btn-anim-pause {
     }
 }
 
+/* The Deploy preview button rides in the transport cluster; its label only fits on wide bars
+   (the centre budget above has ~60px to spare at 1441px, an icon-only button needs ~40).
+   Between the 1360 and 1181 tiers even the icon does not fit on one row, so the button
+   hides there and the Animation group's own button opens the preview instead. */
+@media (max-width: 1600px) {
+    #btn-deploy-preview {
+        font-size: 0;
+    }
+
+    #btn-deploy-preview > span {
+        font-size: 0.9rem;
+    }
+}
+
+@media (min-width: 1181px) and (max-width: 1360px) {
+    #btn-deploy-preview {
+        display: none;
+    }
+}
+
 /* Narrow screens: two rows. The sidebar and viewport read --topbar-h, so they follow. */
 @media (max-width: 1180px) {
     :root {
