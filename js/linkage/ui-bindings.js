@@ -21,6 +21,7 @@ import { bindNumericInput } from './numeric-input.js';
 import { initRadialArrayUI, syncRadialArrayUI } from './radial-array-ui.js';
 import { flyCameraTo } from './render-loop.js';
 import { isDeployPreviewActive, toggleDeployPlay, playDeploy, pauseDeploy, reverseDeploy, initDeployPreviewUI } from './deploy-preview.js';
+import { syncSequentialFoldUI } from './radial-array-ui.js';
 
     let currentAppMode = 'linkage';
     let panelSyncTimeout = null;
@@ -1048,6 +1049,7 @@ import { isDeployPreviewActive, toggleDeployPlay, playDeploy, pauseDeploy, rever
         document.getElementById('sl-array-count').oninput = e => {
             const val = parseInt(e.target.value) || 1;
             state.arrayCount = val;
+            syncSequentialFoldUI();
             document.getElementById('nb-array-count').value = val;
             invalidateGeometryCache();
             requestRender();
@@ -1056,6 +1058,7 @@ import { isDeployPreviewActive, toggleDeployPlay, playDeploy, pauseDeploy, rever
             let val = parseInt(e.target.value) || 1;
             val = Math.max(1, Math.min(10, val));
             state.arrayCount = val;
+            syncSequentialFoldUI();
             document.getElementById('sl-array-count').value = val;
             e.target.value = val;
             invalidateGeometryCache();
@@ -1333,7 +1336,12 @@ import { isDeployPreviewActive, toggleDeployPlay, playDeploy, pauseDeploy, rever
         document.getElementById('sl-anim-speed').addEventListener('input', e => {
             state.animation.speed = parseFloat(e.target.value);
         });
-        document.getElementById('chk-anim-pingpong').onchange = e => {
+        document.getElementById('chk-anim-sequential').onchange = e => {
+            state.animation.sequentialFold = e.target.checked;
+            syncSequentialFoldUI();
+            requestRender();
+        };
+                document.getElementById('chk-anim-pingpong').onchange = e => {
             state.animation.pingPong = e.target.checked;
             // If enabling ping-pong, disable regular loop
             if (e.target.checked) {

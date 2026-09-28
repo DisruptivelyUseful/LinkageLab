@@ -1115,7 +1115,10 @@ function getCapInnerVBeamRingSpec(isBottom, stackReversed, pivots) {
  * @param {number} foldAngle - Fold angle in radians
  * @returns {{beams: Beam3D[], brackets: Bracket3D[], bolts: Array, maxRad: number, maxHeight: number}} Geometry data
  */
-function solveLinkage(foldAngle) {
+function solveLinkage(foldAngle, solveOptions = {}) {
+    // The arch tunnel array is normally replicated here; the sequential fold replicates
+    // per copy at assembly level instead and passes { arrayCount: 1 }.
+    const arrayCountForSolve = solveOptions.arrayCount !== undefined ? (solveOptions.arrayCount | 0) : state.arrayCount;
     // Calculate beam lengths in inches
     const hTotIn = state.hLengthFt * INCHES_PER_FOOT;
     const hActiveIn = hTotIn - state.offsetTopIn - state.offsetBotIn;
@@ -2632,7 +2635,7 @@ function solveLinkage(foldAngle) {
     } // End of arch mode transformation block
     
     // Duplicate structure for array mode (tunnel/tube)
-    if (state.arrayCount > 1 && state.orientation === 'vertical') {
+    if (arrayCountForSolve > 1 && state.orientation === 'vertical') {
         // Calculate the depth of a single structure in Z direction to determine spacing
         // Find the frontmost and backmost points
         let minZ = Infinity, maxZ = -Infinity;
@@ -2674,10 +2677,10 @@ function solveLinkage(foldAngle) {
         
         // Create arrayCount copies, extending in Z direction (back)
         // Center the array around Z=0
-        const totalArrayDepth = (state.arrayCount - 1) * spacing;
+        const totalArrayDepth = (arrayCountForSolve - 1) * spacing;
         const startOffsetZ = -totalArrayDepth / 2;
         
-        for (let i = 0; i < state.arrayCount; i++) {
+        for (let i = 0; i < arrayCountForSolve; i++) {
             const offsetZ = startOffsetZ + i * spacing; // Each structure is offset further back
             
             // Duplicate beams - preserve orientation by copying corners directly

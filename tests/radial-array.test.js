@@ -233,6 +233,41 @@ describe('radial array: horizontal honeycomb', () => {
         radii.forEach(r => expect(r).toBeCloseTo(radii[0], 4));
     });
 
+    it('reuses a deployed plan so every copy folds in place about its own deployed centre', () => {
+        // Plan on the deployed ring, then apply that plan to a partly folded ring (as
+        // buildLinkageGeometry does through ensureDeployedFrame): the slot offsets must not
+        // change, and copy k's module-0 pivot must be the slot transform of the base pivot.
+        const s = createTestState({ modules: 8, pivotPct: 40, radialArrayEnabled: true, radialCount: 6 });
+        globalThis.state = s;
+        const closed = getOptimalClosedAngleForAnimation();
+        const deployed = solveLinkage(closed);
+        const plan = planRadialArray(s, deployed.beams);
+        s.foldAngle = closed - (40 * Math.PI) / 180;
+        const folded = solveLinkage(s.foldAngle);
+        const freshPlan = planRadialArray(s, folded.beams);
+        // Planning on the folded pose would move the anchor and change the radius…
+        expect(Math.hypot(freshPlan.anchor.x - plan.anchor.x, freshPlan.anchor.z - plan.anchor.z)).toBeGreaterThan(1);
+        // …but the applied plan is the deployed one, unchanged.
+        const arr = applyRadialArray(s, folded, { plan });
+        expect(arr.plan.anchor).toEqual(plan.anchor);
+        expect(arr.plan.radius).toBeCloseTo(plan.radius, 9);
+        expect(arr.plan.autoStartRad).toBeCloseTo(plan.autoStartRad, 9);
+        arr.plan.slots.forEach((sl, i) => {
+            expect(sl.offset.x).toBeCloseTo(plan.slots[i].offset.x, 9);
+            expect(sl.offset.z).toBeCloseTo(plan.slots[i].offset.z, 9);
+        });
+        const basePivot = folded.beams.find(b => b.moduleIndex === 0 && b.stackType.startsWith('horizontal')).center;
+        plan.slots.forEach(sl => {
+            const xf = makeSlotTransforms(plan, sl);
+            const expected = xf.point(basePivot);
+            const copyBeam = arr.geometry.beams.find(b => b.arrayIndex === sl.slot && b.moduleIndex === 0 && b.stackType.startsWith('horizontal'));
+            expect(copyBeam.center.x).toBeCloseTo(expected.x, 6);
+            expect(copyBeam.center.z).toBeCloseTo(expected.z, 6);
+        });
+        // The caller's plan object is left untouched
+        expect(plan.linearCount).toBeUndefined();
+    });
+
     it('falls back to the footprint centre for a straight (non-curving) chain', () => {
         globalThis.state = createTestState({ modules: 6, pivotPct: 50, foldAngle: (100 * Math.PI) / 180 });
         const data = solveLinkage(globalThis.state.foldAngle);
@@ -297,6 +332,55 @@ describe('radial array: vertical toroid', () => {
         expect(arr.beams.length).toBe(tunnel.beams.length * 4);
         const idx = [...new Set(arr.beams.map(b => b.arrayIndex))].sort((a, b) => a - b);
         expect(idx).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    });
+});
+
+describe('radial array: sequential per-copy sources', () => {
+    it('chains tunnel segments end-to-end using each segment\'s own depth and keeps arrayIndex unique', () => {
+        // Sequential arch arrays replicate single-segment solves at assembly level: each
+        // copy may be at a different fold angle (different depth) and must stay touching.
+        globalThis.state = createTestState({ modules: 5, orientation: 'vertical', arrayCount: 3, pivotPct: 40 });
+        const s = globalThis.state;
+        const closed = getOptimalClosedAngleForAnimation();
+        const deployed = solveLinkage(closed, { arrayCount: 1 });
+        const folded = solveLinkage(closed - (50 * Math.PI) / 180, { arrayCount: 1 });
+        expect(deployed.beams.every(b => !b.arrayIndex)).toBe(true);   // single segment
+        const zExt = (beams) => { let a = Infinity, b = -Infinity; beams.forEach(bm => bm.corners.forEach(c => { a = Math.min(a, c.z); b = Math.max(b, c.z); })); return { min: a, max: b, depth: b - a }; };
+        const dDep = zExt(deployed.beams).depth, dFold = zExt(folded.beams).depth;
+        expect(Math.abs(dDep - dFold)).toBeGreaterThan(1);
+        const sources = [deployed, folded, deployed];
+        const arr = applyRadialArray(s, deployed, { linearCopies: 3, sourceFor: (slot, i) => sources[i] });
+        expect(arr).not.toBeNull();
+        expect(arr.plan.linearOnly).toBe(true);
+        expect(arr.plan.linearCount).toBe(3);
+        const idx = [...new Set(arr.geometry.beams.map(b => b.arrayIndex))].sort((a, b) => a - b);
+        expect(idx).toEqual([0, 1, 2]);
+        // Segments touch: each copy's z range ends where the next begins, total centred on 0
+        const ranges = [0, 1, 2].map(i => zExt(arr.geometry.beams.filter(b => b.arrayIndex === i)));
+        expect(ranges[0].max).toBeCloseTo(ranges[1].min, 6);
+        expect(ranges[1].max).toBeCloseTo(ranges[2].min, 6);
+        expect(ranges[1].depth).toBeCloseTo(dFold, 6);
+        expect(ranges[0].min + ranges[2].max).toBeCloseTo(0, 6);
+    });
+
+    it('takes each radial copy from its own source geometry', () => {
+        globalThis.state = createTestState({ modules: 8, pivotPct: 40, radialArrayEnabled: true, radialCount: 2 });
+        const s = globalThis.state;
+        const closed = getOptimalClosedAngleForAnimation();
+        const deployed = solveLinkage(closed);
+        const folded = solveLinkage(closed - (60 * Math.PI) / 180);
+        const plan = planRadialArray(s, deployed.beams);
+        const arr = applyRadialArray(s, deployed, { plan, sourceFor: (slot) => (slot === 1 ? folded : deployed) });
+        const perSlot = (slot) => arr.geometry.beams.filter(b => b.arrayIndex === slot);
+        expect(perSlot(0).length).toBe(deployed.beams.length);
+        expect(perSlot(1).length).toBe(folded.beams.length);
+        // Copy 1 is the folded solve rigidly moved to its slot: same beam lengths as `folded`
+        const len = (b) => Math.hypot(b.p2.x - b.p1.x, b.p2.y - b.p1.y, b.p2.z - b.p1.z);
+        expect(len(perSlot(1)[0])).toBeCloseTo(len(folded.beams[0]), 6);
+        const xf = makeSlotTransforms(plan, plan.slots[1]);
+        const expected = xf.point(folded.beams[0].center);
+        expect(perSlot(1)[0].center.x).toBeCloseTo(expected.x, 6);
+        expect(perSlot(1)[0].center.z).toBeCloseTo(expected.z, 6);
     });
 });
 

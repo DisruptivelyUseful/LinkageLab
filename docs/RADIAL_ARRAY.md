@@ -29,13 +29,44 @@ designed structure around a central anchor point.
 ### Auto radius
 
 - Horizontal: the anchor is the ring's circumcentre (computed from three
-  module centres, so it is valid at any fold angle). Copy 0 is placed against
-  module 0's flat face at twice that face's reach from the centre, so
-  neighbours share a face like honeycomb cells. The other copies follow at
-  360°/N steps.
+  module centres). Copy 0 is placed against module 0's flat face at twice that
+  face's reach from the centre, so neighbours share a face like honeycomb
+  cells. The other copies follow at 360°/N steps.
+- The plan (anchor, radius, start angle, slot offsets) is measured **once on
+  the fully deployed ring** (`ensureDeployedFrame()` in `linkage-geometry.js`,
+  cached on `state._deployedFrame` and cleared by `invalidateGeometryCache()`)
+  and reused at every fold angle. Each copy therefore folds in place about its
+  own deployed centre, exactly like the centre structure, instead of drifting
+  with the folded footprint.
 - Vertical: the anchor is the arch footprint centre. The radius is chosen so
   the inner feet of adjacent arches just meet:
   `radius = halfWidth + depth / (2·sin(π/N))`.
+
+## Folding, one at a time, and the packed view
+
+- Every copy folds in place about its own deployed centre (the plan above is
+  fixed on the deployed pose).
+- **Fold structures one at a time** (Animation group, shown whenever the design
+  holds more than one structure — radial copies and/or arch tunnel segments)
+  turns the fold slider, Play, Fold and Unfold into a master progress: the
+  centre structure unfolds first (when present and visible), then Copy 1,
+  Copy 2 …; folding runs the same order in reverse. Each structure takes the
+  normal cycle time, so Play lasts K times longer. Saved as `mode.sequentialFold`.
+- **Pack** (top bar) / **Show packed for transport** (Animation group) opens the
+  Deploy preview at its start: every folded structure, the roof beams, the
+  panels and the IBC packed together, with the pack size, volume and the whole
+  array's weight. Bundles stand inside the IBC footprint when they fit (40 × 48
+  in, up to 12 ft), otherwise they lie flat beside it in layers. The Deploy
+  clip (and the GLB export) then deploys the copies one after another when the
+  sequential option is on, or all together otherwise. See
+  [docs/VIEWER.md](VIEWER.md).
+
+## Bill of materials
+
+The BOM drawer, build guide, PDF/CSV and the solar-designer export report the
+**individual structure** (quantities, costs, weights as before) and the
+**whole array** (× visible copies × tunnel segments) side by side; the top-bar
+Weight and Cost chips show the whole array. See `js/linkage/bom.js`.
 
 ## Performance guard
 

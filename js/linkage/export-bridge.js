@@ -4,6 +4,7 @@ import { bridgeGlobals } from './global-bridge.js';
 import { getConfigSnapshot } from './config-persistence.js';
 import { saveStateToHistory } from './history.js';
 import { buildLinkageGeometry, getActivePanelConfig } from './linkage-geometry.js';
+import { computeBillOfMaterials } from './bom.js';
 import { buildHardwareAssemblyDebugSnapshot } from './hardware-detail.js';
 
     function generateDefaultFilename() {
@@ -475,34 +476,14 @@ import { buildHardwareAssemblyDebugSnapshot } from './hardware-detail.js';
     function buildLinkageExportData() {
         const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
         const panelConfig = getActivePanelConfig();
-        const panelCount = data.panels ? data.panels.length : 0;
-        const moduleCount = state.modules;
-        const hBeams = moduleCount * 2 * state.hStackCount;
-        const uBrackets = moduleCount * 4;
-        const splitBolts = needsSplitVBolts();
-        const vBoltsInner = moduleCount * 2;
-        const vBoltsOuter = moduleCount * 2;
-        const vBoltsCenter = moduleCount * 1;
-        const hCenterBolts = moduleCount * 2;
-        const hPivotBolts = moduleCount * 4;
-        const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-        const totalHBolts = hCenterBolts + hPivotBolts;
-        const costVInner = splitBolts ? (state.costBoltVInner || 0.75) : (state.costBoltVInner || 0.75);
-        const costVOuter = splitBolts ? (state.costBoltVOuter || 0.50) : costVInner;
-        const costH = state.costBoltH || 0.75;
-        const costHPivot = state.costBoltHPivot || 0.75;
-        const hBeamsCost = hBeams * state.costHBeam;
-        const vBeamsCost = calculateVBeamsCost();
-        const bracketCost = uBrackets * state.costBracket;
-        const boltCost = vBoltsInner * costVInner + vBoltsOuter * costVOuter + vBoltsCenter * costVInner
-            + hCenterBolts * costH + hPivotBolts * costHPivot;
-        const vWashersPerBolt = state.vStackCount > 1 ? (state.vStackCount - 1) : 0;
-        const vWasherCount = state.vWasherEnabled ? (totalVBolts * vWashersPerBolt) : 0;
-        const hWashersPerBolt = state.hStackCount > 1 ? (state.hStackCount - 1) : 0;
-        const hWasherCount = state.hWasherEnabled ? (totalHBolts * hWashersPerBolt) : 0;
-        const costWasherV = state.costWasherV || 0.10;
-        const costWasherH = state.costWasherH || 0.10;
-        const washerCost = (vWasherCount * costWasherV) + (hWasherCount * costWasherH);
+        const panelCount = data.panels ? data.panels.length : 0;       // every copy: what the designer sizes for
+        const bom = computeBillOfMaterials(data, state);
+        const ps = bom.perStructure;
+        const hBeamsCost = ps.cost.hBeam;
+        const vBeamsCost = ps.cost.vBeam;
+        const bracketCost = ps.cost.bracket;
+        const boltCost = ps.cost.bolt;
+        const washerCost = ps.cost.washer;
         const structureSubtotal = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost;
         const solarCost = panelCount * state.costSolarPanel;
         const isArchMode = state.orientation === 'vertical';
@@ -513,6 +494,7 @@ import { buildHardwareAssemblyDebugSnapshot } from './hardware-detail.js';
             timestamp: Date.now(),
             solarPanels: {
                 count: panelCount,
+                perStructure: ps.counts.panels,
                 specs: {
                     name: `LinkageLab ${panelConfig.ratedWatts}W Panel`,
                     wmp: panelConfig.ratedWatts,
@@ -542,8 +524,17 @@ import { buildHardwareAssemblyDebugSnapshot } from './hardware-detail.js';
                 brackets: bracketCost,
                 bolts: boltCost,
                 subtotal: structureSubtotal,
+                perStructure: true,
             },
-            totalBomCost: structureSubtotal + solarCost,
+            // Radial / arch arrays: how many structures the design holds, and the whole-array figures
+            arrayCopies: bom.copies.total,
+            structureCostAll: structureSubtotal * bom.copies.total,
+            totalBomCostPerStructure: structureSubtotal + ps.cost.solar,
+            totalBomCost: structureSubtotal * bom.copies.total + solarCost,
+            weight: {
+                perStructureLb: ps.weight.total,
+                totalLb: bom.total.weight.total,
+            },
             structureGeometry: serializeGeometry(data),
             cameraState: {
                 yaw: state.cam.yaw,

@@ -185,6 +185,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
             if (m.useFixedBeams !== undefined) state.useFixedBeams = m.useFixedBeams;
             if (m.capUprights !== undefined) state.archCapUprights = m.capUprights;
             if (m.arrayCount !== undefined) state.arrayCount = m.arrayCount;
+            if (m.sequentialFold !== undefined && state.animation) state.animation.sequentialFold = !!m.sequentialFold;
             if (m.radialArray && typeof m.radialArray === 'object') {
                 Object.entries(RADIAL_ARRAY_CONFIG_MAP).forEach(([cfgKey, stateKey]) => {
                     const v = m.radialArray[cfgKey];
@@ -505,6 +506,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade 8m Cylinder 18p - soak 26 
                 useFixedBeams: state.useFixedBeams,
                 capUprights: state.archCapUprights,
                 arrayCount: state.arrayCount,
+                sequentialFold: !!(state.animation && state.animation.sequentialFold),
                 radialArray: Object.fromEntries(
                     Object.entries(RADIAL_ARRAY_CONFIG_MAP).map(([cfgKey, stateKey]) => {
                         const v = state[stateKey];

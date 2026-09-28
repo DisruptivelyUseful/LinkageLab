@@ -50,6 +50,16 @@ const preview = {
  * Human-readable phase for a normalised time t (0 packed … 1 deployed), from the
  * bake's meta { timeline: { fold, support, panels }, minFoldDeg, maxFoldDeg }.
  */
+function phaseWithin(t, spans, angleAt, hasAngles) {
+    if (t < spans.fold[0]) return 'Unpacking';
+    if (t <= spans.fold[1]) {
+        const u = (t - spans.fold[0]) / (spans.fold[1] - spans.fold[0]);
+        return hasAngles ? `Unfolding ${angleAt(u)}` : `Unfolding ${Math.round(u * 100)}%`;
+    }
+    if (spans.support && t <= spans.support[1]) return 'Roof beams';
+    return 'Panels';
+}
+
 function deployPhaseLabel(t, meta) {
     const tl = meta && meta.timeline;
     const hasAngles = !!meta && isFinite(meta.minFoldDeg) && isFinite(meta.maxFoldDeg);
@@ -57,16 +67,34 @@ function deployPhaseLabel(t, meta) {
     if (tl && tl.fold) {
         if (t <= 0.001) return 'Packed';
         if (t >= 0.999) return 'Deployed';
-        if (t < tl.fold[0]) return 'Unpacking';
-        if (t <= tl.fold[1]) {
-            const u = (t - tl.fold[0]) / (tl.fold[1] - tl.fold[0]);
-            return hasAngles ? `Unfolding ${angleAt(u)}` : `Unfolding ${Math.round(u * 100)}%`;
+        // Several structures, one after another: name the one in its window
+        const copies = Array.isArray(tl.copies) ? tl.copies : [];
+        if (copies.length > 1 && copies.some(c => c.window && (c.window[1] - c.window[0]) < 0.999)) {
+            const c = copies.find(c => t >= c.window[0] && t < c.window[1]) || copies[copies.length - 1];
+            return `${c.label} · ${phaseWithin(t, c, angleAt, hasAngles)}`;
         }
-        if (tl.support && t <= tl.support[1]) return 'Roof beams';
-        return 'Panels';
+        return phaseWithin(t, tl, angleAt, hasAngles);
     }
     if (hasAngles) return angleAt(t);
     return `${Math.round(t * 100)}%`;
+}
+
+/** One-line summary of the pack (bundle count, where, size, volume, weight) from the bake meta. */
+function describePackMeta(meta) {
+    const pack = meta && meta.pack;
+    if (!pack) return '';
+    const uc = globalThis.unitConverter;
+    const len = (inches) => (uc && uc.formatInchesAsLargeUnit ? uc.formatInchesAsLargeUnit(inches, 2) : `${Math.round(inches)} in`);
+    const where = pack.inIbc
+        ? `inside the IBC column${pack.grid && pack.bundles > 1 ? ` (${pack.grid.cols} × ${pack.grid.rows})` : ''}`
+        : `flat beside the IBC${pack.grid && pack.grid.rows > 1 ? ` in ${pack.grid.rows} layers` : ''}`;
+    const parts = [
+        `${pack.bundles} bundle${pack.bundles === 1 ? '' : 's'} · ${where}`,
+        `pack ${len(pack.packBox.x)} × ${len(pack.packBox.z)} × ${len(pack.packBox.y)} high`,
+        `${pack.volumeFt3} ft³`,
+    ];
+    if (pack.packedWeightLb > 0) parts.push(uc && uc.formatWeightWithUnit ? uc.formatWeightWithUnit(pack.packedWeightLb) : `${Math.round(pack.packedWeightLb)} lb`);
+    return parts.join(' · ');
 }
 
 // --- DOM helpers -------------------------------------------------------------------------
@@ -107,6 +135,18 @@ function syncUI() {
     }
     const chk = el('chk-deploy-dayclock');
     if (chk) chk.checked = preview.dayClock;
+    const summary = el('deploy-pack-summary');
+    if (summary) {
+        summary.textContent = preview.active ? describePackMeta(preview.meta) : '';
+        summary.hidden = !preview.active || !summary.textContent;
+    }
+    const packBtn = el('btn-deploy-pack');
+    if (packBtn) packBtn.classList.toggle('is-active', preview.active && preview.t <= 0.001);
+    const packEnter = el('btn-deploy-pack-enter');
+    if (packEnter) {
+        packEnter.disabled = preview.baking;
+        packEnter.hidden = preview.active;
+    }
     const animStatus = el('anim-status');
     if (animStatus && preview.active) animStatus.textContent = preview.playing ? 'Deploy preview' : 'Deploy preview (paused)';
 }
@@ -136,8 +176,13 @@ function liveGroundY() {
     }
 }
 
-function enterDeployPreview() {
-    if (preview.active || preview.baking) return;
+function enterDeployPreview(opts = {}) {
+    if (preview.active) {
+        if (opts.t !== undefined) { pauseDeploy(); setDeployT(opts.t); }
+        return;
+    }
+    if (preview.baking) return;
+    preview.enterT = opts.t !== undefined ? opts.t : 1;
     const state = liveState();
     const tr = globalThis.threeRenderer;
     if (!state || !tr || !tr.initialized || typeof THREE === 'undefined') return;
@@ -233,11 +278,11 @@ function bakeAndShow() {
     preview.playing = false;
     preview.cycling = false;
     preview.direction = 1;
-    setDeployT(1);
+    setDeployT(preview.enterT !== undefined ? preview.enterT : 1);
     if (typeof globalThis.updateSunPosition === 'function') globalThis.updateSunPosition();
     syncUI();
     renderNow();
-    showToast('Deploy preview: scrub the slider or press Play', 'success');
+    showToast(preview.t <= 0.001 ? 'Packed for transport: scrub the slider or press Play to deploy' : 'Deploy preview: scrub the slider or press Play', 'success');
 }
 
 function cleanup() {
@@ -384,17 +429,21 @@ function initDeployPreviewUI() {
     if (exit) exit.onclick = () => exitDeployPreview();
     const enter = el('btn-deploy-enter');
     if (enter) enter.onclick = () => enterDeployPreview();
+    const pack = el('btn-deploy-pack');
+    if (pack) pack.onclick = () => enterDeployPreview({ t: 0 });
+    const packEnter = el('btn-deploy-pack-enter');
+    if (packEnter) packEnter.onclick = () => enterDeployPreview({ t: 0 });
     globalThis.onGeometryInvalidated = onGeometryInvalidated;
     syncUI();
 }
 
 const _moduleExports = {
     deployPreview: preview,
-    deployPhaseLabel, isDeployPreviewActive, enterDeployPreview, exitDeployPreview, applyDeployPreviewVisibility,
+    deployPhaseLabel, describePackMeta, isDeployPreviewActive, enterDeployPreview, exitDeployPreview, applyDeployPreviewVisibility,
     setDeployT, getDeployT, setDayClock, playDeploy, pauseDeploy, toggleDeployPlay, reverseDeploy, initDeployPreviewUI,
 };
 bridgeGlobals(_moduleExports, 'deployPreview');
 export {
-    deployPhaseLabel, isDeployPreviewActive, enterDeployPreview, exitDeployPreview, applyDeployPreviewVisibility,
+    deployPhaseLabel, describePackMeta, isDeployPreviewActive, enterDeployPreview, exitDeployPreview, applyDeployPreviewVisibility,
     setDeployT, getDeployT, setDayClock, playDeploy, pauseDeploy, toggleDeployPlay, reverseDeploy, initDeployPreviewUI,
 };

@@ -383,18 +383,25 @@ function cloneCoveringShape(shape, xf, arrayIndex, slotIndex, isBaseCopy) {
  * tagging each copy with `arrayIndex`, `slotIndex` and `isBaseCopy` (first slot).
  * Returns the input array untouched (with `isBaseCopy: true`) when there is no plan.
  */
-function replicateShapes(plan, shapes) {
+function replicateShapes(plan, shapes, opts = {}) {
     const list = Array.isArray(shapes) ? shapes.filter(Boolean) : [];
     if (!plan || !plan.slots || !plan.slots.length) return list.map(sh => ({ ...sh, isBaseCopy: true }));
     const linearCount = Math.max(1, plan.linearCount | 0);
+    const perCopy = plan.copyShifts && typeof opts.sourceFor === 'function';
+    const linearCopies = perCopy ? linearCount : 1;
     const out = [];
     let first = true;
     plan.slots.forEach((slot) => {
         if (slot.hidden) return;
-        const xf = makeSlotTransforms(plan, slot);
-        const arrayIndex = slot.slot * linearCount;
-        list.forEach(sh => out.push(cloneCoveringShape(sh, xf, arrayIndex, slot.slot, first)));
-        first = false;
+        const baseXf = makeSlotTransforms(plan, slot);
+        for (let i = 0; i < linearCopies; i++) {
+            const src = perCopy ? (opts.sourceFor(slot.slot, i) || list) : list;
+            const shift = perCopy ? (plan.copyShifts[`${slot.slot}:${i}`] || 0) : 0;
+            const xf = withZShift(baseXf, shift);
+            const arrayIndex = slot.slot * linearCount + (perCopy ? i : 0);
+            (Array.isArray(src) ? src.filter(Boolean) : []).forEach(sh => out.push(cloneCoveringShape(sh, xf, arrayIndex, slot.slot, first)));
+            first = false;
+        }
     });
     return out;
 }
@@ -407,41 +414,128 @@ function replicateShapes(plan, shapes) {
  * @param {object} s     - app state
  * @param {object} geo   - { beams, brackets, bolts, washers, hardwareAssemblyPlacements,
  *                           panels?, supportBeams? } (only the arrays present are cloned)
+ * @param {{ plan?: object }} [opts] - plan: reuse this slot plan (deployed pose) instead of planning here
  * @returns {{ geometry: object, plan: object } | null}  null when the array is inactive
  */
-function applyRadialArray(s, geo) {
-    if (!isRadialArrayActive(s)) return null;
+/** Z extent of a structure's main beams (arch tunnel segment depth). */
+function mainBeamZExtent(beams) {
+    let minZ = Infinity, maxZ = -Infinity;
+    (beams || []).forEach(b => {
+        if (!b || (b.stackType && (b.stackType.startsWith('support-beam') || b.stackType.startsWith('floor-beam')))) return;
+        const pts = (b.corners && b.corners.length) ? b.corners : [b.p1, b.p2];
+        pts.forEach(p => { if (!isVec(p)) return; if (p.z < minZ) minZ = p.z; if (p.z > maxZ) maxZ = p.z; });
+    });
+    if (!Number.isFinite(minZ)) return { minZ: 0, maxZ: 0, depth: 0, center: 0 };
+    return { minZ, maxZ, depth: maxZ - minZ, center: (minZ + maxZ) / 2 };
+}
+
+/** A one-slot plan used to replicate the linear (tunnel) copies without a radial array. */
+function linearOnlyPlan() {
+    return {
+        linearOnly: true, hiddenSlots: [], visibleCount: 1, orientation: 'vertical', count: 0,
+        anchor: { x: 0, y: 0, z: 0 }, radius: 0, autoRadius: 0, autoStartRad: 0, startRad: 0, footprint: {},
+        slots: [{ slot: 0, isCenter: true, thetaRad: 0, phiRad: 0, offset: { x: 0, y: 0, z: 0 } }],
+    };
+}
+
+/**
+ * Per-copy z shifts that chain L tunnel segments end-to-end, each with its own
+ * current depth (so segments folding one at a time stay touching without
+ * drifting apart or overlapping). Returns [{ shift, depth }] indexed by i.
+ */
+function chainLinearCopies(sources) {
+    const ext = sources.map(src => mainBeamZExtent(src && src.beams));
+    const total = ext.reduce((a, e) => a + e.depth, 0);
+    let z = -total / 2;
+    return ext.map(e => {
+        const shift = z + e.depth / 2 - e.center;
+        z += e.depth;
+        return { shift, depth: e.depth };
+    });
+}
+
+function withZShift(xf, shift) {
+    if (!shift) return xf;
+    return {
+        ...xf,
+        point: (p) => (isVec(p) ? xf.point({ ...p, z: p.z + shift }) : p),
+    };
+}
+
+/**
+ * Applies the radial array to an assembled geometry set.
+ * Each input copy (linear array index a, 0 when none) becomes
+ * `arrayIndex = slot * linearCount + a`, so part keys stay unique.
+ *
+ * @param {object} s     - app state
+ * @param {object} geo   - { beams, brackets, bolts, washers, hardwareAssemblyPlacements,
+ *                           panels?, supportBeams? } (only the arrays present are cloned)
+ * @param {object} [opts]
+ *   plan:         reuse this slot plan (measured on the deployed pose) instead of planning here
+ *   sourceFor:    (slot, linearIdx) => geometry to clone for that copy (sequential fold);
+ *                 defaults to `geo` for every copy
+ *   linearCopies: replicate this many tunnel segments per slot at assembly level
+ *                 (the sources must then be single-segment solves); default: the
+ *                 segments already present in the parts (solver replication)
+ * @returns {{ geometry: object, plan: object } | null}  null when nothing is arrayed
+ */
+function applyRadialArray(s, geo, opts = {}) {
+    const linearCopies = Math.max(1, opts.linearCopies | 0);
+    const radialActive = isRadialArrayActive(s);
+    if (!radialActive && linearCopies <= 1) return null;
     const beams = geo.beams || [];
-    const plan = planRadialArray(s, beams);
+    // A plan measured on the deployed pose (see ensureDeployedFrame in linkage-geometry.js)
+    // keeps anchor, radius and phase fixed while the structure folds, so every copy
+    // folds in place about its own deployed centre. Without one, plan from these beams.
+    let plan;
+    if (radialActive) {
+        plan = opts.plan
+            ? { ...opts.plan, slots: opts.plan.slots.map(sl => ({ ...sl, offset: { ...sl.offset } })) }
+            : planRadialArray(s, beams);
+    } else {
+        plan = linearOnlyPlan();
+    }
     if (!plan) return null;
 
+    const sourceFor = typeof opts.sourceFor === 'function' ? opts.sourceFor : () => geo;
     const brackets = geo.brackets || [];
     const bolts = geo.bolts || [];
     const washers = geo.washers || [];
     const placements = geo.hardwareAssemblyPlacements || [];
-    const panels = geo.panels || [];
-    const supportBeams = geo.supportBeams || [];
-    const linearCount = Math.max(1, ...[...beams, ...brackets, ...bolts, ...washers, ...placements]
-        .map(o => (o && o.arrayIndex !== undefined ? o.arrayIndex + 1 : 1)));
+    const linearCount = linearCopies > 1
+        ? linearCopies
+        : Math.max(1, ...[...beams, ...brackets, ...bolts, ...washers, ...placements]
+            .map(o => (o && o.arrayIndex !== undefined ? o.arrayIndex + 1 : 1)));
 
     const out = { beams: [], brackets: [], bolts: [], washers: [], hardwareAssemblyPlacements: [] };
     if (geo.panels) out.panels = [];
     if (geo.supportBeams) out.supportBeams = [];
+    const copyShifts = {};
     plan.slots.forEach(slot => {
         if (slot.hidden) return;
-        const xf = makeSlotTransforms(plan, slot);
-        xf.phiRad = slot.phiRad;
-        const idx = (o) => slot.slot * linearCount + (o.arrayIndex !== undefined ? o.arrayIndex : 0);
-        beams.forEach(b => out.beams.push(cloneBeam(b, xf, idx(b))));
-        brackets.forEach(b => out.brackets.push(cloneBracket(b, xf, idx(b))));
-        bolts.forEach(b => out.bolts.push(cloneBolt(b, xf, idx(b))));
-        washers.forEach(w => out.washers.push(cloneWasher(w, xf, idx(w))));
-        placements.forEach(p => out.hardwareAssemblyPlacements.push(clonePlacement(p, xf, idx(p))));
-        if (out.panels) panels.forEach(p => out.panels.push(clonePanel(p, xf, idx(p))));
-        if (out.supportBeams) supportBeams.forEach(b => out.supportBeams.push(cloneBeam(b, xf, idx(b))));
+        const baseXf = makeSlotTransforms(plan, slot);
+        baseXf.phiRad = slot.phiRad;
+        const sources = [];
+        for (let i = 0; i < linearCopies; i++) sources.push(sourceFor(slot.slot, i) || geo);
+        const chain = linearCopies > 1 ? chainLinearCopies(sources) : [{ shift: 0, depth: 0 }];
+        sources.forEach((src, i) => {
+            const shift = chain[i].shift;
+            copyShifts[`${slot.slot}:${i}`] = shift;
+            const xf = withZShift(baseXf, shift);
+            xf.phiRad = slot.phiRad;
+            const idx = (o) => slot.slot * linearCount + (linearCopies > 1 ? i : (o.arrayIndex !== undefined ? o.arrayIndex : 0));
+            (src.beams || []).forEach(b => out.beams.push(cloneBeam(b, xf, idx(b))));
+            (src.brackets || []).forEach(b => out.brackets.push(cloneBracket(b, xf, idx(b))));
+            (src.bolts || []).forEach(b => out.bolts.push(cloneBolt(b, xf, idx(b))));
+            (src.washers || []).forEach(w => out.washers.push(cloneWasher(w, xf, idx(w))));
+            (src.hardwareAssemblyPlacements || []).forEach(p => out.hardwareAssemblyPlacements.push(clonePlacement(p, xf, idx(p))));
+            if (out.panels) (src.panels || []).forEach(p => out.panels.push(clonePanel(p, xf, idx(p))));
+            if (out.supportBeams) (src.supportBeams || []).forEach(b => out.supportBeams.push(cloneBeam(b, xf, idx(b))));
+        });
     });
     plan.linearCount = linearCount;
     plan.copyCount = plan.slots.length;
+    plan.copyShifts = copyShifts;
 
     // Footprint of the base structure and of the whole pattern, measured from the
     // anchor (HUD diameter, camera fit).
@@ -475,6 +569,8 @@ const _moduleExports = {
     makeSlotTransforms,
     cloneCoveringShape,
     replicateShapes,
+    mainBeamZExtent,
+    chainLinearCopies,
 };
 
 bridgeGlobals(_moduleExports, 'radialArray');
@@ -492,4 +588,6 @@ export {
     makeSlotTransforms,
     cloneCoveringShape,
     replicateShapes,
+    mainBeamZExtent,
+    chainLinearCopies,
 };

@@ -138,6 +138,7 @@ export function createTestState(overrides = {}) {
         foldAngle: Math.PI / 4,
         enforceCollision: false,
         animation: {
+            sequentialFold: false,
             stopAngle: null,
             minFoldAngle: null,
             radialVisibleAngle: 90,

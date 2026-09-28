@@ -806,7 +806,10 @@ if (!unitConverter) {
         const pos = getStructurePlanFootprintForReference(data);
         const exportGroup = new THREE.Group();
         exportGroup.name = 'IBCReference';
-        exportGroup.position.set(pos.centerX - sc.x, pos.minY - sc.y, pos.centerZ - sc.z);
+        // The live IBC sits at the world origin (the deployed centre of the base ring, see
+        // ensureDeployedFrame); with a radial array the footprint centre of every copy would
+        // drift from that, so the export uses the origin too.
+        exportGroup.position.set(0 - sc.x, pos.minY - sc.y, 0 - sc.z);
         
         const pivot = new THREE.Group();
         pivot.name = 'IBCStack';

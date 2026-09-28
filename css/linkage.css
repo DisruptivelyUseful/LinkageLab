@@ -2337,3 +2337,33 @@ input.error {
 }
 .deploy-preview-panel .btn-secondary { width: 100%; margin-top: 6px; }
 body.deploy-preview .topbar-fold-row { opacity: 0.5; }
+
+/* BOM: per-structure vs whole-array totals ------------------------------- */
+.bom-copies {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 8px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    background: rgba(34, 211, 238, 0.16);
+    color: var(--cyan-500, #22d3ee);
+}
+.bom-array {
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--space-600, #253152);
+}
+.bom-array-grid {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 3px 12px;
+    font-size: 0.8rem;
+}
+.bom-array-row {
+    display: contents;
+}
+.bom-array-row[hidden] > span {
+    display: none;
+}

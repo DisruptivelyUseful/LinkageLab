@@ -242,6 +242,7 @@ export const state = {
         speed: 1.0,
         loop: false,
         pingPong: false,  // Alternate direction on each cycle
+        sequentialFold: false,  // Radial / arch arrays: fold the structures one at a time (fold-sequence.js)
         direction: 1,     // 1 = expanding, -1 = collapsing
         frameId: null,
         lastTime: 0,      // For delta time calculation

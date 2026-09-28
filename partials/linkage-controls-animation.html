@@ -5,6 +5,7 @@
                     <div class="subhead">Deploy Preview</div>
                     <div class="hint">Plays the packed → deployed sequence the 3D export bakes: the bundle rises out of the IBC column, unfolds, then roof beams and panels fly in.</div>
                     <button type="button" id="btn-deploy-enter" class="btn-secondary">Preview deploy sequence</button>
+                    <button type="button" id="btn-deploy-pack-enter" class="btn-secondary">Show packed for transport</button>
                     <div id="deploy-preview-controls" hidden>
                     <div class="ctrl-row">
                         <div class="ctrl-head"><span>Sequence</span><span class="unit">packed → deployed</span></div>
@@ -13,6 +14,7 @@
                         </div>
                     </div>
                     <div class="hint"><span id="deploy-phase" class="hint-accent-text">Deployed</span></div>
+                    <div id="deploy-pack-summary" class="hint" hidden></div>
                     <div class="chk-grid">
                         <label class="chk-label"><input type="checkbox" id="chk-deploy-dayclock" checked> Run the day clock</label>
                     </div>
@@ -30,6 +32,10 @@
                     <label class="chk-label"><input type="checkbox" id="chk-anim-loop"> Loop</label>
                     <label class="chk-label"><input type="checkbox" id="chk-anim-pingpong"> Ping-Pong</label>
                 </div>
+                <div id="anim-sequential-row" class="chk-grid" hidden>
+                    <label class="chk-label"><input type="checkbox" id="chk-anim-sequential"> Fold structures one at a time</label>
+                </div>
+                <div id="anim-sequential-hint" class="hint" hidden>The fold slider and Play sweep the whole array: the centre unfolds first, then Copy 1, Copy 2 … (folding runs in reverse). Each structure takes the normal cycle time. <span id="anim-copy" class="hint-accent-text"></span></div>
                 <div class="ctrl-row">
                     <div class="ctrl-head"><span>Stop Angle</span><span class="unit">°</span></div>
                     <div class="input-wrap">

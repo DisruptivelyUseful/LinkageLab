@@ -45,7 +45,11 @@ each piece lives, and how to work with it.
 | `js/linkage/render-studio.js` | Renderer flags, the light rig, ground/grid/stars/moon, `applySkyModel` (lights, exposure, env scale, CSS sky), `updateStudioFrame` (follows the structure), `isLowFx`. |
 | `js/linkage/render-loop.js` | A gated `requestAnimationFrame` loop with named *frame drivers*; runs only while something animates (deploy playback, day clock, night glow pulse, camera fly-to). `flyCameraTo` eases `state.cam`. |
 | `js/linkage/ibc-power.js` | Battery-gauge shader material (`onBeforeCompile`), the glow lights / halos, the state-of-charge model, `updateIbcPower`. |
-| `js/linkage/deploy-preview.js` | Enter / exit / scrub / play the baked sequence; `deployPhaseLabel` (unit-tested). |
+| `js/linkage/deploy-preview.js` | Enter / exit / scrub / play the baked sequence; Pack entry; `deployPhaseLabel` and `describePackMeta` (unit-tested). |
+| `js/linkage/fold-sequence.js` | Deploy order and the master-progress → per-copy angle schedule of the sequential fold (pure). |
+| `js/linkage/pack-layout.js` | Where the folded bundles go: upright in the IBC column when they fit, flat beside it otherwise (pure). |
+| `js/linkage/deploy-timeline.js` | Clip timing: the single-structure timeline and per-copy windows for a sequential array (pure). |
+| `js/linkage/bom.js` | Per-structure and whole-array bill of materials shared by the drawer, guide, PDF/CSV and exports (pure). |
 | `js/linkage/gltf-export.js` | `prepareExportScene(units, coordSys, options)` builds the export scene and bakes the clip without exporting; `exportToGLTF` and the preview both call it. Builders take materials from `materials.js` (`forExport` = plain untextured standard materials, so GLBs stay small). |
 
 Load order (see `config/linkage-manifest.json`): sky-model → room-environment →
@@ -101,6 +105,41 @@ single opaque material (`e2e/coverings.spec.js`).
    Pause. The fold-sweep Play is untouched outside the preview.
 5. Any geometry edit (`invalidateGeometryCache`) exits the preview, as does
    *Exit*; the baked scene is disposed and the live groups restored.
+6. **Pack** (top bar, or *Show packed for transport* in the Animation group)
+   opens the same preview at t = 0: everything packed for transport. The panel
+   shows a pack summary (bundles, where they sit, pack size, volume and the
+   whole array's weight from the BOM).
+
+### Arrays: one carrier per structure
+
+With a radial array and/or an arch module array every structure has its own
+`Structure_<name>` carrier node in the baked scene (`Structure_Center`,
+`Structure_<slot>`, `_S<n>` suffixes for tunnel segments). The clip
+(`buildFoldAnimationClip` in `gltf-export.js`):
+
+- samples the kinematics once per angle for all copies (the sampled scenes use
+  the deployed scene's pivot and ground lift so the `Structure` root stays
+  constant; each carrier grounds its own bundle with a per-sample ground fix);
+- measures each copy's folded bundle and gives it a pack slot from
+  `js/linkage/pack-layout.js`: if the bundles fit upright inside the IBC tote
+  footprint (40 × 48 in nominal, measured tote when loaded, up to 12 ft tall)
+  they stand in the column and the top tote is raised by the gap; otherwise
+  they lie flat beside the IBC in layers, lumber style. The last placed leaves
+  first;
+- with **Fold structures one at a time** on (Animation group,
+  `state.animation.sequentialFold`, saved as `mode.sequentialFold`) gives every
+  copy its own window of the clip (`js/linkage/deploy-timeline.js`, ~9 s per
+  copy: rise → carry → lower → lay → unfold → roof beams → panels), in deploy
+  order: the centre first when present and visible, then the ring copies.
+  Otherwise all copies move together on the single-structure timeline;
+- flies each copy's roof beams and panels from the shared pile and stack in
+  that copy's window. Phase labels name the copy ("Copy 2 · Unfolding 63°").
+
+The live fold sweep follows the same order: with the option on, the fold
+slider / Play / Fold / Unfold are a master progress and copy *j* of *K* moves
+while the progress crosses [j/K, (j+1)/K] (`js/linkage/fold-sequence.js`);
+`buildLinkageGeometry` assembles at most three single structures per frame
+(folded, deployed and the moving copy) and replicates them per copy.
 
 ## Low-effects mode
 
@@ -111,6 +150,7 @@ software-rendered e2e runs stay fast and deterministic.
 ## Tests
 
 - Unit: `tests/sky-model.test.js`, `tests/materials-params.test.js`,
-  `tests/deploy-preview-phases.test.js`.
+  `tests/deploy-preview-phases.test.js`, `tests/fold-sequence.test.js`,
+  `tests/pack-layout.test.js`, `tests/deploy-timeline.test.js`, `tests/bom.test.js`.
 - e2e: `e2e/viewer-quality.spec.js` (renderer flags, materials, night sky, IBC
   gauge, deploy preview enter / scrub / play / exit).

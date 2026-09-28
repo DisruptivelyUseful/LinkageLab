@@ -134,7 +134,33 @@ function syncRadialArrayUI() {
  * Called after each render with the assembled geometry: shows the resolved
  * ring radius / copy count and mirrors the auto radius into the radius box.
  */
+/** Shows the "fold one at a time" option whenever the design holds more than one structure. */
+function syncSequentialFoldUI(data) {
+    const row = $('anim-sequential-row');
+    const hint = $('anim-sequential-hint');
+    const chk = $('chk-anim-sequential');
+    const linear = (state.orientation === 'vertical' && (state.arrayCount | 0) > 1) ? (state.arrayCount | 0) : 1;
+    let radial = 1;
+    if (data && data.radialArray) radial = data.radialArray.visibleCount || 1;
+    else if (state.radialArrayEnabled && (state.radialCount | 0) >= 1) radial = (state.radialCenter !== false ? 1 : 0) + (state.radialCount | 0);
+    const multi = radial * linear > 1;
+    if (row) row.hidden = !multi;
+    if (hint) hint.hidden = !multi || !(state.animation && state.animation.sequentialFold);
+    if (chk) chk.checked = !!(state.animation && state.animation.sequentialFold);
+    const copyEl = $('anim-copy');
+    if (copyEl) {
+        const sched = data && data.foldSchedule;
+        if (sched && sched.sequential && sched.activeIndex !== null && sched.copies[sched.activeIndex]) {
+            const c = sched.copies[sched.activeIndex];
+            copyEl.textContent = `Now: ${c.label} · ${formatNumber(c.angle * 180 / Math.PI, 1)}°`;
+        } else {
+            copyEl.textContent = '';
+        }
+    }
+}
+
 function updateRadialArrayReadout(data) {
+    syncSequentialFoldUI(data);
     const readout = $('radial-array-readout');
     const plan = data && data.radialArray;
     if (!plan) {
@@ -269,6 +295,7 @@ const _moduleExports = {
     RADIAL_HEAVY_TOGGLES,
     initRadialArrayUI,
     syncRadialArrayUI,
+    syncSequentialFoldUI,
     applyRadialArrayPerformanceGuards,
     normalizeRadialArrayState,
     updateRadialArrayReadout,
@@ -280,6 +307,7 @@ export {
     RADIAL_HEAVY_TOGGLES,
     initRadialArrayUI,
     syncRadialArrayUI,
+    syncSequentialFoldUI,
     applyRadialArrayPerformanceGuards,
     normalizeRadialArrayState,
     updateRadialArrayReadout,

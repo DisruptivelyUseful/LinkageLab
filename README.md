@@ -15,7 +15,7 @@ Work on feature branches is fast-forwarded into `main` when it is ready to test.
 ## Features worth knowing
 
 - **Studio viewer, day/night and Deploy preview**: physically based lighting with an environment map, wood-grain beams, textured clearcoat solar panels, a 24 h time-of-day slider with moon and stars, the IBC totes as a glowing battery gauge, and a *Deploy* button that plays the packed → deployed sequence (the same clip the GLB export bakes) live in the viewport. See [docs/VIEWER.md](docs/VIEWER.md).
-- **Radial Array** (sidebar → Structure → Radial Array): repeat the whole structure around a central anchor — six hexagons around a seventh for a honeycomb, or N arches on radial planes for a toroid. See [docs/RADIAL_ARRAY.md](docs/RADIAL_ARRAY.md).
+- **Radial Array** (sidebar → Structure → Radial Array): repeat the whole structure around a central anchor — six hexagons around a seventh for a honeycomb, or N arches on radial planes for a toroid. Copies fold in place, can fold one at a time, pack together for transport (*Pack*), and the BOM shows the individual structure next to the whole array. See [docs/RADIAL_ARRAY.md](docs/RADIAL_ARRAY.md).
 - **Coverings, Floor and Shade Tarps** (sidebar groups): plywood or tensioned-fabric bands between the uprights (with tables), reciprocal floor beams on the bottom ring under a plywood deck, and one rectangular shade tarp per module fanned over the roof, in any colour and opacity. Every spinbox there takes a wide range including negatives. See [docs/COVERINGS_PLAN.md](docs/COVERINGS_PLAN.md).
 
 ## One-click testing of a branch

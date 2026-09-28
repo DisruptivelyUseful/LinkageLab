@@ -8,10 +8,10 @@ import { INCHES_PER_FOOT } from './constants.js';
 import { buildLinkageGeometry } from './linkage-geometry.js';
 import { STEP_KIND_META, stepSummary, representativeSteps } from './build-steps.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
-import { computeCoveringCutPlan, coveringBomItems, coveringEnclosureCost, coveringEntryOverviewSvg } from './coverings-plan.js';
+import { computeCoveringCutPlan, coveringEntryOverviewSvg } from './coverings-plan.js';
 import { describeMark } from './sheet-nesting.js';
 import { computeFloorBomContribution } from './floor-geometry.js';
-import { shadeBomItems } from './shade-cloth.js';
+import { computeBillOfMaterials } from './bom.js';
 import { svgForInline, buildShadeLayoutSvg } from '../core/svg-cut-file.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
@@ -472,72 +472,41 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     function showBuildGuide() {
         const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
         
-        // Calculate BOM
-        const moduleCount = state.modules;
-        const hBeams = moduleCount * 2 * state.hStackCount;
-        const vBeams = moduleCount * state.vStackCount;
-        const uBrackets = moduleCount * 4;
+        // Bill of materials: one shared computation (bom.js). `ps` is one structure,
+        // `bomAll` is every copy of a radial / arch array.
+        const bom = computeBillOfMaterials(data, state);
+        const ps = bom.perStructure;
+        const bomAll = bom.total;
+        const arrayCopiesForGuide = bom.copies.total;
+        const moduleCount = bom.moduleCount;
+        const { hBeams, vBeams, uBrackets, vBoltsInner, vBoltsOuter, vBoltsCenter, hCenterBolts, hPivotBolts, totalVBolts, nBolts } = ps.counts;
+        const splitBolts = bom.splitBolts;
+        const costBoltVInner = bom.prices.costBoltVInner;
+        const costBoltVOuter = bom.prices.costBoltVOuter;
+        const costBoltH = bom.prices.costBoltH;
+        const costHPivot = bom.prices.costBoltHPivot;
+        const hBeamsCost = ps.cost.hBeam;
+        const vBeamsCost = ps.cost.vBeam;
+        const bracketCost = ps.cost.bracket;
+        const vBoltInnerCost = ps.cost.vBoltInner;
+        const vBoltOuterCost = ps.cost.vBoltOuter;
+        const vBoltCenterCost = ps.cost.vBoltCenter;
+        const hCenterBoltCost = ps.cost.hCenterBolt;
+        const hPivotBoltCost = ps.cost.hPivotBolt;
+        const vWasherCount2 = ps.counts.vWasherCount;
+        const hWasherCount2 = ps.counts.hWasherCount;
+        const costWasherV2 = bom.prices.costWasherV;
+        const costWasherH2 = bom.prices.costWasherH;
+        const vWasherCost2 = ps.cost.vWasher;
+        const hWasherCost2 = ps.cost.hWasher;
+        const sbForGuide = bom.sbBom;
+        const solarEnabled = bom.solarEnabled;
+        const panelConfig = bom.panelConfig;
+        const solarPanelCount = ps.counts.panels;
+        const solarPanelCost = ps.cost.solar;
+        const totalKw = bom.totalKw;
         
-        // Calculate bolt counts by type
-        const splitBolts = needsSplitVBolts();
-        const vBoltsInner = moduleCount * 2;  // 2 inner bolts per module (bot-inner, top-inner)
-        const vBoltsOuter = moduleCount * 2;  // 2 outer bolts per module (bot-outer, top-outer)
-        const vBoltsCenter = moduleCount * 1; // 1 center bolt per module
-        const hCenterBolts = moduleCount * 2; // 2 H-center bolts per module
-        const hPivotBolts = moduleCount * 4;  // 4 H-pivot bolts per module
-        const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-        const totalHBolts = hCenterBolts + hPivotBolts;
-        const nBolts = totalVBolts + totalHBolts;
-        
-        // Get bolt costs based on mode
-        let costBoltVInner, costBoltVOuter, costBoltH, costHPivot;
-        if (splitBolts) {
-            costBoltVInner = state.costBoltVInner || 0.75;
-            costBoltVOuter = state.costBoltVOuter || 0.50;
-            costBoltH = state.costBoltH || 0.75;
-            costHPivot = state.costBoltHPivot || 0.75;
-        } else {
-            const vBoltPrice = parseFloat(document.getElementById('nb-cost-bolt-v')?.value) || 0.75;
-            costBoltVInner = vBoltPrice;
-            costBoltVOuter = vBoltPrice;
-            costBoltH = parseFloat(document.getElementById('nb-cost-bolt-h')?.value) || 0.75;
-            costHPivot = state.costBoltHPivot || 0.75;
-        }
-        
-        const hBeamsCost = hBeams * state.costHBeam;
-        const vBeamsCost = calculateVBeamsCost();
-        const bracketCost = uBrackets * state.costBracket;
-        
-        // Calculate bolt costs by type
-        const vBoltInnerCost = vBoltsInner * costBoltVInner;
-        const vBoltOuterCost = vBoltsOuter * costBoltVOuter;
-        const vBoltCenterCost = vBoltsCenter * costBoltVInner; // Center bolts use full/inner price
-        const hCenterBoltCost = hCenterBolts * costBoltH;
-        const hPivotBoltCost = hPivotBolts * costHPivot;
-        const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hCenterBoltCost + hPivotBoltCost;
-        
-        // Calculate washer costs
-        const vWashersPerBolt2 = state.vStackCount > 1 ? (state.vStackCount - 1) : 0;
-        const vWasherCount2 = state.vWasherEnabled ? (totalVBolts * vWashersPerBolt2) : 0;
-        const hWashersPerBolt2 = state.hStackCount > 1 ? (state.hStackCount - 1) : 0;
-        const hWasherCount2 = state.hWasherEnabled ? (totalHBolts * hWashersPerBolt2) : 0;
-        const costWasherV2 = state.costWasherV || 0.10;
-        const costWasherH2 = state.costWasherH || 0.10;
-        const vWasherCost2 = vWasherCount2 * costWasherV2;
-        const hWasherCost2 = hWasherCount2 * costWasherH2;
-        const washerCost2 = vWasherCost2 + hWasherCost2;
-    
-        const sbForGuide = computeSupportBomContribution(moduleCount, costBoltVInner);
-        
-        // Solar panel calculations - get active panel config first
-        const solarEnabled = state.solarPanels.enabled;
-        const panelConfig = getActivePanelConfig();
-        const solarPanelCount = solarEnabled && data.panels ? data.panels.length : 0;
-        const solarPanelCost = solarPanelCount * state.costSolarPanel;
-        const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
-        const totalKw = totalWatts / 1000;
-        
-        const floorBomForGuide = computeFloorBomContribution(state.floor, moduleCount, state);
+        const floorBomForGuide = bom.floorBom;
         const floorBOMGuideRows = floorBomForGuide.structureItems.map(it => `
                                 <tr data-bom-section="structure">
                                     <td class="qty">${it.qty}×</td>
@@ -545,14 +514,20 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                     <td class="price"><input type="number" class="guide-price-input" data-bom-state="${it.item.startsWith('Floor radial') ? 'costHBeam' : 'costVBeam'}" data-bom-qty="${it.qty}" data-bom-sidebar="${it.item.startsWith('Floor radial') ? 'nb-cost-hbeam' : 'nb-cost-vbeam'}" value="${formatNumber(it.unit, 2)}" step="0.01" min="0" oninput="recalcGuideBOM()"></td>
                                     <td class="total">$${formatNumber(it.total, 2)}</td>
                                 </tr>`).join('');
-        const structureCost = hBeamsCost + vBeamsCost + boltCost + bracketCost + washerCost2 + sbForGuide.supportBeamCost + floorBomForGuide.floorBeamCost;
-        const coveringPlanForGuide = getCoveringPlanForGuide(data);
-        const enclosureItemsForGuide = coveringPlanForGuide ? coveringBomItems(coveringPlanForGuide, state) : [];
-        shadeBomItems(data.shade, state).forEach(it => enclosureItemsForGuide.push(it));
-        const enclosureCostForGuide = enclosureItemsForGuide.reduce((a, it) => a + it.total, 0);
-        const arrayCopiesForGuide = (data.radialArray && data.radialArray.copyCount) || 1;
+        // Hardware assembly extras (bushings / lock washers / nuts) are priced in the sidebar, not here
+        const hardwareBOMGuideRows = bom.assemblyHardwareItems.map(it => `
+                                <tr data-bom-section="structure" data-bom-fixed-total="${it.total}">
+                                    <td class="qty">${it.qty}×</td>
+                                    <td class="item">${it.item}</td>
+                                    <td class="price" style="text-align:right; color:#666; font-size:0.85rem; padding-right:10px;">$${formatNumber(it.unit, 2)}</td>
+                                    <td class="total">$${formatNumber(it.total, 2)}</td>
+                                </tr>`).join('');
+        const structureCost = ps.cost.structure;
+        const coveringPlanForGuide = bom.coveringPlan;
+        const enclosureItemsForGuide = bom.enclosureItems;
+        const enclosureCostForGuide = ps.cost.enclosure;
         const enclosureBOMGuideRows = enclosureItemsForGuide.length ? `
-                                <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE${arrayCopiesForGuide > 1 ? ` <span style="font-weight:400;text-transform:none;">(per structure; the radial array places ${arrayCopiesForGuide} copies)</span>` : ''}</td></tr>
+                                <tr class="guide-bom-section-row"><td colspan="4">ENCLOSURE${arrayCopiesForGuide > 1 ? ` <span style="font-weight:400;text-transform:none;">(per structure; the array holds ${arrayCopiesForGuide} structures)</span>` : ''}</td></tr>
                                 ${enclosureItemsForGuide.map(it => `
                                 <tr data-bom-section="enclosure">
                                     <td class="qty">${it.qty}×</td>
@@ -561,22 +536,31 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                     <td class="total">$${formatNumber(it.total, 2)}</td>
                                 </tr>`).join('')}
                                 <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-enclosure" style="font-weight:700;">$${formatNumber(enclosureCostForGuide, 2)}</td></tr>` : '';
-        const totalCost = structureCost + solarPanelCost + enclosureCostForGuide;
+        const totalCost = ps.cost.total;
         
-        // Calculate weight (lbs) based on volume and density
-        // Volume = width × thickness × length (all in inches)
-        // Weight = volume × density
-        const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
-        const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-        const vBeamWeight = calculateVBeamTotalWeight();
-        const bracketWeight = uBrackets * state.weightBracket;
-        const boltWeight = nBolts * state.weightBolt;
-        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbForGuide.supportBeamWeight + floorBomForGuide.floorBeamWeight;
+        // Weights (lb) from the shared BOM (structure includes support and floor beams)
+        const hBeamWeight = ps.weight.hBeam;
+        const vBeamWeight = ps.weight.vBeam;
+        const bracketWeight = ps.weight.bracket;
+        const structureWeight = ps.weight.structure;
+        const solarPanelWeight = ps.weight.solar;
+        const totalWeight = ps.weight.total;
         
-        // Calculate solar panel weight
-        const solarWeightSummary = getSolarPanelWeightSummary(data);
-        const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarWeightSummary.total : 0;
-        const totalWeight = structureWeight + solarPanelWeight;
+        // Whole-array card (only with a radial / arch array)
+        const arrayBOMGuideCard = arrayCopiesForGuide > 1 ? `
+                        <div id="guide-bom-array" class="guide-bom-array" data-bom-copies="${arrayCopiesForGuide}">
+                            <div style="font-weight: 600; color: #2c3e50; margin: 16px 0 8px; font-size: 0.9rem;">Whole array · ${arrayCopiesForGuide} structures</div>
+                            <div style="display: grid; grid-template-columns: 1fr auto auto; gap: 6px 14px; font-size: 0.85rem; color: #555;">
+                                <span></span><span style="text-align:right; font-weight:600;">Per structure</span><span style="text-align:right; font-weight:600;">All ${arrayCopiesForGuide}</span>
+                                <span>Structure</span><span style="text-align:right;">$${formatNumber(ps.cost.structure, 2)}</span><span style="text-align:right;" id="guide-bom-array-structure">$${formatNumber(bomAll.cost.structure, 2)}</span>
+                                ${solarEnabled && solarPanelCount > 0 ? `<span>Power</span><span style="text-align:right;">$${formatNumber(ps.cost.solar, 2)}</span><span style="text-align:right;" id="guide-bom-array-power">$${formatNumber(bomAll.cost.solar, 2)}</span>` : ''}
+                                ${enclosureItemsForGuide.length ? `<span>Enclosure</span><span style="text-align:right;">$${formatNumber(ps.cost.enclosure, 2)}</span><span style="text-align:right;" id="guide-bom-array-enclosure">$${formatNumber(bomAll.cost.enclosure, 2)}</span>` : ''}
+                                <span style="font-weight:600;">Estimated Total</span><span style="text-align:right; font-weight:600;" id="guide-bom-array-total-one">$${formatNumber(ps.cost.total, 2)}</span><span style="text-align:right; font-weight:700; color:#27ae60;" id="guide-bom-array-total">$${formatNumber(bomAll.cost.total, 2)}</span>
+                                <span>Total Weight</span><span style="text-align:right;">${unitConverter.formatWeightWithUnit(ps.weight.total)}</span><span style="text-align:right; font-weight:600; color:#3498db;" id="guide-bom-array-weight">${unitConverter.formatWeightWithUnit(bomAll.weight.total)}</span>
+                                ${solarEnabled && solarPanelCount > 0 ? `<span>Panels</span><span style="text-align:right;">${solarPanelCount}</span><span style="text-align:right;">${bomAll.counts.panels}</span>
+                                <span>Array Capacity</span><span style="text-align:right;">${formatNumber(totalKw, 2)} kW</span><span style="text-align:right;">${formatNumber(bom.totalKwAll, 2)} kW</span>` : ''}
+                            </div>
+                        </div>` : '';
         
         // Calculate dimensions (used throughout build guide)
         const heightFt = unitConverter.inchesToFeet(data.maxHeight);
@@ -710,12 +694,12 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                 </div>
                 ${solarStatsHtml}
                 <div class="guide-stat">
-                    <span class="guide-stat-label">Est. Total</span>
-                    <span class="guide-stat-value highlight" id="guide-stat-total">$${formatNumber(totalCost, 2)}</span>
+                    <span class="guide-stat-label">Est. Total${arrayCopiesForGuide > 1 ? ` (${arrayCopiesForGuide} structures)` : ''}</span>
+                    <span class="guide-stat-value highlight" id="guide-stat-total">$${formatNumber(bomAll.cost.total, 2)}</span>
                 </div>
                 <div class="guide-stat">
-                    <span class="guide-stat-label">Total Weight</span>
-                    <span class="guide-stat-value highlight" style="color: #3498db;">${unitConverter.formatWeightWithUnit(totalWeight)}</span>
+                    <span class="guide-stat-label">Total Weight${arrayCopiesForGuide > 1 ? ` (${arrayCopiesForGuide} structures)` : ''}</span>
+                    <span class="guide-stat-value highlight" style="color: #3498db;">${unitConverter.formatWeightWithUnit(bomAll.weight.total)}</span>
                 </div>
             </div>
             
@@ -738,7 +722,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                 <div class="guide-card">
                     <div class="guide-card-header">Bill of Materials</div>
                     <div class="guide-card-content">
-                        <table class="guide-table" id="guide-bom-table">
+                        <table class="guide-table" id="guide-bom-table" data-bom-copies="${arrayCopiesForGuide}">
                             <thead>
                                 <tr>
                                     <th>Qty</th>
@@ -824,6 +808,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                 ` : ''}
                                 ${supportBOMGuideRows}
                                 ${floorBOMGuideRows}
+                                ${hardwareBOMGuideRows}
                                 <tr class="guide-bom-subtotal-row"><td colspan="2"></td><td style="text-align:right; font-weight:600; font-size:0.8rem;">Subtotal</td><td class="total" id="guide-bom-subtotal-structure" style="font-weight:700;">$${formatNumber(structureCost, 2)}</td></tr>
                                 ${solarEnabled ? `
                                 <tr class="guide-bom-section-row"><td colspan="4">POWER</td></tr>
@@ -869,6 +854,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                                 </div>
                             </div>
                         </div>
+                        ${arrayBOMGuideCard}
                     </div>
                 </div>
                 
@@ -1042,7 +1028,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                         </div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Weight (each)</span>
-                            <span class="guide-spec-value">${gW(solarWeightSummary.perUnit, 1)}</span>
+                            <span class="guide-spec-value">${gW(bom.prices.solarPerUnit, 1)}</span>
                         </div>
                         <div class="guide-spec-row">
                             <span class="guide-spec-label">Array Weight</span>
@@ -1972,6 +1958,15 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             structureTotal += lineTotal;
         }
     
+        // Rows priced elsewhere (hardware extras) carry a fixed line total
+        document.querySelectorAll('#guide-bom-table tr[data-bom-fixed-total]').forEach(row => {
+            const fixed = parseFloat(row.dataset.bomFixedTotal) || 0;
+            const section = row.dataset.bomSection;
+            if (section === 'structure') structureTotal += fixed;
+            else if (section === 'power') powerTotal += fixed;
+            else if (section === 'enclosure') enclosureTotal += fixed;
+        });
+    
         // In non-split mode, keep costBoltVOuter in sync
         if (!needsSplitVBolts()) {
             state.costBoltVOuter = state.costBoltVInner;
@@ -1987,8 +1982,17 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const grandTotal = structureTotal + powerTotal + enclosureTotal;
         const gtEl = document.getElementById('guide-bom-grand-total');
         if (gtEl) gtEl.textContent = '$' + formatNumber(grandTotal, 2);
+        // The stats bar and the array card show every copy of the array
+        const table = document.getElementById('guide-bom-table');
+        const copies = Math.max(1, parseInt(table && table.dataset.bomCopies, 10) || 1);
         const statEl = document.getElementById('guide-stat-total');
-        if (statEl) statEl.textContent = '$' + formatNumber(grandTotal, 2);
+        if (statEl) statEl.textContent = '$' + formatNumber(grandTotal * copies, 2);
+        const setArr = (id, v) => { const el = document.getElementById(id); if (el) el.textContent = '$' + formatNumber(v, 2); };
+        setArr('guide-bom-array-structure', structureTotal * copies);
+        setArr('guide-bom-array-power', powerTotal * copies);
+        setArr('guide-bom-array-enclosure', enclosureTotal * copies);
+        setArr('guide-bom-array-total-one', grandTotal);
+        setArr('guide-bom-array-total', grandTotal * copies);
     
         try {
             const freshData = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
@@ -2003,85 +2007,44 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     function gatherBOMData() {
         const data = buildLinkageGeometry({ includeSupportBeams: true, includePanels: true, useCache: false });
     
-        const moduleCount = state.modules;
-        const hBeams = moduleCount * 2 * state.hStackCount;
-        const vBeams = moduleCount * state.vStackCount;
-        const uBrackets = moduleCount * 4;
-    
-        const splitBolts = needsSplitVBolts();
-        const vBoltsInner = moduleCount * 2;
-        const vBoltsOuter = moduleCount * 2;
-        const vBoltsCenter = moduleCount * 1;
-        const hCenterBolts = moduleCount * 2;
-        const hPivotBolts = moduleCount * 4;
-        const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-        const totalHBolts = hCenterBolts + hPivotBolts;
-        const nBolts = totalVBolts + totalHBolts;
-    
-        let costBoltVInner, costBoltVOuter, costBoltH, costHPivot;
-        if (splitBolts) {
-            costBoltVInner = state.costBoltVInner || 0.75;
-            costBoltVOuter = state.costBoltVOuter || 0.50;
-            costBoltH = state.costBoltH || 0.75;
-            costHPivot = state.costBoltHPivot || 0.75;
-        } else {
-            const vBoltPrice = parseFloat(document.getElementById('nb-cost-bolt-v')?.value) || 0.75;
-            costBoltVInner = vBoltPrice;
-            costBoltVOuter = vBoltPrice;
-            costBoltH = parseFloat(document.getElementById('nb-cost-bolt-h')?.value) || 0.75;
-            costHPivot = state.costBoltHPivot || 0.75;
-        }
-    
-        const hBeamsCost = hBeams * state.costHBeam;
-        const vBeamsCost = calculateVBeamsCost();
-        const bracketCost = uBrackets * state.costBracket;
-    
-        const vBoltInnerCost = vBoltsInner * costBoltVInner;
-        const vBoltOuterCost = vBoltsOuter * costBoltVOuter;
-        const vBoltCenterCost = vBoltsCenter * costBoltVInner;
-        const hCenterBoltCost = hCenterBolts * costBoltH;
-        const hPivotBoltCost = hPivotBolts * costHPivot;
-        const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hCenterBoltCost + hPivotBoltCost;
-    
-        const vWashersPerBolt = state.vStackCount > 1 ? (state.vStackCount - 1) : 0;
-        const vWasherCount = state.vWasherEnabled ? (totalVBolts * vWashersPerBolt) : 0;
-        const hWashersPerBolt = state.hStackCount > 1 ? (state.hStackCount - 1) : 0;
-        const hWasherCount = state.hWasherEnabled ? (totalHBolts * hWashersPerBolt) : 0;
-        const costWasherV = state.costWasherV || 0.10;
-        const costWasherH = state.costWasherH || 0.10;
-        const vWasherCost = vWasherCount * costWasherV;
-        const hWasherCost = hWasherCount * costWasherH;
-        const washerCost = vWasherCost + hWasherCost;
-    
-        const sbBom = computeSupportBomContribution(moduleCount, costBoltVInner);
-    
-        const assemblyHardwareItems = (typeof getAssemblyHardwareItems === 'function') ? getAssemblyHardwareItems(moduleCount) : [];
-        const assemblyHardwareCost = assemblyHardwareItems.reduce((sum, it) => sum + (it.total || 0), 0);
-    
-        const solarEnabled = state.solarPanels.enabled;
-        const panelConfig = getActivePanelConfig();
-        const solarPanelCount = solarEnabled && data.panels ? data.panels.length : 0;
-        const solarPanelCost = solarPanelCount * state.costSolarPanel;
-        const totalWatts = solarPanelCount * (panelConfig.ratedWatts || 0);
-        const totalKw = totalWatts / 1000;
-    
-        const floorBom = computeFloorBomContribution(state.floor, moduleCount, state);
-        const structureCost = hBeamsCost + vBeamsCost + bracketCost + boltCost + washerCost + sbBom.supportBeamCost + assemblyHardwareCost + floorBom.floorBeamCost;
-        const coveringPlan = getCoveringPlanForGuide(data);
-        const enclosureItems = coveringPlan ? coveringBomItems(coveringPlan, state) : [];
-        shadeBomItems(data.shade, state).forEach(it => enclosureItems.push(it));
-        const enclosureCost = enclosureItems.reduce((a, it) => a + it.total, 0);
-        const totalCost = structureCost + solarPanelCost + enclosureCost;
-    
-        const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity;
-        const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-        const vBeamWeight = calculateVBeamTotalWeight();
-        const bracketWeight = uBrackets * state.weightBracket;
-        const boltWeight = nBolts * state.weightBolt;
-        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight + floorBom.floorBeamWeight;
-        const solarWeightSummary = getSolarPanelWeightSummary(data);
-        const solarPanelWeight = solarEnabled && solarPanelCount > 0 ? solarWeightSummary.total : 0;
-        const totalWeight = structureWeight + solarPanelWeight;
+        const bom = computeBillOfMaterials(data, state);
+        const ps = bom.perStructure;
+        const copies = bom.copies;
+        const moduleCount = bom.moduleCount;
+        const { hBeams, vBeams, uBrackets, vBoltsInner, vBoltsOuter, vBoltsCenter, hCenterBolts, hPivotBolts, totalVBolts, nBolts, vWasherCount, hWasherCount } = ps.counts;
+        const splitBolts = bom.splitBolts;
+        const { costBoltVInner, costBoltVOuter, costBoltH, costWasherV, costWasherH } = bom.prices;
+        const costHPivot = bom.prices.costBoltHPivot;
+        const hBeamsCost = ps.cost.hBeam;
+        const vBeamsCost = ps.cost.vBeam;
+        const bracketCost = ps.cost.bracket;
+        const vBoltInnerCost = ps.cost.vBoltInner;
+        const vBoltOuterCost = ps.cost.vBoltOuter;
+        const vBoltCenterCost = ps.cost.vBoltCenter;
+        const hCenterBoltCost = ps.cost.hCenterBolt;
+        const hPivotBoltCost = ps.cost.hPivotBolt;
+        const vWasherCost = ps.cost.vWasher;
+        const hWasherCost = ps.cost.hWasher;
+        const sbBom = bom.sbBom;
+        const assemblyHardwareItems = bom.assemblyHardwareItems;
+        const solarEnabled = bom.solarEnabled;
+        const panelConfig = bom.panelConfig;
+        const solarPanelCount = ps.counts.panels;
+        const solarPanelCost = ps.cost.solar;
+        const totalKw = bom.totalKw;
+        const floorBom = bom.floorBom;
+        const structureCost = ps.cost.structure;
+        const coveringPlan = bom.coveringPlan;
+        const enclosureItems = bom.enclosureItems;
+        const enclosureCost = ps.cost.enclosure;
+        const totalCost = ps.cost.total;
+        const hBeamWeight = ps.weight.hBeam;
+        const vBeamWeight = ps.weight.vBeam;
+        const bracketWeight = ps.weight.bracket;
+        const boltWeight = ps.weight.bolt;
+        const structureWeight = ps.weight.structure;
+        const solarPanelWeight = ps.weight.solar;
+        const totalWeight = ps.weight.total;
     
         const heightFt = unitConverter.inchesToFeet(data.maxHeight);
         const diameterFt = unitConverter.inchesToFeet(data.maxRad * 2);
@@ -2147,6 +2110,23 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     
         return {
             data, moduleCount, splitBolts, nBolts,
+            bom, copies,
+            // Every copy of a radial / arch array (per-structure figures are the fields below)
+            arrayTotals: copies.total > 1 ? {
+                copies: copies.total,
+                structureCost: bom.total.cost.structure,
+                powerCost: bom.total.cost.solar,
+                enclosureCost: bom.total.cost.enclosure,
+                totalCost: bom.total.cost.total,
+                totalWeight: bom.total.weight.total,
+                structureWeight: bom.total.weight.structure,
+                solarPanelWeight: bom.total.weight.solar,
+                solarPanelCount: bom.total.counts.panels,
+                totalKw: bom.totalKwAll,
+                floorBeamWeight: bom.total.weight.floor,
+                supportBeamWeight: bom.total.weight.support,
+            } : null,
+            floorBeamWeight: floorBom.floorBeamWeight,
             structureItems, structureCost,
             powerItems, powerCost: solarPanelCost,
             enclosureItems, enclosureCost, coveringPlan,
@@ -2236,8 +2216,15 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             stats.push({ label: 'Panels', value: `${bom.solarPanelCount}` });
             stats.push({ label: 'Capacity', value: `${formatNumber(bom.totalKw, 2)} kW` });
         }
-        stats.push({ label: 'Est. Total', value: `$${formatNumber(bom.totalCost, 2)}` });
-        stats.push({ label: 'Weight', value: `${unitConverter.formatWeightWithUnit(bom.totalWeight, 1)}` });
+        if (bom.arrayTotals) {
+            stats.push({ label: 'Structures', value: `${bom.arrayTotals.copies}` });
+            stats.push({ label: 'Per structure', value: `$${formatNumber(bom.totalCost, 2)}` });
+            stats.push({ label: 'All structures', value: `$${formatNumber(bom.arrayTotals.totalCost, 2)}` });
+            stats.push({ label: 'Weight (all)', value: `${unitConverter.formatWeightWithUnit(bom.arrayTotals.totalWeight, 1)}` });
+        } else {
+            stats.push({ label: 'Est. Total', value: `$${formatNumber(bom.totalCost, 2)}` });
+            stats.push({ label: 'Weight', value: `${unitConverter.formatWeightWithUnit(bom.totalWeight, 1)}` });
+        }
     
         doc.setFillColor(...colors.lightBg);
         doc.roundedRect(margin, y, contentW, 18, 2, 2, 'F');
@@ -2309,7 +2296,7 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...colors.headerText);
-        doc.text('BILL OF MATERIALS', margin + 4, y + 5);
+        doc.text(bom.arrayTotals ? 'BILL OF MATERIALS (PER STRUCTURE)' : 'BILL OF MATERIALS', margin + 4, y + 5);
         y += 9;
     
         const bomRows = [];
@@ -2401,6 +2388,8 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             ['Brackets', `${unitConverter.formatWeightWithUnit(bom.bracketWeight, 1)}`],
             ['Bolts', `${unitConverter.formatWeightWithUnit(bom.boltWeight, 1)}`],
         ];
+        if (bom.supportBeamWeight > 0) weightRows.push(['Support beams & hardware', `${unitConverter.formatWeightWithUnit(bom.supportBeamWeight, 1)}`]);
+        if (bom.floorBeamWeight > 0) weightRows.push(['Floor beams', `${unitConverter.formatWeightWithUnit(bom.floorBeamWeight, 1)}`]);
         if (bom.solarEnabled && bom.solarPanelWeight > 0) {
             weightRows.push(['Solar Panels', `${unitConverter.formatWeightWithUnit(bom.solarPanelWeight, 1)}`]);
         }
@@ -2422,6 +2411,46 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             alternateRowStyles: { fillColor: [252, 252, 252] },
         });
         y = doc.lastAutoTable.finalY + 6;
+    
+        // ---- WHOLE ARRAY (radial / arch module array) ----
+        if (bom.arrayTotals) {
+            const at = bom.arrayTotals;
+            checkPageBreak(40);
+            doc.setFillColor(...colors.sectionBg);
+            doc.rect(margin, y, contentW, 7, 'F');
+            doc.setFontSize(9);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(...colors.headerText);
+            doc.text(`WHOLE ARRAY — ${at.copies} STRUCTURES`, margin + 4, y + 5);
+            y += 9;
+            const arrRows = [
+                ['Structure', `$${formatNumber(bom.structureCost, 2)}`, `$${formatNumber(at.structureCost, 2)}`],
+            ];
+            if (bom.solarEnabled && bom.powerItems.length > 0) arrRows.push(['Power', `$${formatNumber(bom.powerCost, 2)}`, `$${formatNumber(at.powerCost, 2)}`]);
+            if (bom.enclosureItems && bom.enclosureItems.length > 0) arrRows.push(['Enclosure', `$${formatNumber(bom.enclosureCost, 2)}`, `$${formatNumber(at.enclosureCost, 2)}`]);
+            arrRows.push([
+                { content: 'ESTIMATED TOTAL', styles: { fontStyle: 'bold', fillColor: colors.headerBg, textColor: colors.headerText } },
+                { content: `$${formatNumber(bom.totalCost, 2)}`, styles: { fontStyle: 'bold', fillColor: colors.headerBg, textColor: colors.headerText } },
+                { content: `$${formatNumber(at.totalCost, 2)}`, styles: { fontStyle: 'bold', fillColor: colors.headerBg, textColor: colors.headerText } },
+            ]);
+            arrRows.push(['Total Weight', `${unitConverter.formatWeightWithUnit(bom.totalWeight, 1)}`, `${unitConverter.formatWeightWithUnit(at.totalWeight, 1)}`]);
+            if (bom.solarEnabled) {
+                arrRows.push(['Solar Panels', `${bom.solarPanelCount}`, `${at.solarPanelCount}`]);
+                arrRows.push(['Capacity', `${formatNumber(bom.totalKw, 2)} kW`, `${formatNumber(at.totalKw, 2)} kW`]);
+            }
+            doc.autoTable({
+                startY: y,
+                margin: { left: margin, right: margin + contentW * 0.35 },
+                head: [['', 'Per structure', `All ${at.copies}`]],
+                body: arrRows,
+                theme: 'grid',
+                headStyles: { fillColor: colors.headerBg, textColor: colors.headerText, fontStyle: 'bold', fontSize: 7.5, cellPadding: 2.5 },
+                styles: { fontSize: 8, cellPadding: 2.2, textColor: colors.text, lineColor: [220, 220, 220], lineWidth: 0.25 },
+                columnStyles: { 0: { cellWidth: 'auto' }, 1: { cellWidth: 32, halign: 'right' }, 2: { cellWidth: 32, halign: 'right', fontStyle: 'bold' } },
+                alternateRowStyles: { fillColor: [252, 252, 252] },
+            });
+            y = doc.lastAutoTable.finalY + 6;
+        }
     
         // ---- BEAM SPECIFICATIONS ----
         checkPageBreak(50);
@@ -3066,6 +3095,10 @@ import { formatInchesFraction } from '../core/unit-converter.js';
     
         rows.push(['LinkageLab Build Guide - Bill of Materials']);
         rows.push([`Generated: ${new Date().toLocaleDateString()}`]);
+        if (bom.arrayTotals) {
+            rows.push([`Structures in array: ${bom.arrayTotals.copies}`, '', '', '', '']);
+            rows.push(['Quantities and totals below are for ONE structure; see TOTAL - ALL STRUCTURES at the end.', '', '', '', '']);
+        }
         rows.push([]);
         rows.push(['Section', 'Qty', 'Item', 'Unit Price', 'Line Total']);
     
@@ -3127,6 +3160,27 @@ import { formatInchesFraction } from '../core/unit-converter.js';
             rows.push(['', '', 'Solar Panels', '', `${unitConverter.formatWeightWithUnit(bom.solarPanelWeight, 1)}`]);
         }
         rows.push(['', '', '', 'Total Weight:', `${unitConverter.formatWeightWithUnit(bom.totalWeight, 1)}`]);
+    
+        // ---- WHOLE ARRAY ----
+        if (bom.arrayTotals) {
+            const at = bom.arrayTotals;
+            const k = at.copies;
+            rows.push([]);
+            rows.push([`TOTAL - ALL ${k} STRUCTURES`, 'Qty', 'Item', 'Unit Price', 'Line Total']);
+            const emit = (list) => list.forEach(r => rows.push(['', r.qty * k, r.item, `$${formatNumber(r.unit, 2)}`, `$${formatNumber(r.total * k, 2)}`]));
+            emit(bom.structureItems);
+            rows.push(['', '', '', 'Structure Subtotal:', `$${formatNumber(at.structureCost, 2)}`]);
+            if (bom.solarEnabled && bom.powerItems.length > 0) {
+                emit(bom.powerItems);
+                rows.push(['', '', '', 'Power Subtotal:', `$${formatNumber(at.powerCost, 2)}`]);
+            }
+            if (bom.enclosureItems && bom.enclosureItems.length > 0) {
+                emit(bom.enclosureItems);
+                rows.push(['', '', '', 'Enclosure Subtotal:', `$${formatNumber(at.enclosureCost, 2)}`]);
+            }
+            rows.push(['', '', '', `ESTIMATED TOTAL (${k} structures):`, `$${formatNumber(at.totalCost, 2)}`]);
+            rows.push(['', '', '', `Total Weight (${k} structures):`, `${unitConverter.formatWeightWithUnit(at.totalWeight, 1)}`]);
+        }
     
         // Build CSV string with proper escaping
         const csvContent = rows.map(row =>

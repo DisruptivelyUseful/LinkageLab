@@ -39,7 +39,8 @@ function applyCollisionDetection(data) {
     state.hasCollision = state.collisions.length > 0;
 }
 
-function computeGeometryHash() {
+function computeGeometryHash(options = {}) {
+    const includeFold = options.includeFold !== false;
     const params = [
         state.modules,
         state.hLengthFt,
@@ -71,7 +72,7 @@ function computeGeometryHash() {
         state.showHardwareFullDetail && typeof globalThis.serializeHardwareAssembliesForConfig === 'function'
             ? JSON.stringify(globalThis.serializeHardwareAssembliesForConfig())
             : '',
-        state.foldAngle.toFixed(6),
+        includeFold ? state.foldAngle.toFixed(6) : 'fold:any',
         state.orientation,
         // Radial array parameters change solver output directly
         !!state.radialArrayEnabled,
@@ -89,6 +90,11 @@ function computeGeometryHash() {
     return params.join('|');
 }
 
+/** Geometry hash with the fold angle left out: keys results that hold at every fold (deployed frame). */
+function computeGeometryHashWithoutFold() {
+    return computeGeometryHash({ includeFold: false });
+}
+
 function isGeometryCacheValid() {
     if (!cachedLinkageData || !cachedGeometryHash) return false;
     return cachedGeometryHash === computeGeometryHash();
@@ -101,6 +107,8 @@ function invalidateGeometryCache() {
     cachedCollisionFoldAngle = null;
     clearMeshStructureCache();
     state._deployedRingCenter = null;
+    state._deployedFrame = null;
+    if (typeof globalThis.clearAssemblyCache === 'function') globalThis.clearAssemblyCache();
     // A structure edit invalidates the deploy preview's bake (deploy-preview.js)
     if (typeof globalThis.onGeometryInvalidated === 'function') globalThis.onGeometryInvalidated();
 }
@@ -143,6 +151,7 @@ function getCachedGeometryHash() {
 const cacheExports = {
     applyCollisionDetection,
     computeGeometryHash,
+    computeGeometryHashWithoutFold,
     isGeometryCacheValid,
     invalidateGeometryCache,
     invalidateRcpCrossings,
@@ -157,6 +166,7 @@ bridgeGlobals(cacheExports, 'cache');
 export {
     applyCollisionDetection,
     computeGeometryHash,
+    computeGeometryHashWithoutFold,
     isGeometryCacheValid,
     invalidateGeometryCache,
     invalidateRcpCrossings,

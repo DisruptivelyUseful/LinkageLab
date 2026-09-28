@@ -209,6 +209,81 @@ test.describe('Radial array: copies and 3D export', () => {
         expect(names).toEqual(['Structure_1', 'Structure_2', 'Structure_3', 'Structure_Center']);
     });
 
+    test('copies fold in place: the ring plan is fixed across fold angles', async ({ page }) => {
+        await page.locator('#chk-radial-arr-enabled').check();
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialArrayEnabled)).toBe(true);
+        const planAt = (deg) => page.evaluate((deg) => {
+            globalThis.state.foldAngle = deg * Math.PI / 180;
+            const plan = globalThis.buildLinkageGeometry({ useCache: false }).radialArray;
+            return { anchor: plan.anchor, radius: plan.radius, offsets: plan.slots.map(sl => [sl.offset.x, sl.offset.z]) };
+        }, deg);
+        const deployed = await planAt(130);
+        const folded = await planAt(40);
+        expect(folded.radius).toBeCloseTo(deployed.radius, 6);
+        expect(folded.anchor.x).toBeCloseTo(deployed.anchor.x, 6);
+        expect(folded.anchor.z).toBeCloseTo(deployed.anchor.z, 6);
+        folded.offsets.forEach((o, i) => {
+            expect(o[0]).toBeCloseTo(deployed.offsets[i][0], 6);
+            expect(o[1]).toBeCloseTo(deployed.offsets[i][1], 6);
+        });
+        // The "fold one at a time" option appears once the design holds several structures
+        await expect(page.locator('#anim-sequential-row')).toBeAttached();
+        await expect.poll(() => page.evaluate(() => document.getElementById('anim-sequential-row').hidden)).toBe(false);
+    });
+
+    test('sequential fold moves one copy at a time; the deploy preview packs every copy and labels them', async ({ page }) => {
+        await page.locator('#chk-radial-arr-enabled').check();
+        const count = page.locator('#nb-radial-arr-count');
+        await count.fill('3');
+        await count.dispatchEvent('change');
+        await expect.poll(() => page.evaluate(() => globalThis.state.radialCount)).toBe(3);
+        // The Animation group is collapsed by default; drive the checkbox directly
+        await page.evaluate(() => { const c = document.getElementById('chk-anim-sequential'); c.checked = true; c.dispatchEvent(new Event('change')); });
+        await expect.poll(() => page.evaluate(() => globalThis.state.animation.sequentialFold)).toBe(true);
+
+        const sched = await page.evaluate(() => {
+            const r = globalThis.getFoldSweepRange(globalThis.state);
+            globalThis.state.foldAngle = r.min + 0.5 * (r.max - r.min);
+            const d = globalThis.buildLinkageGeometry({ useCache: false });
+            const s = d.foldSchedule;
+            return { K: s.K, sequential: s.sequential, distinct: s.distinctAngles.length, labels: s.copies.map(c => c.label), progress: s.copies.map(c => +c.progress.toFixed(2)), beams: d.beams.length };
+        });
+        expect(sched.K).toBe(4);
+        expect(sched.sequential).toBe(true);
+        expect(sched.distinct).toBeLessThanOrEqual(3);
+        expect(sched.labels).toEqual(['Center', 'Copy 1', 'Copy 2', 'Copy 3']);
+        expect(sched.progress).toEqual([1, 1, 0, 0]);
+        expect(sched.beams).toBeGreaterThan(0);
+
+        // Packed view: one carrier per copy, each parked at its own pack slot
+        await page.evaluate(() => { globalThis.state.foldAngle = globalThis.getOptimalClosedAngleForAnimation(); globalThis.requestRender(); });
+        await page.evaluate(() => document.getElementById('btn-deploy-pack').click());
+        await expect.poll(() => page.evaluate(() => globalThis.isDeployPreviewActive()), { timeout: 120_000 }).toBe(true);
+        await expect(page.locator('#deploy-phase')).toContainText('Packed');
+        await expect(page.locator('#deploy-pack-summary')).toContainText('4 bundles');
+        const packed = await page.evaluate(() => {
+            const w = globalThis.threeRenderer.mainScene.getObjectByName('DeployPreview');
+            const st = w.getObjectByName('Structure');
+            const carriers = st.children.filter(c => /^Structure_/.test(c.name));
+            const centers = carriers.map(c => new THREE.Box3().setFromObject(c).getCenter(new THREE.Vector3()).toArray().map(v => +v.toFixed(1)));
+            return { names: carriers.map(c => c.name).sort(), centers, meta: globalThis.deployPreview.meta };
+        });
+        expect(packed.names).toEqual(['Structure_1', 'Structure_2', 'Structure_3', 'Structure_Center']);
+        expect(new Set(packed.centers.map(c => c.join(','))).size).toBe(4);
+        expect(packed.meta.copies).toBe(4);
+        expect(packed.meta.sequential).toBe(true);
+        expect(packed.meta.pack.bundles).toBe(4);
+        expect(packed.meta.timeline.copies.map(c => c.label)).toEqual(['Center', 'Copy 1', 'Copy 2', 'Copy 3']);
+
+        // Scrubbing into the second window names that copy
+        await page.evaluate(() => globalThis.setDeployT(0.3));
+        await expect(page.locator('#deploy-phase')).toContainText(/Copy 1 · /);
+        await page.evaluate(() => globalThis.setDeployT(1));
+        await expect(page.locator('#deploy-phase')).toContainText('Deployed');
+        await page.evaluate(() => document.getElementById('btn-deploy-exit').click());
+        await expect.poll(() => page.evaluate(() => globalThis.isDeployPreviewActive())).toBe(false);
+    });
+
     test('individual copies can be hidden, which the viewport and the export both honour', async ({ page }) => {
         const before = await beamCount(page);
         await page.locator('#chk-radial-arr-enabled').check();

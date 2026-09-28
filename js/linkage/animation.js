@@ -8,6 +8,7 @@ import { MIN_FOLD_ANGLE, MAX_FOLD_ANGLE, INCHES_PER_FOOT } from './constants.js'
 import { degToRad, radToDeg, formatNumber } from './math.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { getEffectiveMinFoldAngle } from './solver.js';
+import { sequentialCopyCount } from './fold-sequence.js';
 
 // ============================================================================
 // ANIMATION SYSTEM
@@ -103,8 +104,9 @@ import { getEffectiveMinFoldAngle } from './solver.js';
         const direction = state.animation.direction;
         
         // Calculate step based on delta time (target ~60fps equivalent)
-        // Full cycle should take about 3 seconds at speed 1.0
-        const fullCycleMs = 3000 / speed;
+        // Full cycle should take about 3 seconds at speed 1.0 — per structure when the
+        // array folds one at a time.
+        const fullCycleMs = (3000 * sequentialCopyCount(state)) / speed;
         const angleRange = maxAngle - minAngle;
         const step = (angleRange / fullCycleMs) * deltaTime * direction;
         
@@ -233,7 +235,7 @@ import { getEffectiveMinFoldAngle } from './solver.js';
         const startAngle = state.foldAngle;
         const startTime = Date.now();
         const speed = state.actuatorAnimation.speed || 1.0;
-        const adjustedDuration = duration / speed;
+        const adjustedDuration = (duration * sequentialCopyCount(state)) / speed;
     
         function animate() {
             if (!state.actuatorAnimation.isPlaying) {
@@ -251,7 +253,8 @@ import { getEffectiveMinFoldAngle } from './solver.js';
             state.foldAngle = currentAngle;
             syncUI('foldAngle');
     
-            invalidateGeometryCache();
+            // The geometry cache is keyed by fold angle, so no invalidation is needed here
+            // (it would also drop the deployed frame and close the deploy preview each frame).
             requestRender();
     
             if (progress < 1) {
@@ -265,7 +268,6 @@ import { getEffectiveMinFoldAngle } from './solver.js';
                     state.animation.foldingPanelDeploy = 0;
                     state.animation.foldingPanelsUnfoldPhase = true;
                 }
-                invalidateGeometryCache();
                 requestRender();
                 const stopBtn = document.getElementById('btn-actuator-stop');
                 if (stopBtn) stopBtn.style.display = 'none';

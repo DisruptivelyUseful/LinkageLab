@@ -8,6 +8,10 @@ import { getEffectiveMinFoldAngle } from './solver.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { degToRad, radToDeg } from './math.js';
 import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './materials.js';
+import { deployOrder } from './fold-sequence.js';
+import { planPackLayout } from './pack-layout.js';
+import { FOLD_TIMELINE, buildDeployTimeline } from './deploy-timeline.js';
+import { computeBillOfMaterials } from './bom.js';
 
     // Material mode for the scene builders below: 'export' = plain untextured
     // MeshStandardMaterials (small GLBs; downstream viewers re-materialise),
@@ -198,26 +202,30 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
          * Returns null when there is nothing to export.
          */
         const materialMode = options.viewportMaterials ? 'view' : 'export';
-        const buildExportScene = (foldAngleRad) => {
+        const buildExportScene = (foldAngleRad, sceneOpts = {}) => {
             const savedFoldAngle = state.foldAngle;
             if (foldAngleRad !== undefined) state.foldAngle = foldAngleRad;
             try {
-                return withSceneMaterialMode(materialMode, () => buildExportSceneInner(foldAngleRad));
+                return withSceneMaterialMode(materialMode, () => buildExportSceneInner(foldAngleRad, sceneOpts));
             } finally {
                 state.foldAngle = savedFoldAngle;
             }
         };
         
-        const buildExportSceneInner = (foldAngleRad) => {
+        const buildExportSceneInner = (foldAngleRad, sceneOpts = {}) => {
         // Get current geometry data using the same assembled component set as the live viewport.
+        // Animated exports sample every copy at the same angle (the clip gives each copy its own
+        // window), so the sequential fold is left out of the sampled scenes.
         const data = buildLinkageGeometry({
             includeSupportBeams: true,
             includePanels: !!(state.solarPanels && state.solarPanels.enabled),
             foldAngle: foldAngleRad,
-            useCache: false
+            useCache: false,
+            sequential: animate ? false : undefined,
         });
         
         if (!data || !data.beams || data.beams.length === 0) return null;
+        const builtInfo = { naturalLift: 0, lift: 0 };
         
         // Helper functions for coordinate transformation (Y-up to Z-up)
         // Transform: Y → Z, Z → -Y (rotate 90° around X axis)
@@ -303,7 +311,8 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         }
     
         const exportBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
-        const exportCenter = exportBounds.center || { x: 0, y: 0, z: 0 };
+        // A caller-supplied pivot keeps the structure root constant across animation samples
+        const exportCenter = sceneOpts.pivot || exportBounds.center || { x: 0, y: 0, z: 0 };
         data.structureBounds = exportBounds;
         data.structureCenter = exportCenter;
         
@@ -338,16 +347,25 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         // Radial array: every visible copy gets its own Structure_<n> node holding that
         // copy's modules, so the exported hierarchy matches the viewport one-to-one.
         const radialPlan = data.radialArray || null;
-        const radialLinearCount = radialPlan ? Math.max(1, radialPlan.linearCount | 0) : 1;
-        const slotOf = (o) => radialPlan ? Math.floor(((o && o.arrayIndex) || 0) / radialLinearCount) : 0;
-        const copySlots = radialPlan
-            ? radialPlan.slots.filter(sl => !sl.hidden).map(sl => sl.slot)
-            : [0];
-        const copyGroupName = (slot) => {
-            const sl = radialPlan && radialPlan.slots.find(x => x.slot === slot);
-            return sl && sl.isCenter ? 'Structure_Center' : `Structure_${slot}`;
+        const radialLinearCount = radialPlan
+            ? Math.max(1, radialPlan.linearCount | 0)
+            : ((state.orientation === 'vertical' && (state.arrayCount | 0) > 1) ? (state.arrayCount | 0) : 1);
+        // Every structure of the design (radial copies × tunnel segments) in deploy order.
+        // With more than one, each gets its own carrier node so the deploy clip can pack
+        // and unfold them one at a time.
+        const copies = deployOrder(radialPlan, radialLinearCount);
+        const multiCopy = copies.length > 1;
+        const copyByArrayIndex = new Map(copies.map(c => [c.arrayIndex, c]));
+        const copyOf = (o) => copyByArrayIndex.get((o && o.arrayIndex) | 0) || copies[0];
+        const copyKeyOf = (o) => { const c = copyOf(o); return `${c.slot}:${c.linearIdx}`; };
+        const copyGroupName = (c) => {
+            if (!c) return 'Structure';
+            const radialName = radialPlan ? (c.isCenter ? 'Structure_Center' : `Structure_${c.slot}`) : 'Structure';
+            if (radialLinearCount > 1) return `${radialName}_S${c.linearIdx + 1}`;
+            return radialName;
         };
-        const byCopy = (map, slot) => (map[slot] || (map[slot] = {}));
+        copies.forEach(c => { c.key = `${c.slot}:${c.linearIdx}`; c.carrier = multiCopy ? copyGroupName(c) : 'Structure'; });
+        const byCopy = (map, key) => (map[key] || (map[key] = {}));
 
         // Group beams by copy and module index; support beams use moduleIndex -1 and need their own group.
         const beamsByCopy = {};
@@ -359,7 +377,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                     return;
                 }
                 
-                const beamsByModule = byCopy(beamsByCopy, slotOf(beam));
+                const beamsByModule = byCopy(beamsByCopy, copyKeyOf(beam));
                 const modIdx = beam.moduleIndex !== undefined ? beam.moduleIndex : 0;
                 if (!beamsByModule[modIdx]) {
                     beamsByModule[modIdx] = {
@@ -383,7 +401,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         const bracketsByCopy = {};
         if (data.brackets) {
             data.brackets.forEach(bracket => {
-                const bracketsByModule = byCopy(bracketsByCopy, slotOf(bracket));
+                const bracketsByModule = byCopy(bracketsByCopy, copyKeyOf(bracket));
                 const modIdx = bracket.moduleIndex !== undefined ? bracket.moduleIndex : 0;
                 if (!bracketsByModule[modIdx]) bracketsByModule[modIdx] = [];
                 bracketsByModule[modIdx].push(bracket);
@@ -394,7 +412,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         const boltsByCopy = {};
         if (data.bolts) {
             data.bolts.forEach(bolt => {
-                const boltsByModule = byCopy(boltsByCopy, slotOf(bolt));
+                const boltsByModule = byCopy(boltsByCopy, copyKeyOf(bolt));
                 const modIdx = bolt.moduleIndex !== undefined ? bolt.moduleIndex : 0;
                 if (!boltsByModule[modIdx]) boltsByModule[modIdx] = [];
                 boltsByModule[modIdx].push(bolt);
@@ -403,12 +421,17 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         
         // Create module groups with hierarchical structure (per array copy when arrayed)
         const moduleCount = state.modules || 1;
-        for (const copySlot of copySlots) {
-        const beamsByModule = beamsByCopy[copySlot] || {};
-        const bracketsByModule = bracketsByCopy[copySlot] || {};
-        const boltsByModule = boltsByCopy[copySlot] || {};
-        const copyGroup = radialPlan ? new THREE.Group() : rootGroup;
-        if (radialPlan) copyGroup.name = copyGroupName(copySlot);
+        for (const copy of copies) {
+        const beamsByModule = beamsByCopy[copy.key] || {};
+        const bracketsByModule = bracketsByCopy[copy.key] || {};
+        const boltsByModule = boltsByCopy[copy.key] || {};
+        const copyGroup = multiCopy ? new THREE.Group() : rootGroup;
+        if (multiCopy) {
+            copyGroup.name = copy.carrier;
+            copyGroup.userData.copyKey = copy.key;
+            copyGroup.userData.copyLabel = copy.label;
+            copyGroup.userData.copyOrder = copy.order;
+        }
         for (let i = 0; i < moduleCount; i++) {
             const moduleGroup = new THREE.Group();
             moduleGroup.name = `Module_${i}`;
@@ -525,7 +548,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                 copyGroup.add(moduleGroup);
             }
         }
-        if (radialPlan && copyGroup.children.length > 0) rootGroup.add(copyGroup);
+        if (multiCopy && copyGroup.children.length > 0) rootGroup.add(copyGroup);
         } // end per-copy loop
     
         // Animated exports keep the roof/support beams outside the moving structure root so
@@ -555,8 +578,9 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                     const mesh = createBeamMeshForExport(beam, isZup, supportExportBolts);
                     if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
                         const isReciprocal = beam.stackType === 'support-beam-reciprocal';
-                        const copyTag = radialPlan ? `_${copyGroupName(slotOf(beam))}` : '';
+                        const copyTag = multiCopy ? `_${copyOf(beam).carrier}` : '';
                         mesh.name = (isReciprocal ? `SupportBeam_Reciprocal_${idx}` : `SupportBeam_Radial_${idx}`) + copyTag;
+                        mesh.userData.copyKey = copyKeyOf(beam);
                         offsetForExportPivot(mesh);
                         (isReciprocal ? reciprocalGroup : radialGroup).add(mesh);
                         totalMeshes++;
@@ -581,6 +605,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                         const mesh = createBoltMeshForExport(bolt, isZup);
                         if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
                             mesh.name = `RcpBolt_${idx}`;
+                            mesh.userData.copyKey = copyKeyOf(bolt);
                             offsetForExportPivot(mesh);
                             rcpBoltGroup.add(mesh);
                             totalMeshes++;
@@ -619,6 +644,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                     const mesh = createPanelMeshForExport(panel, isZup);
                     if (mesh && (mesh.isMesh || mesh.children.length > 0)) {
                         mesh.name = `Panel_${idx}`;
+                        mesh.userData.copyKey = copyKeyOf(panel);
                         offsetForExportPivot(mesh);
                         panelsGroup.add(mesh);
                         totalMeshes++;
@@ -706,7 +732,11 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             // Keep the structure's lowest beam on the ground plane at every fold angle so the
             // baked animation folds in place instead of drifting around its centre.
             const upKey = isZup ? 'z' : 'y';
-            const lift = -((exportBounds.min && exportBounds.min[upKey]) || 0) * scaleFactor;
+            const naturalLift = -((exportBounds.min && exportBounds.min[upKey]) || 0) * scaleFactor;
+            // A caller-supplied lift keeps the root constant; the clip then grounds each copy itself
+            const lift = sceneOpts.lift !== undefined ? sceneOpts.lift : naturalLift;
+            builtInfo.naturalLift = naturalLift;
+            builtInfo.lift = lift;
             rootGroup.position[upKey] += lift;
             const panelsGroupForLift = coordWrapper.children.find(child => child.name === 'SolarPanels');
             if (panelsGroupForLift) panelsGroupForLift.position[upKey] += lift;
@@ -722,7 +752,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         
         // Force update matrices for all objects
         exportScene.updateMatrixWorld(true);
-        return { exportScene, data, moduleCount, exportBounds };
+        return { exportScene, data, moduleCount, exportBounds, copies, pivot: exportCenter, ...builtInfo };
         };
         
         const foldRange = animate ? computeFoldAnimationRange() : null;
@@ -738,7 +768,16 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             const rcpSnapshot = { rcpCrossings: sb.rcpCrossings, rcpFinalTopology: sb.rcpFinalTopology, rcpHoleTsByBeam: sb.rcpHoleTsByBeam, _lastPhi: sb._lastPhi };
             globalThis.__suppressRcpDiagnosticsUI = true;
             try {
-                foldAnimation = buildFoldAnimationClip(exportScene, buildExportScene, foldRange, animationSamples, animationDuration, scaleFactor);
+                let packedWeightLb = 0;
+                try { packedWeightLb = computeBillOfMaterials(data, state).total.weight.total; } catch (e) { packedWeightLb = 0; }
+                foldAnimation = buildFoldAnimationClip(exportScene, buildExportScene, foldRange, animationSamples, animationDuration, scaleFactor, {
+                    copies: built.copies || [],
+                    sequential: !!(state.animation && state.animation.sequentialFold),
+                    perCopySec: Math.max(0.5, Number(options.animationSecondsPerCopy) || 9),
+                    pivot: built.pivot,
+                    liftDeployed: built.lift,
+                    packedWeightLb,
+                });
             } catch (err) {
                 console.warn('[GLTF Export] Fold animation failed; exporting static model instead', err);
             } finally {
@@ -751,13 +790,16 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                     minFoldDeg: +radToDeg(foldRange.min).toFixed(2),
                     maxFoldDeg: +radToDeg(foldRange.max).toFixed(2),
                     samples: animationSamples,
-                    durationSec: animationDuration,
+                    durationSec: foldAnimation.clip.duration,
                     groundAnchored: true,
                     animatedNodes: foldAnimation.animatedNodes,
                     timeline: foldAnimation.timeline,
                     ibcGapIn: foldAnimation.ibcGapIn,
                     supportCount: foldAnimation.supportCount,
-                    panelCount: foldAnimation.panelCount
+                    panelCount: foldAnimation.panelCount,
+                    copies: foldAnimation.copies,
+                    sequential: foldAnimation.sequential,
+                    pack: foldAnimation.pack,
                 };
                 exportScene.userData.foldAnimation = meta;
                 const structureRoot = exportScene.getObjectByName('Structure');
@@ -798,19 +840,7 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         return parts.join('/');
     }
 
-    // Timeline of the baked clip, as fractions of the total duration. Forward time is
-    // deployment: the packed bundle climbs out of the IBC stack and lies flat, the scissor
-    // linkage unfolds, then the panels fly from their stack onto the ring one at a time.
-    const FOLD_TIMELINE = {
-        rise:      [0.00, 0.07],   // bundle rises vertically out of the IBC column
-        carry:     [0.07, 0.14],   // bundle carried sideways to its folded ground position
-        lower:     [0.14, 0.18],   // bundle lowered to stand on the ground
-        lay:       [0.18, 0.24],   // bundle tips over to lie flat (folded rest pose)
-        fold:      [0.24, 0.52],   // scissor linkage unfolds (kinematic samples)
-        support:   [0.52, 0.72],   // radial then reciprocal roof beams fly from their pile
-        panels:    [0.72, 1.00],   // panels mount one by one
-        ibcGap:    [0.08, 0.13]    // top IBC settles back down once the bundle is clear
-    };
+    // Timeline of the baked clip: see deploy-timeline.js (FOLD_TIMELINE / buildDeployTimeline).
 
     /**
      * Measures the folded beam bundle along its own beam direction (the folded stack
@@ -858,20 +888,35 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
     const phaseU = (t, D, span) => (t / D - span[0]) / (span[1] - span[0]);
 
     /**
-     * Bakes the full pack/deploy sequence into a clip named "Deploy" (see FOLD_TIMELINE).
+     * Bakes the full pack/deploy sequence into a clip named "Deploy" (see deploy-timeline.js).
      * Beam parts are sampled from the linkage solver across the fold range; the bundle's
      * rigid stand-up/insertion, the panel flights and the IBC gap are synthesised here.
      * Parts that do not exist at a given fold angle (support beams below their visibility
      * angle) are collapsed with a stepped scale of 0, since glTF has no visibility track.
      *
-     * @returns {{clip: THREE.AnimationClip, animatedNodes: number, timeline: object, ibcGapIn: number, panelCount: number} | null}
+     * With a radial array / arch tunnel array every structure has its own carrier node
+     * (Structure_<name>), its own pack slot (inside the IBC column when the bundles fit,
+     * flat beside it otherwise — pack-layout.js) and, with the sequential fold, its own
+     * window of the clip, one structure after another.
+     *
+     * @param {object} [extra] { copies, sequential, perCopySec, pivot, liftDeployed, packedWeightLb }
+     * @returns {{clip: THREE.AnimationClip, animatedNodes: number, timeline: object, ibcGapIn: number,
+     *            supportCount: number, panelCount: number, copies: number, sequential: boolean, pack: object} | null}
      */
-    function buildFoldAnimationClip(baseScene, buildSceneAtAngle, range, samples, durationSec, unitScale) {
-        const D = durationSec;
-        const TL = FOLD_TIMELINE;
+    function buildFoldAnimationClip(baseScene, buildSceneAtAngle, range, samples, durationSec, unitScale, extra = {}) {
         const inch = unitScale || 1;               // scene units per inch
         const UP = new THREE.Vector3(0, 1, 0);
         const STRUCT_PATH = 'CoordSystem/Structure';
+        const copyList = Array.isArray(extra.copies) ? extra.copies : [];
+        const multi = copyList.length > 1;
+        const timeline = buildDeployTimeline({
+            K: multi ? copyList.length : 1,
+            sequential: multi && !!extra.sequential,
+            perCopySec: extra.perCopySec || 9,
+            baseSec: durationSec,
+            labels: copyList.map(c => c.label),
+        });
+        const D = timeline.durationSec;
 
         baseScene.updateMatrixWorld(true);
         const baseByPath = new Map();
@@ -887,6 +932,14 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             s: [o.scale.x, o.scale.y, o.scale.z]
         });
 
+        // The moving units: the Structure root itself (one structure) or one carrier per copy.
+        const units = multi
+            ? copyList.map((c, j) => ({ ...c, j, path: `${STRUCT_PATH}/${c.carrier}`, tl: timeline.copies[j], node: baseByPath.get(`${STRUCT_PATH}/${c.carrier}`) })).filter(u => u.node)
+            : [{ j: 0, key: null, label: 'Structure', path: STRUCT_PATH, tl: timeline.copies[0], node: structureRoot }];
+        if (!units.length) return null;
+        const unitOfPath = (path) => units.find(u => path === u.path || path.startsWith(u.path + '/'));
+        const unitOfKey = (key) => (multi ? units.find(u => u.key === key) : units[0]) || units[0];
+
         // ---- Keyframe records ------------------------------------------------------
         const records = new Map();
         const addKey = (path, t, trs) => {
@@ -898,13 +951,15 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
         };
 
         // ---- 1. Kinematic samples across the fold range ---------------------------------
+        // Multi-copy scenes are sampled with the base scene's pivot and lift so the Structure
+        // root is constant; each carrier then grounds its own bundle (ground fix below).
+        const sampleOpts = multi ? { pivot: extra.pivot, lift: extra.liftDeployed } : {};
         const kin = [];
-        let folded = null;
         let foldedRootTRS = null;
         for (let j = 0; j < samples; j++) {
             const f = samples === 1 ? 1 : j / (samples - 1);
             const angle = range.min + (range.max - range.min) * f;
-            const built = buildSceneAtAngle(angle);
+            const built = buildSceneAtAngle(angle, sampleOpts);
             if (!built || !built.exportScene) continue;
             const sc = built.exportScene;
             sc.updateMatrixWorld(true);
@@ -916,14 +971,17 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                 nodes.set(path, readTRS(o));
             });
             if (kin.length === 0) {
-                const root = sc.getObjectByName('Structure');
-                folded = measureFoldedBundle(root);
-                foldedRootTRS = readTRS(root);
+                units.forEach(u => {
+                    const node = multi ? sc.getObjectByName(u.node.name) : sc.getObjectByName('Structure');
+                    u.folded = node ? measureFoldedBundle(node) : null;
+                });
+                foldedRootTRS = readTRS(sc.getObjectByName('Structure'));
             }
-            kin.push({ angle, f, nodes });
+            const groundFix = multi ? ((built.naturalLift || 0) - (extra.liftDeployed || 0)) : 0;
+            kin.push({ angle, f, nodes, groundFix });
             disposeExportSceneResources(sc);
         }
-        if (kin.length < 2 || !folded) return null;
+        if (kin.length < 2 || units.some(u => !u.folded)) return null;
 
         const kinTRS = (k, path) => {
             const hit = kin[k].nodes.get(path);
@@ -932,75 +990,140 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             const b = readTRS(node);
             return { p: b.p, q: b.q, s: [0, 0, 0] };   // absent at this angle → collapsed
         };
-        const tFold = (k) => D * (TL.fold[0] + (TL.fold[1] - TL.fold[0]) * kin[k].f);
+        const tFold = (u, k) => D * (u.tl.fold[0] + (u.tl.fold[1] - u.tl.fold[0]) * kin[k].f);
 
-        // ---- 2. Structure children: hold folded, unfold, hold deployed ------------------
+        // ---- 2. Structure children: hold folded, unfold in their unit's window, hold deployed ----
         baseByPath.forEach((node, path) => {
             if (!path.startsWith(STRUCT_PATH + '/')) return;
+            const u = unitOfPath(path);
+            if (!u || path === u.path) return;
             addKey(path, 0, kinTRS(0, path));
-            addKey(path, D * TL.fold[0], kinTRS(0, path));
-            for (let k = 0; k < kin.length; k++) addKey(path, tFold(k), kinTRS(k, path));
+            addKey(path, D * u.tl.fold[0], kinTRS(0, path));
+            for (let k = 0; k < kin.length; k++) addKey(path, tFold(u, k), kinTRS(k, path));
             addKey(path, D, kinTRS(kin.length - 1, path));
         });
 
-        // ---- 3. Bundle geometry & IBC column -----------------------------------------------
-        const c0 = folded.center;
-        const L = folded.L;                                          // bundle length (becomes height)
-        // Rotating the beam direction about (dir × up) by +90° points it straight up.
-        const standAxis = new THREE.Vector3(-folded.dir.z, 0, folded.dir.x).normalize();
-        const standSign = 1;
-
-        let ibcBox = null, ibcCenter = null, groundY = folded.minY;
+        // ---- 3. Bundle geometry, IBC column and the pack layout ------------------------------
+        const rootScale = structureRoot.scale.x || 1;
+        const gf0 = kin[0].groundFix;
+        let ibcBox = null, ibcCenter = null;
         if (ibcGroup) {
             ibcBox = new THREE.Box3().setFromObject(ibcGroup);
             ibcCenter = ibcBox.getCenter(new THREE.Vector3());
-            groundY = Math.min(groundY, ibcBox.min.y);
         }
-        const origin = ibcCenter ? new THREE.Vector3(ibcCenter.x, groundY, ibcCenter.z) : new THREE.Vector3(0, groundY, 0);
+        // Rest bottom of the folded bundles (with the ground fix), and the ground level itself
+        const bundleGround = Math.min(...units.map(u => u.folded.minY + gf0));
+        const groundY = ibcBox ? Math.min(bundleGround, ibcBox.min.y) : bundleGround;
         const margin = 2 * inch;
-        const ibcHeight = ibcBox ? (ibcBox.max.y - ibcBox.min.y) : 0;
-        const ibcGap = ibcBox ? Math.max(0, L + 2 * margin - ibcHeight) : 0;   // widen the column to fit
+        const dims0 = units[0].folded;                               // all copies are rigid copies of one bundle
+        const origin = ibcCenter ? new THREE.Vector3(ibcCenter.x, groundY, ibcCenter.z) : new THREE.Vector3(0, groundY, 0);
+
+        // Stack sites: panels on the far side of the IBC from the first bundle, roof beams to the side.
+        const c0First = units[0].folded.center;
+        const away = new THREE.Vector3(origin.x - c0First.x, 0, origin.z - c0First.z);
+        if (away.lengthSq() < 1e-8) away.set(1, 0, 0);
+        away.normalize();
+        const side = new THREE.Vector3(-away.z, 0, away.x);
+        const ibcHalf = ibcBox ? Math.max(ibcBox.max.x - ibcBox.min.x, ibcBox.max.z - ibcBox.min.z) / 2 : 24 * inch;
+
+        // A bundle taller than it is wide (a folded arch) is rolled onto its wide face
+        // when it lies flat, so its thinnest side is the stacking height.
+        const rollFlat = dims0.H > dims0.W;
+        const flatH = rollFlat ? dims0.W : dims0.H;
+        const flatW = rollFlat ? dims0.H : dims0.W;
+        const layout = planPackLayout({
+            K: units.length,
+            bundle: { L: dims0.L / inch, H: flatH / inch, W: flatW / inch },
+            ibc: ibcBox ? { present: true, cx: ibcCenter.x / inch, cz: ibcCenter.z / inch, x: (ibcBox.max.x - ibcBox.min.x) / inch, z: (ibcBox.max.z - ibcBox.min.z) / inch, height: (ibcBox.max.y - ibcBox.min.y) / inch, minY: ibcBox.min.y / inch } : null,
+            groundY: groundY / inch,
+            margin: margin / inch,
+            side: { x: side.x, y: 0, z: side.z },
+            away: { x: away.x, y: 0, z: away.z },
+            ibcHalf: ibcHalf / inch,
+        });
+        const ibcGap = layout.ibcGap * inch;
         const stackTop = (ibcBox ? ibcBox.max.y : groundY) + ibcGap;
-        const packedCenterY = groundY + margin + L / 2;
-        const clearY = stackTop + margin + L / 2;
+        const inColumn = layout.mode === 'ibc';
 
-        // Height of the bundle centre so its (rotated) box rests on the ground at tilt θ.
-        const restHeight = (theta) => groundY + (L * Math.abs(Math.sin(theta)) + folded.H * Math.abs(Math.cos(theta))) / 2;
-
-        // Rigid pose of the bundle → structure root local TRS.
-        const W0 = new THREE.Matrix4().compose(
-            new THREE.Vector3().fromArray(foldedRootTRS.p),
-            new THREE.Quaternion().fromArray(foldedRootTRS.q),
-            new THREE.Vector3().fromArray(foldedRootTRS.s));
-        const rootPoseTRS = (theta, center) => {
-            const q = new THREE.Quaternion().setFromAxisAngle(standAxis, standSign * theta);
-            const M = new THREE.Matrix4().makeTranslation(center.x, center.y, center.z)
-                .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q))
-                .multiply(new THREE.Matrix4().makeTranslation(-c0.x, -c0.y, -c0.z))
-                .multiply(W0);
-            const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
-            M.decompose(pos, quat, scl);
-            return { p: pos.toArray(), q: quat.toArray(), s: scl.toArray() };
+        // Rigid pose of a unit's bundle → that unit's local TRS. World motion M (about the
+        // measured bundle) is conjugated into the unit's parent frame: local = P⁻¹ · M · U0.
+        const poseFor = (u) => {
+            const parentWorld = new THREE.Matrix4().copy(u.node.parent.matrixWorld);
+            const parentInv = new THREE.Matrix4().copy(parentWorld).invert();
+            const U0 = multi ? parentWorld.clone() : new THREE.Matrix4().compose(
+                new THREE.Vector3().fromArray(foldedRootTRS.p),
+                new THREE.Quaternion().fromArray(foldedRootTRS.q),
+                new THREE.Vector3().fromArray(foldedRootTRS.s));
+            const c0 = u.folded.center;
+            const dir = u.folded.dir;
+            const standAxis = new THREE.Vector3(-dir.z, 0, dir.x).normalize();
+            const dirAngle = Math.atan2(dir.z, dir.x);
+            const dirAxis = new THREE.Vector3(dir.x, 0, dir.z).normalize();
+            return (theta, center, yaw = 0, roll = 0) => {
+                const q = new THREE.Quaternion().setFromAxisAngle(standAxis, theta);
+                const r = new THREE.Quaternion().setFromAxisAngle(dirAxis, roll);
+                const M = new THREE.Matrix4().makeTranslation(center.x, center.y, center.z)
+                    .multiply(new THREE.Matrix4().makeRotationY(yaw))
+                    .multiply(new THREE.Matrix4().makeRotationFromQuaternion(q))
+                    .multiply(new THREE.Matrix4().makeRotationFromQuaternion(r))
+                    .multiply(new THREE.Matrix4().makeTranslation(-c0.x, -c0.y, -c0.z));
+                const local = multi ? parentInv.clone().multiply(M).multiply(U0) : M.multiply(U0);
+                const pos = new THREE.Vector3(), quat = new THREE.Quaternion(), scl = new THREE.Vector3();
+                local.decompose(pos, quat, scl);
+                return { p: pos.toArray(), q: quat.toArray(), s: scl.toArray(), dirAngle };
+            };
+        };
+        // Local ground-fix translation for a carrier (world y → parent-local units)
+        const groundFixTRS = (u, gf) => {
+            const base = readTRS(u.node);
+            return { p: [base.p[0], base.p[1] + gf / rootScale, base.p[2]], q: base.q, s: base.s };
         };
 
-        // ---- 4. Structure root: rise → carry → lower → lay, then kinematic root motion --------
-        const restXZ = new THREE.Vector3(c0.x, 0, c0.z);
+        // ---- 4. Each unit: rise → carry → lower → lay from its pack slot, then its fold ---------
         const STEPS = 12;
-        const rootSpan = (span, fn) => {
-            for (let i = 0; i <= STEPS; i++) {
-                const u = i / STEPS;
-                const t = D * (span[0] + (span[1] - span[0]) * u);
-                addKey(STRUCT_PATH, t, fn(smoothstep(u)));
+        units.forEach(u => {
+            const L = u.folded.L, H = u.folded.H;
+            const c0 = u.folded.center;
+            const pose = poseFor(u);
+            const slot = layout.slots[units.length - 1 - u.j];          // last placed leaves first
+            const slotCenter = new THREE.Vector3(slot.center.x * inch, slot.center.y * inch, slot.center.z * inch);
+            const restXZ = new THREE.Vector3(c0.x, 0, c0.z);
+            const W = u.folded.W;
+            const restBottom = u.folded.minY + gf0;
+            // Height of the bundle centre so its (rotated) box rests on the ground
+            const restHeight = (theta, roll = 0) => restBottom + (L * Math.abs(Math.sin(theta))
+                + (H * Math.abs(Math.cos(roll)) + W * Math.abs(Math.sin(roll))) * Math.abs(Math.cos(theta))) / 2;
+            const dirAngle = Math.atan2(u.folded.dir.z, u.folded.dir.x);
+            // Standing in the column: the bundle's H face runs along the grid's `a` axis;
+            // flat beside the IBC: its long axis runs along `away`. (A positive rotation
+            // about +Y turns +X toward −Z, so the yaw is dirAngle − target in atan2 terms.)
+            const yawPack = slot.standing ? (dirAngle - slot.yawRad) : (dirAngle - Math.atan2(away.z, away.x));
+            const thetaPack = slot.standing ? Math.PI / 2 : 0;
+            const rollPack = (!slot.standing && rollFlat) ? Math.PI / 2 : 0;
+            const clearY = slot.standing ? stackTop + margin + L / 2 : slotCenter.y + flatH + margin;
+            const span = (fr, fn) => {
+                for (let i = 0; i <= STEPS; i++) {
+                    const t01 = i / STEPS;
+                    const t = D * (fr[0] + (fr[1] - fr[0]) * t01);
+                    addKey(u.path, t, fn(smoothstep(t01)));
+                }
+            };
+            const lerpYaw = (e) => yawPack * (1 - e);
+            span(u.tl.rise,  (e) => pose(thetaPack, new THREE.Vector3(slotCenter.x, slotCenter.y + (clearY - slotCenter.y) * e, slotCenter.z), yawPack, rollPack));
+            span(u.tl.carry, (e) => pose(thetaPack, new THREE.Vector3(slotCenter.x + (restXZ.x - slotCenter.x) * e, clearY, slotCenter.z + (restXZ.z - slotCenter.z) * e), lerpYaw(e), rollPack));
+            span(u.tl.lower, (e) => pose(thetaPack, new THREE.Vector3(restXZ.x, clearY + (restHeight(thetaPack, rollPack) - clearY) * e, restXZ.z), 0, rollPack));
+            // Lay: a standing bundle tips over (θ → 0); a rolled bundle rights itself (roll → 0)
+            span(u.tl.lay,   (e) => { const th = thetaPack * (1 - e); const rl = rollPack * (1 - e); return pose(th, new THREE.Vector3(restXZ.x, restHeight(th, rl), restXZ.z), 0, rl); });
+            if (multi) {
+                for (let k = 0; k < kin.length; k++) addKey(u.path, tFold(u, k), groundFixTRS(u, kin[k].groundFix));
+                addKey(u.path, D, groundFixTRS(u, kin[kin.length - 1].groundFix));
+            } else {
+                for (let k = 0; k < kin.length; k++) addKey(u.path, tFold(u, k), kinTRS(k, u.path));
+                addKey(u.path, D, kinTRS(kin.length - 1, u.path));
             }
-        };
-        rootSpan(TL.rise,  (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(origin.x, packedCenterY + (clearY - packedCenterY) * e, origin.z)));
-        rootSpan(TL.carry, (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(origin.x + (restXZ.x - origin.x) * e, clearY, origin.z + (restXZ.z - origin.z) * e)));
-        rootSpan(TL.lower, (e) => rootPoseTRS(Math.PI / 2, new THREE.Vector3(restXZ.x, clearY + (restHeight(Math.PI / 2) - clearY) * e, restXZ.z)));
-        rootSpan(TL.lay,   (e) => { const th = (Math.PI / 2) * (1 - e); return rootPoseTRS(th, new THREE.Vector3(restXZ.x, restHeight(th), restXZ.z)); });
-        for (let k = 0; k < kin.length; k++) addKey(STRUCT_PATH, tFold(k), kinTRS(k, STRUCT_PATH));
-        addKey(STRUCT_PATH, D, kinTRS(kin.length - 1, STRUCT_PATH));
+        });
 
-        // ---- 5. IBC: top tank lifts by the gap while the bundle is inside -------------------
+        // ---- 5. IBC: top tank lifts by the gap while the bundles are inside -------------------
         if (ibcGroup && ibcGap > 0) {
             const topTank = ibcGroup.getObjectByName('IBC_Tank_1');
             if (topTank) {
@@ -1009,8 +1132,8 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                 const gapLocal = ibcGap / inch;      // tank offsets are authored in inches
                 const raised = { p: [base.p[0], base.p[1] + gapLocal, base.p[2]], q: base.q, s: base.s };
                 addKey(path, 0, raised);
-                addKey(path, D * TL.ibcGap[0], raised);
-                addKey(path, D * TL.ibcGap[1], base);
+                addKey(path, D * timeline.ibcGap[0], raised);
+                addKey(path, D * timeline.ibcGap[1], base);
                 addKey(path, D, base);
             }
         }
@@ -1048,13 +1171,16 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             const bb = mesh.geometry.boundingBox;
             return { w: bb.max.x - bb.min.x, t: bb.max.y - bb.min.y, len: bb.max.z - bb.min.z };
         };
-
-        // Stack sites: panels on the far side of the IBC from the folded bundle, roof beams to the side.
-        const away = new THREE.Vector3(origin.x - c0.x, 0, origin.z - c0.z);
-        if (away.lengthSq() < 1e-8) away.set(1, 0, 0);
-        away.normalize();
-        const side = new THREE.Vector3(-away.z, 0, away.x);
-        const ibcHalf = ibcBox ? Math.max(ibcBox.max.x - ibcBox.min.x, ibcBox.max.z - ibcBox.min.z) / 2 : 24 * inch;
+        // Parts grouped by unit, in deploy order (first copy's parts leave the pile first)
+        const byUnit = (meshes) => {
+            const groups = units.map(u => ({ u, meshes: [] }));
+            meshes.forEach(m => {
+                const key = m.userData && m.userData.copyKey;
+                const g = multi ? (groups.find(x => x.u.key === key) || groups[0]) : groups[0];
+                g.meshes.push(m);
+            });
+            return groups;
+        };
 
         // ---- 6a. Roof beams (radial first, then reciprocal) piled beside the IBC ----------------
         let supportCount = 0;
@@ -1074,33 +1200,42 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
                 const xAxis = new THREE.Vector3().crossVectors(UP, away).normalize();
                 const flatQuat = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xAxis, UP, away));
                 const roll = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI / 2);
-                const span = TL.support;
-                const phaseLen = (span[1] - span[0]) * D;
-                const flight = phaseLen * 0.25;
-                beams.forEach((beam, m) => {
-                    const d = dims[m];
-                    const stackIdx = beams.length - 1 - m;             // first to mount sits on top
-                    const layer = Math.floor(stackIdx / perLayer);
-                    const col = stackIdx % perLayer;
-                    const stackPos = pileCenter.clone()
-                        .addScaledVector(side, (col - (perLayer - 1) / 2) * pitch)
-                        .setY(groundY + layerH * (layer + 0.5));
-                    const stackQuat = flatQuat.clone();
-                    if (d.t > d.w) stackQuat.multiply(roll);            // wide face down
-                    const start = span[0] * D + (beams.length === 1 ? 0 : m / (beams.length - 1)) * (phaseLen - flight);
-                    const mountPos = new THREE.Vector3().setFromMatrixPosition(beam.matrixWorld);
-                    const arc = 0.3 * stackPos.distanceTo(mountPos) + 12 * inch;
-                    bakeFlight(beam, stackPos, stackQuat, start, flight, arc);
+                const dimOf = new Map(beams.map((b, i) => [b, dims[i]]));
+                let mountOrder = 0;
+                byUnit(beams).forEach(({ u, meshes }) => {
+                    const span = u.tl.support;
+                    const phaseLen = (span[1] - span[0]) * D;
+                    const flight = phaseLen * 0.25;
+                    meshes.forEach((beam, m) => {
+                        const d = dimOf.get(beam);
+                        const stackIdx = beams.length - 1 - mountOrder;      // first to mount sits on top
+                        mountOrder++;
+                        const layer = Math.floor(stackIdx / perLayer);
+                        const col = stackIdx % perLayer;
+                        const stackPos = pileCenter.clone()
+                            .addScaledVector(side, (col - (perLayer - 1) / 2) * pitch)
+                            .setY(groundY + layerH * (layer + 0.5));
+                        const stackQuat = flatQuat.clone();
+                        if (d.t > d.w) stackQuat.multiply(roll);            // wide face down
+                        const start = span[0] * D + (meshes.length === 1 ? 0 : m / (meshes.length - 1)) * (phaseLen - flight);
+                        const mountPos = new THREE.Vector3().setFromMatrixPosition(beam.matrixWorld);
+                        const arc = 0.3 * stackPos.distanceTo(mountPos) + 12 * inch;
+                        bakeFlight(beam, stackPos, stackQuat, start, flight, arc);
+                    });
                 });
             }
-            // Reciprocal crossing bolts appear once the roof beams are in place.
+            // Reciprocal crossing bolts appear once that structure's roof beams are in place.
             const rcpBolts = supportFrame.getObjectByName('ReciprocalSupportBolts_Bolts');
             if (rcpBolts) {
-                const path = exportNodePath(rcpBolts, baseScene);
-                const base = readTRS(rcpBolts);
-                addKey(path, 0, { p: base.p, q: base.q, s: [0, 0, 0] });
-                addKey(path, D * TL.support[1], base);
-                addKey(path, D, base);
+                const boltNodes = multi ? rcpBolts.children.filter(b => b.userData && b.userData.copyKey) : [rcpBolts];
+                boltNodes.forEach(node => {
+                    const u = multi ? unitOfKey(node.userData.copyKey) : units[0];
+                    const path = exportNodePath(node, baseScene);
+                    const base = readTRS(node);
+                    addKey(path, 0, { p: base.p, q: base.q, s: [0, 0, 0] });
+                    addKey(path, D * u.tl.support[1], base);
+                    addKey(path, D, base);
+                });
             }
         }
 
@@ -1113,21 +1248,25 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             const footprint = panelBoxes.reduce((m, bx) => { const sz = bx.getSize(new THREE.Vector3()); return Math.max(m, sz.x, sz.z); }, 0);
             const thickness = panelBoxes.reduce((m, bx) => Math.max(m, bx.getSize(new THREE.Vector3()).y), 0) || inch;
             const stackCenter = origin.clone().add(away.clone().multiplyScalar(ibcHalf + footprint / 2 + 8 * inch));
-            const span = TL.panels;
-            const phaseLen = (span[1] - span[0]) * D;
-            const flight = phaseLen * 0.3;
-            panels.forEach((pn, k) => {
-                const pos = new THREE.Vector3(), quat = new THREE.Quaternion();
-                pn.matrixWorld.decompose(pos, quat, new THREE.Vector3());
-                // Stack pose: same yaw as mounted, but flat, at layer k (k = removal order, 0 = bottom).
-                const zWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(quat);
-                const yaw = Math.atan2(zWorld.x, zWorld.z);
-                const stackQuat = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
-                const stackPos = new THREE.Vector3(stackCenter.x, groundY + thickness * (k + 0.5), stackCenter.z);
-                const mountOrder = panelCount - 1 - k;                 // last removed mounts first
-                const start = span[0] * D + (panelCount === 1 ? 0 : mountOrder / (panelCount - 1)) * (phaseLen - flight);
-                const arc = Math.max(0.35 * stackPos.distanceTo(pos), footprint * 0.6);
-                bakeFlight(pn, stackPos, stackQuat, start, flight, arc);
+            let mountOrder = 0;
+            byUnit(panels).forEach(({ u, meshes }) => {
+                const span = u.tl.panels;
+                const phaseLen = (span[1] - span[0]) * D;
+                const flight = phaseLen * 0.3;
+                meshes.forEach((pn, i) => {
+                    const pos = new THREE.Vector3(), quat = new THREE.Quaternion();
+                    pn.matrixWorld.decompose(pos, quat, new THREE.Vector3());
+                    // Stack pose: same yaw as mounted, but flat; the first to mount sits on top.
+                    const zWorld = new THREE.Vector3(0, 0, 1).applyQuaternion(quat);
+                    const yaw = Math.atan2(zWorld.x, zWorld.z);
+                    const stackQuat = new THREE.Quaternion().setFromAxisAngle(UP, yaw);
+                    const k = panelCount - 1 - mountOrder;                 // stack layer (0 = bottom)
+                    mountOrder++;
+                    const stackPos = new THREE.Vector3(stackCenter.x, groundY + thickness * (k + 0.5), stackCenter.z);
+                    const start = span[0] * D + (meshes.length === 1 ? 0 : i / (meshes.length - 1)) * (phaseLen - flight);
+                    const arc = Math.max(0.35 * stackPos.distanceTo(pos), footprint * 0.6);
+                    bakeFlight(pn, stackPos, stackQuat, start, flight, arc);
+                });
             });
         }
 
@@ -1166,13 +1305,31 @@ import { getWoodMaterial, getHardwareMaterial, getPanelMaterials } from './mater
             if (used) animatedNodes++;
         });
         if (tracks.length === 0) return null;
+        const packBoxIn = layout.packBox;
         return {
             clip: new THREE.AnimationClip('Deploy', D, tracks),
             animatedNodes,
-            timeline: { unpack: [TL.rise[0], TL.lay[1]], fold: TL.fold, support: TL.support, panels: TL.panels },
+            timeline: {
+                unpack: timeline.unpack, fold: timeline.fold, support: timeline.support, panels: timeline.panels,
+                ibcGap: timeline.ibcGap,
+                copies: timeline.copies.map((c, j) => ({ ...c, key: units[j] ? units[j].key : null, carrier: units[j] ? units[j].node.name : 'Structure' })),
+            },
             ibcGapIn: +(ibcGap / inch).toFixed(2),
             supportCount,
-            panelCount
+            panelCount,
+            copies: units.length,
+            sequential: timeline.sequential,
+            pack: {
+                mode: layout.mode,
+                inIbc: inColumn,
+                bundles: units.length,
+                bundle: { L: +(dims0.L / inch).toFixed(2), H: +(dims0.H / inch).toFixed(2), W: +(dims0.W / inch).toFixed(2) },
+                grid: layout.grid,
+                packBox: { x: +packBoxIn.x.toFixed(2), y: +packBoxIn.y.toFixed(2), z: +packBoxIn.z.toFixed(2) },
+                volumeFt3: +(layout.volumeIn3 / 1728).toFixed(2),
+                packedWeightLb: +((extra.packedWeightLb || 0)).toFixed(1),
+                ibcGapIn: +(ibcGap / inch).toFixed(2),
+            },
         };
     }
 

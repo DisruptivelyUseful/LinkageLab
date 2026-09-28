@@ -275,7 +275,7 @@ test.describe('coverings follow the radial array', () => {
         // per-structure quantities are labelled with the copy count
         await expect(page.locator('#cov-stat-copies')).toContainText('6 copies');
         await page.evaluate(() => globalThis.showBuildGuide());
-        await expect(page.locator('#guide-content')).toContainText('radial array places 6 copies');
+        await expect(page.locator('#guide-content')).toContainText('the array holds 6 structures');
         expect(errors).toEqual([]);
     });
 });

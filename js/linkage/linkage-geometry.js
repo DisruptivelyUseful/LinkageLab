@@ -16,8 +16,9 @@ import {
 } from './math.js';
 import { Beam3D } from './geometry-classes.js';
 import { solveLinkage } from './solver.js';
-import { applyRadialArray, isRadialArrayActive, replicateShapes } from './radial-array.js';
-import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings } from './cache.js';
+import { applyRadialArray, isRadialArrayActive, planRadialArray, replicateShapes } from './radial-array.js';
+import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings, computeGeometryHashWithoutFold } from './cache.js';
+import { deployOrder, computeFoldSchedule, getFoldSweepRange } from './fold-sequence.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
 import { generateFloorBeams, computeFloorDeck } from './floor-geometry.js';
@@ -3695,14 +3696,51 @@ import { showToast } from '../core/feedback.js';
     }
     
     /**
+     * The fully deployed pose, solved once per geometry (fold angle excluded) and
+     * reused at every fold angle:
+     *   center      - main-beam bbox centre of the deployed ring (the constant XZ shift
+     *                 that keeps the IBC at the world origin while the ring folds)
+     *   radialPlan  - radial array slot plan measured on that deployed, shifted ring
+     *                 (anchor / radius / phase fixed, so copies fold in place)
+     * Cleared by invalidateGeometryCache(); keyed so parameter edits that bypass it
+     * still refresh it.
+     */
+    function ensureDeployedFrame() {
+        const key = computeGeometryHashWithoutFold();
+        const cached = state._deployedFrame;
+        if (cached && cached.key === key) return cached;
+        // getOptimalClosedAngleForAnimation uses only calculateJointPositions, no recursion risk.
+        const deployedAngle = getOptimalClosedAngleForAnimation();
+        const deployedBase = solveLinkage(deployedAngle);
+        const center = calculateBeamBounds(deployedBase.beams, { mainStructureOnly: true }).center;
+        let radialPlan = null;
+        if (isRadialArrayActive(state)) {
+            const shifted = { beams: deployedBase.beams };
+            if (center.x !== 0 || center.z !== 0) shiftGeometryXZ(shifted, center.x, center.z);
+            radialPlan = planRadialArray(state, shifted.beams);
+        }
+        const frame = { key, deployedAngle, center, radialPlan };
+        state._deployedFrame = frame;
+        state._deployedRingCenter = center;   // legacy alias
+        return frame;
+    }
+    
+    /**
      * Builds the observed LinkageLab geometry component set.
      * This keeps display, JSON snapshots, simulator export, and GLB export from drifting apart.
      */
-    function buildLinkageGeometry(options = {}) {
+    /**
+     * Assembles ONE structure at a fold angle: solver output plus support / floor beams,
+     * panels, the constant deployed-centre shift, and the covering-style shapes.
+     * @param {number} foldAngle
+     * @param {object} options   buildLinkageGeometry options (includeSupportBeams, includePanels, includeCoverings, useCache)
+     * @param {object} solveOpts solveLinkage options ({ arrayCount: 1 } for per-segment assembly)
+     */
+    function assembleSingleStructure(foldAngle, options = {}, solveOpts = {}) {
         const includeSupportBeams = options.includeSupportBeams !== false;
         const includePanels = options.includePanels !== false;
-        const foldAngle = options.foldAngle !== undefined ? options.foldAngle : state.foldAngle;
-        const base = options.useCache ? getLinkageData() : solveLinkage(foldAngle);
+        const canUseCache = options.useCache && solveOpts.arrayCount === undefined && Math.abs(foldAngle - state.foldAngle) < 1e-12;
+        const base = canUseCache ? getLinkageData() : solveLinkage(foldAngle, solveOpts);
         
         // Copy top-level arrays before appending generated pieces so cached solver output is never mutated.
         const data = Object.assign({}, base, {
@@ -3799,17 +3837,11 @@ import { showToast } from '../core/feedback.js';
         // Anchor the IBC at the ring center of the fully-deployed configuration.
         // By using a CONSTANT shift (the deployed ring center, not the current frame's center),
         // the IBC stays fixed at world origin while the folded structure sits off to one side,
-        // then sweeps around and wraps around the IBC as it deploys.
-        if (!state._deployedRingCenter) {
-            // Compute the bbox center of the ring at the fully-closed (deployed) fold angle.
-            // getOptimalClosedAngleForAnimation uses only calculateJointPositions, no recursion risk.
-            const deployedAngle = getOptimalClosedAngleForAnimation();
-            const deployedBase = solveLinkage(deployedAngle);
-            const deployedBounds = calculateBeamBounds(deployedBase.beams, { mainStructureOnly: true });
-            state._deployedRingCenter = deployedBounds.center;
-        }
-        const _shiftX = state._deployedRingCenter.x;
-        const _shiftZ = state._deployedRingCenter.z;
+        // then sweeps around and wraps around the IBC as it deploys. The same deployed pose
+        // fixes the radial array plan, so array copies fold in place (see ensureDeployedFrame).
+        const deployedFrame = ensureDeployedFrame();
+        const _shiftX = deployedFrame.center.x;
+        const _shiftZ = deployedFrame.center.z;
         if (_shiftX !== 0 || _shiftZ !== 0) {
             shiftGeometryXZ(data, _shiftX, _shiftZ);
             // Recompute bounds after the constant shift
@@ -3849,18 +3881,105 @@ import { showToast } from '../core/feedback.js';
             } catch (e) { console.warn('[Geometry] Could not compute shade cloths:', e); data.shade = null; }
         }
 
-        // Radial (polar) array: the last step, so every copy is a rigid transform of the
-        // complete single structure (support / reciprocal beams and panels included).
-        // The anchor is the single ring's own centre, which the shift above put at the
-        // world origin in the deployed pose. See js/linkage/radial-array.js.
+        return data;
+    }
+    
+    // ---- per-angle assembly cache (sequential fold) ---------------------------------------------
+    // The folded and deployed assemblies are the same on every frame of a sequential
+    // sweep; only the moving copy changes. Non-master angles are built inside a
+    // reciprocal-solver snapshot so the live editor's roof solution is not thrashed.
+    const _assemblyCache = new Map();
+    const ASSEMBLY_CACHE_MAX = 6;
+    function clearAssemblyCache() {
+        _assemblyCache.clear();
+    }
+    function assemblyCacheKey(foldAngle, options, solveOpts) {
+        const a = state.animation || {};
+        return [
+            computeGeometryHashWithoutFold(), foldAngle.toFixed(6),
+            options.includeSupportBeams !== false, options.includePanels !== false, options.includeCoverings !== false,
+            solveOpts.arrayCount !== undefined ? solveOpts.arrayCount : '',
+            a.radialVisibleAngle, a.rcpVisibleAngle, a.panelsVisibleAngle, a.minFoldAngle, a.stopAngle,
+        ].join('|');
+    }
+    function assembleCached(foldAngle, options, solveOpts) {
+        const key = assemblyCacheKey(foldAngle, options, solveOpts);
+        const hit = _assemblyCache.get(key);
+        if (hit) {
+            _assemblyCache.delete(key);      // refresh LRU order
+            _assemblyCache.set(key, hit);
+            return hit;
+        }
+        const sb = state.supportBeams || {};
+        const rcpSnapshot = { rcpCrossings: sb.rcpCrossings, rcpFinalTopology: sb.rcpFinalTopology, rcpHoleTsByBeam: sb.rcpHoleTsByBeam, _lastPhi: sb._lastPhi };
+        const prevSuppress = globalThis.__suppressRcpDiagnosticsUI;
+        globalThis.__suppressRcpDiagnosticsUI = true;
+        let built;
+        try {
+            built = assembleSingleStructure(foldAngle, { ...options, useCache: false }, solveOpts);
+        } finally {
+            globalThis.__suppressRcpDiagnosticsUI = prevSuppress;
+            if (state.supportBeams) Object.assign(state.supportBeams, rcpSnapshot);
+        }
+        _assemblyCache.set(key, built);
+        while (_assemblyCache.size > ASSEMBLY_CACHE_MAX) _assemblyCache.delete(_assemblyCache.keys().next().value);
+        return built;
+    }
+    
+    /**
+     * Builds the observed LinkageLab geometry component set.
+     * This keeps display, JSON snapshots, simulator export, and GLB export from drifting apart.
+     *
+     * One structure is assembled per distinct fold angle (one, or up to three with the
+     * sequential fold), then the radial array / arch tunnel array replicates it: every
+     * copy is a rigid transform of a complete single structure (support / reciprocal
+     * beams and panels included), so the solver itself stays single-structure. The
+     * anchor is the single ring's own centre, which the deployed-frame shift put at the
+     * world origin. See js/linkage/radial-array.js and js/linkage/fold-sequence.js.
+     */
+    function buildLinkageGeometry(options = {}) {
+        const frame = ensureDeployedFrame();
+        const master = options.foldAngle !== undefined ? options.foldAngle : state.foldAngle;
+        const linearCopies = (state.orientation === 'vertical' && (state.arrayCount | 0) > 1) ? (state.arrayCount | 0) : 1;
+        const radialOn = options.applyRadialArray !== false && isRadialArrayActive(state);
+        const order = deployOrder(radialOn ? frame.radialPlan : null, linearCopies);
+        const wantSequential = !!(state.animation && state.animation.sequentialFold) && options.sequential !== false && order.length > 1;
+        const sched = computeFoldSchedule({ masterAngle: master, ...getFoldSweepRange(state), order, sequential: wantSequential });
+        // Sequential arch tunnels are replicated per segment at assembly level (each at its own angle)
+        const perCopySolve = sched.sequential && linearCopies > 1;
+        const solveOpts = perCopySolve ? { arrayCount: 1 } : {};
+    
+        const masterData = assembleSingleStructure(master, options, solveOpts);
+        const byAngle = [[master, masterData]];
+        const lookup = (angle) => {
+            const hit = byAngle.find(([a]) => Math.abs(a - angle) < 1e-9);
+            return hit ? hit[1] : null;
+        };
+        if (sched.sequential) {
+            sched.distinctAngles.forEach(a => { if (!lookup(a)) byAngle.push([a, assembleCached(a, options, solveOpts)]); });
+        }
+        const sourceFor = (slot, i) => lookup(sched.angleOf(slot, i)) || masterData;
+        const first = sched.copies[0];
+        const baseCopy = sched.sequential ? sourceFor(first.slot, first.linearIdx) : masterData;
+    
+        const data = Object.assign({}, baseCopy);
+        data.foldSchedule = sched;
         data.radialArray = null;
         data.baseBeams = data.beams;
-        if (options.applyRadialArray !== false && isRadialArrayActive(state)) {
-            const radial = applyRadialArray(state, data);
+        let plan = null;
+        if (radialOn || perCopySolve) {
+            const radial = applyRadialArray(state, baseCopy, {
+                plan: radialOn ? frame.radialPlan : null,
+                sourceFor: sched.sequential ? sourceFor : undefined,
+                linearCopies: perCopySolve ? linearCopies : 1,
+            });
             if (radial) {
                 Object.assign(data, radial.geometry);
-                data.radialArray = radial.plan;
-                data.maxRad = radial.plan.maxRad;
+                plan = radial.plan;
+                if (!plan.linearOnly) {
+                    data.radialArray = plan;
+                    data.maxRad = plan.maxRad;
+                }
                 data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
                 data.structureCenter = data.structureBounds.center;
                 data.fullBounds = calculateBeamBounds(data.beams);
@@ -3869,22 +3988,25 @@ import { showToast } from '../core/feedback.js';
         // Coverings, floor deck and shade tarps follow the array: the single-structure
         // results stay under base* (cut plans, readouts, BOM are per structure), the
         // rendered / exported / build-step shapes are one copy per slot.
-        const plan = data.radialArray;
         const copyCount = plan ? plan.copyCount : 1;
+        const shapesOpts = (pick) => (sched.sequential ? { sourceFor: (slot, i) => pick(sourceFor(slot, i)) } : {});
         if (data.coverings && data.coverings.supported) {
-            data.coverings.baseShapes = data.coverings.shapes;
-            data.coverings.basePickQuads = data.coverings.pickQuads;
-            data.coverings.shapes = replicateShapes(plan, data.coverings.shapes);
-            data.coverings.pickQuads = replicateShapes(plan, data.coverings.pickQuads);
+            data.coverings = { ...data.coverings };
+            data.coverings.baseShapes = baseCopy.coverings.shapes;
+            data.coverings.basePickQuads = baseCopy.coverings.pickQuads;
+            data.coverings.shapes = replicateShapes(plan, baseCopy.coverings.shapes, shapesOpts(src => (src.coverings && src.coverings.supported ? src.coverings.shapes : [])));
+            data.coverings.pickQuads = replicateShapes(plan, baseCopy.coverings.pickQuads, shapesOpts(src => (src.coverings && src.coverings.supported ? src.coverings.pickQuads : [])));
             data.coverings.copyCount = copyCount;
         }
         if (data.floor) {
-            data.floor.deckCopies = data.floor.deck ? replicateShapes(plan, [data.floor.deck]) : [];
+            data.floor = { ...data.floor };
+            data.floor.deckCopies = data.floor.deck ? replicateShapes(plan, [data.floor.deck], shapesOpts(src => (src.floor && src.floor.deck ? [src.floor.deck] : []))) : [];
             data.floor.copyCount = copyCount;
         }
         if (data.shade && data.shade.supported) {
-            data.shade.baseShapes = data.shade.shapes;
-            data.shade.shapes = replicateShapes(plan, data.shade.shapes);
+            data.shade = { ...data.shade };
+            data.shade.baseShapes = baseCopy.shade.shapes;
+            data.shade.shapes = replicateShapes(plan, baseCopy.shade.shapes, shapesOpts(src => (src.shade && src.shade.supported ? src.shade.shapes : [])));
             data.shade.copyCount = copyCount;
         }
 
@@ -3894,6 +4016,9 @@ import { showToast } from '../core/feedback.js';
 
 const _moduleExports = {
     buildLinkageGeometry,
+    assembleSingleStructure,
+    ensureDeployedFrame,
+    clearAssemblyCache,
     applyLegacyPanelsSupport,
     applySupportBeamsConfig,
     buildGeometrySnapshot,
@@ -3980,4 +4105,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'linkageGeometry');
 
-export { buildLinkageGeometry, applyLegacyPanelsSupport, applySupportBeamsConfig, buildGeometrySnapshot, buildRcpAnchorFromFrame, buildRcpBeamCrossingTs, buildRcpCrossingRefs, buildRcpHoleTsByBeam, buildRcpHorizontalFrame, buildReciprocalBeamKinematics, calculateArchCanopySections, calculateArchLayout, calculateArchWallFaces, calculateBeamBounds, calculateCanopyArea, calculateRadialLayout, calculateRectangularLayout, calculateSolarPanels, calculateSpiralLayout, closestPointOnSegment3D, computeRcpAnchorPosition, computeRcpBeamUnitDir, computeRcpCrossingRefsFromBeams, computeRcpPoint, computeRcpStructureCenter, computeSupportBomContribution, enrichCrossingsWithHoleIndex, extractModuleFrames, generateReciprocalSupportBolts, generateSupportBeams, generateWallFaceButtons, getActivePanelConfig, getModuleTopBeam, getRcpPivotT, getSupportBeamPlaneY, holeMidpointForCrossing, isMainStructureBeam, isRcpAtDeployedAngle, pickOuterVerticalBeam, pointOnBeamAtY, rcpCrossingWeight, resetSupportBeamsToDefaults, roundVec3ForExport, seedFinalReciprocalTopology, seedRcpCrossings, segSegIntersectParamsXZ, selectActiveRcpCrossing, selectActiveRcpRing, shiftGeometryXZ, solveRadialSupportBeamPlacement, solveReciprocalActiveRing, solveReciprocalLinkage, solveReciprocalPerBeamSwing, solveReciprocalSwingAngle, spApplyPresetToPanelConfig, spBindFormFactorUI, spFindPresetById, spGetAllPresets, spGetPanelConfig, spInitPanelPresetUI, spLinkConfigsToKnownPresets, spLoadPresetCatalog, spLoadUserPresetsMap, spMarkPanelConfigManual, spOnPresetSelect, spPanelConfigSignature, spPresetFromRaw, spPresetSignature, spRefreshPresetDropdown, spRefreshPresetDropdowns, spRefreshSolarPanelScene, spSavePanelConfigAsPreset, spSaveUserPreset, spSeedPresetsFromConstants, spSlugifyId, spSuffix, spSyncFormFactorControlsFromState, spSyncPanelSectionUI, spUpdateFormFactorUI, spUpdatePresetLink, updateArchWallFacesUI, updateRcpDiagnosticsUI, validateReciprocalKinematicsSweep };
+export { buildLinkageGeometry, assembleSingleStructure, ensureDeployedFrame, clearAssemblyCache, applyLegacyPanelsSupport, applySupportBeamsConfig, buildGeometrySnapshot, buildRcpAnchorFromFrame, buildRcpBeamCrossingTs, buildRcpCrossingRefs, buildRcpHoleTsByBeam, buildRcpHorizontalFrame, buildReciprocalBeamKinematics, calculateArchCanopySections, calculateArchLayout, calculateArchWallFaces, calculateBeamBounds, calculateCanopyArea, calculateRadialLayout, calculateRectangularLayout, calculateSolarPanels, calculateSpiralLayout, closestPointOnSegment3D, computeRcpAnchorPosition, computeRcpBeamUnitDir, computeRcpCrossingRefsFromBeams, computeRcpPoint, computeRcpStructureCenter, computeSupportBomContribution, enrichCrossingsWithHoleIndex, extractModuleFrames, generateReciprocalSupportBolts, generateSupportBeams, generateWallFaceButtons, getActivePanelConfig, getModuleTopBeam, getRcpPivotT, getSupportBeamPlaneY, holeMidpointForCrossing, isMainStructureBeam, isRcpAtDeployedAngle, pickOuterVerticalBeam, pointOnBeamAtY, rcpCrossingWeight, resetSupportBeamsToDefaults, roundVec3ForExport, seedFinalReciprocalTopology, seedRcpCrossings, segSegIntersectParamsXZ, selectActiveRcpCrossing, selectActiveRcpRing, shiftGeometryXZ, solveRadialSupportBeamPlacement, solveReciprocalActiveRing, solveReciprocalLinkage, solveReciprocalPerBeamSwing, solveReciprocalSwingAngle, spApplyPresetToPanelConfig, spBindFormFactorUI, spFindPresetById, spGetAllPresets, spGetPanelConfig, spInitPanelPresetUI, spLinkConfigsToKnownPresets, spLoadPresetCatalog, spLoadUserPresetsMap, spMarkPanelConfigManual, spOnPresetSelect, spPanelConfigSignature, spPresetFromRaw, spPresetSignature, spRefreshPresetDropdown, spRefreshPresetDropdowns, spRefreshSolarPanelScene, spSavePanelConfigAsPreset, spSaveUserPreset, spSeedPresetsFromConstants, spSlugifyId, spSuffix, spSyncFormFactorControlsFromState, spSyncPanelSectionUI, spUpdateFormFactorUI, spUpdatePresetLink, updateArchWallFacesUI, updateRcpDiagnosticsUI, validateReciprocalKinematicsSweep };

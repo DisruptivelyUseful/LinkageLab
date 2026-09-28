@@ -82,8 +82,11 @@ const ExportFormat = (function() {
                 subtotal: config.structureSubtotal || 0
             },
             
-            // Total BOM cost
+            // Total BOM cost (every structure of a radial / arch array)
             totalBomCost: config.totalCost || 0,
+            // Radial / arch arrays: structures in the design and the per-structure figure
+            arrayCopies: config.arrayCopies || 1,
+            totalBomCostPerStructure: config.totalCostPerStructure != null ? config.totalCostPerStructure : (config.totalCost || 0),
             
             // 3D geometry for visualization
             structureGeometry: config.geometry || null,

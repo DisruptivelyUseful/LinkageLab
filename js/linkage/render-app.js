@@ -5,19 +5,12 @@ import { applyCollisionDetection } from './cache.js';
 import {
     buildLinkageGeometry,
     calculateBeamBounds,
-    computeSupportBomContribution,
 } from './linkage-geometry.js';
 import { formatNumber } from './math.js';
-import {
-    formatBoltDiameter,
-    getVBeamCountsByType,
-    needsSplitVBolts,
-} from './beam-bolt-helpers.js';
-import {
-    calculateBeamCostByVolume,
-    getRefPricePerCubicInch,
-} from './solver.js';
+import { formatBoltDiameter } from './beam-bolt-helpers.js';
+import { getRefPricePerCubicInch } from './solver.js';
 import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
+import { computeBillOfMaterials } from './bom.js';
 
     // ============================================================================
     // RENDERER - Performance Optimized
@@ -174,6 +167,47 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
      */
     let _lastHudGeometryHash = null;
     
+    /** Drawer rows comparing one structure with every copy of the array (hidden for a single structure). */
+    function updateArrayTotals(bom, sharedSystemWeight) {
+        const copies = bom.copies.total;
+        const badge = document.getElementById('bom-copies');
+        if (badge) {
+            badge.hidden = copies <= 1;
+            badge.textContent = copies > 1 ? `× ${copies} structures` : '';
+        }
+        const block = document.getElementById('bom-array-totals');
+        const wblock = document.getElementById('bom-weight-array-totals');
+        [block, wblock].forEach(el => { if (el) el.hidden = copies <= 1; });
+        if (copies <= 1) return;
+        const ps = bom.perStructure, all = bom.total;
+        const set = (id, text) => { const el = document.getElementById(id); if (el) el.textContent = text; };
+        const money = (v) => '$' + formatNumber(v, 2);
+        set('bom-array-count', String(copies));
+        set('bom-array-structure-one', money(ps.cost.structure));
+        set('bom-array-structure-all', money(all.cost.structure));
+        set('bom-array-solar-one', money(ps.cost.solar));
+        set('bom-array-solar-all', money(all.cost.solar));
+        set('bom-array-enclosure-one', money(ps.cost.enclosure));
+        set('bom-array-enclosure-all', money(all.cost.enclosure));
+        set('bom-array-total-one', money(ps.cost.total));
+        set('bom-array-total-all', money(all.cost.total));
+        const w = (v) => unitConverter.formatWeightWithUnit(v);
+        set('bom-weight-array-count', String(copies));
+        set('bom-weight-array-structure-one', w(ps.weight.structure));
+        set('bom-weight-array-structure-all', w(all.weight.structure));
+        set('bom-weight-array-solar-one', w(ps.weight.solar));
+        set('bom-weight-array-solar-all', w(all.weight.solar));
+        set('bom-weight-array-total-one', w(ps.weight.total + sharedSystemWeight));
+        set('bom-weight-array-total-all', w(all.weight.total + sharedSystemWeight));
+        const rows = ['solar', 'enclosure'];
+        rows.forEach(k => {
+            const row = document.getElementById(`bom-array-${k}-row`);
+            if (row) row.hidden = !(ps.cost[k] > 0);
+        });
+        const wsolar = document.getElementById('bom-weight-array-solar-row');
+        if (wsolar) wsolar.hidden = !(ps.weight.solar > 0);
+    }
+    
     function updateHUD(data) {
         const isAnimating = (state.animation && state.animation.playing) || (state.buildPlayback && state.buildPlayback.active);
         const currentGeoHash = (typeof getCachedGeometryHash === 'function' ? getCachedGeometryHash() : null) || computeGeometryHash();
@@ -187,66 +221,25 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             return;
         }
     
-        const moduleCount = state.modules;
-        const hBeams = moduleCount * 2 * state.hStackCount;
-        const vBeams = moduleCount * state.vStackCount;
-        const uBrackets = moduleCount * 4;
-        
-        // Calculate bolt counts by type
-        // V-stack bolts: 4 per module (2 inner, 2 outer) + 1 center bolt = 5 per module
-        // H-center bolts: 2 per module (top and bottom ring centers)
-        // H-pivot bolts: 4 per module (inner/outer × top/bottom)
-        const splitBolts = needsSplitVBolts();
-        const vBoltsInner = moduleCount * 2;  // 2 inner bolts per module (bot-inner, top-inner)
-        const vBoltsOuter = moduleCount * 2;  // 2 outer bolts per module (bot-outer, top-outer)
-        const vBoltsCenter = moduleCount * 1; // 1 center bolt per module
-        const hCenterBolts = moduleCount * 2; // 2 H-center bolts per module
-        const hPivotBolts = moduleCount * 4;  // 4 H-pivot bolts per module (at bracket positions)
-        const totalVBolts = vBoltsInner + vBoltsOuter + vBoltsCenter;
-        const totalHBolts = hCenterBolts + hPivotBolts;
-        const nBolts = totalVBolts + totalHBolts;
-        
-        // Get bolt costs based on mode
-        let costBoltVInner, costBoltVOuter, costBoltH, costBoltHPivot;
-        if (splitBolts) {
-            costBoltVInner = state.costBoltVInner || 0.75;
-            costBoltVOuter = state.costBoltVOuter || 0.50;
-            costBoltH = state.costBoltH || 0.75;
-            costBoltHPivot = state.costBoltHPivot || 0.75;
-        } else {
-            // Single mode: use same price for all V-stack bolts
-            const vBoltPrice = parseFloat(document.getElementById('nb-cost-bolt-v')?.value) || 0.75;
-            costBoltVInner = vBoltPrice;
-            costBoltVOuter = vBoltPrice;
-            costBoltH = parseFloat(document.getElementById('nb-cost-bolt-h')?.value) || 0.75;
-            costBoltHPivot = state.costBoltHPivot || 0.75;
-        }
-    
-        // Calculate individual costs (per-beam pricing)
-        const hBeamCost = hBeams * state.costHBeam;
-        const vBeamCounts = getVBeamCountsByType();
-        let vBeamCost;
-        if (!vBeamCounts.linked) {
-            const innerUnitCost = state.autoLumberPricing
-                ? calculateBeamCostByVolume(state.vBeamInnerW, state.vBeamInnerT, state.vLengthFt)
-                : state.costVBeam;
-            const outerUnitCost = state.autoLumberPricing
-                ? calculateBeamCostByVolume(state.vBeamOuterW, state.vBeamOuterT, state.vLengthFt)
-                : state.costVBeam;
-            vBeamCost = (vBeamCounts.inner * innerUnitCost) + (vBeamCounts.outer * outerUnitCost);
-        } else {
-            vBeamCost = vBeams * state.costVBeam;
-        }
-        const bracketCost = uBrackets * state.costBracket;
-        
-        // Calculate bolt costs by type
-        const vBoltInnerCost = vBoltsInner * costBoltVInner;
-        const vBoltOuterCost = vBoltsOuter * costBoltVOuter;
-        const vBoltCenterCost = vBoltsCenter * (splitBolts ? costBoltVInner : costBoltVInner); // Center uses full length (inner price)
-        const hCenterBoltCost = hCenterBolts * costBoltH;
-        const hPivotBoltCost = hPivotBolts * costBoltHPivot;
-        const boltCost = vBoltInnerCost + vBoltOuterCost + vBoltCenterCost + hCenterBoltCost + hPivotBoltCost;
-        const structureSubtotal = hBeamCost + vBeamCost + bracketCost + boltCost;
+        // One shared computation for the drawer, the guide and the exports (bom.js).
+        // `ps` is one structure; `all` is every copy of a radial / arch array.
+        const bom = computeBillOfMaterials(data, state);
+        const ps = bom.perStructure;
+        const all = bom.total;
+        const copies = bom.copies.total;
+        const moduleCount = bom.moduleCount;
+        const { hBeams, vBeams, uBrackets, vBoltsInner, vBoltsOuter, vBoltsCenter, hCenterBolts, hPivotBolts, totalVBolts } = ps.counts;
+        const splitBolts = bom.splitBolts;
+        const { costBoltVInner, costBoltVOuter, costBoltH, costBoltHPivot, costWasherV, costWasherH } = bom.prices;
+        const vBeamCounts = bom.vBeamCounts;
+        const hBeamCost = ps.cost.hBeam;
+        const vBeamCost = ps.cost.vBeam;
+        const bracketCost = ps.cost.bracket;
+        const vBoltInnerCost = ps.cost.vBoltInner;
+        const vBoltOuterCost = ps.cost.vBoltOuter;
+        const vBoltCenterCost = ps.cost.vBoltCenter;
+        const hCenterBoltCost = ps.cost.hCenterBolt;
+        const hPivotBoltCost = ps.cost.hPivotBolt;
         
         // Update cost section beam spec displays
         const costHSpec = document.getElementById('cost-h-spec');
@@ -327,20 +320,10 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         const bomBHPivotCostUnit = document.getElementById('bom-b-hpivot-cost-unit');
         const bomBHPivotCost = document.getElementById('bom-b-hpivot-cost');
         
-        // Washer counts: (stackCount - 1) washers per bolt
-        // V-stack washers: 5 bolts per module × (vStackCount - 1) washers per bolt
-        const vWashersPerBolt = state.vStackCount > 1 ? (state.vStackCount - 1) : 0;
-        const vWasherCount = state.vWasherEnabled ? (totalVBolts * vWashersPerBolt) : 0;
-        // H-stack washers: 6 bolts per module (2 center + 4 pivot) × (hStackCount - 1) washers per bolt
-        const hWashersPerBolt = state.hStackCount > 1 ? (state.hStackCount - 1) : 0;
-        const hWasherCount = state.hWasherEnabled ? (totalHBolts * hWashersPerBolt) : 0;
-        
-        // Washer costs
-        const costWasherV = state.costWasherV || 0.10;
-        const costWasherH = state.costWasherH || 0.10;
-        const vWasherCost = vWasherCount * costWasherV;
-        const hWasherCost = hWasherCount * costWasherH;
-        const totalWasherCost = vWasherCost + hWasherCost;
+        const vWasherCount = ps.counts.vWasherCount;
+        const hWasherCount = ps.counts.hWasherCount;
+        const vWasherCost = ps.cost.vWasher;
+        const hWasherCost = ps.cost.hWasher;
         
         // Washer BOM display elements
         const bomWV = document.getElementById('bom-w-v');
@@ -457,7 +440,7 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             if (bomWHCost) bomWHCost.style.display = 'none';
         }
         
-        const sbBom = computeSupportBomContribution(moduleCount, costBoltVInner);
+        const sbBom = bom.sbBom;
         const bomSupportWrap = document.getElementById('bom-support-wrap');
         if (bomSupportWrap) {
             if (sbBom.supportBeamCost > 0) {
@@ -515,17 +498,13 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             }
         }
     
-        // Update structure subtotal (washers + radial/reciprocal support BOM)
-        const structureSubtotalWithWashers = structureSubtotal + totalWasherCost + sbBom.supportBeamCost;
-        uiStats.bStructureSubtotal.innerText = '$' + formatNumber(structureSubtotalWithWashers, 2);
+        // Structure subtotal: beams, brackets, bolts, washers, support / floor beams, hardware extras
+        uiStats.bStructureSubtotal.innerText = '$' + formatNumber(ps.cost.structure, 2);
         
-        // Calculate solar panel cost if panels are enabled
-        let solarPanelCount = 0;
-        let solarCost = 0;
-        if (state.solarPanels.enabled && data.panels && data.panels.length > 0) {
-            solarPanelCount = data.panels.length;
-            solarCost = solarPanelCount * state.costSolarPanel;
-            
+        // Solar panels (one structure's worth; the array total is shown separately)
+        const solarPanelCount = ps.counts.panels;
+        const solarCost = ps.cost.solar;
+        if (bom.solarEnabled && solarPanelCount > 0) {
             uiStats.bSolar.innerText = solarPanelCount;
             uiStats.bSolarCostUnit.innerText = '$' + formatNumber(state.costSolarPanel, 2);
             uiStats.bSolarCost.innerText = '$' + formatNumber(solarCost, 0);
@@ -537,35 +516,19 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             uiStats.bSolarSubtotalRow.style.display = 'none';
         }
         
-        // Enclosure (coverings) cost, when enabled
-        let enclosureCost = 0;
-        const covForCost = (data.coverings && data.coverings.supported && state.coverings && state.coverings.enabled) ? data.coverings : null;
-        const deckForCost = data.floor && data.floor.deck ? data.floor.deck : null;
-        if ((covForCost || deckForCost) && typeof globalThis.computeCoveringCutPlan === 'function' && typeof globalThis.coveringEnclosureCost === 'function') {
-            try { enclosureCost = globalThis.coveringEnclosureCost(globalThis.computeCoveringCutPlan(covForCost, state.coverings, deckForCost), state); } catch (e) { enclosureCost = 0; }
-        }
-        if (data.shade && data.shade.count && typeof globalThis.shadeBomItem === 'function') {
-            try { enclosureCost += globalThis.shadeBomItem(data.shade, state).total; } catch (e) { /* readout only */ }
-        }
-        let floorBeamCost = 0;
-        if (typeof globalThis.computeFloorBomContribution === 'function') {
-            try { floorBeamCost = globalThis.computeFloorBomContribution(state.floor, moduleCount, state).floorBeamCost; } catch (e) { floorBeamCost = 0; }
-        }
-
-        // Calculate total cost (structure includes washers and support BOM)
-        const totalCost = structureSubtotal + totalWasherCost + sbBom.supportBeamCost + floorBeamCost + solarCost + enclosureCost;
+        // Totals: the drawer's grid is one structure, the topbar chips are the whole array
+        const totalCost = ps.cost.total;
         uiStats.bt.innerText = formatNumber(totalCost, 2);
-        if (uiStats.costTotalChip) uiStats.costTotalChip.innerText = '$' + formatNumber(totalCost, 2);
+        if (uiStats.costTotalChip) {
+            uiStats.costTotalChip.innerText = '$' + formatNumber(all.cost.total, 2);
+            uiStats.costTotalChip.title = copies > 1 ? `${copies} structures × $${formatNumber(totalCost, 2)}` : '';
+        }
     
-        // Calculate structure weight (lbs) based on volume and density
-        // Volume = width × thickness × length (all in inches)
-        // Weight = volume × density
-        const hBeamWeightPerFoot = (state.hBeamW * state.hBeamT * INCHES_PER_FOOT) * state.woodDensity; // cubic inches × lbs/in³
-        const hBeamWeight = hBeams * state.hLengthFt * hBeamWeightPerFoot;
-        const vBeamWeight = calculateVBeamTotalWeight();
-        const bracketWeight = uBrackets * state.weightBracket;
-        const boltWeight = nBolts * state.weightBolt;
-        const structureWeight = hBeamWeight + vBeamWeight + bracketWeight + boltWeight + sbBom.supportBeamWeight;
+        // Weights (lb) from the shared BOM; the structure weight includes floor beams
+        const hBeamWeight = ps.weight.hBeam;
+        const vBeamWeight = ps.weight.vBeam;
+        const bracketWeight = ps.weight.bracket;
+        const structureWeight = ps.weight.structure;
     
         const bomWeightSupportRow = document.getElementById('bom-weight-support-row');
         const bomWeightSupport = document.getElementById('bom-weight-support');
@@ -586,25 +549,20 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         uiStats.weightH.innerText = hBeams;
         uiStats.weightV.innerText = vBeams;
         uiStats.weightU.innerText = uBrackets;
-        // Calculate unit weights
-        const hBeamWeightPerBeam = state.hLengthFt * hBeamWeightPerFoot;
-        uiStats.weightHUnit.innerText = unitConverter.formatWeightWithUnit(hBeamWeightPerBeam);
+        // Unit weights
+        uiStats.weightHUnit.innerText = unitConverter.formatWeightWithUnit(bom.prices.hBeamWeightPerBeam);
         uiStats.weightHVal.innerText = unitConverter.formatWeightWithUnit(hBeamWeight);
-        uiStats.weightVUnit.innerText = unitConverter.formatWeightWithUnit(getVBeamWeightPerBeam());
+        uiStats.weightVUnit.innerText = unitConverter.formatWeightWithUnit(bom.prices.vBeamWeightPerBeam);
         uiStats.weightVVal.innerText = unitConverter.formatWeightWithUnit(vBeamWeight);
         uiStats.weightUUnit.innerText = unitConverter.formatWeightWithUnit(state.weightBracket, 2);
         uiStats.weightUVal.innerText = unitConverter.formatWeightWithUnit(bracketWeight);
         uiStats.weightStructureSubtotal.innerText = unitConverter.formatWeightWithUnit(structureWeight);
         
-        // Calculate solar panel weight if panels are enabled
-        let solarPanelWeight = 0;
-        if (state.solarPanels.enabled && data.panels && data.panels.length > 0) {
-            const weightSummary = getSolarPanelWeightSummary(data);
-            solarPanelWeight = weightSummary.total;
-            const panelWeightPerUnit = weightSummary.perUnit;
-            
+        // Solar panel weight (one structure's worth)
+        const solarPanelWeight = ps.weight.solar;
+        if (bom.solarEnabled && solarPanelCount > 0) {
             uiStats.weightSolar.innerText = solarPanelCount;
-            uiStats.weightSolarUnit.innerText = unitConverter.formatWeightWithUnit(panelWeightPerUnit);
+            uiStats.weightSolarUnit.innerText = unitConverter.formatWeightWithUnit(bom.prices.solarPerUnit);
             uiStats.weightSolarVal.innerText = unitConverter.formatWeightWithUnit(solarPanelWeight);
             uiStats.weightSolarRow.style.display = 'block';
         } else {
@@ -667,8 +625,12 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
             }
         }
         
-        const systemWeight = solarPanelWeight + batteryWeight + controllerWeight + loadWeight;
+        // Electrical gear is sized once for the whole design, so it is shared (not scaled by copies)
+        const sharedSystemWeight = batteryWeight + controllerWeight + loadWeight;
+        const systemWeight = solarPanelWeight + sharedSystemWeight;
         const totalWeight = structureWeight + systemWeight;
+        const systemWeightAll = all.weight.solar + sharedSystemWeight;
+        const totalWeightAll = all.weight.structure + systemWeightAll;
         
         if (systemWeight > 0) {
             uiStats.weightSystemSubtotal.innerText = unitConverter.formatWeightWithUnit(systemWeight);
@@ -684,10 +646,14 @@ import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
         uiStats.h.innerText = unitConverter.formatInchesAsLargeUnit(data.maxHeight, 2);
         uiStats.d.innerText = unitConverter.formatInchesAsLargeUnit(data.maxRad * 2, 2);
         
-        // Update weight in stats panel (top section)
-        uiStats.weightStructure.innerText = unitConverter.formatWeightWithUnit(structureWeight);
-        uiStats.weightSystem.innerText = unitConverter.formatWeightWithUnit(systemWeight);
-        uiStats.weightTotal.innerText = unitConverter.formatWeightWithUnit(totalWeight);
+        // Weight chips: the whole array (drawer head shows the array's structure + shared system)
+        uiStats.weightStructure.innerText = unitConverter.formatWeightWithUnit(all.weight.structure);
+        uiStats.weightSystem.innerText = unitConverter.formatWeightWithUnit(systemWeightAll);
+        uiStats.weightTotal.innerText = unitConverter.formatWeightWithUnit(totalWeightAll);
+        if (uiStats.weightTotal) uiStats.weightTotal.title = copies > 1 ? `${copies} structures × ${unitConverter.formatWeightWithUnit(totalWeight)}` : '';
+        
+        // Array totals block (per structure vs. all copies)
+        updateArrayTotals(bom, sharedSystemWeight);
         
         // Update collision status
         if (state.enforceCollision) {

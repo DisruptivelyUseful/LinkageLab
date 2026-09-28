@@ -214,6 +214,23 @@ test.describe('Deploy preview', () => {
         expect(before.structureVisible).toBe(true);
     });
 
+    test('the Pack button opens the preview packed for transport with a pack summary', async ({ page }) => {
+        await page.evaluate(() => document.getElementById('btn-deploy-pack').click());
+        await expect.poll(() => page.evaluate(() => globalThis.isDeployPreviewActive()), { timeout: 60_000 }).toBe(true);
+        await expect(page.locator('#deploy-phase')).toContainText('Packed');
+        await expect(page.locator('#deploy-pack-summary')).toContainText(/1 bundle/);
+        await expect(page.locator('#deploy-pack-summary')).toContainText(/pack .* high/);
+        const meta = await page.evaluate(() => globalThis.deployPreview.meta.pack);
+        expect(meta.bundles).toBe(1);
+        expect(meta.packBox.y).toBeGreaterThan(0);
+        expect(['ibc', 'flat']).toContain(meta.mode);
+        // Pack while active just scrubs back to the start
+        await page.evaluate(() => { globalThis.setDeployT(0.6); document.getElementById('btn-deploy-pack').click(); });
+        await expect.poll(() => page.evaluate(() => globalThis.getDeployT())).toBe(0);
+        await page.evaluate(() => document.getElementById('btn-deploy-exit').click());
+        await expect.poll(() => page.evaluate(() => globalThis.isDeployPreviewActive())).toBe(false);
+    });
+
     test('the sidebar button enters and the Exit button restores the live structure', async ({ page }) => {
         await page.evaluate(() => document.getElementById('btn-deploy-enter').click());
         await expect.poll(() => page.evaluate(() => globalThis.isDeployPreviewActive()), { timeout: 60_000 }).toBe(true);

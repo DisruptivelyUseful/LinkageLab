@@ -39,7 +39,7 @@
     <!-- Bill of materials drawer (slides up from the bottom of the viewport) -->
     <div id="bom-drawer" class="bom-drawer" role="region" aria-label="Bill of materials" aria-hidden="true">
         <div class="bom-drawer-head">
-            <span class="bom-drawer-title">Bill of Materials</span>
+            <span class="bom-drawer-title">Bill of Materials <span id="bom-copies" class="bom-copies" hidden></span></span>
             <div class="bom-drawer-stats">
                 <span>Structure <span class="hud-val" id="stat-weight-structure"></span></span>
                 <span>System <span class="hud-val" id="stat-weight-system"></span></span>
@@ -163,6 +163,17 @@
             <span class="bom-total-value">$<span id="bom-total">0.00</span></span>
         </div>
     </div>
+    <div id="bom-array-totals" class="bom-array" hidden>
+        <div class="bom-array-grid">
+            <span class="bom-head"></span>
+            <span class="bom-head bom-r">Per structure</span>
+            <span class="bom-head bom-r">All <span id="bom-array-count">1</span></span>
+            <span>Structure</span><span class="bom-r" id="bom-array-structure-one">$0</span><span class="bom-r hud-val" id="bom-array-structure-all">$0</span>
+            <span id="bom-array-solar-row" class="bom-array-row" hidden><span>Solar</span><span class="bom-r" id="bom-array-solar-one">$0</span><span class="bom-r hud-val" id="bom-array-solar-all">$0</span></span>
+            <span id="bom-array-enclosure-row" class="bom-array-row" hidden><span>Enclosure</span><span class="bom-r" id="bom-array-enclosure-one">$0</span><span class="bom-r hud-val" id="bom-array-enclosure-all">$0</span></span>
+            <span class="bom-total-label">Total</span><span class="bom-r bom-total-label" id="bom-array-total-one">$0</span><span class="bom-r bom-total-value" id="bom-array-total-all">$0</span>
+        </div>
+    </div>
 </div>
             </div>
             <div class="bom-column">
@@ -220,6 +231,16 @@
             <div class="bom-total-inner">
                 <span class="bom-total-label">Total Weight</span>
                 <span class="bom-total-value"><span id="bom-weight-total">0</span> lbs</span>
+            </div>
+        </div>
+        <div id="bom-weight-array-totals" class="bom-array" hidden>
+            <div class="bom-array-grid">
+                <span class="bom-head"></span>
+                <span class="bom-head bom-r">Per structure</span>
+                <span class="bom-head bom-r">All <span id="bom-weight-array-count">1</span></span>
+                <span>Structure</span><span class="bom-r" id="bom-weight-array-structure-one">0 lbs</span><span class="bom-r hud-val" id="bom-weight-array-structure-all">0 lbs</span>
+                <span id="bom-weight-array-solar-row" class="bom-array-row" hidden><span>Solar</span><span class="bom-r" id="bom-weight-array-solar-one">0 lbs</span><span class="bom-r hud-val" id="bom-weight-array-solar-all">0 lbs</span></span>
+                <span class="bom-total-label">Total</span><span class="bom-r bom-total-label" id="bom-weight-array-total-one">0 lbs</span><span class="bom-r bom-total-value" id="bom-weight-array-total-all">0 lbs</span>
             </div>
         </div>
     </div>

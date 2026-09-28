@@ -104,6 +104,20 @@ describe('config-persistence', () => {
         expect(s.radialHiddenSlots).not.toBe(snapshot.mode.radialArray.hiddenSlots);
     });
 
+    it('round-trips the sequential fold option under mode.sequentialFold', () => {
+        globalThis.state = createTestState();
+        globalThis.state.animation.sequentialFold = true;
+        const snapshot = getConfigSnapshot();
+        expect(snapshot.mode.sequentialFold).toBe(true);
+        globalThis.state = createTestState();
+        expect(globalThis.state.animation.sequentialFold).toBe(false);
+        applyV30Config(snapshot);
+        expect(globalThis.state.animation.sequentialFold).toBe(true);
+        // Older configs leave it alone
+        applyV30Config({ structure: { modules: 7 }, mode: { type: 'cylinder' } });
+        expect(globalThis.state.animation.sequentialFold).toBe(true);
+    });
+
     it('leaves radial array state untouched for configs saved before the feature existed', () => {
         globalThis.state = createTestState({ radialArrayEnabled: true, radialCount: 4 });
         applyV30Config({ structure: { modules: 7 }, mode: { type: 'cylinder', arrayCount: 1 } });
