@@ -188,6 +188,12 @@ test.describe('Build steps', () => {
             globalThis.refreshBuildStepsUI();
             globalThis.selectBuildStep(s.id);
         });
+        // Coverings (the default model has plywood walls) would sit in front of the beam: hide them
+        await page.evaluate(() => {
+            const cov = globalThis.state.coverings;
+            if (cov && cov.visibility) Object.keys(cov.visibility).forEach((k) => { cov.visibility[k] = false; });
+            globalThis.requestRender();
+        });
         // Playback left the camera framed on one module; reset it so the center hits the structure
         await page.evaluate(() => document.getElementById('btn-fit').click());
         await page.waitForTimeout(400);

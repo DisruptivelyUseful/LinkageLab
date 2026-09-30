@@ -20,7 +20,8 @@
                     <input type="number" id="hw-explode-gap" min="0.25" max="6" step="0.25" value="1.00">
                 </label>
                 <div class="hw-header-actions">
-                    <button type="button" id="hw-btn-tighten" class="hw-header-btn" title="Close every gap so all parts sit flush (T)">Tighten</button>
+                    <button type="button" id="hw-btn-snap" class="hw-header-btn hw-snap-btn active" aria-pressed="true" title="Snap dragged parts to beam faces, the gap between beams, neighbouring parts and their tight spot (S). Hold Alt while dragging to invert; hold Ctrl to slide through parts without pushing them.">Snap: On</button>
+                    <button type="button" id="hw-btn-tighten" class="hw-header-btn" title="Return every part to the flush automatic layout: closes gaps and clears hand placement (T)">Tighten</button>
                     <button type="button" id="hw-btn-recenter" class="hw-header-btn" title="Frame the assembly head-on again (R)">Recenter</button>
                 </div>
                 <label class="hw-header-field hw-fold-field">Fold

@@ -9,7 +9,9 @@
 //     userData.build from hwLayoutAxisParts: axis direction and seated axial
 //     position). A nut on the same assembly axis as a bolt threads on from the
 //     far end; without one (welded / rivet nut, tapped bracket) only the bolt
-//     turns in.
+//     turns in. Washers stacked directly under the bolt head (no gap, before
+//     the first non-washer part) ride in with the head, so the hand-placed
+//     positions are exactly where everything ends up.
 //
 // `op.allModules` extends the step's targets to every module.
 
@@ -19,6 +21,7 @@ import { threeRenderer } from './renderer-3d.js';
 import { easeInOutCubic, sequenceProgress } from './build-steps.js';
 import { matchSelector, partKey, jointKey, jointRoleRank } from './part-keys.js';
 import { registerOpDriver } from './build-steps-anim.js';
+import { washersUnderHead } from './hw-snap.js';
 
 const TWO_PI = Math.PI * 2;
 
@@ -99,16 +102,36 @@ function collectEntries(ctx) {
             const placement = instance.userData && instance.userData.placement;
             if (!placement) continue;
             if (!keys.has(partKey(placement, 'placement'))) continue;
-            const bolts = [], nuts = [];
+            const bolts = [], nuts = [], laidOut = [];
             for (const part of instance.children) {
                 const b = part.userData && part.userData.build;
-                if (!b || !onAxis(b)) continue;
+                if (!b) continue;
+                laidOut.push(part);
+                if (!onAxis(b)) continue;
                 if (b.partType === 'bolt') bolts.push(part);
                 else if (b.partType === 'nut') nuts.push(part);
             }
             const placementKey = partKey(placement, 'placement');
             const joint = jointKey(placement, 'placement') || placementKey;
-            for (const bolt of bolts) entries.push({ ...hwPartEntry(bolt, bolt.userData.build, turns, false), joint, placementKey, len: bolt.userData.build.len || 3 });
+            for (const bolt of bolts) {
+                const entry = { ...hwPartEntry(bolt, bolt.userData.build, turns, false), joint, placementKey, len: bolt.userData.build.len || 3 };
+                entries.push(entry);
+                // Washers under the head ride along (same travel, no spin)
+                for (const w of washersUnderHead(bolt, laidOut, m => m.userData.build)) {
+                    entries.push({
+                        mesh: w,
+                        seatedPos: w.position.clone(),
+                        seatedQuat: w.quaternion.clone(),
+                        moveDir: entry.moveDir.clone(),
+                        travel: entry.travel,
+                        spinSign: 0,
+                        turns: 0,
+                        joint,
+                        placementKey,
+                        len: w.userData.build.len || 0.1,
+                    });
+                }
+            }
             for (const nut of nuts) {
                 const nb = nut.userData.build;
                 // A nut only animates when a bolt shares its axis (rivet / welded nuts stay put)

@@ -1659,6 +1659,57 @@ input.error {
     transform: none;
 }
 
+.hw-snap-btn.active {
+    color: var(--clr-primary);
+    border-color: var(--clr-primary);
+    background: rgba(34, 211, 238, 0.12);
+}
+
+/* Readout chip that follows the pointer while dragging a part */
+.hw-drag-readout {
+    position: absolute;
+    z-index: 5;
+    pointer-events: none;
+    width: max-content;
+    padding: 4px 9px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    background: rgba(8, 12, 22, 0.88);
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    line-height: 1.35;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.hw-drag-readout.visible { opacity: 1; }
+.hw-drag-readout b { color: var(--text-primary); font-weight: 600; }
+
+.hw-axis-mode {
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-light);
+    font-size: 0.58rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+}
+
+.hw-axis-mode-manual {
+    color: var(--energy-amber);
+    border-color: rgba(245, 158, 11, 0.5);
+}
+
+.hw-axis-title .hw-axis-tighten {
+    float: right;
+    margin-top: -3px;
+    font-size: 0.6rem;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
 .hw-axis-summary {
     font-family: var(--font-mono);
     font-size: 0.66rem;

@@ -260,7 +260,7 @@ import { cloneMaterialForMutation } from './materials.js';
         if ((state.showHardwareFullDetail || detail) && data.hardwareAssemblyPlacements && data.hardwareAssemblyPlacements.length) {
             data.hardwareAssemblyPlacements.forEach(placement => {
                 if (detail && hwFocus && placement === hwFocus.placement) return; // exploded copy added below
-                addAssemblyInstance(placement, { explode: 0, syncFromState: false, excludeBeams: true });
+                addAssemblyInstance(placement, { explode: 0, excludeBeams: true });
             });
         }
 
@@ -293,6 +293,8 @@ import { cloneMaterialForMutation } from './materials.js';
                     hwDetail.needsRefit = false;
                 }
                 hwDetail.focusGroupUuid = focusInstance ? focusInstance.uuid : null;
+                hwDetail.focusAssemblyId = hwFocus.assembly ? hwFocus.assembly.id : null;
+                if (focusInstance && typeof globalThis.hwDecorateFocusInstance === 'function') globalThis.hwDecorateFocusInstance(focusInstance);
             }
             if (typeof globalThis.hwSyncFoldSliderFromState === 'function') globalThis.hwSyncFoldSliderFromState();
         }

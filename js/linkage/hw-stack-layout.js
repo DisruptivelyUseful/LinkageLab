@@ -25,6 +25,13 @@
 //   • `centered` stacks (sandwich centre slot) are shifted so the members
 //     straddle the origin: [origin − span/2, origin + span/2].
 //   • Exploded positions keep the order and add a uniform gap per rank.
+//   • Manual axes (`opts.manual`): once the user places parts by hand, each
+//     part carries `pos` = its seated start relative to the datum origin
+//     (the un-centred origin passed in). Those positions win over the tight
+//     layout; overlaps are allowed and only reported (info). Inserts without
+//     their own `pos` ride with their host member. Beams are structure and
+//     always keep their tight seat. Order (rank) follows position so explode
+//     still fans out outward.
 //   • Nothing here reads state or the DOM, so it is unit-testable.
 // ============================================================================
 
@@ -40,6 +47,8 @@ const NUT_PROTRUSION_THREADS = 2;
 const LONG_PROTRUSION_IN = 0.5;
 /** Bores this much smaller than the bolt still count as a clearance fit (5/16" parts on an M8 bolt). */
 const BORE_TOLERANCE_IN = 0.005;
+/** Hand-placed solids overlapping by more than this (inches) get an info note. */
+const OVERLAP_TOLERANCE_IN = 0.002;
 
 function num(v, def = 0) {
     const n = Number(v);
@@ -163,6 +172,7 @@ function gapBeforeOf(part) {
  */
 function computeAxisStack(parts, opts = {}) {
     const origin = num(opts.origin, 0);
+    const manual = !!opts.manual;
     const wall = Math.max(0, num(opts.datumWall, 0));
     const centered = !!opts.centered;
     const sorted = (parts || [])
@@ -261,6 +271,14 @@ function computeAxisStack(parts, opts = {}) {
         if (boltInfo) ['headStart', 'headEnd', 'shankStart', 'shankEnd', 'start', 'end'].forEach(k => { boltInfo[k] += shift; });
     }
 
+    let membersEndOut = membersEnd + shift;
+    let lastRank = rank - 1;
+    if (manual) {
+        const res = applyManualPositions(items, boltInfo, origin);
+        if (res.membersEnd != null) membersEndOut = res.membersEnd;
+        lastRank = res.lastRank;
+    }
+
     const stackItems = items.filter(it => it.kind !== HW_KIND.BOLT);
     const start = stackItems.length ? Math.min(...stackItems.map(it => it.start)) : origin + shift;
     const end = stackItems.length ? Math.max(...stackItems.map(it => it.end)) : origin + shift;
@@ -273,13 +291,67 @@ function computeAxisStack(parts, opts = {}) {
         start,
         end,
         span: Math.max(0, end - start),
-        membersEnd: membersEnd + shift,
+        membersEnd: membersEndOut,
         bolt: boltInfo,
         nut: nut || null,
-        lastRank: rank - 1,
+        lastRank,
+        manual,
     };
     stack.fit = checkAxisFit(stack);
     return stack;
+}
+
+/** Finite manual position of a part (inches from the datum origin), or null. */
+function manualPosOf(part) {
+    if (!part || part.pos == null || part.pos === '') return null;
+    const n = Number(part.pos);
+    return Number.isFinite(n) ? n : null;
+}
+
+/**
+ * Override tight starts with hand-placed positions (see header). Mutates the
+ * items / boltInfo in place and returns { membersEnd, lastRank }.
+ */
+function applyManualPositions(items, boltInfo, origin) {
+    const deltas = new Map();
+    // Members, nuts and extra bolts first (inserts may follow their host)
+    items.forEach(it => {
+        if (it.kind === HW_KIND.BOLT || it.kind === HW_KIND.INSERT) return;
+        // Beams are the real structure: always seated by the tight layout
+        if (it.part.type === 'beam') return;
+        const pos = manualPosOf(it.part);
+        if (pos == null) return;
+        const target = origin + pos + it.len * (it.copyIndex || 0);
+        const d = target - it.start;
+        it.start += d; it.end += d; it.partBase = origin + pos; it.baseStart = it.start;
+        deltas.set(it, d);
+    });
+    items.forEach(it => {
+        if (it.kind !== HW_KIND.INSERT) return;
+        const pos = manualPosOf(it.part);
+        let d = 0;
+        if (pos != null) d = origin + pos - it.start;
+        else if (it.insertHost && deltas.has(it.insertHost)) d = deltas.get(it.insertHost);
+        it.start += d; it.end += d; it.partBase += d; it.baseStart = it.start;
+    });
+    items.forEach(it => {
+        if (it.kind !== HW_KIND.BOLT || !boltInfo) return;
+        const pos = manualPosOf(it.part);
+        if (pos == null) return;
+        const d = origin + pos - it.start;
+        it.start += d; it.end += d; it.partBase = it.start; it.baseStart = it.start;
+        ['headStart', 'headEnd', 'shankStart', 'shankEnd', 'start', 'end'].forEach(k => { boltInfo[k] += d; });
+    });
+    // Rank by position so explode fans outward in the order parts now sit
+    const ranked = items.filter(it => it.kind !== HW_KIND.BOLT)
+        .map((it, i) => ({ it, i }))
+        .sort((a, b) => (a.it.start - b.it.start) || (a.i - b.i));
+    ranked.forEach(({ it }, r) => { it.rank = r; });
+    const lastRank = ranked.length - 1;
+    items.forEach(it => { if (it.kind === HW_KIND.BOLT) it.rank = it.headOutside ? lastRank + 1 : 0; });
+    const solids = items.filter(it => it.kind !== HW_KIND.BOLT && !it.extraBolt);
+    const membersEnd = solids.length ? Math.max(...solids.map(it => it.end)) : null;
+    return { membersEnd, lastRank: Math.max(lastRank, 0) };
 }
 
 /** Clamped thickness a bolt has to span: datum wall + every member and nut. */
@@ -297,6 +369,22 @@ function checkAxisFit(stack) {
     const bolt = stack.bolt;
     const members = stack.items.filter(it => (it.kind === HW_KIND.MEMBER || it.kind === HW_KIND.INSERT) && !it.extraBolt);
     const nutItems = stack.items.filter(it => it.kind === HW_KIND.NUT || (it.kind === HW_KIND.INSERT && it.part.type === 'nut'));
+    // Overlapping solids are allowed (hand placement is permissive) but noted
+    const solids = stack.items
+        .filter(it => (it.kind === HW_KIND.MEMBER || it.kind === HW_KIND.NUT) && !it.extraBolt)
+        .slice().sort((a, b) => a.start - b.start);
+    const flagged = new Set();
+    for (let i = 1; i < solids.length; i++) {
+        const prev = solids[i - 1];
+        const cur = solids[i];
+        if (prev.part === cur.part) continue;
+        const ov = prev.end - cur.start;
+        if (ov > OVERLAP_TOLERANCE_IN && !flagged.has(cur.part.id)) {
+            flagged.add(cur.part.id);
+            out.push({ partId: cur.part.id, level: 'info', code: 'overlap', value: ov,
+                message: `Overlaps ${prev.part.label || prev.part.type} by ${ov.toFixed(3)} in.` });
+        }
+    }
     stack.items.filter(it => it.extraBolt).forEach(it => {
         out.push({ partId: it.part.id, level: 'warn', code: 'extra-bolt', message: 'Only one bolt per axis is threaded through the stack; this one is laid out as a spacer.' });
     });
@@ -392,6 +480,8 @@ const _moduleExports = {
     partBoreDiameter,
     insertDims,
     computeAxisStack,
+    applyManualPositions,
+    manualPosOf,
     stackGripLength,
     checkAxisFit,
     explodeAxisStack,
@@ -400,4 +490,4 @@ const _moduleExports = {
 
 bridgeGlobals(_moduleExports, 'hwStackLayout');
 
-export { HW_KIND, classifyPart, partAxialLength, partHeadHeight, partShankLength, partBoreDiameter, insertDims, computeAxisStack, stackGripLength, checkAxisFit, explodeAxisStack, blendedStart };
+export { HW_KIND, classifyPart, partAxialLength, partHeadHeight, partShankLength, partBoreDiameter, insertDims, computeAxisStack, applyManualPositions, manualPosOf, stackGripLength, checkAxisFit, explodeAxisStack, blendedStart };

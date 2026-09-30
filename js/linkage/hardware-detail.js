@@ -1,7 +1,9 @@
 // ============================================================================ (ES module)
 
 import { bridgeGlobals } from './global-bridge.js';
-import { computeAxisStack, explodeAxisStack, partAxialLength as hwEnginePartLength, HW_KIND } from './hw-stack-layout.js';
+import { computeAxisStack, explodeAxisStack, partAxialLength as hwEnginePartLength, partHeadHeight } from './hw-stack-layout.js';
+import { hwWireEmbeddedDetailInteraction, hwSyncSnapButton, hwToggleSnap } from './hw-detail-interaction.js';
+import { renderHardwareEditPanel } from './hw-detail-panel.js';
 import { bindNumericInput } from './numeric-input.js';
 import { showToast } from '../core/feedback.js';
 import { getConfigSnapshot } from './config-persistence.js';
@@ -48,10 +50,8 @@ const HW_MM_TO_IN = 1 / 25.4;
 
 /** Uniform exploded spacing between parts (inches) when an assembly has no explodeGap. */
 const HW_DEFAULT_EXPLODE_GAP = 1.0;
-/** Dragged gaps smaller than this snap back to flush. */
-const HW_GAP_DEAD_ZONE = 0.05;
-
-const HW_PART_TYPES = ['bolt', 'bushing', 'washer', 'lockWasher', 'nut', 'bracket', 'beam'];
+/** Hand-placed positions are stored to this precision (inches). */
+const HW_POS_DECIMALS = 4;
 
 // Default position fields added to every stack part.
 function hwDefaultPartPos() {
@@ -64,6 +64,8 @@ function hwPartQty(part) {
 }
 
 const HW_HBEAM_GAP_WASHER_SHARED_KEY = 'hBeamGapWasher';
+/** Legacy hand-built left-stack part ids superseded by the right→left mirror. */
+const HW_LEGACY_MIRROR_IDS = /^l-(beam|bushing|lock|bolt|washer|nut)$/;
 const HW_HBEAM_SANDWICH_ASSEMBLY_IDS = ['outerVBeam', 'innerVBeam', 'hCenter'];
 
 function hwDefaultHBeamGapWasherPart(asmId) {
@@ -237,11 +239,15 @@ function hwSyncMirrorClonesFromSources(asm, pair) {
         clone.cost = src.cost;
         clone.params = JSON.parse(JSON.stringify(src.params || {}));
         clone.gapBefore = src.gapBefore;
+        if (src.pos != null) clone.pos = src.pos; else delete clone.pos;
+        clone.seq = src.seq;
         clone.crossOffset = src.crossOffset;
         clone.flipAxis = src.flipAxis;
         clone.presetId = src.presetId || null;
         clone.bomKey = src.bomKey || null;
     });
+    if (hwIsAxisManual(asm, pair.from)) hwSetAxisManual(asm, pair.to, true);
+    else hwSetAxisManual(asm, pair.to, false);
 }
 
 function hwApplyMirrorPairChanges(asm, prevPairs, nextPairs) {
@@ -280,8 +286,10 @@ function hwReconcileMirrorParts(asm) {
         if (!hwIsMirrorClonePart(p)) return true;
         return pairs.some(pair => pair.to === p.axis);
     });
+    // Legacy configs stored a hand-built left stack ('l-bolt', 'l-lock', …) next to
+    // the mirror; the mirror replaces it. Only those legacy default ids are dropped.
     pairs.forEach(pair => {
-        asm.parts = asm.parts.filter(p => !(p.axis === pair.to && p.id.startsWith('l-')));
+        asm.parts = asm.parts.filter(p => !(p.axis === pair.to && HW_LEGACY_MIRROR_IDS.test(p.id || '')));
     });
     if (pairs.length) asm.mirror = { ...pairs[0] };
     else delete asm.mirror;
@@ -372,9 +380,9 @@ function hwGetAxisStackOrigin(assembly, axisKey, bracketPart) {
  * Every item carries its seated interval [baseStart, baseStart+len] and its
  * exploded start, so renderers and drag code never re-derive the stack.
  */
-function hwComputeAxisLayout(assembly, axisKey) {
+function hwComputeAxisLayout(assembly, axisKey, opts = {}) {
     const bracketPart = assembly.parts.find(p => p.type === 'bracket');
-    const parts = assembly.parts.filter(p => p.type !== 'bracket' && (p.axis || 'right') === axisKey);
+    let parts = assembly.parts.filter(p => p.type !== 'bracket' && (p.axis || 'right') === axisKey);
     const center = hwIsCenterAxis(axisKey);
     let origin;
     let datumWall = 0;
@@ -386,10 +394,18 @@ function hwComputeAxisLayout(assembly, axisKey) {
         origin = hwGetBracketStackOrigin(bracketPart, axisKey);
         datumWall = bracketPart && bracketPart.params ? (bracketPart.params.wallThickness || 0.12) : 0;
     }
-    const stack = computeAxisStack(parts, { origin, centered: center, datumWall });
+    // Hand placement: stored positions (manual axis) or a live drag preview
+    let manual = !opts.tight && hwIsAxisManual(assembly, axisKey);
+    const preview = !opts.tight ? hwGetLayoutPreview(assembly, axisKey) : null;
+    if (preview) {
+        manual = true;
+        parts = parts.map(p => (preview.pos.has(p.id) ? { ...p, pos: preview.pos.get(p.id) } : p));
+    }
+    const originals = new Map(assembly.parts.map(p => [p.id, p]));
+    const stack = computeAxisStack(parts, { origin, centered: center, datumWall, manual });
     const exploded = explodeAxisStack(stack, hwGetExplodeGap(assembly));
     const items = stack.items.map(it => ({
-        part: it.part,
+        part: originals.get(it.part.id) || it.part,
         kind: it.kind,
         baseStart: it.start,
         end: it.end,
@@ -401,7 +417,112 @@ function hwComputeAxisLayout(assembly, axisKey) {
         gapBefore: it.gapBefore,
         headOutside: !!it.headOutside,
     }));
-    return { items, origin: stack.origin, span: stack.span, center, stack, fit: stack.fit };
+    return { items, origin: stack.origin, datum: origin, datumWall, span: stack.span, center, manual, stack, fit: stack.fit };
+}
+
+// ---------------------------------------------------------------------------
+// Hand placement (manual axes)
+// An axis starts "auto": parts sit flush (tight layout, gapBefore only). The
+// first hand edit on an axis materialises every part's current start into
+// part.pos (inches from the axis datum) and marks the axis manual; from then
+// on positions are free (overlaps allowed). Tighten returns it to auto.
+// ---------------------------------------------------------------------------
+
+function hwIsAxisManual(assembly, axisKey) {
+    return !!(assembly && assembly.manualAxes && assembly.manualAxes[axisKey]);
+}
+
+function hwSetAxisManual(assembly, axisKey, on) {
+    if (!assembly) return;
+    if (on) {
+        if (!assembly.manualAxes || typeof assembly.manualAxes !== 'object') assembly.manualAxes = {};
+        assembly.manualAxes[axisKey] = true;
+    } else if (assembly.manualAxes) {
+        delete assembly.manualAxes[axisKey];
+        if (!Object.keys(assembly.manualAxes).length) delete assembly.manualAxes;
+    }
+}
+
+/** Live drag preview for one axis ({ assemblyId, axisKey, pos: Map }) or null. */
+function hwGetLayoutPreview(assembly, axisKey) {
+    const pv = hwDetail.preview;
+    if (!pv || !assembly || pv.assemblyId !== assembly.id || pv.axisKey !== axisKey) return null;
+    return pv;
+}
+
+/** Current seated start of every part on an axis, relative to its datum (part id → pos). */
+function hwAxisPositions(assembly, axisKey) {
+    const layout = hwComputeAxisLayout(assembly, axisKey);
+    const out = new Map();
+    layout.items.forEach(it => {
+        if ((it.copyIndex || 0) !== 0) return;
+        out.set(it.part.id, it.baseStart - layout.datum);
+    });
+    return out;
+}
+
+/**
+ * Store hand-placed positions for an axis (id → pos from datum) and mark it
+ * manual. Parts not in the map keep their current position. Keeps physical
+ * mirror copies in step.
+ */
+function hwCommitAxisPositions(assembly, axisKey, posMap) {
+    if (!assembly) return;
+    const current = hwAxisPositions(assembly, axisKey);
+    const onAxis = assembly.parts.filter(p => p.type !== 'bracket' && (p.axis || 'right') === axisKey);
+    onAxis.forEach(p => {
+        const v = posMap && posMap.has(p.id) ? posMap.get(p.id) : current.get(p.id);
+        if (Number.isFinite(v)) p.pos = +v.toFixed(HW_POS_DECIMALS);
+    });
+    // seq is left alone: it is the flush order Tighten returns to, and it seats
+    // the beams (which stay on their tight seat). The panel lists manual axes by position.
+    hwSetAxisManual(assembly, axisKey, true);
+    hwSyncMirrorClonesForAxis(assembly, axisKey);
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+}
+
+/** Set one part's position from the datum (materialises the axis first). */
+function hwSetPartPosition(part, assembly, pos) {
+    if (!part || !assembly || !Number.isFinite(Number(pos))) return;
+    const axisKey = part.axis || 'right';
+    const map = hwAxisPositions(assembly, axisKey);
+    map.set(part.id, Number(pos));
+    hwCommitAxisPositions(assembly, axisKey, map);
+}
+
+/**
+ * Snap planes the axis itself cannot see (hw-snap collects neighbour and beam
+ * faces from the stack): the datum wall on bracket chains, the centre-slot
+ * face on sandwich sides, and the two facing sandwich beams on a centre axis.
+ */
+function hwAxisSnapContext(assembly, axisKey, layout = hwComputeAxisLayout(assembly, axisKey)) {
+    const extraPlanes = [];
+    const gaps = [];
+    if (!assembly || !layout) return { extraPlanes, gaps };
+    if (hwIsCenterAxis(axisKey)) {
+        const plane = assembly.sandwichPlane || (assembly.id === 'vCenter' ? 'horizontal' : 'vertical');
+        const pair = plane === 'horizontal' ? { pos: 'right', neg: 'left' } : { pos: 'up', neg: 'down' };
+        const hasBeams = assembly.parts.some(p => hwIsSandwichBeamPart(p) && (p.axis === pair.pos || p.axis === pair.neg));
+        if (hasBeams) {
+            const half = hwGetSandwichCenterHalfSpan(assembly);
+            const a = layout.datum - half - hwGetSandwichSideBeamOffset(assembly, pair.neg);
+            const b = layout.datum + half + hwGetSandwichSideBeamOffset(assembly, pair.pos);
+            gaps.push({ a, b, label: 'between beams', faceLabel: 'beam face' });
+        }
+    } else if (hwUsesSandwichAxis(assembly, axisKey)) {
+        extraPlanes.push({ pos: layout.datum, role: 'hi', label: 'centre stack face', kind: 'datum' });
+    } else {
+        extraPlanes.push({ pos: layout.datum, role: 'hi', label: 'bracket wall', kind: 'datum' });
+        if (layout.datumWall > 0) extraPlanes.push({ pos: layout.datum - layout.datumWall, role: 'lo', label: 'bracket wall (inside)', kind: 'datum' });
+    }
+    return { extraPlanes, gaps };
+}
+
+function hwSyncMirrorClonesForAxis(assembly, axisKey) {
+    hwGetAssemblyMirrorPairs(assembly).forEach(pair => {
+        if (pair.from !== axisKey || hwAssemblyUsesVirtualMirror(assembly, pair)) return;
+        hwSyncMirrorClonesFromSources(assembly, pair);
+    });
 }
 
 function hwGetExplodeGap(assembly) {
@@ -473,6 +594,7 @@ function hwLayoutAxisParts(group, renderAxisArg, partsAxisKey, assembly, opts) {
             cross: { x: crossVec.x, y: crossVec.y, z: crossVec.z },
             axisPos, crossPos, len, copyIndex,
             flip: !!part.flipAxis,
+            headH: part.type === 'bolt' ? partHeadHeight(part) : 0,
             partsAxisKey, renderAxisKey,
             partType: part.type,
             nutStyle: part.type === 'nut' ? ((part.params && part.params.style) || 'hex') : null,
@@ -482,74 +604,9 @@ function hwLayoutAxisParts(group, renderAxisArg, partsAxisKey, assembly, opts) {
     });
 }
 
-function hwBindNumberScrub(input, onChange) {
-    input.addEventListener('mousedown', (e) => e.stopPropagation());
-    input.addEventListener('click', (e) => e.stopPropagation());
-    let scrub = null;
-    input.addEventListener('pointerdown', (e) => {
-        if (e.button !== 0) return;
-        e.stopPropagation();
-        scrub = { x: e.clientX, val: parseFloat(input.value) || 0, step: parseFloat(input.step) || 0.01 };
-        input.setPointerCapture(e.pointerId);
-    });
-    input.addEventListener('pointermove', (e) => {
-        if (!scrub || !input.hasPointerCapture(e.pointerId)) return;
-        const steps = Math.round((e.clientX - scrub.x) / 3);
-        if (steps === 0) return;
-        e.preventDefault();
-        scrub.val += steps * scrub.step;
-        scrub.x = e.clientX;
-        const decimals = input.dataset.decimals != null
-            ? parseInt(input.dataset.decimals, 10)
-            : ((input.step && String(input.step).includes('.')) ? String(input.step).split('.')[1].length : 2);
-        input.value = scrub.val.toFixed(decimals);
-        onChange(parseFloat(input.value) || 0);
-    });
-    input.addEventListener('pointerup', (e) => {
-        if (input.hasPointerCapture(e.pointerId)) input.releasePointerCapture(e.pointerId);
-        scrub = null;
-    });
-}
 
 function hwGetPartAxialLength(part) {
     return hwEnginePartLength(part);
-}
-
-function hwPartKind(part) {
-    if (!part) return HW_KIND.MEMBER;
-    if (part.type === 'bolt') return HW_KIND.BOLT;
-    if (part.type === 'bushing') return HW_KIND.INSERT;
-    if (part.type === 'nut') return (part.params && part.params.style === 'rivet') ? HW_KIND.INSERT : HW_KIND.NUT;
-    if (part.type === 'bracket') return HW_KIND.BRACKET;
-    return HW_KIND.MEMBER;
-}
-
-function hwGetPartStackContext(part, assembly, explode) {
-    const axisKey = part.axis || 'right';
-    const renderAxis = hwIsCenterAxis(axisKey) ? hwGetCenterRenderAxis(assembly) : axisKey;
-    const dir = HW_AXIS_DIRS[renderAxis] || HW_AXIS_DIRS.right;
-    const dirVec = new THREE.Vector3(dir.x, dir.y, dir.z).normalize();
-    const cross = HW_AXIS_CROSS[renderAxis] || HW_AXIS_CROSS.right;
-    const crossVec = new THREE.Vector3(cross.x, cross.y, cross.z).normalize();
-
-    const layout = hwComputeAxisLayout(assembly, axisKey);
-    const item = layout.items.find(it => it.part.id === part.id && (it.copyIndex || 0) === 0);
-    if (!item) return null;
-
-    return {
-        item,
-        layout,
-        stackBase: item.partBase,
-        stackOrigin: layout.origin,
-        rank: item.rank,
-        copyIndex: 0,
-        axisKey,
-        renderAxis,
-        dirVec,
-        crossVec,
-        explode,
-        center: layout.center,
-    };
 }
 
 function hwGetCenterRenderAxis(assembly) {
@@ -559,64 +616,7 @@ function hwGetCenterRenderAxis(assembly) {
     return 'up';
 }
 
-function hwAxisPosFromPart(part, ctx) {
-    if (!ctx || !ctx.item) return 0;
-    const it = ctx.item;
-    const e = Math.min(1, Math.max(0, ctx.explode || 0));
-    const axisStart = (1 - e) * it.baseStart + e * it.explodedStart;
-    return hwPartAxisPlacementPos(axisStart, part);
-}
-
-/** Swap the stack order of two parts on the same axis. */
-function hwSwapSeq(assembly, a, b) {
-    if (!assembly || !a || !b || a.axis !== b.axis) return;
-    const t = a.seq; a.seq = b.seq; b.seq = t;
-    hwRenumberAxis(assembly, a.axis);
-}
-
-/**
- * Drag a part along its axis (assembled view only). Moving it changes its
- * gapBefore (never below 0; tiny gaps snap flush). Dragging past a neighbour's
- * midpoint swaps their order instead.
- */
-function hwSetPartAxisPosFromWorld(part, ctx, axisPos) {
-    if (!ctx || !ctx.item) return;
-    if ((ctx.explode || 0) > 0.05) return;
-    const assembly = getActiveHardwareAssembly();
-    if (!assembly) return;
-    const it = ctx.item;
-    if (it.kind === HW_KIND.INSERT) return;
-    const len = it.len;
-    const desiredStart = axisPos - (hwUsesAxialCenterPlacement(part) ? len / 2 : 0);
-    const delta = desiredStart - it.baseStart;
-
-    if (it.kind !== HW_KIND.BOLT) {
-        const solids = ctx.layout.items
-            .filter(x => x.kind !== HW_KIND.BOLT && x.kind !== HW_KIND.INSERT && (x.copyIndex || 0) === 0)
-            .sort((a, b) => a.baseStart - b.baseStart);
-        const idx = solids.findIndex(x => x.part.id === part.id);
-        const next = solids[idx + 1];
-        const prev = solids[idx - 1];
-        const mid = desiredStart + len / 2;
-        if (delta > 0 && next && mid > next.baseStart + next.len / 2) {
-            hwSwapSeq(assembly, part, next.part);
-            hwApplyPartGap(part, assembly, 0);
-            return;
-        }
-        if (delta < 0 && prev && mid < prev.baseStart + prev.len / 2) {
-            hwSwapSeq(assembly, part, prev.part);
-            hwApplyPartGap(part, assembly, 0);
-            return;
-        }
-    }
-    // An inside-head bolt seats on the datum side, so pulling it outward (−) grows its gap
-    const sign = (it.kind === HW_KIND.BOLT && !it.headOutside) ? -1 : 1;
-    let gap = (part.gapBefore || 0) + sign * delta;
-    if (gap < HW_GAP_DEAD_ZONE) gap = 0;
-    hwApplyPartGap(part, assembly, +gap.toFixed(3));
-}
-
-/** Set a part's gapBefore (clamped ≥ 0), mirror sandwich beams, and invalidate geometry. */
+/** Set a part's gapBefore (clamped ≥ 0, auto axes), mirror sandwich beams, and invalidate geometry. */
 function hwApplyPartGap(part, assembly, gap) {
     if (!part) return;
     const oldGap = part.gapBefore || 0;
@@ -626,117 +626,34 @@ function hwApplyPartGap(part, assembly, gap) {
     if (Math.abs(next - oldGap) > 1e-6 && typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
 }
 
-/** Tighten: every part on the active assembly sits flush (all gaps 0). */
-function hwTightenAssembly(assembly = getActiveHardwareAssembly()) {
+/**
+ * Tighten: parts sit flush again (all gaps 0, hand positions cleared, axis back
+ * to auto). With `axisKey`, only that axis; otherwise the whole assembly.
+ * Returns how many parts moved.
+ */
+function hwTightenAssembly(assembly = getActiveHardwareAssembly(), axisKey = null) {
     if (!assembly || !assembly.parts) return 0;
-    let changed = 0;
+    const axes = axisKey ? [axisKey] : [...new Set(assembly.parts.filter(p => p.type !== 'bracket').map(p => p.axis || 'right'))];
+    const before = new Map(axes.map(ax => [ax, hwAxisPositions(assembly, ax)]));
     assembly.parts.forEach(p => {
         if (p.type === 'bracket') return;
-        if ((p.gapBefore || 0) !== 0) changed += 1;
+        if (axisKey && (p.axis || 'right') !== axisKey) return;
+        // Sandwich-beam standoffs are structure spacing: only a whole-assembly tighten resets them
+        if (axisKey && hwIsSandwichBeamPart(p)) return;
         p.gapBefore = 0;
+        delete p.pos;
+    });
+    axes.forEach(ax => hwSetAxisManual(assembly, ax, false));
+    hwGetAssemblyMirrorPairs(assembly).forEach(pair => {
+        if (axes.includes(pair.from)) hwSetAxisManual(assembly, pair.to, false);
+    });
+    let changed = 0;
+    axes.forEach(ax => {
+        const after = hwAxisPositions(assembly, ax);
+        before.get(ax).forEach((v, id) => { if (Math.abs((after.get(id) ?? v) - v) > 1e-4) changed += 1; });
     });
     if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
     return changed;
-}
-
-function hwEnsureDetailRaycaster() {
-    if (!hwDetail.raycaster && typeof THREE !== 'undefined') {
-        hwDetail.raycaster = new THREE.Raycaster();
-        hwDetail.pointer = new THREE.Vector2();
-    }
-}
-
-function hwGetDetailCanvas() {
-    return document.getElementById('canvas-webgl');
-}
-
-function hwGetDetailCamera() {
-    return (typeof threeRenderer !== 'undefined' && threeRenderer.mainCamera) ? threeRenderer.mainCamera : null;
-}
-
-function hwGetFocusAssemblyGroup() {
-    if (!hwDetail.focusGroupUuid || typeof THREE === 'undefined') return null;
-    if (typeof threeRenderer === 'undefined' || !threeRenderer.hardwareAssemblyGroup) return null;
-    let found = null;
-    threeRenderer.hardwareAssemblyGroup.traverse(obj => {
-        if (obj.uuid === hwDetail.focusGroupUuid) found = obj;
-    });
-    return found;
-}
-
-function hwProjectPointerToAxisPos(event, ctx) {
-    hwEnsureDetailRaycaster();
-    const canvas = hwGetDetailCanvas();
-    const camera = hwGetDetailCamera();
-    if (!ctx || !hwDetail.raycaster || !camera || !canvas) return null;
-    const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    hwDetail.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    hwDetail.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    hwDetail.raycaster.setFromCamera(hwDetail.pointer, camera);
-
-    let ray = hwDetail.raycaster.ray;
-    const camDir = new THREE.Vector3();
-    camera.getWorldDirection(camDir);
-    const focusGroup = hwGetFocusAssemblyGroup();
-    if (!focusGroup) return null;
-    focusGroup.updateWorldMatrix(true, false);
-    const inv = new THREE.Matrix4().copy(focusGroup.matrixWorld).invert();
-    ray = hwDetail.raycaster.ray.clone().applyMatrix4(inv);
-    camDir.transformDirection(inv).normalize();
-
-    let planeNormal = new THREE.Vector3().crossVectors(ctx.dirVec, camDir);
-    if (planeNormal.lengthSq() < 1e-8) {
-        planeNormal = new THREE.Vector3().crossVectors(ctx.dirVec, ctx.crossVec);
-    }
-    planeNormal.normalize();
-
-    const dragPart = getActiveHardwareAssembly().parts.find(p => p.id === hwDetail.dragPartId) || { gapBefore: 0, crossOffset: 0 };
-    const anchor = ctx.dirVec.clone().multiplyScalar(hwAxisPosFromPart(dragPart, ctx));
-    let crossPos = dragPart.crossOffset || 0;
-    if (HW_HORIZONTAL_AXES.indexOf(ctx.axisKey) >= 0) {
-        const bracketPart = getActiveHardwareAssembly().parts.find(p => p.type === 'bracket');
-        if (bracketPart) crossPos += hwGetBracketHoleY(bracketPart);
-    }
-    anchor.addScaledVector(ctx.crossVec, crossPos);
-
-    const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(planeNormal, anchor);
-    const hit = new THREE.Vector3();
-    if (!ray.intersectPlane(plane, hit)) return null;
-    return hit.dot(ctx.dirVec);
-}
-
-function hwRaycastPartId(event) {
-    hwEnsureDetailRaycaster();
-    if (!hwDetail.raycaster) return null;
-    const canvas = hwGetDetailCanvas();
-    const camera = hwGetDetailCamera();
-    if (!canvas || !camera) return null;
-    const rect = canvas.getBoundingClientRect();
-    if (!rect.width || !rect.height) return null;
-    hwDetail.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
-    hwDetail.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
-    hwDetail.raycaster.setFromCamera(hwDetail.pointer, camera);
-
-    const pickFrom = (root) => {
-        const hits = hwDetail.raycaster.intersectObjects(root.children, true);
-        for (let i = 0; i < hits.length; i++) {
-            let node = hits[i].object;
-            while (node) {
-                if (node.userData && node.userData.partId) return node.userData.partId;
-                node = node.parent;
-            }
-        }
-        return null;
-    };
-
-    const focusGroup = hwGetFocusAssemblyGroup();
-    if (!focusGroup) return null;
-    const partId = pickFrom(focusGroup);
-    if (!partId) return null;
-    const asm = getActiveHardwareAssembly();
-    const part = asm && asm.parts.find(p => p.id === partId);
-    return (part && part.type !== 'bracket') ? partId : null;
 }
 
 function hwGetBracketHoleY(bracketPart) {
@@ -886,9 +803,10 @@ function hwEnsureHBeamSandwichAssembly(asm) {
     // not on the center axis. Relocate legacy center/right brackets once.
     const bracket = asm.parts.find(p => p.type === 'bracket');
     if (bracket && (bracket.axis === 'center' || bracket.axis === 'right')) {
+        const fromAxis = bracket.axis;
         bracket.axis = 'up';
         hwRenumberAxis(asm, 'up');
-        if (bracket.axis === 'center') hwRenumberAxis(asm, 'center');
+        hwRenumberAxis(asm, fromAxis);
     }
 
     const legacyInner = asm.parts.find(p => p.id === 'c-inner-washer');
@@ -919,11 +837,18 @@ function hwEnsureHBeamSandwichAssembly(asm) {
     hwRenumberAxis(asm, 'down');
 }
 
+// Objects already migrated. Loading a config, undo/redo and tests assign a new
+// hardwareAssemblies object, so identity is enough to know when to migrate again;
+// in-place edits keep the shape valid. (Called on every geometry-hash check.)
+const hwEnsuredAssemblies = new WeakSet();
+
 // Ensure a loaded/legacy state always has a valid hardwareAssemblies shape.
-function ensureHardwareAssemblies() {
+function ensureHardwareAssemblies(force = false) {
+    if (!force && state.hardwareAssemblies && hwEnsuredAssemblies.has(state.hardwareAssemblies)) return;
     const defaults = getDefaultHardwareAssemblies();
     if (!state.hardwareAssemblies || typeof state.hardwareAssemblies !== 'object') {
         state.hardwareAssemblies = defaults;
+        hwEnsuredAssemblies.add(defaults);
         return;
     }
     const ha = state.hardwareAssemblies;
@@ -1045,6 +970,25 @@ function ensureHardwareAssemblies() {
     }
 
     hwReconcileSharedParts();
+    hwEnsuredAssemblies.add(ha);
+}
+
+/** After undo/redo swapped state.hardwareAssemblies: drop stale view state and refresh the part view. */
+function hwAfterHistoryRestore() {
+    ensureHardwareAssemblies();
+    hwDetail.preview = null;
+    hwDetail.drag = null;
+    hwDetail.dragPartId = null;
+    const asm = getActiveHardwareAssembly();
+    if (hwDetail.selectedPartId && !(asm && asm.parts.some(p => p.id === hwDetail.selectedPartId))) hwDetail.selectedPartId = null;
+    if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
+    if (!state.hwDetailMode) return;
+    const sel = document.getElementById('hw-assembly-select');
+    if (sel) sel.value = state.hardwareAssemblies.activeId;
+    hwSyncExplodeGapInput();
+    hwSyncMirrorControlsFromAssembly();
+    hwSyncSnapButton();
+    renderHardwareEditPanel();
 }
 
 // ---------------------------------------------------------------------------
@@ -1498,9 +1442,16 @@ function hwCreatePartMeshForAxis(part, axisKey, assembly) {
 
 const hwDetail = {
     selectedPartId: null,
+    hoverPartId: null,
     dragPartId: null,
-    dragCtx: null,
+    /** Active drag: { renderAxisKey, ctx } (see hw-detail-interaction.js) */
+    drag: null,
+    /** Live drag positions { assemblyId, axisKey, pos: Map } read by the layout adapter */
+    preview: null,
+    collapsing: false,
     pointerDown: null,
+    /** Assembly drawn in part view (playback can focus a non-active one) */
+    focusAssemblyId: null,
     // Part view (embedded in main canvas) bookkeeping
     embedded: false,
     needsRecenter: false,
@@ -1513,7 +1464,6 @@ const hwDetail = {
     lockRadialView: true,
     /** Re-frame head-on on the next render (open, assembly change, Recenter). */
     needsRefit: false,
-    explodeDragHintShown: false,
 };
 
 // Move the main WebGL canvas into the hardware modal viewport so the detail
@@ -1540,88 +1490,6 @@ function hwRestoreMainCanvas() {
     hwDetail.originalCanvasParent = null;
     hwDetail.originalCanvasNext = null;
     hwDetail.embedded = false;
-}
-
-function hwDetailPointerDown(e) {
-    if (e.button !== 0) return;
-    if (!state.hwDetailMode) return;
-    const canvas = hwGetDetailCanvas();
-    if (!canvas || e.target !== canvas) return;
-    const partId = hwRaycastPartId(e);
-    hwDetail.pointerDown = { x: e.clientX, y: e.clientY, partId, moved: false };
-    if (partId) {
-        const assembly = getActiveHardwareAssembly();
-        const part = assembly && assembly.parts.find(p => p.id === partId);
-        if (part && part.type !== 'bracket') {
-            e.stopPropagation();
-            if (hwExplodeFactor() > 0.05) {
-                if (!hwDetail.explodeDragHintShown && typeof showToast === 'function') {
-                    showToast('Set Explode to 0 to drag parts; exploded spacing is automatic.', 'info');
-                    hwDetail.explodeDragHintShown = true;
-                }
-                return;
-            }
-            hwDetail.dragPartId = partId;
-            hwDetail.dragCtx = hwGetPartStackContext(part, assembly, hwExplodeFactor());
-            canvas.setPointerCapture(e.pointerId);
-        }
-    }
-}
-
-function hwDetailPointerMove(e) {
-    const pd = hwDetail.pointerDown;
-    if (!pd || !hwDetail.dragPartId || !hwDetail.dragCtx) return;
-    if (!pd.moved && (Math.abs(e.clientX - pd.x) > 3 || Math.abs(e.clientY - pd.y) > 3)) pd.moved = true;
-    if (!pd.moved) return;
-    e.stopPropagation();
-    const assembly = getActiveHardwareAssembly();
-    const part = assembly && assembly.parts.find(p => p.id === hwDetail.dragPartId);
-    if (!part) return;
-    const axisPos = hwProjectPointerToAxisPos(e, hwDetail.dragCtx);
-    if (axisPos == null) return;
-    hwSetPartAxisPosFromWorld(part, hwDetail.dragCtx, axisPos);
-    // Layout may have changed (gap or order); refresh the drag context so the next move is relative to it
-    hwDetail.dragCtx = hwGetPartStackContext(part, assembly, hwExplodeFactor()) || hwDetail.dragCtx;
-    hwRebuildDetailView();
-}
-
-function hwDetailPointerUp(e) {
-    const pd = hwDetail.pointerDown;
-    const canvas = hwGetDetailCanvas();
-    if (pd && !pd.moved && pd.partId) {
-        if (hwDetail.selectedPartId !== pd.partId) {
-            hwDetail.selectedPartId = pd.partId;
-            hwRebuildDetailView();
-            renderHardwareEditPanel();
-            const card = document.querySelector('.hw-part-card.selected');
-            if (card) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-        }
-    } else if (pd && pd.moved) {
-        const assembly = getActiveHardwareAssembly();
-        const part = assembly && assembly.parts.find(p => p.id === hwDetail.dragPartId);
-        if (part) hwSyncMirrorClonesFromPart(part);
-        renderHardwareEditPanel();
-        hwPersistHardwareConfig();
-        if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
-        if (typeof updateHUD === 'function') { try { updateHUD(); } catch (err) {} }
-        if (typeof saveStateToHistory === 'function') saveStateToHistory();
-    }
-    hwDetail.dragPartId = null;
-    hwDetail.dragCtx = null;
-    hwDetail.pointerDown = null;
-    if (canvas && canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-}
-
-function hwWireEmbeddedDetailInteraction() {
-    if (hwDetail.embeddedInteractionWired) return;
-    const canvas = document.getElementById('canvas-webgl');
-    if (!canvas) return;
-    hwEnsureDetailRaycaster();
-    canvas.addEventListener('pointerdown', hwDetailPointerDown);
-    canvas.addEventListener('pointermove', hwDetailPointerMove);
-    canvas.addEventListener('pointerup', hwDetailPointerUp);
-    canvas.addEventListener('pointercancel', hwDetailPointerUp);
-    hwDetail.embeddedInteractionWired = true;
 }
 
 function getActiveHardwareAssembly() {
@@ -2031,7 +1899,9 @@ function buildHardwareAssemblyGroup(assembly, options = {}) {
     const syncFromState = options.syncFromState !== false;
     const excludeBeams = options.excludeBeams === true;
 
-    if (syncFromState && !excludeBeams) {
+    // Beams keep their stack slot even when their meshes are excluded (the real
+    // structure beams are drawn instead), so keep their size in step with the structure.
+    if (syncFromState) {
         assembly.parts.filter(p => p.type === 'beam').forEach(p => {
             hwSyncBeamPartFromState(p);
             hwSyncHBeamPartFromState(p);
@@ -2099,59 +1969,6 @@ function buildHardwareAssemblyGroup(assembly, options = {}) {
 // Editor panel
 // ---------------------------------------------------------------------------
 
-const HW_PARAM_FIELDS = {
-    bolt: [
-        { key: 'diameter', label: 'Dia (in)' },
-        { key: 'length', label: 'Length (in)' },
-        { key: 'threadLength', label: 'Thread (in)' },
-        { key: 'headDia', label: 'Head Dia (in)' },
-        { key: 'headHeight', label: 'Head H (in)' }
-    ],
-    bushing: [
-        { key: 'id', label: 'ID (in)' },
-        { key: 'od', label: 'OD (in)' },
-        { key: 'length', label: 'Length (in)' },
-        { key: 'flangeOd', label: 'Flange OD (in)' },
-        { key: 'flangeThickness', label: 'Flange T (in)' }
-    ],
-    washer: [
-        { key: 'id', label: 'ID (in)' },
-        { key: 'od', label: 'OD (in)' },
-        { key: 'thickness', label: 'Thick (in)' }
-    ],
-    lockWasher: [
-        { key: 'id', label: 'ID (in)' },
-        { key: 'od', label: 'OD (in)' },
-        { key: 'thickness', label: 'Thick (in)' }
-    ],
-    nut: [
-        { key: 'id', label: 'ID (in)' },
-        { key: 'od', label: 'OD (in)' },
-        { key: 'length', label: 'Length (in)' },
-        { key: 'flangeOd', label: 'Flange OD (in)' },
-        { key: 'flangeThickness', label: 'Flange T (in)' }
-    ],
-    bracket: [
-        { key: 'height', label: 'Height (in)' },
-        { key: 'sideHoleFromTop', label: 'Side Hole (in)' },
-        { key: 'cutoffHeight', label: 'Cutoff Top (in)' },
-        { key: 'glbScaleMul', label: 'Scale x' },
-        { key: 'glbRotX', label: 'Rot X (deg)' },
-        { key: 'glbRotY', label: 'Rot Y (deg)' },
-        { key: 'glbRotZ', label: 'Rot Z (deg)' },
-        { key: 'posX', label: 'Pos X (in)' },
-        { key: 'posY', label: 'Pos Y (in)' },
-        { key: 'posZ', label: 'Pos Z (in)' }
-    ],
-    beam: [
-        { key: 'width', label: 'Width (in)' },
-        { key: 'thickness', label: 'Thick (in)' },
-        { key: 'length', label: 'Length (in)' },
-        { key: 'holeOffset', label: 'Hole Ext (in)' },
-        { key: 'holeDiameter', label: 'Hole Dia (in)' },
-        { key: 'rotDeg', label: 'Rot (deg)', step: 1, decimals: 2 }
-    ]
-};
 
 const HW_TYPE_LABELS = { bolt: 'Bolt', bushing: 'Bushing', washer: 'Washer', lockWasher: 'Lock Washer', nut: 'Nut', rivetNut: 'Rivet Nut', bracket: 'Bracket', beam: 'Beam' };
 
@@ -2555,434 +2372,6 @@ function hwRefreshAll() {
     saveStateToHistory();
 }
 
-function renderHardwareEditPanel() {
-    const panel = document.getElementById('hw-detail-parts');
-    if (!panel) return;
-    const assembly = getActiveHardwareAssembly();
-    panel.innerHTML = '';
-    if (!assembly) return;
-
-    // Group by axis for display
-    const byAxis = {};
-    assembly.parts.forEach((part, idx) => {
-        const ax = part.axis || 'right';
-        (byAxis[ax] = byAxis[ax] || []).push({ part, idx });
-    });
-
-    // List stacks top-to-bottom around the center slot so the panel mirrors the
-    // physical layout: UP parts above the center washer, DOWN parts below it.
-    const plane = assembly.sandwichPlane || (assembly.id === 'vCenter' ? 'horizontal' : 'vertical');
-    const axisOrder = plane === 'horizontal'
-        ? ['left', 'center', 'right', 'up', 'down', 'front', 'back']
-        : ['up', 'center', 'down', 'right', 'left', 'front', 'back'];
-    const axisLabels = {
-        center: 'Center (between beams · sets stack gap)',
-        right: 'Right (+ from center)',
-        left: 'Left (− from center)',
-        up: 'Up (above center)',
-        down: 'Down (below center)',
-        front: 'Front Axis',
-        back: 'Back Axis',
-    };
-    hwGetAssemblyMirrorPairs(assembly).forEach(pair => {
-        if (pair.from === 'right' && pair.to === 'left') axisLabels.right = 'Right (+ from center, mirrored to Left)';
-        if (pair.from === 'up' && pair.to === 'down') axisLabels.up = 'Up (above center, mirrored to Down)';
-    });
-
-    // Fit check per axis (feeds the section summary and the per-part badges)
-    hwDetail.fitByPart = new Map();
-    const axisLayouts = {};
-    Object.keys(byAxis).forEach(axisKey => {
-        const layout = hwComputeAxisLayout(assembly, axisKey);
-        axisLayouts[axisKey] = layout;
-        (layout.fit || []).forEach(f => {
-            if (!hwDetail.fitByPart.has(f.partId)) hwDetail.fitByPart.set(f.partId, []);
-            hwDetail.fitByPart.get(f.partId).push(f);
-        });
-    });
-
-    axisOrder.forEach(axisKey => {
-        if (!byAxis[axisKey]) return;
-        const section = document.createElement('div');
-        section.className = 'hw-axis-section';
-        const title = document.createElement('div');
-        title.className = 'hw-axis-title';
-        title.textContent = axisLabels[axisKey] || axisKey;
-        section.appendChild(title);
-        const summary = hwAxisFitSummary(axisLayouts[axisKey]);
-        if (summary) {
-            const sum = document.createElement('div');
-            sum.className = 'hw-axis-summary' + (summary.warn ? ' hw-axis-summary-warn' : '');
-            sum.textContent = summary.text;
-            section.appendChild(sum);
-        }
-
-        byAxis[axisKey].sort((a, b) => (a.part.seq || 0) - (b.part.seq || 0)).forEach(({ part }) => {
-            section.appendChild(buildHardwarePartCard(part));
-        });
-        panel.appendChild(section);
-    });
-}
-
-/** One-line stack summary for an axis: grip, bolt reach, warnings. */
-function hwAxisFitSummary(layout) {
-    if (!layout || !layout.stack) return null;
-    const st = layout.stack;
-    const parts = [];
-    const solid = st.items.filter(it => it.kind !== HW_KIND.BOLT);
-    if (!solid.length && !st.bolt) return null;
-    if (solid.length) parts.push(`stack ${st.span.toFixed(2)} in`);
-    if (st.bolt) {
-        const grip = (st.membersEnd - st.origin) + (st.datumWall || 0);
-        parts.push(`grip ${grip.toFixed(2)} in`);
-        parts.push(`bolt ${st.bolt.shankL.toFixed(2)} in ${st.bolt.headOutside ? 'head outside' : 'head inside'}`);
-    }
-    const warns = (st.fit || []).filter(f => f.level === 'warn');
-    if (warns.length) parts.push(`${warns.length} fit warning${warns.length > 1 ? 's' : ''}`);
-    return { text: parts.join(' · '), warn: warns.length > 0 };
-}
-
-function hwBindNumberInput(inp, onChange) {
-    // Commit on blur / Enter / step (never mid-typing); scrub-drag applies live.
-    bindNumericInput(inp, { commit: (v) => onChange(v) });
-    hwBindNumberScrub(inp, onChange);
-}
-
-function buildHardwarePartCard(part) {
-    const card = document.createElement('div');
-    card.className = 'hw-part-card' + (part.id === hwDetail.selectedPartId ? ' selected' : '');
-    card.onclick = (e) => {
-        if (e.target.closest('input, select, button, label, .hw-part-grip, a')) return;
-        hwDetail.selectedPartId = (hwDetail.selectedPartId === part.id) ? null : part.id;
-        hwRefreshAll();
-    };
-
-    // Drag-and-drop reordering via grip handle (brackets are fixed at center).
-    const isBracket = part.type === 'bracket';
-    const isMirrorClone = hwIsMirrorClonePart(part);
-    if (!isBracket && !isMirrorClone) {
-        card.addEventListener('dragover', (e) => {
-            if (!hwDrag.id || hwDrag.id === part.id) return;
-            e.preventDefault();
-            if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-            const rect = card.getBoundingClientRect();
-            const after = (e.clientY - rect.top) > rect.height / 2;
-            card.classList.toggle('hw-drop-after', after);
-            card.classList.toggle('hw-drop-before', !after);
-        });
-        card.addEventListener('dragleave', () => card.classList.remove('hw-drop-before', 'hw-drop-after'));
-        card.addEventListener('drop', (e) => {
-            e.preventDefault();
-            const rect = card.getBoundingClientRect();
-            const after = (e.clientY - rect.top) > rect.height / 2;
-            const draggedId = hwDrag.id;
-            card.classList.remove('hw-drop-before', 'hw-drop-after');
-            hwHandleDrop(draggedId, part.id, after);
-        });
-    }
-
-    const head = document.createElement('div');
-    head.className = 'hw-part-head';
-    if (!isBracket && !isMirrorClone) {
-        const grip = document.createElement('span');
-        grip.className = 'hw-part-grip';
-        grip.textContent = '⠿';
-        grip.title = 'Drag to reorder';
-        grip.draggable = true;
-        grip.addEventListener('dragstart', (e) => {
-            e.stopPropagation();
-            hwDrag.id = part.id;
-            if (e.dataTransfer) { e.dataTransfer.effectAllowed = 'move'; try { e.dataTransfer.setData('text/plain', part.id); } catch (err) {} }
-            card.classList.add('hw-dragging');
-        });
-        grip.addEventListener('dragend', () => {
-            hwDrag.id = null;
-            document.querySelectorAll('.hw-drop-before, .hw-drop-after').forEach(el => el.classList.remove('hw-drop-before', 'hw-drop-after'));
-            card.classList.remove('hw-dragging');
-        });
-        head.appendChild(grip);
-    }
-    const typeSpan = document.createElement('span');
-    typeSpan.className = 'hw-part-type';
-    typeSpan.textContent = (part.type === 'nut' && part.params && part.params.style === 'rivet')
-        ? 'Rivet Nut'
-        : (HW_TYPE_LABELS[part.type] || part.type);
-    head.appendChild(typeSpan);
-    if (part.sharedKey === HW_HBEAM_GAP_WASHER_SHARED_KEY) {
-        const sharedTag = document.createElement('span');
-        sharedTag.className = 'hw-part-shared-tag';
-        sharedTag.title = 'Synced across Outer V, Inner V, and H-Center assemblies';
-        sharedTag.textContent = 'shared';
-        head.appendChild(sharedTag);
-    }
-    if (hwIsMirrorClonePart(part)) {
-        const mirrorTag = document.createElement('span');
-        mirrorTag.className = 'hw-part-mirror-tag';
-        mirrorTag.title = 'Mirrored copy — edits track the source part on the opposite stack';
-        mirrorTag.textContent = 'mirrored';
-        head.appendChild(mirrorTag);
-    }
-    const labelInput = document.createElement('input');
-    labelInput.type = 'text';
-    labelInput.className = 'hw-part-label';
-    labelInput.value = part.label || '';
-    labelInput.oninput = () => { part.label = labelInput.value; };
-    head.appendChild(labelInput);
-    if (!isBracket) {
-        const dup = document.createElement('button');
-        dup.className = 'hw-mini-btn hw-dup';
-        dup.textContent = '⧉';
-        dup.title = 'Duplicate part (same BOM item, independent placement)';
-        dup.onclick = (e) => { e.stopPropagation(); hwDuplicatePart(part.id); };
-        head.appendChild(dup);
-    }
-    const del = document.createElement('button');
-    del.className = 'hw-mini-btn hw-del';
-    del.textContent = '✕';
-    del.title = 'Remove part';
-    del.onclick = () => { hwRemovePart(part.id); };
-    head.appendChild(del);
-    card.appendChild(head);
-
-    hwAppendPresetRow(card, part);
-
-    // Param grid
-    const grid = document.createElement('div');
-    grid.className = 'hw-param-grid';
-    let paramFields = HW_PARAM_FIELDS[part.type] || [];
-    if (part.type === 'nut' && part.params.style !== 'rivet') {
-        paramFields = [
-            { key: 'id', label: 'ID (in)' },
-            { key: 'widthAcrossFlats', label: 'Width A/F (in)' },
-            { key: 'height', label: 'Height (in)' }
-        ];
-    }
-    paramFields.forEach(f => {
-        const cell = document.createElement('label');
-        cell.className = 'hw-param';
-        cell.innerHTML = `<span>${f.label}</span>`;
-        const inp = document.createElement('input');
-        inp.type = 'number';
-        inp.step = String(f.step != null ? f.step : 0.01);
-        const rawVal = part.params[f.key] != null ? part.params[f.key] : 0;
-        const decimals = f.decimals != null ? f.decimals : null;
-        if (decimals != null) inp.dataset.decimals = String(decimals);
-        inp.value = decimals != null ? Number(rawVal).toFixed(decimals) : rawVal;
-        hwBindNumberInput(inp, (val) => {
-            part.params[f.key] = val;
-            if (part.type === 'beam') part.params.syncStructure = false;
-            if (decimals != null) inp.value = Number(val).toFixed(decimals);
-            hwSyncSharedPartFrom(part);
-            hwSyncMirrorClonesFromPart(part);
-            buildHardwareAssemblyScene();
-            if (part.sharedKey) {
-                if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
-                hwPersistHardwareConfig();
-            }
-        });
-        cell.appendChild(inp);
-        grid.appendChild(cell);
-    });
-    card.appendChild(grid);
-
-    if (part.type === 'beam') {
-        const isHBeam = part.params.syncStructure === 'hBeam' || /hbeam/i.test(part.id);
-        const alignRow = document.createElement('label');
-        alignRow.className = 'hw-param';
-        alignRow.style.gridColumn = '1 / -1';
-        alignRow.innerHTML = '<span>Bolt axis hole</span>';
-        const alignSel = document.createElement('select');
-        alignSel.innerHTML = [
-            ['near', 'Near end (End Offset)'],
-            ['center', 'Center'],
-            ['far', 'Far end']
-        ].map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
-        alignSel.value = part.params.holeAlign || 'near';
-        alignSel.onchange = () => {
-            part.params.holeAlign = alignSel.value;
-            buildHardwareAssemblyScene();
-        };
-        alignRow.appendChild(alignSel);
-        card.appendChild(alignRow);
-
-        const syncRow = document.createElement('label');
-        syncRow.className = 'hw-param hw-check-row';
-        const chk = document.createElement('input');
-        chk.type = 'checkbox';
-        chk.checked = isHBeam ? part.params.syncStructure === 'hBeam' : part.params.syncStructure !== false;
-        chk.onchange = () => {
-            part.params.syncStructure = isHBeam ? (chk.checked ? 'hBeam' : false) : chk.checked;
-            hwRefreshAll();
-        };
-        syncRow.appendChild(chk);
-        const lbl = document.createElement('span');
-        lbl.className = 'hw-check-label';
-        lbl.textContent = isHBeam
-            ? 'Sync dims from structure (H-beam W×T, pivot hole)'
-            : 'Sync dims from structure (V-beam W×T, length, End Offset holes)';
-        syncRow.appendChild(lbl);
-        card.appendChild(syncRow);
-    }
-
-    // Position along the stack axis (non-bracket parts). Layout is automatic;
-    // the only inputs are an optional gap before the part and a cross offset.
-    if (!isBracket) {
-        const assembly = getActiveHardwareAssembly();
-        const kind = hwPartKind(part);
-        const posGrid = document.createElement('div');
-        posGrid.className = 'hw-param-grid';
-        const isInsert = kind === HW_KIND.INSERT;
-        const isSandwichBeam = hwIsSandwichBeamPart(part);
-        const gapLabel = isSandwichBeam ? 'Standoff from center (in)' : 'Gap before (in)';
-        const gapTitle = isSandwichBeam
-            ? 'Extra space between the center stack and this beam; the opposite beam moves with it'
-            : (part.type === 'bolt'
-                ? 'Space between the bolt head and the face it seats on (0 = tight)'
-                : 'Space before this part along the stack (0 = flush against the previous part). Everything after it moves too.');
-        if (!isInsert) {
-            const cell = document.createElement('label');
-            cell.className = 'hw-param';
-            cell.innerHTML = `<span>${gapLabel}</span>`;
-            const inp = document.createElement('input');
-            inp.type = 'number';
-            inp.step = '0.01';
-            inp.min = '0';
-            inp.value = (part.gapBefore != null ? part.gapBefore : 0);
-            inp.title = gapTitle;
-            hwBindNumberInput(inp, (val) => {
-                const asm = getActiveHardwareAssembly();
-                hwApplyPartGap(part, asm, val);
-                inp.value = String(part.gapBefore);
-                hwSyncMirrorClonesFromPart(part);
-                hwRebuildDetailView();
-                if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
-                if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
-                hwPersistHardwareConfig();
-            });
-            inp.addEventListener('change', () => saveStateToHistory());
-            cell.appendChild(inp);
-            posGrid.appendChild(cell);
-        } else {
-            const note = document.createElement('div');
-            note.className = 'hw-param hw-param-note';
-            note.textContent = part.type === 'bushing'
-                ? 'Sits inside the bore of the part before it, flush with its outer face.'
-                : 'Rivet nut: body sits inside the part before it, flange on its face.';
-            posGrid.appendChild(note);
-        }
-        const crossCell = document.createElement('label');
-        crossCell.className = 'hw-param';
-        crossCell.innerHTML = '<span>Cross offset (in)</span>';
-        const crossInp = document.createElement('input');
-        crossInp.type = 'number';
-        crossInp.step = '0.01';
-        crossInp.value = (part.crossOffset != null ? part.crossOffset : 0);
-        crossInp.title = 'Offset perpendicular to the stack axis (added to the automatic hole alignment on horizontal axes)';
-        hwBindNumberInput(crossInp, (val) => {
-            part.crossOffset = val;
-            hwSyncMirrorClonesFromPart(part);
-            hwRebuildDetailView();
-            hwPersistHardwareConfig();
-        });
-        crossCell.appendChild(crossInp);
-        posGrid.appendChild(crossCell);
-
-        if (part.type === 'bolt') {
-            const headCell = document.createElement('label');
-            headCell.className = 'hw-param';
-            headCell.innerHTML = '<span>Head side</span>';
-            const sel = document.createElement('select');
-            sel.innerHTML = '<option value="inside">Inside (at datum)</option><option value="outside">Outside (on stack)</option>';
-            sel.value = part.flipAxis ? 'outside' : 'inside';
-            sel.title = 'Inside: head seats on the datum (bracket wall / center), shank runs out through the parts. Outside: head seats on the outermost part, shank runs back through the stack.';
-            sel.addEventListener('mousedown', (e) => e.stopPropagation());
-            sel.onchange = () => {
-                part.flipAxis = sel.value === 'outside';
-                hwSyncMirrorClonesFromPart(part);
-                if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
-                hwRebuildDetailView();
-                renderHardwareEditPanel();
-                hwPersistHardwareConfig();
-            };
-            headCell.appendChild(sel);
-            posGrid.appendChild(headCell);
-        } else if (!isInsert) {
-            const flipRow = document.createElement('label');
-            flipRow.className = 'hw-param hw-check-row';
-            const flipChk = document.createElement('input');
-            flipChk.type = 'checkbox';
-            flipChk.checked = !!part.flipAxis;
-            flipChk.onchange = () => {
-                part.flipAxis = flipChk.checked;
-                hwSyncMirrorClonesFromPart(part);
-                hwRebuildDetailView();
-                hwPersistHardwareConfig();
-            };
-            flipRow.appendChild(flipChk);
-            const flipLbl = document.createElement('span');
-            flipLbl.className = 'hw-check-label';
-            flipLbl.textContent = 'Flip orientation along the stack axis';
-            flipRow.appendChild(flipLbl);
-            posGrid.appendChild(flipRow);
-        }
-        card.appendChild(posGrid);
-
-        // Fit findings for this part
-        const findings = (hwDetail.fitByPart && hwDetail.fitByPart.get(part.id)) || [];
-        if (findings.length) {
-            const badges = document.createElement('div');
-            badges.className = 'hw-fit-badges';
-            findings.forEach(f => {
-                const b = document.createElement('span');
-                b.className = 'hw-fit-badge hw-fit-' + f.level;
-                b.textContent = f.message;
-                badges.appendChild(b);
-            });
-            card.appendChild(badges);
-        }
-    }
-
-    // Meta row: qty, perModule, cost
-    const meta = document.createElement('div');
-    meta.className = 'hw-param-grid';
-    const mk = (labelTxt, key, step) => {
-        const cell = document.createElement('label');
-        cell.className = 'hw-param';
-        cell.innerHTML = `<span>${labelTxt}</span>`;
-        const inp = document.createElement('input');
-        inp.type = 'number';
-        inp.step = step;
-        if (key === 'qty') {
-            inp.min = '1';
-            inp.step = '1';
-        }
-        inp.value = (part[key] != null ? part[key] : 0);
-        hwBindNumberInput(inp, (val) => {
-            const nextVal = key === 'qty'
-                ? Math.max(1, Math.round(Number(val) || 1))
-                : val;
-            part[key] = nextVal;
-            if (key === 'qty') {
-                inp.value = String(nextVal);
-                if (part.sharedKey) hwSyncSharedPartFrom(part);
-                hwSyncMirrorClonesFromPart(part);
-                if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
-                hwRebuildDetailView();
-                if (typeof hwUpdateStructureSpacingUI === 'function') hwUpdateStructureSpacingUI();
-                if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
-                hwPersistHardwareConfig();
-            } else if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
-        });
-        cell.appendChild(inp);
-        return cell;
-    };
-    meta.appendChild(mk('Qty (stack)', 'qty', '1'));
-    meta.appendChild(mk('Per Module', 'perModule', '1'));
-    meta.appendChild(mk('Cost $', 'cost', '0.01'));
-    card.appendChild(meta);
-
-    return card;
-}
 
 function hwRemovePart(partId) {
     const assembly = getActiveHardwareAssembly();
@@ -3004,16 +2393,20 @@ function hwDuplicatePart(partId) {
     copy.id = id;
     copy.bomKey = bomKey;
     copy.seq = (source.seq || 0) + 0.5;
+    // An independent part: not another synced shared washer or mirror copy
+    delete copy.sharedKey;
+    delete copy.mirrorOf;
 
     assembly.parts.push(copy);
     hwRenumberAxis(assembly, copy.axis);
+    if (hwIsAxisManual(assembly, copy.axis || 'right')) {
+        copy.pos = +((Number(source.pos) || 0) + hwGetPartAxialLength(source) * hwPartQty(source)).toFixed(HW_POS_DECIMALS);
+    }
     assembly.detailed = true;
     hwDetail.selectedPartId = id;
     hwRefreshAll();
 }
 
-// Drag-and-drop reorder state + helpers
-const hwDrag = { id: null };
 
 function hwRenumberAxis(assembly, axis) {
     assembly.parts.filter(p => p.axis === axis)
@@ -3021,20 +2414,6 @@ function hwRenumberAxis(assembly, axis) {
         .forEach((p, i) => { p.seq = i + 1; });
 }
 
-function hwHandleDrop(draggedId, targetId, after) {
-    if (!draggedId || draggedId === targetId) return;
-    const assembly = getActiveHardwareAssembly();
-    if (!assembly) return;
-    const dragged = assembly.parts.find(p => p.id === draggedId);
-    const target = assembly.parts.find(p => p.id === targetId);
-    if (!dragged || !target || dragged.type === 'bracket' || target.type === 'bracket') return;
-    const fromAxis = dragged.axis;
-    dragged.axis = target.axis;
-    dragged.seq = (target.seq || 0) + (after ? 0.5 : -0.5);
-    hwRenumberAxis(assembly, dragged.axis);
-    if (fromAxis !== dragged.axis) hwRenumberAxis(assembly, fromAxis);
-    hwRefreshAll();
-}
 
 function hwAddPart() {
     const assembly = getActiveHardwareAssembly();
@@ -3059,6 +2438,13 @@ function hwAddPart() {
         presetId: resolved.presetId || null
     }, type !== 'bracket' ? hwDefaultPartPos() : {}));
     const newPart = assembly.parts[assembly.parts.length - 1];
+    if (type !== 'bracket' && hwIsAxisManual(assembly, axis)) {
+        // Manual axis: start the new part just past the outermost part
+        const layout = hwComputeAxisLayout(assembly, axis);
+        const others = layout.items.filter(it => it.part.id !== id);
+        const end = others.length ? Math.max(...others.map(it => it.end)) : layout.datum;
+        newPart.pos = +(end - layout.datum).toFixed(HW_POS_DECIMALS);
+    }
     if (resolved.presetId) {
         const preset = hwFindPresetById(resolved.presetId);
         if (preset) hwApplyPresetToPart(newPart, preset);
@@ -3222,7 +2608,7 @@ function wireHardwareDetailControls() {
             if (typeof updateHUD === 'function') { try { updateHUD(); } catch (e) {} }
             hwPersistHardwareConfig();
             if (typeof saveStateToHistory === 'function') saveStateToHistory();
-            if (typeof showToast === 'function') showToast(changed ? `Tightened: ${changed} gap${changed > 1 ? 's' : ''} closed.` : 'Already tight.', 'info');
+            if (typeof showToast === 'function') showToast(changed ? `Tightened: ${changed} part${changed > 1 ? 's' : ''} moved back flush.` : 'Already tight.', 'info');
         };
     }
 
@@ -3257,14 +2643,8 @@ function wireHardwareDetailControls() {
     const recenterBtn = document.getElementById('hw-btn-recenter');
     if (recenterBtn) recenterBtn.onclick = hwRecenterDetailView;
 
-    document.addEventListener('keydown', (e) => {
-        if (!state.hwDetailMode) return;
-        const tag = e.target && e.target.tagName;
-        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || e.ctrlKey || e.metaKey || e.altKey) return;
-        const k = e.key.toLowerCase();
-        if (k === 'r') { e.preventDefault(); hwRecenterDetailView(); }
-        else if (k === 't') { e.preventDefault(); document.getElementById('hw-btn-tighten')?.click(); }
-    });
+    const snapBtn = document.getElementById('hw-btn-snap');
+    if (snapBtn) snapBtn.onclick = () => hwToggleSnap();
 
     const foldSl = document.getElementById('hw-fold-slider');
     if (foldSl) {
@@ -3335,6 +2715,7 @@ function openHardwareDetail() {
     hwEmbedMainCanvas();
     hwWireEmbeddedDetailInteraction();
     hwSyncMirrorControlsFromAssembly();
+    hwSyncSnapButton();
     // Force the solver to (re)emit detailed placements for the focus instance.
     if (typeof invalidateGeometryCache === 'function') invalidateGeometryCache();
 
@@ -3357,6 +2738,10 @@ function closeHardwareDetail() {
     // Restore the main canvas + camera and re-render the structure normally.
     state.hwDetailMode = false;
     hwDetail.focusGroupUuid = null;
+    hwDetail.focusAssemblyId = null;
+    hwDetail.hoverPartId = null;
+    hwDetail.preview = null;
+    hwDetail.drag = null;
     hwRestoreMainCanvas();
     if (hwDetail.savedCam) { state.cam = { ...hwDetail.savedCam, target: null }; hwDetail.savedCam = null; }
     // Revert detailed placements to whatever the main toggle dictates.
@@ -3397,18 +2782,26 @@ function getAssemblyHardwareItems(moduleCount) {
 
 const _moduleExports = {
     hwDetail,
+    hwAfterHistoryRestore,
+    hwIsCenterAxis,
+    hwUsesSandwichAxis,
+    hwPartAxisPlacementPos,
+    hwIsAxisManual,
+    hwSetAxisManual,
+    hwAxisPositions,
+    hwCommitAxisPositions,
+    hwSetPartPosition,
+    hwAxisSnapContext,
+    hwGetLayoutPreview,
+    HW_AXIS_DIRS,
+    HW_AXIS_CROSS,
+    HW_HORIZONTAL_AXES,
     hwDefaultPartPos,
-    hwBindNumberScrub,
     hwGetPartAxialLength,
-    hwGetPartStackContext,
-    hwAxisPosFromPart,
-    hwSetPartAxisPosFromWorld,
-    hwProjectPointerToAxisPos,
     hwApplyPartGap,
     hwTightenAssembly,
     hwComputeAxisLayout,
     hwGetExplodeGap,
-    hwRaycastPartId,
     hwGetBracketHoleY,
     hwGetBracketSideHoleLocal,
     hwGetBracketStackOrigin,
@@ -3483,13 +2876,9 @@ const _moduleExports = {
     hwRebuildDetailView,
     hwRecenterDetailView,
     hwSyncFoldSliderFromState,
-    renderHardwareEditPanel,
-    hwBindNumberInput,
-    buildHardwarePartCard,
     hwRemovePart,
     hwDuplicatePart,
     hwRenumberAxis,
-    hwHandleDrop,
     hwAddPart,
     hwExplodeFactor,
     hwCopyPartsFromAssembly,
@@ -3505,4 +2894,4 @@ hwInstallHardwarePersistFlush();
 
 bridgeGlobals(_moduleExports, 'hardwareDetail');
 
-export { hwDetail, hwDefaultPartPos, hwBindNumberScrub, hwGetPartAxialLength, hwGetPartStackContext, hwAxisPosFromPart, hwSetPartAxisPosFromWorld, hwProjectPointerToAxisPos, hwRaycastPartId, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, getActiveHardwareAssembly, hwAssemblyEnabled, hwAnyAssemblyEnabled, hwAssemblyHasParts, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblySandwichGap, hwSumCenterAxisGap, hwGetAssemblyMirrorPairs, hwSyncMirrorControlsFromAssembly, hwApplyMirrorControlsToAssembly, hwGetCenterRenderAxis, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwFlushHardwareConfigSync, serializeHardwareAssembliesForConfig, hwRefreshAll, renderHardwareEditPanel, hwBindNumberInput, buildHardwarePartCard, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwHandleDrop, hwAddPart, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
+export { hwDetail, HW_HBEAM_GAP_WASHER_SHARED_KEY, HW_TYPE_LABELS, hwIsMirrorClonePart, hwIsSandwichBeamPart, hwSyncMirrorClonesFromPart, hwSyncSharedPartFrom, hwAfterHistoryRestore, hwApplyPartGap, hwComputeAxisLayout, hwCopyHardwareFromSelected, hwCopyPartsFromAssembly, hwGetExplodeGap, hwRebuildDetailView, hwRecenterDetailView, hwSyncFoldSliderFromState, hwTightenAssembly, hwIsCenterAxis, hwUsesSandwichAxis, hwPartAxisPlacementPos, hwIsAxisManual, hwSetAxisManual, hwAxisPositions, hwCommitAxisPositions, hwSetPartPosition, hwAxisSnapContext, hwGetLayoutPreview, HW_AXIS_DIRS, HW_AXIS_CROSS, HW_HORIZONTAL_AXES, hwDefaultPartPos, hwGetPartAxialLength, hwGetBracketHoleY, hwGetBracketSideHoleLocal, hwGetBracketStackOrigin, getRivetNutDefaults, getHardwarePartDefaults, getDefaultHardwareAssemblies, ensureHardwareAssemblies, hwMaterial, hwAddHead, createHWBoltMesh, hwAnnulusGeometry, createHWBushingMesh, createHWWasherMesh, createHWLockWasherMesh, createHWNutMesh, createHWBeamMesh, hwGetBeamAlignHoleX, hwSyncBeamPartFromState, hwSyncHBeamPartFromState, hwTagPartMesh, loadHwBracketGlb, buildGlbBracketMesh, buildParametricBracketMesh, createHWBracketMesh, createHardwarePartMesh, hwCreatePartMeshForAxis, getActiveHardwareAssembly, hwAssemblyEnabled, hwAnyAssemblyEnabled, hwAssemblyHasParts, hwUseFullDetailAssemblies, hwUseInnerDetailAssemblies, hwGetAssemblySandwichGap, hwSumCenterAxisGap, hwGetAssemblyMirrorPairs, hwSyncMirrorControlsFromAssembly, hwApplyMirrorControlsToAssembly, hwGetCenterRenderAxis, hwGetAssemblyById, hwGetOuterVBeamAssembly, hwGetInnerVBeamAssembly, hwAddAssemblyPlacement, hwAddOuterAssemblyPlacement, hwComputeAssemblyQuaternion, hwComputeAssemblyTransform, hwComputeOuterAssemblyTransform, buildHardwareAssemblyGroup, buildHardwareAssemblyScene, hwResolveAddPartType, hwEnsurePartBomKey, hwShortHash, hwSlugifyPresetId, hwPresetSignature, hwExtractPartExtras, hwLoadUserPresetsMap, hwSaveUserPreset, hwPartToPreset, hwCollectAssemblyPresetsMap, hwLoadPresetCatalog, hwFindPresetById, hwGetPresetsForType, hwApplyPresetToPart, hwMaybeAutoApplyPreset, hwLinkPartsToKnownPresets, hwDownloadJsonFile, hwSavePartAsPreset, hwAppendPresetRow, hwPersistHardwareConfig, hwFlushHardwareConfigSync, serializeHardwareAssembliesForConfig, hwRefreshAll, hwRemovePart, hwDuplicatePart, hwRenumberAxis, hwAddPart, hwExplodeFactor, wireHardwareDetailControls, openHardwareDetail, closeHardwareDetail, getAssemblyHardwareItems, buildHardwareAssemblyDebugSnapshot };
