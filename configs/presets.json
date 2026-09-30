@@ -1,14 +1,22 @@
 [
   {
     "name": "StarShade V1 - SOAK 2026",
-    "file": "StarShade 8m Cylinder 18p - soak 26 actual.json"
+    "file": "StarShade V1 SOAK 2026.json"
   },
   {
-    "name": "StarShade Default — 8-mod Cylinder, 18 Panels (3960W)",
-    "file": "starshade-default.json"
+    "name": "StarShade 2x3 - Folding Panels",
+    "file": "StarShade 2x3 Folding Panels.json"
   },
   {
-    "name": "StarShade Compact — 8-mod Cylinder, 12 Panels (3000W)",
-    "file": "StarShade Compact 12p.json"
+    "name": "StarShade Hex",
+    "file": "StarShade Hex.json"
+  },
+  {
+    "name": "Stellarator",
+    "file": "Stellarator.json"
+  },
+  {
+    "name": "Constellation",
+    "file": "Constellation.json"
   }
 ]

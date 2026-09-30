@@ -11,11 +11,16 @@ Manifest for the **Presets** dropdown in the LinkageLab Designer sidebar. Lists 
 
 To add a new built-in preset: export a config from the designer, save it here, and add an entry to `presets.json`.
 
-### `StarShade 8m Cylinder 18p - soak 26 actual.json`
-Default configuration for **new users** (first visit with no localStorage). This is the **StarShade V1 - SOAK 2026** real-world tested design, including reciprocal beam positions, hardware part details, and rotation fixes. It is loaded automatically when no saved project or `linkageLab_config` exists.
+### Built-in linkage presets
+| Dropdown name | File |
+|---|---|
+| StarShade V1 - SOAK 2026 (**default on first load**) | `StarShade V1 SOAK 2026.json` |
+| StarShade 2x3 - Folding Panels | `StarShade 2x3 Folding Panels.json` |
+| StarShade Hex | `StarShade Hex.json` |
+| Stellarator | `Stellarator.json` |
+| Constellation | `Constellation.json` |
 
-### `starshade-default.json`
-Legacy default preset (still available in the Presets dropdown as "StarShade Default — 8-mod Cylinder, 18 Panels (3960W)").
+The first-load default is set by `DEFAULT_LINKAGE_CONFIG_FILE` in `js/linkage/config-persistence.js`. It is loaded automatically when no saved project or `linkageLab_config` exists.
 
 ### `simulator-default.json`
 Default configuration for the Solar Simulator (unified app `#/solar/simulate`). This should include:
@@ -33,7 +38,7 @@ Default configuration for the Solar Simulator (unified app `#/solar/simulate`). 
 
 ## How It Works
 
-- **LinkageLab Designer**: On first load (no localStorage), it loads `configs/StarShade 8m Cylinder 18p - soak 26 actual.json` (SOAK 2026 preset)
+- **LinkageLab Designer**: On first load (no localStorage), it loads `configs/StarShade V1 SOAK 2026.json` (SOAK 2026 preset)
 - **Solar Simulator**: On first load (no localStorage), it will attempt to load `configs/simulator-default.json`
 - **Presets dropdown**: On every load, the designer fetches `configs/presets.json` and populates the "Built-in Presets" optgroup. User-saved presets appear below in a separate "My Presets" optgroup.
 
