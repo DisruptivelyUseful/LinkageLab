@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { bridgeGlobals } from './global-bridge.js';
-import { calculateJointPositions, getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { calculateJointPositions, getOptimalClosedAngleForAnimation, computeModuleFrames } from './joint-kinematics.js';
 
 // ============================================================================
 // LINKAGE SOLVER
@@ -53,33 +53,14 @@ function computeMinFoldAngleVBeamOverlap() {
     const outerW = Math.max(state.vBeamOuterW || state.vBeamW || 1.5,
                             state.vBeamOuterT || state.vBeamT || 3.5);
 
-    // Compute world-space positions of each module's outer pivot (tr) at a given fold angle.
-    const trPositions = (foldAngle) => {
-        const jr = calculateJointPositions(foldAngle, {
-            hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const loc = jr.joints;
-        const rel = jr.relativeRotation;
-        const pts = [];
-        let curRot = 0;
-        let curPos = { x: 0, y: 0 };
-        for (let i = 0; i < totalModules; i++) {
-            const rx = loc.tr.x * Math.cos(curRot) - loc.tr.y * Math.sin(curRot);
-            const rz = loc.tr.x * Math.sin(curRot) + loc.tr.y * Math.cos(curRot);
-            pts.push({ x: curPos.x + rx, z: curPos.y + rz });
-            const nextRot = curRot + rel;
-            const nextBlX = loc.bl.x * Math.cos(nextRot) - loc.bl.y * Math.sin(nextRot);
-            const nextBlY = loc.bl.x * Math.sin(nextRot) + loc.bl.y * Math.cos(nextRot);
-            const curBrX = loc.br.x * Math.cos(curRot) - loc.br.y * Math.sin(curRot);
-            const curBrY = loc.br.x * Math.sin(curRot) + loc.br.y * Math.cos(curRot);
-            curPos = { x: curPos.x + curBrX - nextBlX, y: curPos.y + curBrY - nextBlY };
-            curRot = nextRot;
-        }
-        return pts;
-    };
+    // World-space positions of each module's outer pivot (tr) at a given fold angle.
+    const trPositions = (foldAngle) => computeModuleFrames(foldAngle, {
+        hActiveIn,
+        pivotPct: state.pivotPct,
+        hobermanAng: state.hobermanAng,
+        pivotAng: state.pivotAng,
+        modules: totalModules,
+    }).frames.map(f => ({ x: f.tr.x, z: f.tr.z }));
 
     // Minimum gap between any pair of adjacent module tr points across the full ring.
     const minAdjacentGap = (foldAngle) => {
@@ -271,10 +252,11 @@ function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
     // Add bolt weights (negligible but included for completeness)
     if (data.bolts) {
         data.bolts.forEach(bolt => {
-            if (bolt.pos) {
-                com.x += bolt.pos.x * boltWeight;
-                com.y += bolt.pos.y * boltWeight;
-                com.z += bolt.pos.z * boltWeight;
+            const bp = bolt.center || bolt.pos;
+            if (bp) {
+                com.x += bp.x * boltWeight;
+                com.y += bp.y * boltWeight;
+                com.z += bp.z * boltWeight;
                 totalWeight += boltWeight;
             }
         });
@@ -302,525 +284,6 @@ function calculateCenterOfMass(data, foldAngle, includeSolarPanels = true) {
     }
     
     return { ...com, totalWeight };
-}
-
-/**
- * Calculates the mechanical advantage of the scissor mechanism at a given fold angle
- * The scissor mechanism provides leverage based on the angle between the beams
- * @param {number} foldAngle - Current fold angle in radians
- * @param {Object} jointResult - Result from calculateJointPositions
- * @returns {number} Mechanical advantage factor (>1 means force is amplified)
- */
-function calculateScissorMechanicalAdvantage(foldAngle, jointResult) {
-    const loc = jointResult.joints;
-    
-    // Calculate the angle between the two scissor arms
-    // This is the key to mechanical advantage in scissor mechanisms
-    const arm1Angle = Math.atan2(loc.tl.y - loc.bl.y, loc.tl.x - loc.bl.x);
-    const arm2Angle = Math.atan2(loc.tr.y - loc.br.y, loc.tr.x - loc.br.x);
-    const scissorAngle = Math.abs(arm2Angle - arm1Angle);
-    
-    // Mechanical advantage in a scissor mechanism is related to the angle between arms
-    // When arms are nearly parallel (small angle), mechanical advantage is high
-    // When arms are spread wide (large angle), mechanical advantage is lower
-    // MA ≈ 1 / (2 * sin(θ/2)) where θ is the angle between arms
-    const halfAngle = scissorAngle / 2;
-    const mechanicalAdvantage = 1 / (2 * Math.sin(Math.max(0.01, halfAngle)));
-    
-    return mechanicalAdvantage;
-}
-
-/**
- * Calculates the required actuator force at a given fold angle and actuator position
- * Accounts for scissor mechanism leverage and mechanical advantage
- * @param {{x: number, y: number, z: number}} actuatorPos1 - First attachment point (on structure)
- * @param {{x: number, y: number, z: number}} actuatorPos2 - Second attachment point (on structure)
- * @param {number} foldAngle - Current fold angle in radians
- * @param {Object} data - Linkage geometry data
- * @param {number} frictionCoefficient - Friction coefficient (default 0.1)
- * @returns {{force: number, angle: number, mechanicalAdvantage: number, stroke: number, minStroke: number, maxStroke: number}} Required force and analysis
- */
-function calculateRequiredActuatorForce(actuatorPos1, actuatorPos2, foldAngle, data, frictionCoefficient = 0.1) {
-    // Calculate center of mass (exclude solar panels - they're added after unfolding)
-    const com = calculateCenterOfMass(data, foldAngle, false);
-    
-    // Get joint positions to calculate scissor mechanical advantage
-    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
-    const jointResult = calculateJointPositions(foldAngle, {
-        hActiveIn: hActiveIn,
-        pivotPct: state.pivotPct,
-        hobermanAng: state.hobermanAng,
-        pivotAng: state.pivotAng
-    });
-    
-    // Calculate scissor mechanism mechanical advantage
-    const scissorMA = calculateScissorMechanicalAdvantage(foldAngle, jointResult);
-    
-    // Calculate actuator vector
-    const actuatorVec = {
-        x: actuatorPos2.x - actuatorPos1.x,
-        y: actuatorPos2.y - actuatorPos1.y,
-        z: actuatorPos2.z - actuatorPos1.z
-    };
-    const actuatorLength = Math.sqrt(
-        actuatorVec.x * actuatorVec.x + 
-        actuatorVec.y * actuatorVec.y + 
-        actuatorVec.z * actuatorVec.z
-    );
-    
-    if (actuatorLength === 0) return { force: Infinity, angle: 0, mechanicalAdvantage: 0, stroke: 0, minStroke: 0, maxStroke: 0 };
-    
-    // Normalize actuator vector
-    const actuatorDir = {
-        x: actuatorVec.x / actuatorLength,
-        y: actuatorVec.y / actuatorLength,
-        z: actuatorVec.z / actuatorLength
-    };
-    
-    // Calculate angle between actuator and the direction of motion (radial for scissor)
-    // For scissor mechanisms, the effective force direction is along the radial span
-    const loc = jointResult.joints;
-    const radialVec = {
-        x: loc.tr.x - loc.br.x,
-        y: loc.tr.y - loc.br.y,
-        z: 0
-    };
-    const radialLength = Math.sqrt(radialVec.x * radialVec.x + radialVec.y * radialVec.y);
-    
-    if (radialLength === 0) {
-        return { force: Infinity, angle: 0, mechanicalAdvantage: 0, stroke: 0, minStroke: 0, maxStroke: 0 };
-    }
-    
-    // Normalize radial vector
-    const radialDir = {
-        x: radialVec.x / radialLength,
-        y: radialVec.y / radialLength,
-        z: 0
-    };
-    
-    // Calculate angle between actuator and radial direction
-    const dotProduct = actuatorDir.x * radialDir.x + actuatorDir.y * radialDir.y + actuatorDir.z * radialDir.z;
-    const angle = Math.acos(Math.max(-1, Math.min(1, dotProduct)));
-    
-    // The weight force needs to be lifted vertically, but actuator works in radial direction
-    // Account for the angle between actuator and the direction of motion
-    const weightForce = com.totalWeight; // lbs
-    
-    // Combined mechanical advantage: scissor mechanism × actuator angle efficiency
-    // Actuator efficiency decreases as angle from optimal direction increases
-    const actuatorEfficiency = Math.cos(angle);
-    const totalMechanicalAdvantage = scissorMA * actuatorEfficiency;
-    
-    // Required force = weight / (mechanical advantage) + friction
-    // Friction acts against motion, so it's added
-    const baseForce = weightForce / Math.max(0.01, totalMechanicalAdvantage);
-    const frictionForce = weightForce * frictionCoefficient;
-    const totalForce = baseForce + frictionForce;
-    
-    // Calculate stroke length range (min to max over full fold range)
-    // This calculates the actual distance change for these specific actuator positions
-    const closedAngle = getOptimalClosedAngleForAnimation();
-    const openAngle = MIN_FOLD_ANGLE;
-    
-    // Helper function to get actuator positions at a specific fold angle
-    // We need to map the current positions to their corresponding positions at different angles
-    const getActuatorPositionsAtAngle = (angle, pos1Ref, pos2Ref) => {
-        const testJoint = calculateJointPositions(angle, {
-            hActiveIn: hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const testLoc = testJoint.joints;
-        const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
-        
-        // Get current joint positions to determine which joints these positions track
-        const currentJoint = calculateJointPositions(foldAngle, {
-            hActiveIn: hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const currentLoc = currentJoint.joints;
-        
-        // Find which joint each position is closest to (or if it's a fixed position)
-        const findClosestJoint = (pos) => {
-            const joints = ['bl', 'br', 'tl', 'tr'];
-            let closest = 'br';
-            let minDist = Infinity;
-            joints.forEach(j => {
-                const jointPos = { x: currentLoc[j].x + sc.x, y: 0, z: currentLoc[j].y + sc.z };
-                const dx = pos.x - jointPos.x;
-                const dz = pos.z - jointPos.z;
-                const dist = Math.sqrt(dx*dx + dz*dz);
-                if (dist < minDist) {
-                    minDist = dist;
-                    closest = j;
-                }
-            });
-            return { joint: closest, distance: minDist };
-        };
-        
-        const pos1Info = findClosestJoint(pos1Ref);
-        const pos2Info = findClosestJoint(pos2Ref);
-        
-        // Calculate positions at this angle
-        let testPos1, testPos2;
-        
-        // If position is close to a joint (< 2 inches), it tracks that joint
-        // Otherwise, it's a fixed position (like vertical actuators)
-        if (pos1Info.distance < 2) {
-            const joint = testLoc[pos1Info.joint];
-            const offsetX = pos1Ref.x - (currentLoc[pos1Info.joint].x + sc.x);
-            const offsetZ = pos1Ref.z - (currentLoc[pos1Info.joint].y + sc.z);
-            testPos1 = {
-                x: joint.x + sc.x + offsetX,
-                y: pos1Ref.y, // Y is typically fixed or follows joint
-                z: joint.y + sc.z + offsetZ
-            };
-        } else {
-            // Fixed position (e.g., vertical actuator)
-            testPos1 = pos1Ref;
-        }
-        
-        if (pos2Info.distance < 2) {
-            const joint = testLoc[pos2Info.joint];
-            const offsetX = pos2Ref.x - (currentLoc[pos2Info.joint].x + sc.x);
-            const offsetZ = pos2Ref.z - (currentLoc[pos2Info.joint].y + sc.z);
-            testPos2 = {
-                x: joint.x + sc.x + offsetX,
-                y: pos2Ref.y,
-                z: joint.y + sc.z + offsetZ
-            };
-        } else {
-            testPos2 = pos2Ref;
-        }
-        
-        return { pos1: testPos1, pos2: testPos2 };
-    };
-    
-    // Calculate lengths at open and closed positions
-    const openPos = getActuatorPositionsAtAngle(openAngle, actuatorPos1, actuatorPos2);
-    const closedPos = getActuatorPositionsAtAngle(closedAngle, actuatorPos1, actuatorPos2);
-    
-    const calcLength = (p1, p2) => {
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const dz = p2.z - p1.z;
-        return Math.sqrt(dx*dx + dy*dy + dz*dz);
-    };
-    
-    const minLength = calcLength(openPos.pos1, openPos.pos2);
-    const maxLength = calcLength(closedPos.pos1, closedPos.pos2);
-    const stroke = Math.abs(maxLength - minLength);
-    
-    return {
-        force: totalForce,
-        angle: angle * 180 / Math.PI, // Convert to degrees
-        mechanicalAdvantage: totalMechanicalAdvantage,
-        scissorMechanicalAdvantage: scissorMA,
-        actuatorLength: actuatorLength,
-        stroke: stroke,
-        minStroke: Math.min(minLength, maxLength),
-        maxStroke: Math.max(minLength, maxLength),
-        minLength: minLength,
-        maxLength: maxLength
-    };
-}
-
-/**
- * Finds optimal actuator placement positions for the structure
- * Tests key leverage points in the scissor mechanism and ranks them by efficiency
- * @param {Object} data - Linkage geometry data
- * @param {Object} options - Configuration options
- * @returns {Array} Array of recommended actuator placements, sorted by efficiency
- */
-function findOptimalActuatorPlacements(data, options = {}) {
-    const {
-        maxActuators = 5,
-        maxForce = 2000, // lbs
-        preferredLocations = 'all', // 'pivot', 'ring', 'vertical', 'all'
-        testAngles = [MIN_FOLD_ANGLE, state.foldAngle, getOptimalClosedAngleForAnimation()]
-    } = options;
-    
-    const recommendations = [];
-    const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
-    const sc = data.structureCenter || { x: 0, y: 0, z: 0 };
-    
-    // Candidate positions - key leverage points in scissor mechanism
-    const candidates = [];
-    
-    // Test at mid-angle to get representative positions
-    const midAngle = (MIN_FOLD_ANGLE + getOptimalClosedAngleForAnimation()) / 2;
-    const midJointResult = calculateJointPositions(midAngle, {
-        hActiveIn: hActiveIn,
-        pivotPct: state.pivotPct,
-        hobermanAng: state.hobermanAng,
-        pivotAng: state.pivotAng
-    });
-    const midLoc = midJointResult.joints;
-    
-    if (preferredLocations === 'pivot' || preferredLocations === 'all') {
-        // 1. Between inner and outer pivots (br and tr) - PRIMARY LEVERAGE POINT
-        // This is the most efficient location for scissor mechanisms
-        candidates.push({
-            name: 'Inner-Outer Pivot (Primary)',
-            description: 'Between inner pivot (br) and outer pivot (tr) - optimal leverage',
-            pos1: { x: midLoc.br.x + sc.x, y: 0, z: midLoc.br.y + sc.z },
-            pos2: { x: midLoc.tr.x + sc.x, y: 0, z: midLoc.tr.y + sc.z },
-            type: 'pivot',
-            priority: 1
-        });
-        
-        // 2. Between bottom-left and top-right (bl and tr) - alternative pivot
-        candidates.push({
-            name: 'Diagonal Pivot',
-            description: 'Between bottom-left (bl) and top-right (tr) pivots',
-            pos1: { x: midLoc.bl.x + sc.x, y: 0, z: midLoc.bl.y + sc.z },
-            pos2: { x: midLoc.tr.x + sc.x, y: 0, z: midLoc.tr.y + sc.z },
-            type: 'pivot',
-            priority: 2
-        });
-    }
-    
-    if (preferredLocations === 'ring' || preferredLocations === 'all') {
-        // 3. Between scissor intersection points (midpoints of arms)
-        const intersection1 = {
-            x: (midLoc.bl.x + midLoc.tl.x) / 2 + sc.x,
-            y: state.vLengthFt * INCHES_PER_FOOT / 4,
-            z: (midLoc.bl.y + midLoc.tl.y) / 2 + sc.z
-        };
-        const intersection2 = {
-            x: (midLoc.br.x + midLoc.tr.x) / 2 + sc.x,
-            y: state.vLengthFt * INCHES_PER_FOOT / 4,
-            z: (midLoc.br.y + midLoc.tr.y) / 2 + sc.z
-        };
-        candidates.push({
-            name: 'Scissor Intersection',
-            description: 'Between scissor arm intersection points',
-            pos1: intersection1,
-            pos2: intersection2,
-            type: 'intersection',
-            priority: 3
-        });
-    }
-    
-    if (preferredLocations === 'vertical' || preferredLocations === 'all') {
-        // 4. Vertical actuator between horizontal rings
-        const vHeight = state.vLengthFt * INCHES_PER_FOOT / 2;
-        candidates.push({
-            name: 'Vertical Ring',
-            description: 'Vertical actuator between top and bottom horizontal rings',
-            pos1: { x: midLoc.br.x + sc.x, y: 0, z: midLoc.br.y + sc.z },
-            pos2: { x: midLoc.br.x + sc.x, y: vHeight, z: midLoc.br.y + sc.z },
-            type: 'vertical',
-            priority: 4
-        });
-    }
-    
-    // Test each candidate at different fold angles
-    candidates.forEach(candidate => {
-        let maxForce = 0;
-        let minForce = Infinity;
-        let avgForce = 0;
-        let maxStroke = 0;
-        let minStroke = Infinity;
-        const forces = [];
-        const strokes = [];
-        let totalMA = 0;
-        
-        testAngles.forEach(angle => {
-            const testData = solveLinkage(angle);
-            
-            // Recalculate positions at this angle
-            const testJoint = calculateJointPositions(angle, {
-                hActiveIn: hActiveIn,
-                pivotPct: state.pivotPct,
-                hobermanAng: state.hobermanAng,
-                pivotAng: state.pivotAng
-            });
-            const testLoc = testJoint.joints;
-            
-            // Map candidate positions to this angle
-            let testPos1, testPos2;
-            if (candidate.type === 'pivot') {
-                if (candidate.name.includes('Diagonal')) {
-                    testPos1 = { x: testLoc.bl.x + sc.x, y: 0, z: testLoc.bl.y + sc.z };
-                    testPos2 = { x: testLoc.tr.x + sc.x, y: 0, z: testLoc.tr.y + sc.z };
-                } else {
-                    testPos1 = { x: testLoc.br.x + sc.x, y: 0, z: testLoc.br.y + sc.z };
-                    testPos2 = { x: testLoc.tr.x + sc.x, y: 0, z: testLoc.tr.y + sc.z };
-                }
-            } else if (candidate.type === 'intersection') {
-                const i1 = {
-                    x: (testLoc.bl.x + testLoc.tl.x) / 2 + sc.x,
-                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                    z: (testLoc.bl.y + testLoc.tl.y) / 2 + sc.z
-                };
-                const i2 = {
-                    x: (testLoc.br.x + testLoc.tr.x) / 2 + sc.x,
-                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                    z: (testLoc.br.y + testLoc.tr.y) / 2 + sc.z
-                };
-                testPos1 = i1;
-                testPos2 = i2;
-            } else if (candidate.type === 'vertical') {
-                testPos1 = { x: testLoc.br.x + sc.x, y: 0, z: testLoc.br.y + sc.z };
-                testPos2 = { x: testLoc.br.x + sc.x, y: state.vLengthFt * INCHES_PER_FOOT / 2, z: testLoc.br.y + sc.z };
-            } else {
-                testPos1 = candidate.pos1;
-                testPos2 = candidate.pos2;
-            }
-            
-            const forceResult = calculateRequiredActuatorForce(
-                testPos1, 
-                testPos2, 
-                angle, 
-                testData
-            );
-            
-            if (forceResult.force && isFinite(forceResult.force)) {
-                forces.push(forceResult.force);
-                maxForce = Math.max(maxForce, forceResult.force);
-                minForce = Math.min(minForce, forceResult.force);
-                avgForce += forceResult.force;
-                
-                if (forceResult.stroke) {
-                    strokes.push(forceResult.stroke);
-                    maxStroke = Math.max(maxStroke, forceResult.stroke);
-                    minStroke = Math.min(minStroke, forceResult.stroke);
-                }
-                
-                totalMA += forceResult.mechanicalAdvantage || 0;
-            }
-        });
-        
-        if (forces.length === 0) return; // Skip invalid candidates
-        
-        avgForce /= forces.length;
-        const avgMA = totalMA / testAngles.length;
-        
-        // Calculate stroke length over full fold range (open to closed)
-        // This is specific to each actuator position, not a fixed value
-        const openAngle = MIN_FOLD_ANGLE;
-        const closedAngle = getOptimalClosedAngleForAnimation();
-        
-        // Get positions at open and closed angles
-        const openJoint = calculateJointPositions(openAngle, {
-            hActiveIn: hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const closedJoint = calculateJointPositions(closedAngle, {
-            hActiveIn: hActiveIn,
-            pivotPct: state.pivotPct,
-            hobermanAng: state.hobermanAng,
-            pivotAng: state.pivotAng
-        });
-        const openLoc = openJoint.joints;
-        const closedLoc = closedJoint.joints;
-        
-        // Calculate positions at open and closed based on candidate type
-        let openPos1, openPos2, closedPos1, closedPos2;
-        if (candidate.type === 'pivot') {
-            if (candidate.name.includes('Diagonal')) {
-                openPos1 = { x: openLoc.bl.x + sc.x, y: 0, z: openLoc.bl.y + sc.z };
-                openPos2 = { x: openLoc.tr.x + sc.x, y: 0, z: openLoc.tr.y + sc.z };
-                closedPos1 = { x: closedLoc.bl.x + sc.x, y: 0, z: closedLoc.bl.y + sc.z };
-                closedPos2 = { x: closedLoc.tr.x + sc.x, y: 0, z: closedLoc.tr.y + sc.z };
-            } else {
-                openPos1 = { x: openLoc.br.x + sc.x, y: 0, z: openLoc.br.y + sc.z };
-                openPos2 = { x: openLoc.tr.x + sc.x, y: 0, z: openLoc.tr.y + sc.z };
-                closedPos1 = { x: closedLoc.br.x + sc.x, y: 0, z: closedLoc.br.y + sc.z };
-                closedPos2 = { x: closedLoc.tr.x + sc.x, y: 0, z: closedLoc.tr.y + sc.z };
-            }
-        } else if (candidate.type === 'intersection') {
-            openPos1 = {
-                x: (openLoc.bl.x + openLoc.tl.x) / 2 + sc.x,
-                y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                z: (openLoc.bl.y + openLoc.tl.y) / 2 + sc.z
-            };
-            openPos2 = {
-                x: (openLoc.br.x + openLoc.tr.x) / 2 + sc.x,
-                y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                z: (openLoc.br.y + openLoc.tr.y) / 2 + sc.z
-            };
-            closedPos1 = {
-                x: (closedLoc.bl.x + closedLoc.tl.x) / 2 + sc.x,
-                y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                z: (closedLoc.bl.y + closedLoc.tl.y) / 2 + sc.z
-            };
-            closedPos2 = {
-                x: (closedLoc.br.x + closedLoc.tr.x) / 2 + sc.x,
-                y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                z: (closedLoc.br.y + closedLoc.tr.y) / 2 + sc.z
-            };
-        } else if (candidate.type === 'vertical') {
-            const vHeight = state.vLengthFt * INCHES_PER_FOOT / 2;
-            openPos1 = { x: openLoc.br.x + sc.x, y: 0, z: openLoc.br.y + sc.z };
-            openPos2 = { x: openLoc.br.x + sc.x, y: vHeight, z: openLoc.br.y + sc.z };
-            closedPos1 = { x: closedLoc.br.x + sc.x, y: 0, z: closedLoc.br.y + sc.z };
-            closedPos2 = { x: closedLoc.br.x + sc.x, y: vHeight, z: closedLoc.br.y + sc.z };
-        } else {
-            // Fixed positions (shouldn't change)
-            openPos1 = candidate.pos1;
-            openPos2 = candidate.pos2;
-            closedPos1 = candidate.pos1;
-            closedPos2 = candidate.pos2;
-        }
-        
-        // Calculate stroke length (difference between open and closed positions)
-        const calcLength = (p1, p2) => {
-            const dx = p2.x - p1.x;
-            const dy = p2.y - p1.y;
-            const dz = p2.z - p1.z;
-            return Math.sqrt(dx*dx + dy*dy + dz*dz);
-        };
-        
-        const openLength = calcLength(openPos1, openPos2);
-        const closedLength = calcLength(closedPos1, closedPos2);
-        const actualStroke = Math.abs(closedLength - openLength);
-        const actualMinLength = Math.min(openLength, closedLength);
-        const actualMaxLength = Math.max(openLength, closedLength);
-        
-        // Calculate efficiency score
-        // Lower force and stroke = better, higher mechanical advantage = better
-        // Efficiency = (MA / force) / stroke (normalized)
-        const forcePenalty = avgForce / 1000; // Normalize to reasonable range
-        const strokePenalty = actualStroke / 100; // Normalize to reasonable range
-        const efficiency = (avgMA / (forcePenalty * strokePenalty + 1)) * 100;
-        
-        recommendations.push({
-            name: candidate.name,
-            description: candidate.description,
-            type: candidate.type,
-            priority: candidate.priority,
-            position1: candidate.pos1,
-            position2: candidate.pos2,
-            tracksJoints: candidate.type === 'pivot' || candidate.type === 'intersection',
-            maxForce: maxForce,
-            minForce: minForce,
-            avgForce: avgForce,
-            maxStroke: actualMaxLength,
-            minStroke: actualMinLength,
-            stroke: actualStroke,
-            mechanicalAdvantage: avgMA,
-            efficiency: efficiency,
-            recommended: maxForce <= options.maxForce && maxForce > 0,
-            forceRating: Math.ceil(maxForce * 1.5) // Recommend 50% safety margin
-        });
-    });
-    
-    // Sort by efficiency (best first), then by priority
-    recommendations.sort((a, b) => {
-        if (Math.abs(a.efficiency - b.efficiency) < 0.1) {
-            return a.priority - b.priority;
-        }
-        return b.efficiency - a.efficiency;
-    });
-    
-    return recommendations.slice(0, maxActuators);
 }
 
 /**
@@ -1115,6 +578,47 @@ function getCapInnerVBeamRingSpec(isBottom, stackReversed, pivots) {
  * @param {number} foldAngle - Fold angle in radians
  * @returns {{beams: Beam3D[], brackets: Bracket3D[], bolts: Array, maxRad: number, maxHeight: number}} Geometry data
  */
+/**
+ * Vertical layout of a horizontal ring: stack thickness, bracket hole offset and the
+ * pivot height of the bottom ring (`yMin`). Shared by solveLinkage and the actuation
+ * planner so both agree without a full solve.
+ * @param {Object} st - app state (hBeamT, hStackCount, bracket*)
+ * @param {Object} spacing - hwResolveStructureSpacing() result ({ hStackGap, bracket })
+ * @returns {{hT:number, hStackCount:number, hStackGap:number, hStackThick:number, bracketHeight:number,
+ *   holeDiameter:number, holeRadius:number, wallThickness:number, effectiveHoleOffset:number,
+ *   actualBracketHeight:number, yMin:number, topHFor:(zHeight:number)=>number, maxHeightFor:(zHeight:number)=>number}}
+ */
+function computeRingVerticalLayout(st, spacing) {
+    const bracketFromAsm = spacing && spacing.bracket;
+    const hT = st.hBeamT || 1.5;
+    const hStackCount = st.hStackCount || 1;
+    const hStackGap = (spacing && spacing.hStackGap) || 0;
+    const bracketHeight = bracketFromAsm?.bracketHeight ?? st.bracketHeight ?? 3.0;
+    const holeDiameter = bracketFromAsm?.bracketHoleDiameter ?? st.bracketHoleDiameter ?? 0.375;
+    const holeRadius = holeDiameter / 2;
+    const wallThickness = bracketFromAsm?.bracketWallThickness ?? st.bracketWallThickness ?? 0.25;
+    // Total horizontal stack thickness (stack is centered at Y=0, extends ±hStackThick/2)
+    const hStackThick = hStackCount * hT + (hStackCount - 1) * hStackGap;
+    // Hole offset: distance from bracket base (closed end) to hole center
+    const userHoleOffset = bracketFromAsm?.bracketHoleDistance ?? st.bracketHoleDistance;
+    const defaultHoleOffset = bracketHeight / 2;
+    const holeOffset = (userHoleOffset !== undefined && userHoleOffset !== null) ? userHoleOffset : defaultHoleOffset;
+    // Minimum clearance from the bracket base (physical constraint)
+    const minHoleOffset = wallThickness + holeRadius + 0.1;
+    const effectiveHoleOffset = Math.max(holeOffset, minHoleOffset);
+    const minBracketHeight = effectiveHoleOffset + holeRadius + 0.1;
+    const actualBracketHeight = Math.max(bracketHeight, minBracketHeight);
+    // Bottom bracket sits on top of the bottom H stack; the pivot is at its hole
+    const yMin = hStackThick / 2 + effectiveHoleOffset;
+    return {
+        hT, hStackCount, hStackGap, hStackThick, bracketHeight, holeDiameter, holeRadius, wallThickness,
+        holeOffset, effectiveHoleOffset, actualBracketHeight, yMin,
+        // Top ring centre: the top bracket hangs from the bottom of the top stack
+        topHFor: (zHeight) => yMin + zHeight + hStackThick / 2 + effectiveHoleOffset,
+        maxHeightFor: (zHeight) => zHeight + hStackThick + 2 * effectiveHoleOffset + hStackThick / 2 + (st.vertEndOffset || 0),
+    };
+}
+
 function solveLinkage(foldAngle, solveOptions = {}) {
     // The arch tunnel array is normally replicated here; the sequential fold replicates
     // per copy at assembly level instead and passes { arrayCount: 1 }.
@@ -1301,6 +805,8 @@ function solveLinkage(foldAngle, solveOptions = {}) {
     };
 
     let maxRad = 0;
+    const ringLayout = computeRingVerticalLayout(state, structSpacing);
+    const modulePivots = [];
 
     for(let i=0; i<state.modules; i++) {
         // Local map function that captures curPos and curRot
@@ -1309,49 +815,12 @@ function solveLinkage(foldAngle, solveOptions = {}) {
         // --- BRACKET AND PIVOT CALCULATION ---
         // Brackets sit flat on horizontal beams. The hole offset (from bracket base to hole center)
         // determines where the pivot point is, which affects the entire structure height.
-        const hT = state.hBeamT || 1.5;
-        const hStackCount = state.hStackCount || 1;
-        const hStackGap = structSpacing.hStackGap;
-        const bracketHeight = bracketFromAsm?.bracketHeight ?? state.bracketHeight ?? 3.0;
-        const holeDiameter = bracketFromAsm?.bracketHoleDiameter ?? state.bracketHoleDiameter ?? 0.375;
-        const holeRadius = holeDiameter / 2;
-        const wallThickness = bracketFromAsm?.bracketWallThickness ?? state.bracketWallThickness ?? 0.25;
-        
-        // Calculate total horizontal stack thickness (stack is centered at Y=0)
-        // Stack extends from -hStackThick/2 to +hStackThick/2
-        const hStackThick = hStackCount * hT + (hStackCount - 1) * hStackGap;
-        
-        // Hole offset: distance from bracket base (closed end) to hole center
-        // Default to center of bracket if not specified
-        const userHoleOffset = bracketFromAsm?.bracketHoleDistance ?? state.bracketHoleDistance;
-        const defaultHoleOffset = bracketHeight / 2;
-        const holeOffset = (userHoleOffset !== undefined && userHoleOffset !== null) ? userHoleOffset : defaultHoleOffset;
-        
-        // Ensure hole has minimum clearance from bracket base (physical constraint)
-        const minHoleOffset = wallThickness + holeRadius + 0.1;
-        const effectiveHoleOffset = Math.max(holeOffset, minHoleOffset);
-        
-        // Calculate required bracket height: hole position + hole radius + 0.1" clearance at open end
-        const minBracketHeight = effectiveHoleOffset + holeRadius + 0.1;
-        const actualBracketHeight = Math.max(bracketHeight, minBracketHeight);
-        
-        // Bottom bracket sits on top of bottom horizontal beam STACK (centered at Y=0)
-        // Top of stack is at Y = hStackThick/2
-        const bracketBottomY_bot = hStackThick / 2;
-        
-        // The pivot point (yMin) is where the hole is: bracket base + hole offset
-        const yMin = bracketBottomY_bot + effectiveHoleOffset;
-        
+        const { hT, hStackCount, hStackGap, hStackThick, bracketHeight, holeDiameter, holeRadius,
+                wallThickness, holeOffset, effectiveHoleOffset, actualBracketHeight, yMin } = ringLayout;
         // Vertical beams span zHeight, so yMax = yMin + zHeight
         const yMax = yMin + zHeight;
-        
-        // Top horizontal beam position: top bracket hangs from its bottom surface
-        // Top bracket base is at the bottom of the top horizontal stack
-        // Stack is centered at topH, so bottom is at topH - hStackThick/2
-        // Top bracket hole (at effectiveHoleOffset from its base) must be at yMax
-        // So: yMax = topH - hStackThick/2 - effectiveHoleOffset
-        // topH = yMax + hStackThick/2 + effectiveHoleOffset
-        const topH = yMax + hStackThick / 2 + effectiveHoleOffset;
+        // Top horizontal beam position (top bracket hangs from the bottom of the top stack)
+        const topH = ringLayout.topHFor(zHeight);
         
         // Legacy compatibility: bracketH was used elsewhere in this function
         const bracketH = actualBracketHeight;
@@ -1386,6 +855,19 @@ function solveLinkage(foldAngle, solveOptions = {}) {
         const pTopOuter = map(loc.tr, yMax);
         const pBotOuter = map(loc.tr, yMin);
         const pTopInner = map(loc.br, yMax);
+        {
+            // Per-module pivots for the actuation planner / floor track (pre-shift, cylinder frame)
+            const dxw = pBotInner.x - pBotOuter.x, dzw = pBotInner.z - pBotOuter.z;
+            const lenw = Math.hypot(dxw, dzw) || 1;
+            modulePivots.push({
+                moduleIndex: i,
+                curPos: { x: curPos.x, y: curPos.y }, curRot,
+                botInner: pBotInner, botOuter: pBotOuter, topInner: pTopInner, topOuter: pTopOuter,
+                hCross: map({ x: 0, y: 0 }, 0),
+                innerLeft: map(loc.bl, yMin), outerLeft: map(loc.tl, yMin),
+                inDir: { x: dxw / lenw, z: dzw / lenw },
+            });
+        }
         
         // Skip when using fixed straight beams (they replace the scissor uprights)
         if (zHeight > 1 && !state.useFixedBeams) {
@@ -2331,23 +1813,8 @@ function solveLinkage(foldAngle, solveOptions = {}) {
         curRot = nextRotation;
     }
     
-    // Calculate max height using the new hole offset logic
-    // The hole offset determines the pivot point height, which affects structure height
-    const calcHT = state.hBeamT || 1.5;
-    const calcHStackCount = state.hStackCount || 1;
-    const calcHStackGap = structSpacing.hStackGap;
-    const calcHStackThick = calcHStackCount * calcHT + (calcHStackCount - 1) * calcHStackGap;
-    const calcBracketHeight = bracketFromAsm?.bracketHeight ?? state.bracketHeight ?? 3.0;
-    const calcHoleDiameter = bracketFromAsm?.bracketHoleDiameter ?? state.bracketHoleDiameter ?? 0.375;
-    const calcWallThickness = bracketFromAsm?.bracketWallThickness ?? state.bracketWallThickness ?? 0.25;
-    const calcUserHoleOffset = bracketFromAsm?.bracketHoleDistance ?? state.bracketHoleDistance;
-    const calcDefaultHoleOffset = calcBracketHeight / 2;
-    const calcHoleOffset = (calcUserHoleOffset !== undefined && calcUserHoleOffset !== null) ? calcUserHoleOffset : calcDefaultHoleOffset;
-    const calcMinHoleOffset = calcWallThickness + (calcHoleDiameter / 2) + 0.1;
-    const calcEffectiveHoleOffset = Math.max(calcHoleOffset, calcMinHoleOffset);
-    // topH = zHeight + hStackThick + 2*effectiveHoleOffset (from the new formula)
-    // maxHeight = topH + hStackThick/2 + vertEndOffset (top surface of top stack + vertical extension)
-    let maxHeight = zHeight + calcHStackThick + 2 * calcEffectiveHoleOffset + calcHStackThick / 2 + state.vertEndOffset;
+    // Max height: top surface of the top stack + vertical extension (hole offset logic as above)
+    let maxHeight = ringLayout.maxHeightFor(zHeight);
 
     // Apply orientation transformation for vertical (arch/bridge) mode
     if (state.orientation === 'vertical') {
@@ -2837,7 +2304,12 @@ function solveLinkage(foldAngle, solveOptions = {}) {
     // Build StructureGeometry from the generated beams for panel placement
     const structureGeometry = buildStructureGeometry(beams, brackets, bolts, maxRad, maxHeight);
     
-    return { beams, brackets, bolts, washers, hardwareAssemblyPlacements, maxRad, maxHeight, structureGeometry };
+    const frame = {
+        yMin: ringLayout.yMin, yMax: ringLayout.yMin + zHeight, topH: ringLayout.topHFor(zHeight),
+        zHeight, hStackThick: ringLayout.hStackThick, span: Math.hypot(loc.tr.x - loc.br.x, loc.tr.y - loc.br.y),
+        hActiveIn, vActiveIn: safeV,
+    };
+    return { beams, brackets, bolts, washers, hardwareAssemblyPlacements, maxRad, maxHeight, structureGeometry, frame, modulePivots };
 }
 
 /**
@@ -2993,8 +2465,7 @@ const solverExports = {
     updateAutoBeamPricing,
     calculateActuatorStroke,
     calculateCenterOfMass,
-    calculateRequiredActuatorForce,
-    findOptimalActuatorPlacements
+    computeRingVerticalLayout
 };
 
 bridgeGlobals(solverExports, 'solver');
@@ -3011,7 +2482,6 @@ export {
     updateAutoBeamPricing,
     calculateActuatorStroke,
     calculateCenterOfMass,
-    calculateRequiredActuatorForce,
-    findOptimalActuatorPlacements
+    computeRingVerticalLayout
 };
 

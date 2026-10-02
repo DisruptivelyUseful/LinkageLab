@@ -3,6 +3,8 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { calculateJointPositions } from './joint-kinematics.js';
 import { partKey } from './part-keys.js';
+import { renderActuationDrive } from './actuation-render.js';
+import { getCachedMaterial } from './renderer-3d.js';
 import { cloneMaterialForMutation } from './materials.js';
 
     // Radius (inches) around the focused assembly within which structure beams
@@ -133,6 +135,21 @@ import { cloneMaterialForMutation } from './materials.js';
                 }
                 threeRenderer.beamGroup.add(mesh);
             });
+            // Floor track slots: a dark inset along each track beam's top face
+            if (!hideFloorBeams && Array.isArray(data.floorTracks) && data.floorTracks.length) {
+                const slotMat = getCachedMaterial('track-slot', () => new THREE.MeshStandardMaterial({ color: 0x15181c, roughness: 0.9, metalness: 0.1 }));
+                data.floorTracks.forEach(tr => {
+                    const dx = tr.slotTo.x - tr.slotFrom.x, dz = tr.slotTo.z - tr.slotFrom.z;
+                    const len = Math.hypot(dx, dz);
+                    if (len < 1e-3) return;
+                    const box = new THREE.Mesh(new THREE.BoxGeometry(len, 0.3, tr.slotWidth), slotMat);
+                    box.position.set((tr.slotFrom.x + tr.slotTo.x) / 2, tr.topY + 0.02, (tr.slotFrom.z + tr.slotTo.z) / 2);
+                    box.rotation.y = -Math.atan2(dz, dx);
+                    box.userData = { kind: 'track-slot', moduleIndex: tr.moduleIndex };
+                    offsetMesh(box);
+                    threeRenderer.beamGroup.add(box);
+                });
+            }
         }
         
         // Add panels (hidden in part view to keep the close-up uncluttered)
@@ -201,6 +218,9 @@ import { cloneMaterialForMutation } from './materials.js';
         }
         if (typeof globalThis.updateFloorReadout === 'function') {
             try { globalThis.updateFloorReadout(data); } catch (e) { console.warn('[Floor] readout failed:', e); }
+        }
+        if (typeof globalThis.updateActuationReadout === 'function') {
+            try { globalThis.updateActuationReadout(data); } catch (e) { console.warn('[Actuation] readout failed:', e); }
         }
         if (typeof globalThis.updateCoveringsReadout === 'function') {
             try { globalThis.updateCoveringsReadout(data); } catch (e) { console.warn('[Coverings] readout failed:', e); }
@@ -299,15 +319,8 @@ import { cloneMaterialForMutation } from './materials.js';
             if (typeof globalThis.hwSyncFoldSliderFromState === 'function') globalThis.hwSyncFoldSliderFromState();
         }
         
-        // Render actuator visualization lines if one is selected
-        if (state.selectedActuator) {
-            renderActuatorLine(state.selectedActuator, data, sc);
-        } else {
-            // Clear actuator lines if none selected
-            if (threeRenderer.actuatorLineGroup) {
-                clearGroup(threeRenderer.actuatorLineGroup);
-            }
-        }
+        // Deployment drive (Actuation group): actuator / cable per drive module
+        renderActuationDrive(data, sc);
         
         // Decorative references and ortho views are suppressed in part view so the
         // close-up shows only the assembly and its surrounding beams.
@@ -392,105 +405,6 @@ import { cloneMaterialForMutation } from './materials.js';
     }
     
     /**
-     * Renders a visual line representing an actuator between two points
-     * @param {Object} actuator - Actuator recommendation object with position1 and position2
-     * @param {Object} data - Linkage geometry data
-     * @param {{x: number, y: number, z: number}} structureCenter - Structure center point
-     */
-    function renderActuatorLine(actuator, data, structureCenter) {
-        if (!threeRenderer.actuatorLineGroup || !actuator.position1 || !actuator.position2) return;
-        
-        clearGroup(threeRenderer.actuatorLineGroup);
-        
-        const sc = structureCenter || { x: 0, y: 0, z: 0 };
-        
-        // Get current positions (they may change with fold angle for joint-based actuators)
-        let pos1 = actuator.position1;
-        let pos2 = actuator.position2;
-        
-        // If positions track joints, recalculate at current angle
-        if (actuator.tracksJoints || actuator.type === 'pivot' || actuator.type === 'intersection') {
-            const hActiveIn = state.hLengthFt * INCHES_PER_FOOT - state.offsetTopIn - state.offsetBotIn;
-            const jointResult = calculateJointPositions(state.foldAngle, {
-                hActiveIn: hActiveIn,
-                pivotPct: state.pivotPct,
-                hobermanAng: state.hobermanAng,
-                pivotAng: state.pivotAng
-            });
-            const loc = jointResult.joints;
-            
-            if (actuator.name.includes('Diagonal')) {
-                pos1 = { x: loc.bl.x + sc.x, y: 0, z: loc.bl.y + sc.z };
-                pos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
-            } else if (actuator.name.includes('Inner-Outer')) {
-                pos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
-                pos2 = { x: loc.tr.x + sc.x, y: 0, z: loc.tr.y + sc.z };
-            } else if (actuator.type === 'intersection') {
-                pos1 = {
-                    x: (loc.bl.x + loc.tl.x) / 2 + sc.x,
-                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                    z: (loc.bl.y + loc.tl.y) / 2 + sc.z
-                };
-                pos2 = {
-                    x: (loc.br.x + loc.tr.x) / 2 + sc.x,
-                    y: state.vLengthFt * INCHES_PER_FOOT / 4,
-                    z: (loc.br.y + loc.tr.y) / 2 + sc.z
-                };
-            } else if (actuator.type === 'vertical') {
-                pos1 = { x: loc.br.x + sc.x, y: 0, z: loc.br.y + sc.z };
-                pos2 = { x: loc.br.x + sc.x, y: state.vLengthFt * INCHES_PER_FOOT / 2, z: loc.br.y + sc.z };
-            }
-        }
-        
-        // Offset positions relative to structure center (for rotation)
-        const offsetPos1 = {
-            x: pos1.x - sc.x,
-            y: pos1.y - sc.y,
-            z: pos1.z - sc.z
-        };
-        const offsetPos2 = {
-            x: pos2.x - sc.x,
-            y: pos2.y - sc.y,
-            z: pos2.z - sc.z
-        };
-        
-        // Create line geometry
-        const geometry = new THREE.BufferGeometry();
-        const positions = new Float32Array([
-            offsetPos1.x, offsetPos1.y, offsetPos1.z,
-            offsetPos2.x, offsetPos2.y, offsetPos2.z
-        ]);
-        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        
-        // Create bright colored material for visibility
-        const material = new THREE.LineBasicMaterial({
-            color: 0x00ff00, // Bright green
-            linewidth: 3,
-            transparent: true,
-            opacity: 0.9
-        });
-        
-        const line = new THREE.Line(geometry, material);
-        
-        // Position the line group at structure center (for rotation)
-        threeRenderer.actuatorLineGroup.position.set(sc.x, sc.y, sc.z);
-        threeRenderer.actuatorLineGroup.rotation.y = (state.structureRotation || 0) * Math.PI / 180;
-        threeRenderer.actuatorLineGroup.add(line);
-        
-        // Add small spheres at attachment points for better visibility
-        const sphereGeometry = new THREE.SphereGeometry(0.5, 8, 8);
-        const sphereMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 }); // Red spheres
-        
-        const sphere1 = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere1.position.set(offsetPos1.x, offsetPos1.y, offsetPos1.z);
-        threeRenderer.actuatorLineGroup.add(sphere1);
-        
-        const sphere2 = new THREE.Mesh(sphereGeometry, sphereMaterial);
-        sphere2.position.set(offsetPos2.x, offsetPos2.y, offsetPos2.z);
-        threeRenderer.actuatorLineGroup.add(sphere2);
-    }
-    
-    /**
      * Renders all Three.js viewports
      */
     function renderThreeJS(data, structureCenter) {
@@ -569,11 +483,10 @@ import { cloneMaterialForMutation } from './materials.js';
 
 const _moduleExports = {
     updateThreeJSScenes,
-    renderActuatorLine,
     renderThreeJS,
     renderFrameOnly,
 };
 
 bridgeGlobals(_moduleExports, 'sceneRender');
 
-export { updateThreeJSScenes, renderActuatorLine, renderThreeJS, renderFrameOnly };
+export { updateThreeJSScenes, renderThreeJS, renderFrameOnly };

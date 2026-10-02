@@ -577,6 +577,24 @@ import { formatInchesFraction } from '../core/unit-converter.js';
         const gW = (v, d) => formatNumber(v * gWtFactor, d === undefined ? 1 : d) + ' ' + gWtUnit;
         const gBoltDia = (d) => guideIsMetric ? formatNumber(d * unitConverter.IN_TO_MM, 1) + 'mm' : formatBoltDiameter(d) + '"';
         const actuatorInfo = calculateActuatorStroke();
+        // Deployment drive (Actuation group), when planned
+        let driveStatsHtml = '';
+        try {
+            const drive = (state.actuation && state.actuation.enabled && typeof globalThis.getActuationAnalysis === 'function')
+                ? globalThis.getActuationAnalysis(data) : null;
+            const sel = drive && drive.selected;
+            if (sel) {
+                driveStatsHtml = `
+                <div class="guide-stat">
+                    <span class="guide-stat-label">Drive (${sel.short})</span>
+                    <span class="guide-stat-value">${sel.nDrives} × ${formatNumber(sel.suggestedRatingLb, 0)} lb, ${unitConverter.formatDimensionWithUnit(sel.stroke, 1)} stroke</span>
+                </div>
+                <div class="guide-stat">
+                    <span class="guide-stat-label">Deploy Energy</span>
+                    <span class="guide-stat-value">${sel.energyWh.toFixed(2)} Wh · ${formatNumber(sel.avgElectricalW, 0)} W avg</span>
+                </div>`;
+            }
+        } catch (e) { driveStatsHtml = ''; }
         
         // Drill hole calculations
         const hTotIn = state.hLengthFt * INCHES_PER_FOOT;
@@ -689,9 +707,10 @@ import { formatInchesFraction } from '../core/unit-converter.js';
                     <span class="guide-stat-value">${formatNumber(radToDeg(state.foldAngle), 1)}°</span>
                 </div>
                 <div class="guide-stat">
-                    <span class="guide-stat-label">Actuator Stroke</span>
+                    <span class="guide-stat-label">Pivot Span Travel</span>
                     <span class="guide-stat-value">${unitConverter.formatDimensionWithUnit(actuatorInfo.stroke, 2)}</span>
                 </div>
+                ${driveStatsHtml}
                 ${solarStatsHtml}
                 <div class="guide-stat">
                     <span class="guide-stat-label">Est. Total${arrayCopiesForGuide > 1 ? ` (${arrayCopiesForGuide} structures)` : ''}</span>

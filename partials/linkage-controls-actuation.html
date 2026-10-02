@@ -1,0 +1,161 @@
+        <div class="group collapsed" data-group="actuation">
+            <button type="button" class="group-title">Actuation</button>
+            <div class="group-content">
+                <div class="ctrl-row">
+                    <label class="chk-label" title="Plan where a motor, linear actuator, cable or winch pushes or pulls to deploy the ring, with the stroke and force it needs"><input type="checkbox" id="chk-act-enable"> Plan the deployment drive</label>
+                </div>
+                <div id="act-mode-hint" class="hint hint-accent" style="display:none;"></div>
+                <div id="act-controls" style="display:none;">
+                    <div class="hint">Forces come from virtual work on the structure's own weight (plus pivot efficiency and feet drag). They are estimates for motor selection, not a structural analysis: no wind, no dynamics, no load sharing between modules.</div>
+
+                    <div class="subhead">Where the drive acts</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Placement</span></div>
+                        <div class="input-wrap">
+                            <select id="sel-act-placement" title="Where the drive pushes or pulls"></select>
+                        </div>
+                    </div>
+                    <div id="act-placement-summary" class="hint"></div>
+                    <div class="sub-block" id="act-params-hScissor">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Lever arm along each H beam (from the crossing)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-r" min="4" max="60" step="0.5" value="24">
+                                <input type="number" id="nb-act-r" min="-600" max="600" step="0.5" value="24">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Tabs off the beam faces (pointing apart)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-e" min="0" max="24" step="0.25" value="4">
+                                <input type="number" id="nb-act-e" min="-120" max="120" step="0.25" value="4">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sub-block" id="act-params-xDiagonal" style="display:none;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Lower mount up upright A (from its foot)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-xlow" min="0" max="120" step="0.5" value="12">
+                                <input type="number" id="nb-act-xlow" min="0" max="600" step="0.5" value="12">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Upper mount up upright B (from its foot)</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-xhigh" min="0" max="120" step="0.5" value="60">
+                                <input type="number" id="nb-act-xhigh" min="0" max="600" step="0.5" value="60">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sub-block" id="act-params-mastCable" style="display:none;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Mast head height</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-mast" min="24" max="240" step="1" value="120">
+                                <input type="number" id="nb-act-mast" min="1" max="2400" step="1" value="120">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="sub-block" id="act-params-track" style="display:none;">
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Body behind the outer pivot on the track</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap">
+                                <input type="range" id="sl-act-tail" min="0" max="60" step="0.5" value="18">
+                                <input type="number" id="nb-act-tail" min="0" max="600" step="0.5" value="18">
+                            </div>
+                        </div>
+                        <div class="hint">Enable <em>Floor → Radial beams → Track</em> to draw the slotted track the drive runs on.</div>
+                    </div>
+
+                    <div class="subhead rule-above">How many drives</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Driven modules</span></div>
+                        <div class="input-wrap pair">
+                            <select id="sel-act-pattern" title="Which modules carry a drive; the shared pivots carry the rest">
+                                <option value="all" selected>Every module</option>
+                                <option value="alternate">Every other module</option>
+                                <option value="count">A number, spread evenly</option>
+                            </select>
+                            <input type="number" id="nb-act-count" min="1" max="64" step="1" value="4" style="display:none;">
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Load and losses</div>
+                    <div class="chk-grid">
+                        <label class="chk-label" title="Deploy with the solar panels already mounted"><input type="checkbox" id="chk-act-panels"> Panels mounted</label>
+                        <label class="chk-label"><input type="checkbox" id="chk-act-show3d" checked> Show drive in 3D</label>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Extra roof load / pivot efficiency</span><span class="unit">lb / %</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-act-roofload" min="0" max="100000" step="5" value="0">
+                            <span class="x">/</span>
+                            <input type="number" id="nb-act-eff" min="5" max="100" step="1" value="85">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Feet drag μ (0.05 casters, 0.3 skids on dirt) / safety factor</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-act-mu" min="0" max="2" step="0.05" value="0.3">
+                            <span class="x">/</span>
+                            <input type="number" id="nb-act-sf" min="1" max="10" step="0.1" value="1.5">
+                        </div>
+                    </div>
+
+                    <div class="subhead rule-above">Motor and power</div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Deploy time / system voltage</span><span class="unit">s / V</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-act-time" min="1" max="36000" step="5" value="60">
+                            <span class="x">/</span>
+                            <input type="number" id="nb-act-volts" min="1" max="1000" step="1" value="12">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Motor efficiency / rated force (0 = auto)</span><span class="unit">% / lb</span></div>
+                        <div class="input-wrap pair">
+                            <input type="number" id="nb-act-elec" min="5" max="100" step="1" value="50">
+                            <span class="x">/</span>
+                            <input type="number" id="nb-act-rated" min="0" max="100000" step="10" value="0">
+                        </div>
+                    </div>
+                    <div class="ctrl-row">
+                        <div class="ctrl-head"><span>Cost per drive</span><span class="unit">$</span></div>
+                        <div class="input-wrap">
+                            <input type="number" id="nb-act-cost" min="0" max="100000" step="5" value="120">
+                        </div>
+                    </div>
+
+                    <div class="btn-row">
+                        <button type="button" id="btn-act-run" class="btn-secondary" title="Unfold at the chosen deploy time">Run drive</button>
+                        <button type="button" id="btn-act-fold" class="btn-secondary" title="Fold back at the chosen deploy time">Fold</button>
+                        <button type="button" id="btn-act-compare" class="btn-secondary" title="Analyse every placement with the same settings">Compare placements</button>
+                    </div>
+
+                    <div id="act-readout" class="diag-panel">
+                        <div class="kv-grid">
+                            <span class="k">Stroke:</span><span id="act-stat-stroke">--</span>
+                            <span class="k">Length range:</span><span id="act-stat-lengths">--</span>
+                            <span class="k">Mount A:</span><span id="act-stat-mount-a">--</span>
+                            <span class="k">Mount B:</span><span id="act-stat-mount-b">--</span>
+                            <span class="k">Drives:</span><span id="act-stat-drives">--</span>
+                            <span class="k">Force now:</span><span id="act-stat-now">--</span>
+                            <span class="k">Peak force:</span><span id="act-stat-peak">--</span>
+                            <span class="k">Packed / deployed:</span><span id="act-stat-ends">--</span>
+                            <span class="k">Suggested rating:</span><span id="act-stat-rating">--</span>
+                            <span class="k">Kick-off:</span><span id="act-stat-kickoff">--</span>
+                            <span class="k">Lifted weight:</span><span id="act-stat-lifted">--</span>
+                            <span class="k">Energy per deploy:</span><span id="act-stat-energy">--</span>
+                            <span class="k">Power:</span><span id="act-stat-power">--</span>
+                            <span class="k">Current:</span><span id="act-stat-current">--</span>
+                            <span class="k">Fit:</span><span id="act-stat-fit">--</span>
+                        </div>
+                        <svg id="act-spark" class="act-spark" viewBox="0 0 240 72" preserveAspectRatio="none" aria-label="Drive force from packed to deployed"></svg>
+                        <div class="hint" id="act-spark-caption">Force per drive from packed (left) to deployed (right): blue is gravity, the paler band on top is feet drag; the dot is the current fold angle.</div>
+                        <div id="act-hardware" class="hint"></div>
+                    </div>
+                    <div id="act-compare" class="act-compare" style="display:none;"></div>
+                </div>
+            </div>
+        </div>

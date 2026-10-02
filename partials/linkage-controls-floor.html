@@ -80,6 +80,16 @@
                     </div>
                     <div class="sub-block" id="floor-radial-controls" style="display:none;">
                         <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Radial beams are</span></div>
+                            <div class="input-wrap">
+                                <select id="sel-floor-rad-mode" title="Fixed beams on the ring, or slotted feet the inner pivot slides along as the ring deploys">
+                                    <option value="offset" selected>Fixed beams on the ring (offset from the foot)</option>
+                                    <option value="track">Slotted track feet under the ring (pinned at the outer pivot)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="floor-rad-offset-controls">
+                        <div class="ctrl-row">
                             <div class="ctrl-head"><span>Length</span><span class="unit" data-fixed-unit>in</span></div>
                             <div class="input-wrap">
                                 <input type="range" id="sl-floor-rad-length" min="24" max="240" step="1" value="120">
@@ -106,6 +116,34 @@
                                 <input type="range" id="sl-floor-rad-toff" min="-48" max="48" step="0.25" value="0">
                                 <input type="number" id="nb-floor-rad-toff" min="-1200" max="1200" step="0.25" value="0">
                             </div>
+                        </div>
+                        </div>
+                        <div id="floor-rad-track-controls" style="display:none;">
+                        <div class="hint">Each beam is pinned under its module's outer bottom pivot and runs inward under the inner pivot, whose bolt rides in a slot with a plate washer under the beam. The beam swings about the pin to follow the slot, sits below the bottom ring as the foot, and is drawn at every fold angle. The slot length is the pivot span travel from packed to deployed.</div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Tail behind the pin / head past the slot</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-floor-track-tail" min="0" max="1200" step="0.5" value="18">
+                                <span class="x">/</span>
+                                <input type="number" id="nb-floor-track-head" min="0" max="1200" step="0.5" value="6">
+                            </div>
+                        </div>
+                        <div class="ctrl-row">
+                            <div class="ctrl-head"><span>Gap under the ring / slot clearance</span><span class="unit" data-fixed-unit>in</span></div>
+                            <div class="input-wrap pair">
+                                <input type="number" id="nb-floor-track-gap" min="0" max="48" step="0.125" value="0.25">
+                                <span class="x">/</span>
+                                <input type="number" id="nb-floor-track-slotclr" min="0" max="12" step="0.0625" value="0.125">
+                            </div>
+                        </div>
+                        <div class="diag-panel">
+                            <div class="kv-grid">
+                                <span class="k">Slot:</span><span id="floor-stat-track-slot">--</span>
+                                <span class="k">Beam:</span><span id="floor-stat-track-beam">--</span>
+                                <span class="k">Swing about the pin:</span><span id="floor-stat-track-swing">--</span>
+                                <span class="k">Feet drag:</span><span id="floor-stat-track-drag">--</span>
+                            </div>
+                        </div>
                         </div>
                         <div class="ctrl-row">
                             <div class="ctrl-head"><span>Width × Thickness</span><span class="unit" data-fixed-unit>in</span></div>

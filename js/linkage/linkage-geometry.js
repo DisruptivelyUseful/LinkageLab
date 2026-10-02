@@ -21,7 +21,7 @@ import { getLinkageData, invalidateGeometryCache, invalidateRcpCrossings, comput
 import { deployOrder, computeFoldSchedule, getFoldSweepRange } from './fold-sequence.js';
 import { getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
 import { computeCoverings, snapshotCoverings } from './coverings-geometry.js';
-import { generateFloorBeams, computeFloorDeck } from './floor-geometry.js';
+import { generateFloorBeams, computeFloorDeck, generateFloorTracks } from './floor-geometry.js';
 import { calculateShadeCloths } from './shade-cloth.js';
 import { requestRender } from './render-app.js';
 import { showToast } from '../core/feedback.js';
@@ -3682,6 +3682,15 @@ import { showToast } from '../core/feedback.js';
             });
         }
 
+        // Module pivots (actuation planner / floor track) and floor tracks
+        if (Array.isArray(data.modulePivots)) {
+            const spk = (o, keys) => { const out = { ...o }; keys.forEach(k => { if (o[k]) out[k] = sp(o[k]); }); return out; };
+            data.modulePivots = data.modulePivots.map(mp => !mp ? mp : spk(mp, ['botInner', 'botOuter', 'topInner', 'topOuter', 'hCross', 'innerLeft', 'outerLeft']));
+        }
+        if (Array.isArray(data.floorTracks)) {
+            data.floorTracks = data.floorTracks.map(t => !t ? t : { ...t, pin: sp(t.pin), slotFrom: sp(t.slotFrom), slotTo: sp(t.slotTo), boltAt: sp(t.boltAt) });
+        }
+
         // Solar panels
         data.panels = (data.panels || []).map(panel => !panel ? panel : {
             ...panel,
@@ -3736,6 +3745,22 @@ import { showToast } from '../core/feedback.js';
      * @param {object} options   buildLinkageGeometry options (includeSupportBeams, includePanels, includeCoverings, useCache)
      * @param {object} solveOpts solveLinkage options ({ arrayCount: 1 } for per-segment assembly)
      */
+    /**
+     * The track feet sit under the bottom ring, so the ground (structureBounds.min.y,
+     * which is otherwise main-structure only) drops to their underside.
+     */
+    function applyTrackGround(data) {
+        if (!data || !data.structureBounds || !data.structureBounds.min) return data;
+        const tracks = data.floorTracks;
+        if (!Array.isArray(tracks) || !tracks.length) return data;
+        const lowest = Math.min(...tracks.map(t => t.bottomY));
+        if (isFinite(lowest) && lowest < data.structureBounds.min.y) {
+            data.structureBounds = { ...data.structureBounds, min: { ...data.structureBounds.min, y: lowest } };
+            data.structureBounds.trackGroundY = lowest;
+        }
+        return data;
+    }
+
     function assembleSingleStructure(foldAngle, options = {}, solveOpts = {}) {
         const includeSupportBeams = options.includeSupportBeams !== false;
         const includePanels = options.includePanels !== false;
@@ -3790,6 +3815,7 @@ import { showToast } from '../core/feedback.js';
 
         // Raised floor beams (reciprocal layout mirrored onto the bottom ring)
         data.floorBeams = [];
+        data.floorTracks = [];
         if (includeSupportBeams && state.floor && state.floor.enabled) {
             try {
                 data.floorBeams = generateFloorBeams(data, state.floor, state);
@@ -3797,6 +3823,19 @@ import { showToast } from '../core/feedback.js';
             } catch (e) {
                 console.warn('[Geometry] Could not compute floor beams:', e);
                 data.floorBeams = [];
+            }
+            // Radial beams as slotted track feet (present at every fold angle)
+            try {
+                const tr = generateFloorTracks(data, state.floor, state);
+                if (tr.beams.length) {
+                    data.floorTracks = tr.tracks;
+                    data.floorBeams = data.floorBeams.concat(tr.beams);
+                    data.beams = data.beams.concat(tr.beams);
+                    data.bolts = (data.bolts || []).concat(tr.bolts);
+                }
+            } catch (e) {
+                console.warn('[Geometry] Could not compute floor tracks:', e);
+                data.floorTracks = [];
             }
         }
         
@@ -3831,6 +3870,7 @@ import { showToast } from '../core/feedback.js';
         }
         
         data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+        applyTrackGround(data);
         data.structureCenter = data.structureBounds.center;
         data.fullBounds = calculateBeamBounds(data.beams);
     
@@ -3846,6 +3886,7 @@ import { showToast } from '../core/feedback.js';
             shiftGeometryXZ(data, _shiftX, _shiftZ);
             // Recompute bounds after the constant shift
             data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+            applyTrackGround(data);
             data.structureCenter = data.structureBounds.center;
             data.fullBounds = calculateBeamBounds(data.beams);
         }
@@ -3981,6 +4022,7 @@ import { showToast } from '../core/feedback.js';
                     data.maxRad = plan.maxRad;
                 }
                 data.structureBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+                applyTrackGround(data);
                 data.structureCenter = data.structureBounds.center;
                 data.fullBounds = calculateBeamBounds(data.beams);
             }

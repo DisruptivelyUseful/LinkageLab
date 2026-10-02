@@ -25,6 +25,7 @@ import {
 } from './beam-bolt-helpers.js';
 import { calculateBeamCostByVolume } from './solver.js';
 import { computeFloorBomContribution } from './floor-geometry.js';
+import { PLACEMENTS, normalizeActuation, driveModuleIndices } from './actuation.js';
 import { computeCoveringCutPlan, coveringBomItems } from './coverings-plan.js';
 import { shadeBomItems } from './shade-cloth.js';
 import { calculateSolarPanelArrayWeight } from './geometry-classes.js';
@@ -124,12 +125,21 @@ function computeBillOfMaterials(data, s = globalThis.state, helpers = {}) {
 
     const sbBom = supportBom(moduleCount, costBoltVInner);
     const floorBom = computeFloorBomContribution(s.floor, moduleCount, s);
+    // Deployment drives (Actuation group)
+    let driveQty = 0, driveUnit = 0, driveLabel = '';
+    if (s.actuation && s.actuation.enabled && s.orientation !== 'vertical') {
+        const a = normalizeActuation(s.actuation);
+        driveQty = driveModuleIndices(moduleCount, a.drives).length;
+        driveUnit = a.motor.costEach || 0;
+        driveLabel = `Deployment drives (${(PLACEMENTS[a.placement] || PLACEMENTS.hScissor).short})`;
+    }
+    const driveCost = driveQty * driveUnit;
     let assemblyHardwareItems = [];
     try { assemblyHardwareItems = assemblyItemsFor(moduleCount) || []; } catch (e) { assemblyHardwareItems = []; }
     const assemblyHardwareCost = assemblyHardwareItems.reduce((a, it) => a + (it.total || 0), 0);
 
     const structureCost = hBeamCost + vBeamCost + bracketCost + boltCost + washerCost
-        + sbBom.supportBeamCost + floorBom.floorBeamCost + assemblyHardwareCost;
+        + sbBom.supportBeamCost + floorBom.floorBeamCost + assemblyHardwareCost + driveCost;
 
     // --- power -----------------------------------------------------------------------------
     const solarEnabled = !!(s.solarPanels && s.solarPanels.enabled);
@@ -197,6 +207,7 @@ function computeBillOfMaterials(data, s = globalThis.state, helpers = {}) {
     if (hWasherCount > 0) push('structure', 'hWashers', hWasherCount, 'H-Stack Washers', costWasherH, { stateKey: 'costWasherH', sidebarId: 'nb-cost-washer-h' });
     (sbBom.structureItems || []).forEach((it, i) => items.push({ section: 'structure', id: `support-${i}`, qty: it.qty, label: it.item, unit: it.unit, total: it.total, editable: false }));
     (floorBom.structureItems || []).forEach((it, i) => items.push({ section: 'structure', id: `floor-${i}`, qty: it.qty, label: it.item, unit: it.unit, total: it.total, editable: false }));
+    if (driveQty > 0) push('structure', 'drives', driveQty, driveLabel, driveUnit, { editable: false });
     assemblyHardwareItems.forEach((it, i) => items.push({ section: 'structure', id: `hw-${i}`, qty: it.qty, label: it.item, unit: it.unit, total: it.total, editable: false }));
     if (solarEnabled && panels > 0) push('power', 'panels', panels, `Solar Panels (${panelConfig.ratedWatts || 0}W)`, s.costSolarPanel || 0, { stateKey: 'costSolarPanel', sidebarId: 'nb-cost-solar', weightTotal: solarWeight });
     enclosureItems.forEach((it, i) => items.push({ section: 'enclosure', id: `enc-${i}`, qty: it.qty, label: it.item, unit: it.unit, total: it.total, stateKey: it.stateKey, sidebarId: it.sidebarId }));
@@ -214,7 +225,7 @@ function computeBillOfMaterials(data, s = globalThis.state, helpers = {}) {
             vBoltInner: vBoltInnerCost, vBoltOuter: vBoltOuterCost, vBoltCenter: vBoltCenterCost,
             hCenterBolt: hCenterBoltCost, hPivotBolt: hPivotBoltCost, bolt: boltCost,
             vWasher: vWasherCost, hWasher: hWasherCost, washer: washerCost,
-            support: sbBom.supportBeamCost, floor: floorBom.floorBeamCost, assemblyHardware: assemblyHardwareCost,
+            support: sbBom.supportBeamCost, floor: floorBom.floorBeamCost, assemblyHardware: assemblyHardwareCost, drives: driveCost,
             structure: structureCost, solar: solarCost, enclosure: enclosureCost,
             total: structureCost + solarCost + enclosureCost,
         },

@@ -322,6 +322,7 @@ export const LINKAGE_CONFIG_KEYS = [
     'coverings',
     'floor',
     'shadeCloth',
+    'actuation',
 ];
 
 /** Pick linkage-oriented fields from a full getConfigSnapshot() object. */

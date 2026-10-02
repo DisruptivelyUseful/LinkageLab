@@ -311,6 +311,12 @@ import { computeBillOfMaterials } from './bom.js';
         }
     
         const exportBounds = calculateBeamBounds(data.beams, { mainStructureOnly: true });
+        // Track feet sit under the bottom ring: the ground is their underside
+        if (Array.isArray(data.floorTracks) && data.floorTracks.length && exportBounds.min) {
+            const upKey = coordSys === 'zup' ? 'z' : 'y';
+            const low = Math.min(...data.floorTracks.map(t => t.bottomY));
+            if (isFinite(low) && low < exportBounds.min[upKey]) exportBounds.min = { ...exportBounds.min, [upKey]: low };
+        }
         // A caller-supplied pivot keeps the structure root constant across animation samples
         const exportCenter = sceneOpts.pivot || exportBounds.center || { x: 0, y: 0, z: 0 };
         data.structureBounds = exportBounds;

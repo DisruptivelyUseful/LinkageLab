@@ -3,7 +3,9 @@ import { createTestState } from './helpers/state-fixture.js';
 import '../js/linkage/beam-bolt-helpers.js';
 import { solveLinkage } from '../js/linkage/solver.js';
 import { getOptimalClosedAngleForAnimation } from '../js/linkage/joint-kinematics.js';
-import { createDefaultFloor, generateFloorBeams, computeFloorDeck, calculateFloorPolygon, normalizeFloor, computeFloorBomContribution } from '../js/linkage/floor-geometry.js';
+import { createDefaultFloor, generateFloorBeams, generateFloorTracks, trackSpanRange, describeFloorTrack, computeFloorDeck, calculateFloorPolygon, normalizeFloor, computeFloorBomContribution } from '../js/linkage/floor-geometry.js';
+import { degToRad } from '../js/linkage/math.js';
+import { pivotsFromState } from '../js/linkage/actuation.js';
 import { nestPolygonOnSheets } from '../js/linkage/sheet-nesting.js';
 
 function ring(overrides = {}) {
@@ -174,5 +176,93 @@ describe('floor-geometry', () => {
         expect(bom.radialQty).toBe(8);
         expect(bom.floorBeamCost).toBe(8 * 10 + 16 * 8);
         expect(computeFloorBomContribution({ ...f, enabled: false }, 8, st).floorBeamCost).toBe(0);
+    });
+
+    describe('radial beams as slotted track feet', () => {
+        const trackFloor = () => {
+            const floor = createDefaultFloor();
+            floor.enabled = true;
+            floor.beams.radialEnabled = true;
+            floor.beams.radialMode = 'track';
+            floor.beams.parallelEnabled = false;
+            return floor;
+        };
+
+        it('lays one track beam per module under the ring at every fold angle, with a slot bolt', () => {
+            const { st, data } = ring();
+            const floor = trackFloor();
+            // Reciprocal floor beams are hidden below the RCP visibility angle; track feet are not
+            const packed = solveLinkage(degToRad(10));
+            packed._structureFoldAngleRad = degToRad(10);
+            expect(generateFloorBeams(packed, floor, st)).toHaveLength(0);
+            const tr = generateFloorTracks(packed, floor, st);
+            expect(tr.beams).toHaveLength(8);
+            expect(tr.tracks).toHaveLength(8);
+            expect(tr.bolts).toHaveLength(8);
+            expect(tr.beams.every(b => b.stackType === 'floor-beam-track')).toBe(true);
+            expect(tr.bolts.every(b => b.boltType === 'track-bolt')).toBe(true);
+            // below the bottom H stack (centred at y = 0), top face a clearance under the stack
+            const hStackThick = data.frame.hStackThick;
+            tr.tracks.forEach(t => {
+                expect(t.topY).toBeCloseTo(-hStackThick / 2 - 0.25, 6);
+                expect(t.bottomY).toBeCloseTo(t.topY - floor.beams.thickness, 6);
+            });
+            tr.beams.forEach(b => expect(b.center.y).toBeCloseTo(-hStackThick / 2 - 0.25 - floor.beams.thickness / 2, 6));
+        });
+
+        it('keeps the inner pivot bolt inside the slot and the beam axis under it across the sweep', () => {
+            const { st } = ring();
+            const floor = trackFloor();
+            const spans = trackSpanRange(st);
+            expect(spans.packed).toBeGreaterThan(spans.deployed);
+            for (const deg of [8, 30, 60, 90, 120, 134]) {
+                const d = solveLinkage(degToRad(deg));
+                const tr = generateFloorTracks(d, floor, st);
+                tr.tracks.forEach((t, i) => {
+                    const mp = d.modulePivots[i];
+                    // beam axis passes through the pin and under the inner pivot
+                    const axis = { x: t.dir.x, z: t.dir.z };
+                    const rel = { x: mp.botInner.x - t.pin.x, z: mp.botInner.z - t.pin.z };
+                    const cross = Math.abs(rel.x * axis.z - rel.z * axis.x);
+                    expect(cross).toBeLessThan(1e-6);
+                    const along = rel.x * axis.x + rel.z * axis.z;
+                    expect(along).toBeGreaterThanOrEqual(spans.deployed - 0.126);
+                    expect(along).toBeLessThanOrEqual(spans.packed + 0.126);
+                    // the retaining bolt stands on the inner pivot
+                    expect(tr.bolts[i].center.x).toBeCloseTo(mp.botInner.x, 9);
+                    expect(tr.bolts[i].center.z).toBeCloseTo(mp.botInner.z, 9);
+                });
+            }
+        });
+
+        it('slot length is the pivot span travel and the readout reports swing and drag', () => {
+            const { st, data } = ring();
+            const floor = trackFloor();
+            const tr = generateFloorTracks(data, floor, st);
+            const spans = trackSpanRange(st);
+            expect(tr.tracks[0].slotLengthIn).toBeCloseTo(spans.travel + 0.25, 6);
+            expect(tr.tracks[0].lengthIn).toBeCloseTo(18 + spans.packed + 6, 6);
+            const d = describeFloorTrack(st, tr.tracks, (ang) => pivotsFromState(st, ang));
+            expect(d.slotLengthIn).toBeCloseTo(spans.travel, 2);
+            expect(d.swingDeg).toBeGreaterThan(5);      // pivot at 41.4 %: the beam swings about its pin
+            expect(d.swingDeg).toBeLessThan(45);
+            expect(d.footDragIn).toBeGreaterThan(0);
+            // a 50 % pivot gives a straight slot: no swing
+            const { st: st50 } = ring({ pivotPct: 50 });
+            const d50 = describeFloorTrack(st50, [], (ang) => pivotsFromState(st50, ang));
+            expect(Math.abs(d50.swingDeg)).toBeLessThan(0.01);
+        });
+
+        it('normalizes legacy configs to offset mode and prices the track in the BOM', () => {
+            expect(normalizeFloor({ enabled: true, beams: { radialEnabled: true } }).beams.radialMode).toBe('offset');
+            expect(normalizeFloor({ beams: { radialMode: 'track', trackTailIn: -5 } }).beams).toMatchObject({ radialMode: 'track', trackTailIn: 0 });
+            const { st } = ring();
+            st.costHBeam = 10; st.costBoltHPivot = 2;
+            const bom = computeFloorBomContribution(trackFloor(), 8, st);
+            expect(bom.trackQty).toBe(8);
+            expect(bom.structureItems).toHaveLength(2);
+            expect(bom.floorBeamCost).toBeCloseTo(8 * 10 + 8 * 2, 6);
+            expect(bom.trackLengthIn).toBeGreaterThan(24);
+        });
     });
 });

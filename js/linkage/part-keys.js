@@ -27,6 +27,7 @@ const STACK_TYPE_LABELS = {
     'support-beam': 'Radial support beam',
     'support-beam-reciprocal': 'Reciprocal beam',
     'floor-beam': 'Floor radial beam',
+    'floor-beam-track': 'Floor track beam (foot)',
     'floor-beam-reciprocal': 'Floor beam',
 };
 

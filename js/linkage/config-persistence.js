@@ -23,6 +23,7 @@ import {
 import { threeRenderer, updateMainCamera } from './renderer-3d.js';
 import { createDefaultCoverings, normalizeCoverings, resizeCoveringSpans, serializeCoverings } from './coverings-geometry.js';
 import { createDefaultFloor, normalizeFloor, serializeFloor } from './floor-geometry.js';
+import { createDefaultActuation, normalizeActuation, serializeActuation } from './actuation.js';
 import { createDefaultShade, normalizeShade, serializeShade } from './shade-cloth.js';
 import { syncUI } from './state-sync.js';
 
@@ -388,6 +389,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade V1 SOAK 2026.json';
         // Raised floor (same reset-to-defaults rule)
         state.floor = (config.floor && typeof config.floor === 'object') ? normalizeFloor(config.floor) : createDefaultFloor();
         state.shadeCloth = (config.shadeCloth && typeof config.shadeCloth === 'object') ? normalizeShade(config.shadeCloth) : createDefaultShade();
+        // Deployment drive planner
+        state.actuation = (config.actuation && typeof config.actuation === 'object') ? normalizeActuation(config.actuation) : createDefaultActuation();
     }
     
     /**
@@ -547,6 +550,8 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade V1 SOAK 2026.json';
             floor: serializeFloor(state.floor),
             // Roof shade cloths
             shadeCloth: serializeShade(state.shadeCloth),
+            // Deployment drive planner
+            actuation: serializeActuation(state.actuation),
             
             // Solar panel configuration
             panels: {
@@ -1103,6 +1108,7 @@ export const DEFAULT_LINKAGE_CONFIG_FILE = 'StarShade V1 SOAK 2026.json';
             if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
             if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
             if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
+            if (typeof globalThis.syncActuationUIFromState === 'function') globalThis.syncActuationUIFromState();
             
             // Panel lift (top panels)
             const slPanelLift = document.getElementById('sl-panel-lift');

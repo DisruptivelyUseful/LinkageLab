@@ -15,6 +15,8 @@ import { bridgeGlobals } from './global-bridge.js';
 import { WOOD_COLOR } from './constants.js';
 import { Beam3D } from './geometry-classes.js';
 import { degToRad, radToDeg } from './math.js';
+import { calculateJointPositions, getOptimalClosedAngleForAnimation } from './joint-kinematics.js';
+import { getEffectiveMinFoldAngle } from './solver.js';
 
 export const FLOOR_STACK_ID_BASE = 2000;
 
@@ -22,6 +24,11 @@ export const DEFAULT_FLOOR = Object.freeze({
     enabled: false,
     beams: {
         radialEnabled: false,
+        radialMode: 'offset',   // 'offset': fixed beam from the upright's foot; 'track': slotted foot pinned under the outer pivot
+        trackTailIn: 18,        // track beam behind the outer pivot pin (winch / actuator body)
+        trackHeadIn: 6,         // track beam past the far end of the slot
+        trackClearanceIn: 0.25, // gap between the bottom H stack and the track's top face
+        slotClearanceIn: 0.125, // slot runs this much past the pivot's packed and deployed positions, and this much wider than the bolt
         length: 120,
         width: 1.5,
         thickness: 3.5,
@@ -76,6 +83,11 @@ export function normalizeFloor(raw) {
         enabled: !!r.enabled,
         beams: {
             radialEnabled: !!b.radialEnabled,
+            radialMode: b.radialMode === 'track' ? 'track' : 'offset',
+            trackTailIn: clampNum(b.trackTailIn, d.beams.trackTailIn, 0, OFF_MAX),
+            trackHeadIn: clampNum(b.trackHeadIn, d.beams.trackHeadIn, 0, OFF_MAX),
+            trackClearanceIn: clampNum(b.trackClearanceIn, d.beams.trackClearanceIn, 0, 48),
+            slotClearanceIn: clampNum(b.slotClearanceIn, d.beams.slotClearanceIn, 0, 12),
             length: clampNum(b.length, d.beams.length, LEN_MIN, LEN_MAX),
             width: clampNum(b.width, d.beams.width, SECTION_MIN, SECTION_MAX),
             thickness: clampNum(b.thickness, d.beams.thickness, SECTION_MIN, SECTION_MAX),
@@ -223,7 +235,7 @@ export function generateFloorBeams(data, floor, st) {
     if (!frames.length) return out;
 
     const tangentOf = (f) => ({ x: -f.inDir.z, z: f.inDir.x }); // +90° from the inward radial in plan
-    if (cfg.radialEnabled) {
+    if (cfg.radialEnabled && cfg.radialMode !== 'track') {
         const L = num(cfg.length, 120), w = num(cfg.width, 1.5), t = num(cfg.thickness, 3.5);
         const y = ringTopY + num(cfg.offsetV, 0) + t / 2;
         const oh = num(cfg.offsetH, 0), ot = num(cfg.offsetT, 0);
@@ -411,10 +423,121 @@ export function describeFloorSeating(data, floorBeams, numModules) {
     return out;
 }
 
+
+// ----------------------------------------------------------------------------
+// Radial floor beams as a slotted track (the feet)
+//
+// In track mode each radial floor beam is pinned under its module's OUTER bottom
+// pivot and runs inward under the INNER bottom pivot. The inner pivot bolt is
+// extended down through a slot in the beam and retained with a plate washer, so
+// as the ring deploys the inner pivot slides along the slot (the span between the
+// two pivots shrinks from the packed to the deployed value) while the beam swings
+// about its pin to stay under it. The beam sits below the bottom H stack, so it
+// is what touches the ground.
+// ----------------------------------------------------------------------------
+
+/** Span (outer pivot → inner pivot, inches) at the packed and deployed angles. */
+export function trackSpanRange(st) {
+    const hActiveIn = st.hLengthFt * 12 - st.offsetTopIn - st.offsetBotIn;
+    const params = { hActiveIn, pivotPct: st.pivotPct, hobermanAng: st.hobermanAng, pivotAng: st.pivotAng };
+    const span = (theta) => { const j = calculateJointPositions(theta, params).joints; return Math.hypot(j.tr.x - j.br.x, j.tr.y - j.br.y); };
+    let packedAngle, deployedAngle;
+    try { packedAngle = getEffectiveMinFoldAngle(); } catch (e) { packedAngle = degToRad(5); }
+    try { deployedAngle = getOptimalClosedAngleForAnimation(); } catch (e) { deployedAngle = degToRad(135); }
+    const a = span(packedAngle), b = span(deployedAngle);
+    return { packed: Math.max(a, b), deployed: Math.min(a, b), travel: Math.abs(a - b), packedAngle, deployedAngle };
+}
+
+/**
+ * Track beams, slot records and retaining bolts for the current solve.
+ * Needs `data.modulePivots` and `data.frame` from solveLinkage. Present at every
+ * fold angle (the feet are structural, unlike the reciprocal floor beams).
+ * @returns {{beams:Array, tracks:Array, bolts:Array}}
+ */
+export function generateFloorTracks(data, floor, st) {
+    const out = { beams: [], tracks: [], bolts: [] };
+    if (!floor || !floor.enabled || !st || st.orientation === 'vertical') return out;
+    const cfg = floor.beams || DEFAULT_FLOOR.beams;
+    if (!cfg.radialEnabled || cfg.radialMode !== 'track') return out;
+    const mps = data && data.modulePivots;
+    if (!Array.isArray(mps) || !mps.length) return out;
+    const frame = data.frame || {};
+    const w = num(cfg.width, 1.5), t = num(cfg.thickness, 3.5);
+    const tail = num(cfg.trackTailIn, 18), head = num(cfg.trackHeadIn, 6);
+    const gap = num(cfg.trackClearanceIn, 0.25), slotClr = num(cfg.slotClearanceIn, 0.125);
+    const spans = trackSpanRange(st);
+    const hStackThick = num(frame.hStackThick, (st.hStackCount || 1) * (st.hBeamT || 1.5));
+    const topY = -hStackThick / 2 - gap;      // bottom ring stack is centred at y = 0
+    const yC = topY - t / 2;
+    const boltDia = num(st.hPivotBoltDiameter, num(st.boltDiameter, 0.375));
+    const slotWidth = boltDia + 2 * slotClr;
+    const lengthIn = tail + spans.packed + head;
+    mps.forEach((mp, i) => {
+        const pin = { x: mp.botOuter.x, z: mp.botOuter.z };
+        const d = mp.inDir;
+        const at = (dist, y) => ({ x: pin.x + d.x * dist, y, z: pin.z + d.z * dist });
+        const spanNow = Math.hypot(mp.botInner.x - pin.x, mp.botInner.z - pin.z);
+        const p1 = at(-tail, yC), p2 = at(spans.packed + head, yC);
+        out.beams.push(new Beam3D(p1, p2, w, t, WOOD_COLOR, {
+            moduleIndex: mp.moduleIndex, stackType: 'floor-beam-track', stackId: FLOOR_STACK_ID_BASE + 200 + mp.moduleIndex,
+        }));
+        const slotFrom = at(spans.deployed - slotClr, topY), slotTo = at(spans.packed + slotClr, topY);
+        // Retaining bolt: the inner pivot bolt carried down through the stack and the slot, nut under the beam
+        const boltTop = hStackThick / 2 + 0.5, boltBottom = topY - t - 0.75;
+        const boltLen = boltTop - boltBottom;
+        const bc = { x: mp.botInner.x, y: (boltTop + boltBottom) / 2, z: mp.botInner.z };
+        out.bolts.push({
+            start: { x: bc.x, y: boltTop, z: bc.z }, end: { x: bc.x, y: boltBottom, z: bc.z },
+            center: bc, dir: { x: 0, y: -1, z: 0 }, length: boltLen, radius: boltDia / 2,
+            headRadius: boltDia * 0.9, headHeight: boltDia * 0.6,
+            boltType: 'track-bolt', stackThickness: boltLen * 0.6, headSide: 1, headExtraThickness: 0,
+            z: bc.y, moduleIndex: mp.moduleIndex, ring: 'bottom', role: 'inner',
+        });
+        out.tracks.push({
+            moduleIndex: mp.moduleIndex,
+            pin: { x: pin.x, y: topY, z: pin.z }, dir: { x: d.x, z: d.z },
+            slotFrom, slotTo, slotWidth, slotLengthIn: spans.travel + 2 * slotClr,
+            boltAt: { x: mp.botInner.x, y: topY, z: mp.botInner.z },
+            spanNow, spanPacked: spans.packed, spanDeployed: spans.deployed,
+            topY, centreY: yC, bottomY: topY - t, lengthIn, widthIn: w, thicknessIn: t,
+            tailIn: tail, headIn: head,
+        });
+    });
+    return out;
+}
+
+/**
+ * Readout summary for the track: slot, beam length, how far the beam swings about
+ * its pin over the sweep and how far the feet drag relative to the structure centre.
+ * @param {Function} pivotsAt - (foldAngleRad) => { modules:[{botOuter, botInner, curRot}] }
+ */
+export function describeFloorTrack(st, tracks, pivotsAt) {
+    const spans = trackSpanRange(st);
+    const t0 = tracks && tracks[0];
+    const out = { slotLengthIn: round(spans.travel), slotFromIn: round(spans.deployed), slotToIn: round(spans.packed),
+        lengthIn: t0 ? round(t0.lengthIn) : null, swingDeg: null, footDragIn: null, groundDropIn: t0 ? round(-t0.bottomY) : null };
+    if (typeof pivotsAt !== 'function') return out;
+    try {
+        const a = pivotsAt(spans.packedAngle), b = pivotsAt(spans.deployedAngle);
+        const ang = (m) => Math.atan2(m.botInner.z - m.botOuter.z, m.botInner.x - m.botOuter.x) - m.curRot;
+        const wrap = (x) => Math.atan2(Math.sin(x), Math.cos(x));
+        out.swingDeg = round(Math.abs(radToDeg(wrap(ang(a.modules[0]) - ang(b.modules[0])))), 1);
+        const centroid = (ms) => ({ x: ms.reduce((s, m) => s + m.botOuter.x, 0) / ms.length, z: ms.reduce((s, m) => s + m.botOuter.z, 0) / ms.length });
+        const ca = centroid(a.modules), cb = centroid(b.modules);
+        let drag = 0;
+        a.modules.forEach((m, i) => {
+            const n = b.modules[i];
+            drag += Math.hypot((n.botOuter.x - cb.x) - (m.botOuter.x - ca.x), (n.botOuter.z - cb.z) - (m.botOuter.z - ca.z));
+        });
+        out.footDragIn = round(drag / a.modules.length, 1);
+    } catch (e) { /* readout only */ }
+    return out;
+}
+
 /** Structure BOM rows for the floor beams (mirrors computeSupportBomContribution). */
 export function computeFloorBomContribution(floor, moduleCount, st) {
     const items = [];
-    const res = { structureItems: items, floorBeamCost: 0, floorBeamWeight: 0, radialQty: 0, reciprocalQty: 0 };
+    const res = { structureItems: items, floorBeamCost: 0, floorBeamWeight: 0, radialQty: 0, reciprocalQty: 0, trackQty: 0, trackLengthIn: 0 };
     if (!floor || !floor.enabled || !st || st.orientation === 'vertical') return res;
     const cfg = floor.beams;
     const n = moduleCount;
@@ -422,7 +545,19 @@ export function computeFloorBomContribution(floor, moduleCount, st) {
     const fmt = (ft, w, t) => (globalThis.unitConverter && typeof globalThis.unitConverter.formatBeamSpecForCost === 'function')
         ? globalThis.unitConverter.formatBeamSpecForCost(ft, w, t)
         : `${ft.toFixed(1)}' ${w}x${t}`;
-    if (cfg.radialEnabled) {
+    if (cfg.radialEnabled && cfg.radialMode === 'track') {
+        const spans = trackSpanRange(st);
+        const lengthIn = num(cfg.trackTailIn, 0) + spans.packed + num(cfg.trackHeadIn, 0);
+        const qty = n, ft = lengthIn / 12;
+        const unit = num(st.costHBeam, 0);
+        items.push({ qty, item: `Floor track beams, slotted feet (${fmt(ft, cfg.width, cfg.thickness)})`, unit, total: qty * unit });
+        const boltUnit = num(st.costBoltHPivot, num(st.costBoltH, 0));
+        items.push({ qty, item: 'Track retaining bolts with plate washers (through the inner pivot)', unit: boltUnit, total: qty * boltUnit });
+        res.radialQty = qty;
+        res.trackQty = qty;
+        res.trackLengthIn = lengthIn;
+        res.floorBeamWeight += qty * ft * cfg.width * cfg.thickness * 12 * density;
+    } else if (cfg.radialEnabled) {
         const qty = n, ft = num(cfg.length, 120) / 12;
         const unit = num(st.costHBeam, 0);
         items.push({ qty, item: `Floor radial beams (${fmt(ft, cfg.width, cfg.thickness)})`, unit, total: qty * unit });
@@ -452,6 +587,9 @@ const _moduleExports = {
     computeFloorDeck,
     describeFloorSeating,
     computeFloorBomContribution,
+    generateFloorTracks,
+    trackSpanRange,
+    describeFloorTrack,
     OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX,
 };
 

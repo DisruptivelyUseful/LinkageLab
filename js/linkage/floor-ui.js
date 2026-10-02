@@ -6,7 +6,8 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { requestRender } from './render-app.js';
 import { saveStateToHistory } from './history.js';
-import { createDefaultFloor, computeFloorBomContribution, describeFloorSeating, OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX } from './floor-geometry.js';
+import { createDefaultFloor, computeFloorBomContribution, describeFloorSeating, describeFloorTrack, OFF_MAX, LEN_MIN, LEN_MAX, SECTION_MIN, SECTION_MAX } from './floor-geometry.js';
+import { pivotsFromState } from './actuation.js';
 import { computeCoveringCutPlan } from './coverings-plan.js';
 import { formatInchesFraction } from '../core/unit-converter.js';
 
@@ -57,6 +58,9 @@ function updateVisibility() {
     if (controls) controls.style.display = f.enabled && !arch ? '' : 'none';
     const rcp = $('floor-rcp-controls'); if (rcp) rcp.style.display = f.beams.parallelEnabled !== false ? '' : 'none';
     const rad = $('floor-radial-controls'); if (rad) rad.style.display = f.beams.radialEnabled ? '' : 'none';
+    const track = f.beams.radialMode === 'track';
+    const offC = $('floor-rad-offset-controls'); if (offC) offC.style.display = track ? 'none' : '';
+    const trC = $('floor-rad-track-controls'); if (trC) trC.style.display = track ? '' : 'none';
     const deck = $('floor-deck-controls'); if (deck) deck.style.display = f.deck.enabled !== false ? '' : 'none';
 }
 
@@ -81,6 +85,11 @@ function syncFloorUIFromState() {
     setPair('sl-floor-deck-inset', 'nb-floor-deck-inset', f.deck.insetIn);
     const set = (id, v) => { const el = $(id); if (el) el.value = v; };
     set('sel-floor-seat', f.beams.seat === 'ringTop' ? 'ringTop' : 'leg');
+    set('sel-floor-rad-mode', f.beams.radialMode === 'track' ? 'track' : 'offset');
+    set('nb-floor-track-tail', f.beams.trackTailIn ?? 18);
+    set('nb-floor-track-head', f.beams.trackHeadIn ?? 6);
+    set('nb-floor-track-gap', f.beams.trackClearanceIn ?? 0.25);
+    set('nb-floor-track-slotclr', f.beams.slotClearanceIn ?? 0.125);
     set('nb-floor-rcp-width', f.beams.parallelWidth);
     set('nb-floor-rcp-thickness', f.beams.parallelThickness);
     set('nb-floor-rcp-end', f.beams.rcpEndOffset);
@@ -112,6 +121,17 @@ function updateFloorReadout(data) {
         } catch (e) { /* readout only */ }
     }
     setText('floor-stat-seat', seatTxt);
+    // Track feet readout
+    if (f.beams.radialEnabled && f.beams.radialMode === 'track') {
+        try {
+            const tracks = (data && data.floorTracks) || [];
+            const d = describeFloorTrack(state, tracks, (ang) => pivotsFromState(state, ang));
+            setText('floor-stat-track-slot', `${formatInchesFraction(d.slotLengthIn)} long, ${formatInchesFraction(d.slotFromIn)} to ${formatInchesFraction(d.slotToIn)} from the pin`);
+            setText('floor-stat-track-beam', d.lengthIn ? `${formatInchesFraction(d.lengthIn)} long, ground ${formatInchesFraction(d.groundDropIn)} below the ring centre` : '--');
+            setText('floor-stat-track-swing', d.swingDeg !== null ? `${d.swingDeg}° packed → deployed (0° at a 50% pivot)` : '--');
+            setText('floor-stat-track-drag', d.footDragIn !== null ? `≈ ${formatInchesFraction(d.footDragIn)} per foot relative to the centre; stake after deploying` : '--');
+        } catch (e) { /* readout only */ }
+    }
     const deck = fl && fl.deck;
     setText('floor-stat-height', deck ? `${formatInchesFraction(deck.yTop)} above ground` : '--');
     setText('floor-stat-area', deck ? `${(deck.areaIn2 / 144).toFixed(1)} ft²` : '--');
@@ -137,6 +157,15 @@ function initFloorUI() {
     bindCheck('chk-floor-show-deck', (v) => { floor().visibility.deck = v; });
     const b = () => floor().beams;
     const OFF = { min: -OFF_MAX, max: OFF_MAX }, LEN = { min: LEN_MIN, max: LEN_MAX }, SEC = { min: SECTION_MIN, max: SECTION_MAX };
+    const modeSel = $('sel-floor-rad-mode');
+    // Track beams are assembled after the cached solve like the other floor beams: a plain commit redraws them
+    const commitTrack = () => commit();
+    if (modeSel) modeSel.onchange = (e) => { b().radialMode = e.target.value === 'track' ? 'track' : 'offset'; updateVisibility(); commitTrack(); };
+    const bindTrackNumber = (id, get, set, opts) => { const el = $(id); if (el) el.onchange = (e) => { let v = parseFloat(e.target.value); if (isNaN(v)) v = get(); v = Math.max(opts.min, Math.min(opts.max, v)); set(v); e.target.value = v; commitTrack(); }; };
+    bindTrackNumber('nb-floor-track-tail', () => b().trackTailIn, (v) => { b().trackTailIn = v; }, { min: 0, max: OFF_MAX });
+    bindTrackNumber('nb-floor-track-head', () => b().trackHeadIn, (v) => { b().trackHeadIn = v; }, { min: 0, max: OFF_MAX });
+    bindTrackNumber('nb-floor-track-gap', () => b().trackClearanceIn, (v) => { b().trackClearanceIn = v; }, { min: 0, max: 48 });
+    bindTrackNumber('nb-floor-track-slotclr', () => b().slotClearanceIn, (v) => { b().slotClearanceIn = v; }, { min: 0, max: 12 });
     const seatSel = $('sel-floor-seat');
     if (seatSel) seatSel.onchange = (e) => { b().seat = e.target.value === 'ringTop' ? 'ringTop' : 'leg'; commit(); };
     bindPair('sl-floor-rcp-length', 'nb-floor-rcp-length', () => b().parallelLength, (v) => { b().parallelLength = v; }, LEN);

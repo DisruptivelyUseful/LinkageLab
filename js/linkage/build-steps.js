@@ -881,7 +881,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     const rcp = has({ kind: 'beam', stackType: 'support-beam-reciprocal' });
     const rcpBolts = has({ kind: 'bolt', boltType: ['rcp-ring', 'rcp-cross'] });
     const panels = has({ kind: 'panel' });
-    const floorBeams = has({ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal'] });
+    const floorBeams = has({ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal', 'floor-beam-track'] });
     const floorDeck = has({ kind: 'wall', band: 'floor' });
     const shade = has({ kind: 'wall', band: 'roof' });
     const lowerWalls = has({ kind: 'wall', band: 'lower', coverType: 'plywood' });
@@ -902,7 +902,7 @@ export function generateDefaultBuildSteps(data, opts = {}) {
     }
 
     // 5. Raised floor: beams onto the bottom ring, then the deck
-    if (floorBeams) mk('place', { title: 'Lay the floor beams', notes: 'Set the floor beams across the bottom ring, each anchored on its bottom scissor leg, weaving A over B like the roof beams.', targets: [{ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal'] }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
+    if (floorBeams) mk('place', { title: 'Lay the floor beams', notes: 'Set the floor beams across the bottom ring, each anchored on its bottom scissor leg, weaving A over B like the roof beams.', targets: [{ kind: 'beam', stackType: ['floor-beam', 'floor-beam-reciprocal', 'floor-beam-track'] }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
     if (floorDeck) mk('place', { title: 'Lay the floor deck', notes: 'Screw the plywood deck pieces onto the floor beams, cut edges toward the ring.', targets: [{ kind: 'wall', band: 'floor' }], view: view(deployed), op: { approach: 'above', travelIn: 24 } });
 
     // 6. Coverings: walls, tables and fabric go on after the roof, from the outside in

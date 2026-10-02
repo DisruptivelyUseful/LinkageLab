@@ -627,3 +627,34 @@
 .shade-swatch.active {
     border-color: var(--accent, #5fb3a1);
 }
+
+/* Actuation group: force sparkline and compare table */
+.act-spark {
+    display: block;
+    width: 100%;
+    height: 72px;
+    margin: 6px 0 2px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: var(--radius-sm);
+}
+.act-spark-area { fill: rgba(47, 111, 179, 0.45); }
+.act-spark-area-friction { fill: rgba(168, 184, 198, 0.3); }
+.act-spark-line { fill: none; stroke: #5dade2; stroke-width: 1.5; vector-effect: non-scaling-stroke; }
+.act-spark-rated { stroke: #e67e22; stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
+.act-spark-dot { fill: #f1c40f; }
+.act-spark-txt { fill: #a8b8c6; font-size: 8px; }
+.act-compare { margin: 4px 0 8px; }
+.act-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.7rem;
+    color: var(--text-primary);
+}
+.act-table th, .act-table td { padding: 3px 4px; text-align: right; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+.act-table th:first-child, .act-table td:first-child { text-align: left; }
+.act-table th { color: var(--text-muted); font-weight: 500; }
+.act-table tbody tr { cursor: pointer; }
+.act-table tbody tr:hover { background: rgba(255, 255, 255, 0.05); }
+.act-table tbody tr.is-selected { background: rgba(47, 111, 179, 0.25); }
+.btn-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.btn-row .btn-secondary { flex: 1 1 auto; }

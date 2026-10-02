@@ -6,6 +6,7 @@
 import { bridgeGlobals } from './global-bridge.js';
 import { createDefaultCoverings } from './coverings-geometry.js';
 import { createDefaultFloor } from './floor-geometry.js';
+import { createDefaultActuation } from './actuation.js';
 import { createDefaultShade } from './shade-cloth.js';
 
 /** Application state object containing all configuration parameters */
@@ -163,9 +164,8 @@ export const state = {
     // Structure rotation (rotates structure only, not solar panels)
     structureRotation: 0,       // Rotation around vertical Y-axis (degrees)
     
-    // Actuator selection for visualization
-    selectedActuator: null,      // Currently selected actuator recommendation
-    actuatorRecommendations: [], // List of actuator recommendations from analysis
+    /** Deployment drive planner: placement, drives, load and motor settings (actuation.js) */
+    actuation: createDefaultActuation(),
     
     // Arch orientation controls
     archFlipVertical: false,    // Flip the arch upside down

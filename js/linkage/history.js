@@ -59,6 +59,7 @@ function undo() {
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
         if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
+        if (typeof globalThis.syncActuationUIFromState === 'function') globalThis.syncActuationUIFromState();
         requestRender();
         showToast('Undone', 'info');
     }
@@ -79,6 +80,7 @@ function redo() {
         if (typeof globalThis.syncCoveringsUIFromState === 'function') globalThis.syncCoveringsUIFromState();
         if (typeof globalThis.syncFloorUIFromState === 'function') globalThis.syncFloorUIFromState();
         if (typeof globalThis.syncShadeUIFromState === 'function') globalThis.syncShadeUIFromState();
+        if (typeof globalThis.syncActuationUIFromState === 'function') globalThis.syncActuationUIFromState();
         requestRender();
         showToast('Redone', 'info');
     }
